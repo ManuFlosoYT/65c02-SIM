@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/MIPS-SIM-65c02.iml" filepath="$PROJECT_DIR$/MIPS-SIM-65c02.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/MIPS-SIM-65c02.iml" filepath="$PROJECT_DIR$/.idea/MIPS-SIM-65c02.iml" />
     </modules>
   </component>
 </project>
