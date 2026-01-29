@@ -3,21 +3,20 @@
 //
 
 #include <iostream>
-#include <vector>
-#include <memory>
 
-#include "Instrucciones/Instruccion.h"
-#include "Instrucciones/NOP.h"
+
+#include "Componentes/CPU.h"
+#include "Componentes/Mem.h"
+
+
 
 int main() {
-    std::vector<std::unique_ptr<Instruccion>> lista;
+    Mem mem{};
 
-    lista.push_back(std::make_unique<NOP>());
-    lista.push_back(std::make_unique<NOP>());
+    CPU cpu{};
+    cpu.Reset( mem );
 
     std::cout << "--- Ejecutando instrucciones ---" << std::endl;
 
-    for (const auto& entidad : lista) {
-        entidad -> Ejecutar();
-    }
+    cpu.Ejecutar();
 }

@@ -27,13 +27,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0f2e19a5-61f3-418e-b1d6-80ac947c210c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Instrucciones/Instruccion.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Instrucciones/Instruccion.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Instrucciones/NOP.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Instrucciones/NOP.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Componentes/CPU.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Componentes/CPU.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Componentes/Mem.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Componentes/Mem.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Instrucciones/NOP.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Instrucciones/NOP.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/main.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -131,7 +131,7 @@
       <updated>1769600928032</updated>
       <workItem from="1769600929645" duration="462000" />
       <workItem from="1769698596196" duration="655000" />
-      <workItem from="1769699296013" duration="630000" />
+      <workItem from="1769699296013" duration="2201000" />
     </task>
     <servers />
   </component>
