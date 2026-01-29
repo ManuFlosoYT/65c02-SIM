@@ -3,4 +3,9 @@ project(MIPS_SIM_65c02)
 
 set(CMAKE_CXX_STANDARD 26)
 
-add_executable(MIPS_SIM_65c02 main.cpp)
+add_executable(MIPS_SIM_65c02 main.cpp
+        Instrucciones/Instruccion.cpp
+        Instrucciones/Instruccion.h
+        Instrucciones/NOP.cpp
+        Instrucciones/NOP.h
+)
