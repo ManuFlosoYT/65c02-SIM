@@ -13,4 +13,5 @@ add_executable(MIPS_SIM_65c02 main.cpp
         Componentes/Mem.cpp
         Componentes/Mem.h
         Componentes/Mem.h
+        Instrucciones/ListaInstrucciones.h
 )

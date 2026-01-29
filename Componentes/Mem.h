@@ -10,11 +10,18 @@ using Byte = uint8_t;
 using Word = uint16_t;
 
 class Mem {
-    private:
+    public:
         constexpr static uint32_t MAX_MEM = 65536; // 64KB de memoria
         Byte memoria[MAX_MEM]{};
-    public:
         void Init();
+
+        Byte& operator[](Word addr) {
+            return memoria[addr];
+        }
+
+        Byte operator[](Word addr) const {
+            return memoria[addr];
+        }
 };
 
 

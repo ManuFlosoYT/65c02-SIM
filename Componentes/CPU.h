@@ -10,6 +10,7 @@
 
 #include "Mem.h"
 
+#include "../Instrucciones/ListaInstrucciones.h"
 #include "../Instrucciones/Instruccion.h"
 #include "../Instrucciones/NOP.h"
 
@@ -36,7 +37,9 @@ class CPU {
     public:
         CPU() = default;
         void Reset( Mem& mem );
-        void Ejecutar() const;
+        void Ejecutar( Mem& mem );
+
+        Byte FetchByte( Mem& mem ); // Lee un byte de memoria y avanza el PC
 };
 
 

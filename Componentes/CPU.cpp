@@ -1,10 +1,10 @@
 //
 // Created by manu on 29/1/26.
 //
+#include <iostream>
 
 #include "CPU.h"
 
-#include <iostream>
 
 void CPU::Reset( Mem& mem ) {
     std::cout << "Reseteando CPU..." << std::endl;
@@ -27,12 +27,39 @@ void CPU::Reset( Mem& mem ) {
 
     mem.Init();
 
-    lista.push_back(std::make_unique<NOP>());
-    lista.push_back(std::make_unique<NOP>());
+    //lista.push_back(std::make_unique<NOP>());
+    //lista.push_back(std::make_unique<NOP>());
 }
 
-void CPU::Ejecutar() const {
-    for (const auto& entidad : lista) {
-        entidad -> Ejecutar();
+void CPU::Ejecutar( Mem& mem ){
+    while (true) {
+        Byte opcode = FetchByte( mem );
+
+        switch (opcode) {
+            case INS_NOP: {
+                NOP nop;
+                nop.Ejecutar( *this, mem );
+                break;
+            }
+            case INS_LDA_IM: {
+                // Implementación de LDA Inmediato
+                break;
+            }
+            default:
+                std::cout
+                    << "Opcode desconocido: "
+                    << std::hex                     // Cambiar a formato hexadecimal
+                    << static_cast<int>(opcode)     // Mostrar el opcode
+                    << std::dec                     // Volver a formato decimal
+                    << " ejecución cancelada."
+                    << std::endl;
+                return; // Salir de la ejecución
+        }
     }
+}
+
+Byte CPU::FetchByte( Mem& mem ) {
+    const Byte dato = mem[PC];
+    PC++;
+    return dato;
 }

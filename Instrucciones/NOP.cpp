@@ -6,6 +6,6 @@
 #include "NOP.h"
 
 
-void NOP::Ejecutar() const {
-    std::cout << "Ejecutando NOP: No se realiza ninguna operación." << std::endl;
+void NOP::Ejecutar( CPU& cpu, Mem& mem ) const {
+    // No hace nada
 }

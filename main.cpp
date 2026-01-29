@@ -18,5 +18,5 @@ int main() {
 
     std::cout << "--- Ejecutando instrucciones ---" << std::endl;
 
-    cpu.Ejecutar();
+    cpu.Ejecutar( mem );
 }

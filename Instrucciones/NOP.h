@@ -9,7 +9,7 @@
 
 class NOP : public Instruccion {
     public:
-        void Ejecutar() const override;
+        void Ejecutar( CPU& cpu, Mem& mem ) const override;
 };
 
 #endif //MIPS_SIM_65C02_NOP_H
