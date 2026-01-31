@@ -8,7 +8,7 @@ using Word = uint16_t;
 
 class Mem {
     public:
-        constexpr static uint32_t MAX_MEM = 65536; // 64KB de memoria
+        constexpr static uint16_t MAX_MEM = 65535; // 64KB de memoria
         Byte memoria[MAX_MEM]{};
         void Init();
 

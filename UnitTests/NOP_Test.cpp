@@ -37,19 +37,15 @@ TEST_F(PruebaNOP, NoHaceNada) {
 
     // Ejecutar ciclo de CPU
     // Ciclo 1: Lee NOP en 0xFFFC -> PC avanza a 0xFFFD -> Ejecuta NOP
-    // Ciclo 2: Lee 0xFF en 0xFFFD -> PC avanza a 0xFFFE -> Opcode desconocido ->
-    // Retorna
+    // Ciclo 2: Lee 0xFF en 0xFFFD -> PC avanza a 0xFFFE -> Opcode desconocido -> Retorna
     cpu.Ejecutar(mem);
 
     // Verificar que el PC avanzó 2 bytes (1 por NOP + 1 por el opcode de parada)
-    // Nota: El usuario espera ver el efecto de NOP (PC+1), pero el loop lee uno
-    // más. Si queremos verificar SOLO el NOP, tendríamos que inspeccionar el log
-    // o hacer single-stepping. Pero dado el diseño actual de CPU::Ejecutar (loop
-    // while true), el PC final será 0xFFFE.
     EXPECT_EQ(cpu.PC, 0xFFFE);
 
     // Verificar que el resto del estado permanece inalterado
     EXPECT_EQ(cpu.SP, SP_Inicial);
+    
     EXPECT_EQ(cpu.A, A_Inicial);
     EXPECT_EQ(cpu.X, X_Inicial);
     EXPECT_EQ(cpu.Y, Y_Inicial);
