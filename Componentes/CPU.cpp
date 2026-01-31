@@ -5,6 +5,8 @@
 #include "../Instrucciones/JSR.h"
 #include "../Instrucciones/LDA.h"
 #include "../Instrucciones/NOP.h"
+#include "../Instrucciones/LDX.h"
+#include "../Instrucciones/LDY.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -49,6 +51,46 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_JSR: {
                 JSR::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_LDX_IM: {
+                LDX::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_LDX_ZP: {
+                LDX::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_LDX_ZPY: {
+                LDX::EjecutarZPY(*this, mem);
+                break;
+            }
+            case INS_LDX_ABS: {
+                LDX::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_LDX_ABSY: {
+                LDX::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_LDY_IM: {
+                LDY::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_LDY_ZP: {
+                LDY::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_LDY_ZPX: {
+                LDY::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_LDY_ABS: {
+                LDY::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_LDY_ABSX: {
+                LDY::EjecutarABSX(*this, mem);
                 break;
             }
             default:

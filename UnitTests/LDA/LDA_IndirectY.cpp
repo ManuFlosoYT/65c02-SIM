@@ -83,7 +83,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_ZeroFlag) {
 TEST_F(LDA_IndirectY_Test, LDA_IndirectY_NegativeFlag) {
     cpu.Y = 0x01;
     cpu.N = 0;
-    
+
     mem[0xFFFC] = INS_LDA_INDY;
     mem[0xFFFD] = 0x02;
     mem[0x0002] = 0x00;
@@ -96,4 +96,36 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_NegativeFlag) {
     EXPECT_EQ(cpu.A, 0xAA);
     EXPECT_FALSE(cpu.Z);
     EXPECT_TRUE(cpu.N);
+}
+
+TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PageCrossing) {
+    cpu.Y = 0x10;
+    mem[0xFFFC] = INS_LDA_INDY;
+    mem[0xFFFD] = 0x02;
+
+    mem[0x0002] = 0xF0;
+    mem[0x0003] = 0x10;
+
+    mem[0x1100] = 0x55;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0x55);
+}
+
+TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PointerWrapping) {
+    cpu.Y = 0x00;
+    mem[0xFFFC] = INS_LDA_INDY;
+    mem[0xFFFD] = 0xFF;
+
+    mem[0x00FF] = 0x34;
+    mem[0x0000] = 0x12;
+
+    mem[0x1234] = 0x88;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0x88);
 }

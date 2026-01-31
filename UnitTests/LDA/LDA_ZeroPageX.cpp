@@ -81,3 +81,16 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_NegativeFlag) {
     EXPECT_FALSE(cpu.Z);
     EXPECT_TRUE(cpu.N);
 }
+
+TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_Wrapping) {
+    cpu.X = 0xFF;
+    mem[0xFFFC] = INS_LDA_ZPX;
+    mem[0xFFFD] = 0x80;
+    mem[0x007F] = 0x42;
+    mem[0x017F] = 0xAD;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0x42);
+}

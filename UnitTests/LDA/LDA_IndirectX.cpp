@@ -78,7 +78,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_ZeroFlag) {
 TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
     cpu.X = 0x04;
     cpu.N = 0;
-    
+
     mem[0xFFFC] = INS_LDA_INDX;
     mem[0xFFFD] = 0x02;
     mem[0x0006] = 0x00;
@@ -91,4 +91,20 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
     EXPECT_EQ(cpu.A, 0x88);
     EXPECT_FALSE(cpu.Z);
     EXPECT_TRUE(cpu.N);
+}
+
+TEST_F(LDA_IndirectX_Test, LDA_IndirectX_Wrapping) {
+    cpu.X = 0x02;
+    mem[0xFFFC] = INS_LDA_INDX;
+    mem[0xFFFD] = 0xFF;
+
+    mem[0x0001] = 0x34;
+    mem[0x0002] = 0x12;
+
+    mem[0x1234] = 0x99;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0x99);
 }

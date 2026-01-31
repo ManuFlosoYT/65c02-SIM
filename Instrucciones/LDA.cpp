@@ -1,6 +1,6 @@
 #include "LDA.h"
 
-void SetFlags(CPU& cpu) {
+static void SetFlags(CPU& cpu) {
     cpu.Z = (cpu.A == 0);
     cpu.N = (cpu.A & 0b10000000) > 0;
 }
@@ -63,9 +63,18 @@ void LDA::EjecutarINDX(CPU& cpu, Mem& mem) {
 void LDA::EjecutarINDY(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
-    Word Dir = cpu.LeerWord(ZP_Dir, mem);
-    Dir += cpu.Y;
+    Word dir;
 
-    cpu.A = cpu.LeerByte(Dir, mem);
+    if (ZP_Dir != 0xFF) {
+        dir = cpu.LeerWord(ZP_Dir, mem);
+    } else {
+        Byte low = cpu.LeerByte(0xFF, mem);
+        Byte high = cpu.LeerByte(0x00, mem);
+        dir = (high << 8) | low;
+    }
+
+    dir += cpu.Y;
+
+    cpu.A = cpu.LeerByte(dir, mem);
     SetFlags(cpu);
 }
