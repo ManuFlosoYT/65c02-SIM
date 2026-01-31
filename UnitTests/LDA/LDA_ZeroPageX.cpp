@@ -1,0 +1,83 @@
+#include <gtest/gtest.h>
+
+#include "../../Componentes/CPU.h"
+#include "../../Componentes/Mem.h"
+#include "../../Instrucciones/ListaInstrucciones.h"
+
+class LDA_ZeroPageX_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+
+    Mem mem;
+    CPU cpu;
+};
+
+TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX) {
+    // Programa en memoria:
+    // 0xFFFC: LDA (ZeroPageX) 0x42
+    // 0xFFFD: 0x42
+    // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
+    // X register: 0x05
+    // Dirección objetivo: 0x42 + 0x05 = 0x47
+    // 0x0047: 0x37 (Valor a cargar)
+    cpu.X = 0x05;
+    mem[0xFFFC] = INS_LDA_ZPX;
+    mem[0xFFFD] = 0x42;
+    mem[0x0047] = 0x37;
+    mem[0xFFFE] = 0xFF;
+
+    // Ciclo 1:
+    //    Lee LDA (ZPX) en 0xFFFC
+    //    PC avanza a 0xFFFD
+    //    Ejecuta LDA (ZPX)
+    // Ciclo 2:
+    //    Lee la dirección base ZP (0x42) en 0xFFFD
+    //    PC avanza a 0xFFFE
+    // Ciclo 3:
+    //    Lee dirección base 0x42
+    //    Calcula dirección efectiva 0x42 + X (0x05) = 0x47
+    // Ciclo 4:
+    //    Lee el valor (0x37) en 0x0047
+    //    Carga 0x37 en A
+    //    Opcode desconocido -> Retorna
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.PC, 0xFFFF);
+    EXPECT_EQ(cpu.A, 0x37);
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_FALSE(cpu.N);
+}
+
+TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_ZeroFlag) {
+    cpu.X = 0x05;
+    cpu.Z = 0;
+    cpu.A = 0xFF;
+
+    mem[0xFFFC] = INS_LDA_ZPX;
+    mem[0xFFFD] = 0x42;
+    mem[0x0047] = 0x00;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0x00);
+    EXPECT_TRUE(cpu.Z);
+    EXPECT_FALSE(cpu.N);
+}
+
+TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_NegativeFlag) {
+    cpu.X = 0x05;
+    cpu.N = 0;
+    cpu.A = 0xFF;
+
+    mem[0xFFFC] = INS_LDA_ZPX;
+    mem[0xFFFD] = 0x42;
+    mem[0x0047] = 0x88;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0x88);
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_TRUE(cpu.N);
+}

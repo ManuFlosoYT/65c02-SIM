@@ -7,9 +7,9 @@ int main() {
     Mem mem{};
 
     CPU cpu{};
-    cpu.Reset( mem );
+    cpu.Reset(mem);
 
     std::cout << "--- Ejecutando instrucciones ---" << std::endl;
 
-    cpu.Ejecutar( mem );
+    cpu.Ejecutar(mem);
 }

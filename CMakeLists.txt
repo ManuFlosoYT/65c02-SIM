@@ -25,7 +25,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 enable_testing()
-file(GLOB TEST_SOURCES "UnitTests/*.cpp")
+file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
 
 if(TEST_SOURCES)
     add_executable(unit_tests ${TEST_SOURCES})

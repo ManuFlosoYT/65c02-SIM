@@ -3,3 +3,5 @@
 /.idea
 /.cache
 /build
+.prettierrc
+.clang-format

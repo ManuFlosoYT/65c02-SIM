@@ -1,0 +1,99 @@
+#include <gtest/gtest.h>
+
+#include "../../Componentes/CPU.h"
+#include "../../Componentes/Mem.h"
+#include "../../Instrucciones/ListaInstrucciones.h"
+
+class LDA_IndirectY_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+
+    Mem mem;
+    CPU cpu;
+};
+
+TEST_F(LDA_IndirectY_Test, LDA_IndirectY) {
+    // Programa en memoria:
+    // 0xFFFC: LDA (IndirectY) 0x02
+    // 0xFFFD: 0x02 (Zero Page Address)
+    // 0xFFFE: Opcode desconocido
+    // Y register: 0x01
+    // Dirección ZP: 0x02
+    // 0x0002: 0x00 (Low Byte)
+    // 0x0003: 0x80 (High Byte)
+    // Dirección base leída: 0x8000
+    // Dirección efectiva: 0x8000 + Y (0x01) = 0x8001
+    // 0x8001: 0x37 (Valor a cargar)
+    cpu.Y = 0x01;
+    mem[0xFFFC] = INS_LDA_INDY;
+    mem[0xFFFD] = 0x02;
+    mem[0x0002] = 0x00;
+    mem[0x0003] = 0x80;
+    mem[0x8001] = 0x37;
+    mem[0xFFFE] = 0xFF;
+
+    // Ciclo 1:
+    //    Lee LDA (INDY) en 0xFFFC -> PC=FFFD
+    //    Ejecuta LDA (INDY)
+    // Ciclo 2:
+    //    Lee ZP Address (0x02) en 0xFFFD -> PC=FFFE
+    // Ciclo 3:
+    //    Lee Low Byte Address (0x00) en 0x0002
+    // Ciclo 4:
+    //    Lee High Byte Address (0x80) en 0x0003
+    //    Dirección base: 0x8000
+    //    Calcula Dirección efectiva: 0x8000 + Y (0x01) = 0x8001
+    // Ciclo 5
+    //    1. Opcode
+    //    2. ZP Addr
+    //    3. Read ZP (Low)
+    //    4. Read ZP+1 (High) + Add Y to Low
+    //    5. Read Effective Address
+    //    Si, 5 ciclos minimo.
+    //    Lee valor (0x37) en 0x8001
+    //    Carga 0x37 en A
+    //    Opcode desconocido -> Retorna
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.PC, 0xFFFF);
+    EXPECT_EQ(cpu.A, 0x37);
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_FALSE(cpu.N);
+}
+
+TEST_F(LDA_IndirectY_Test, LDA_IndirectY_ZeroFlag) {
+    cpu.Y = 0x01;
+    cpu.Z = 0;
+    cpu.A = 0xFF;
+
+    mem[0xFFFC] = INS_LDA_INDY;
+    mem[0xFFFD] = 0x02;
+    mem[0x0002] = 0x00;
+    mem[0x0003] = 0x80;
+    mem[0x8001] = 0x00;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0x00);
+    EXPECT_TRUE(cpu.Z);
+    EXPECT_FALSE(cpu.N);
+}
+
+TEST_F(LDA_IndirectY_Test, LDA_IndirectY_NegativeFlag) {
+    cpu.Y = 0x01;
+    cpu.N = 0;
+    
+    mem[0xFFFC] = INS_LDA_INDY;
+    mem[0xFFFD] = 0x02;
+    mem[0x0002] = 0x00;
+    mem[0x0003] = 0x80;
+    mem[0x8001] = 0xAA;
+    mem[0xFFFE] = 0xFF;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.A, 0xAA);
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_TRUE(cpu.N);
+}

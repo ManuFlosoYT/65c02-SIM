@@ -3,9 +3,9 @@
 
 #include "../Componentes/CPU.h"
 #include "../Componentes/Mem.h"
-class NOP{
-    public:
-        void Ejecutar( CPU& cpu, Mem& mem ) const;
+class NOP {
+public:
+    void Ejecutar(CPU& cpu, Mem& mem) const;
 };
 
-#endif //MIPS_SIM_65C02_NOP_H
+#endif  // MIPS_SIM_65C02_NOP_H
