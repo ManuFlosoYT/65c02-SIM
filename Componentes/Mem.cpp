@@ -1,7 +1,3 @@
-//
-// Created by manu on 29/1/26.
-//
-
 #include "Mem.h"
 
 #include <iostream>

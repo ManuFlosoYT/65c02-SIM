@@ -1,9 +1,7 @@
-//
-// Created by manu on 29/1/26.
-//
 #include <iostream>
 
 #include "CPU.h"
+#include "../Instrucciones/NOP.h"
 
 
 void CPU::Reset( Mem& mem ) {
@@ -26,9 +24,6 @@ void CPU::Reset( Mem& mem ) {
     N = 0;
 
     mem.Init();
-
-    //lista.push_back(std::make_unique<NOP>());
-    //lista.push_back(std::make_unique<NOP>());
 }
 
 void CPU::Ejecutar( Mem& mem ){
