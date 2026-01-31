@@ -8,13 +8,15 @@ using Word = uint16_t;
 
 class Mem {
 public:
-  constexpr static Word MAX_MEM = 0xFFFF; // 64KB de memoria
-  Byte memoria[MAX_MEM]{};
-  void Init();
+    constexpr static Word MAX_MEM = 0xFFFF;  // 64KB de memoria
+    Byte memoria[MAX_MEM]{};
+    void Init();
 
-  Byte &operator[](Word addr) { return memoria[addr]; }
+    Byte& operator[](Word dir) { return memoria[dir]; }
+    Byte operator[](Word dir) const { return memoria[dir]; }
 
-  Byte operator[](Word addr) const { return memoria[addr]; }
+    void WriteWord(Word dato, Word dir);
+    
 };
 
-#endif // MIPS_SIM_65C02_MEM_H
+#endif  // MIPS_SIM_65C02_MEM_H

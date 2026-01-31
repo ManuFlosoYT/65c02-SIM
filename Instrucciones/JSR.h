@@ -1,11 +1,11 @@
-#ifndef MIPS_SIM_65C02_NOP_H
-#define MIPS_SIM_65C02_NOP_H
+#ifndef MIPS_SIM_65C02_JSR_H
+#define MIPS_SIM_65C02_JSR_H
 
 #include "../Componentes/CPU.h"
 #include "../Componentes/Mem.h"
-class NOP {
+class JSR {
 public:
     static void Ejecutar(CPU& cpu, Mem& mem);
 };
 
-#endif  // MIPS_SIM_65C02_NOP_H
+#endif  // MIPS_SIM_65C02_JSR_H

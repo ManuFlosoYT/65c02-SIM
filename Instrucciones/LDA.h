@@ -6,14 +6,14 @@
 
 class LDA {
     public:
-        void EjecutarInmediato( CPU& cpu, Mem& mem ) const;
-        void EjecutarZP( CPU& cpu, Mem& mem ) const;
-        void EjecutarZPX( CPU& cpu, Mem& mem ) const;
-        void EjecutarABS( CPU& cpu, Mem& mem ) const;
-        void EjecutarABSX( CPU& cpu, Mem& mem ) const;
-        void EjecutarABSY( CPU& cpu, Mem& mem ) const;
-        void EjecutarINDX( CPU& cpu, Mem& mem ) const;
-        void EjecutarINDY( CPU& cpu, Mem& mem ) const;
+        static void EjecutarInmediato( CPU& cpu, Mem& mem );
+        static void EjecutarZP( CPU& cpu, Mem& mem );
+        static void EjecutarZPX( CPU& cpu, Mem& mem );
+        static void EjecutarABS( CPU& cpu, Mem& mem );
+        static void EjecutarABSX( CPU& cpu, Mem& mem );
+        static void EjecutarABSY( CPU& cpu, Mem& mem );
+        static void EjecutarINDX( CPU& cpu, Mem& mem );
+        static void EjecutarINDY( CPU& cpu, Mem& mem );
 };
 
 #endif //MIPS_SIM_65C02_LDA_H

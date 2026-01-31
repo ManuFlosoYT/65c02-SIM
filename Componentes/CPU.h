@@ -29,10 +29,21 @@ public:
 
     const Byte FetchByte(
         const Mem& mem);  // Lee un byte de memoria y avanza el PC
+    const Word FetchWord(
+        const Mem& mem);  // Lee un word de memoria y avanza el PC + 2
 
     const Byte LeerByte(
         const Word dir,
         const Mem& mem);  // Lee un byte de memoria sin avanzar el PC
+    const Word LeerWord(
+        const Word dir,
+        const Mem& mem);  // Lee un word de memoria sin avanzar el PC
+
+    // Stack Operations
+    void PushByte(Byte val, Mem& mem);
+    Byte PopByte(Mem& mem);
+    void PushWord(Word val, Mem& mem);
+    Word PopWord(Mem& mem);
 };
 
 #endif  // MIPS_SIM_65C02_CPU_H

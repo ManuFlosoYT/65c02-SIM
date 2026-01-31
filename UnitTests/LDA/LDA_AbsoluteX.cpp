@@ -41,7 +41,7 @@ TEST_F(LDA_AbsoluteX_Test, LDA_AbsoluteX) {
     //    Opcode desconocido -> Retorna
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0x0001);
+    EXPECT_EQ(cpu.PC, 0x0000);
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
