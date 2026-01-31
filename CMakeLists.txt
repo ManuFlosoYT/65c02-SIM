@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.31)
 project(65c02_SIM)
 
 set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
 # Define sources for the core library
