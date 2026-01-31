@@ -5,7 +5,6 @@
 
 
 void CPU::Reset( Mem& mem ) {
-    std::cout << "Reseteando CPU..." << std::endl;
     PC = 0xFFFC; // Dirección de reinicio
     SP = 0x0100; // Inicio de pila
 
@@ -42,7 +41,7 @@ void CPU::Ejecutar( Mem& mem ){
             }
             default:
                 std::cout
-                    << "Opcode desconocido: "
+                    << "Opcode desconocido: 0x"
                     << std::hex                     // Cambiar a formato hexadecimal
                     << static_cast<int>(opcode)     // Mostrar el opcode
                     << std::dec                     // Volver a formato decimal

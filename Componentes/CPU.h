@@ -4,34 +4,32 @@
 
 #include "Mem.h"
 
-#include "../Instrucciones/ListaInstrucciones.h"
 #include "../Instrucciones/Instruccion.h"
+#include "../Instrucciones/ListaInstrucciones.h"
 
 using Byte = uint8_t;
 using Word = uint16_t;
 
 class CPU {
-    private:
+    public:
         Word PC{}; // Program Counter
         Word SP{}; // Stack Pointer
 
         Byte A{}, X{}, Y{}; // Registros
 
-        Byte C : 1{}; // Carry Flag
-        Byte Z : 1{}; // Zero Flag
-        Byte I : 1{}; // Interrupt Disable
-        Byte D : 1{}; // Decimal Mode Flag
-        Byte B : 1{}; // Break Command
-        Byte V : 1{}; // Overflow Flag
-        Byte N : 1{}; // Negative Flag
+        Byte C : 1 {}; // Carry Flag
+        Byte Z : 1 {}; // Zero Flag
+        Byte I : 1 {}; // Interrupt Disable
+        Byte D : 1 {}; // Decimal Mode Flag
+        Byte B : 1 {}; // Break Command
+        Byte V : 1 {}; // Overflow Flag
+        Byte N : 1 {}; // Negative Flag
 
-    public:
         CPU() = default;
-        void Reset( Mem& mem );
-        void Ejecutar( Mem& mem );
+        void Reset(Mem &mem);
+        void Ejecutar(Mem &mem);
 
-        Byte FetchByte( Mem& mem ); // Lee un byte de memoria y avanza el PC
+        Byte FetchByte(Mem &mem); // Lee un byte de memoria y avanza el PC
 };
 
-
-#endif //MIPS_SIM_65C02_CPU_H
+#endif // MIPS_SIM_65C02_CPU_H
