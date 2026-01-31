@@ -41,7 +41,6 @@ const Byte CPU::LeerByte(const Word dir, const Mem& mem) {
     return dato;
 }
 
-
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
         Byte opcode = FetchByte(mem);
@@ -93,12 +92,14 @@ void CPU::Ejecutar(Mem& mem) {
                 break;
             }
             default:
-                std::cout << "Opcode desconocido: 0x"
-                          << std::hex
-                          << static_cast<int>(opcode)
-                          << " PC: 0x" << PC
-                          << std::dec
-                          << " ejecución cancelada." << std::endl;
+
+                #ifndef TESTING_ENV
+                    std::cout << "Opcode desconocido: 0x" 
+                        << std::hex
+                        << static_cast<int>(opcode) << " PC: 0x" << PC
+                        << std::dec << " ejecución cancelada." << std::endl;
+                #endif
+
                 return;
         }
     }
