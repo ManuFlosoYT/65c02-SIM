@@ -29,6 +29,7 @@
 #include "../Instrucciones/AND.h"
 #include "../Instrucciones/EOR.h"
 #include "../Instrucciones/ORA.h"
+#include "../Instrucciones/BIT.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -353,6 +354,26 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_ORA_IND_ZP: {
                 ORA::EjecutarIND_ZP(*this, mem);
+                break;
+            }
+            case INS_BIT_IM: {
+                BIT::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_BIT_ZP: {
+                BIT::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_BIT_ZPX: {
+                BIT::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_BIT_ABS: {
+                BIT::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_BIT_ABSX: {
+                BIT::EjecutarABSX(*this, mem);
                 break;
             }
             default:

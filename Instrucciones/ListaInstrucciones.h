@@ -105,4 +105,10 @@ constexpr static Byte INS_EOR_INDX = 0x41; // EOR INDX
 constexpr static Byte INS_EOR_INDY = 0x51; // EOR INDY
 constexpr static Byte INS_EOR_IND_ZP = 0x52; // EOR IND ZP
 
+constexpr static Byte INS_BIT_IM = 0x89;    // BIT IM
+constexpr static Byte INS_BIT_ZP = 0x24;    // BIT ZP
+constexpr static Byte INS_BIT_ZPX = 0x34;   // BIT ZPX
+constexpr static Byte INS_BIT_ABS = 0x2C;   // BIT ABS
+constexpr static Byte INS_BIT_ABSX = 0x3C;  // BIT ABSX
+
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H
