@@ -1,0 +1,39 @@
+#include <gtest/gtest.h>
+
+#include "../Componentes/CPU.h"
+#include "../Componentes/Mem.h"
+#include "../Instrucciones/ListaInstrucciones.h"
+
+class BMI_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+
+    Mem mem;
+    CPU cpu;
+};
+
+// BMI: Branch if N = 1
+
+TEST_F(BMI_Test, BMI_NoBranch_NegativeClear) {
+    cpu.N = 0;
+    cpu.PC = 0x1000;
+
+    mem[0x1000] = INS_BMI;
+    mem[0x1001] = 0x05;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.PC, 0x1002);
+}
+
+TEST_F(BMI_Test, BMI_Branch_NegativeSet) {
+    cpu.N = 1;
+    cpu.PC = 0x1000;
+
+    mem[0x1000] = INS_BMI;
+    mem[0x1001] = 0x05;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.PC, 0x1007);
+}
