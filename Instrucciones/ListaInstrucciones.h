@@ -123,10 +123,10 @@ constexpr static Byte INS_DEC_ZPX = 0xD6; // DEC ZPX
 constexpr static Byte INS_DEC_ABS = 0xCE; // DEC ABS
 constexpr static Byte INS_DEC_ABSX = 0xDE; // DEC ABSX
 
-constexpr static Byte INS_INX_A = 0xE8; // INX A
-constexpr static Byte INS_DEX_A = 0xCA; // DEX A
+constexpr static Byte INS_INX = 0xE8; // INX A
+constexpr static Byte INS_DEX = 0xCA; // DEX A
 
-constexpr static Byte INS_INY_A = 0xC8; // INY A
-constexpr static Byte INS_DEY_A = 0x88; // DEY A
+constexpr static Byte INS_INY = 0xC8; // INY A
+constexpr static Byte INS_DEY = 0x88; // DEY A
 
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H

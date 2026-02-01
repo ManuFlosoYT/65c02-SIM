@@ -30,6 +30,12 @@
 #include "../Instrucciones/EOR.h"
 #include "../Instrucciones/ORA.h"
 #include "../Instrucciones/BIT.h"
+#include "../Instrucciones/DEX.h"
+#include "../Instrucciones/DEY.h"
+#include "../Instrucciones/INX.h"
+#include "../Instrucciones/INY.h"
+#include "../Instrucciones/INC.h"
+#include "../Instrucciones/DEC.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -374,6 +380,62 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_BIT_ABSX: {
                 BIT::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_DEX: {
+                DEX::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_DEY: {
+                DEY::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_INX: {
+                INX::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_INY: {
+                INY::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_INC_A: {
+                INC::EjecutarAcumulador(*this, mem);
+                break;
+            }
+            case INS_INC_ZP: {
+                INC::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_INC_ZPX: {
+                INC::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_INC_ABS: {
+                INC::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_INC_ABSX: {
+                INC::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_DEC_A: {
+                DEC::EjecutarAcumulador(*this, mem);
+                break;
+            }
+            case INS_DEC_ZP: {
+                DEC::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_DEC_ZPX: {
+                DEC::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_DEC_ABS: {
+                DEC::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_DEC_ABSX: {
+                DEC::EjecutarABSX(*this, mem);
                 break;
             }
             default:
