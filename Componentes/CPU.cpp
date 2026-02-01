@@ -2,18 +2,26 @@
 
 #include <iostream>
 
+#include "../Instrucciones/JMP.h"
 #include "../Instrucciones/JSR.h"
 #include "../Instrucciones/LDA.h"
-#include "../Instrucciones/NOP.h"
 #include "../Instrucciones/LDX.h"
 #include "../Instrucciones/LDY.h"
-#include "../Instrucciones/JMP.h"
+#include "../Instrucciones/NOP.h"
+#include "../Instrucciones/PHA.h"
+#include "../Instrucciones/PHP.h"
+#include "../Instrucciones/PHX.h"
+#include "../Instrucciones/PHY.h"
+#include "../Instrucciones/PLA.h"
+#include "../Instrucciones/PLP.h"
+#include "../Instrucciones/PLX.h"
+#include "../Instrucciones/PLY.h"
+#include "../Instrucciones/RTS.h"
 #include "../Instrucciones/STA.h"
 #include "../Instrucciones/STX.h"
 #include "../Instrucciones/STY.h"
-#include "../Instrucciones/RTS.h"
-#include "../Instrucciones/TXS.h"
 #include "../Instrucciones/TSX.h"
+#include "../Instrucciones/TXS.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -180,6 +188,38 @@ void CPU::Ejecutar(Mem& mem) {
                 TXS::Ejecutar(*this, mem);
                 break;
             }
+            case INS_PHA: {
+                PHA::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_PHP: {
+                PHP::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_PHX: {
+                PHX::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_PHY: {
+                PHY::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_PLA: {
+                PLA::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_PLP: {
+                PLP::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_PLX: {
+                PLX::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_PLY: {
+                PLY::Ejecutar(*this, mem);
+                break;
+            }
             default:
 
 #ifndef TESTING_ENV
@@ -213,7 +253,6 @@ Word CPU::PopWord(Mem& mem) {
     Word High = PopByte(mem);
     return (High << 8) | Low;
 }
-
 
 void CPU::Reset(Mem& mem) {
     PC = 0xFFFC;  // Dirección de reinicio
@@ -261,4 +300,26 @@ const Word CPU::LeerWord(const Word dir, const Mem& mem) {
     Byte Dato_High = mem[dir + 1];
     Word dato = (Dato_High << 8) | Dato_Low;
     return dato;
+}
+
+const Byte CPU::GetStatus() const {
+    Byte status = 0;
+    status |= C;
+    status |= Z << 1;
+    status |= I << 2;
+    status |= D << 3;
+    status |= B << 4;
+    status |= V << 6;
+    status |= N << 7;
+    return status;
+}
+
+void CPU::SetStatus(Byte status) {
+    C = status & 0x01;
+    Z = (status >> 1) & 0x01;
+    I = (status >> 2) & 0x01;
+    D = (status >> 3) & 0x01;
+    B = (status >> 4) & 0x01;
+    V = (status >> 6) & 0x01;
+    N = (status >> 7) & 0x01;
 }

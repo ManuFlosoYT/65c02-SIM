@@ -16,7 +16,6 @@ public:
     Byte operator[](Word dir) const { return memoria[dir]; }
 
     void WriteWord(Word dato, Word dir);
-    
 };
 
 #endif  // MIPS_SIM_65C02_MEM_H

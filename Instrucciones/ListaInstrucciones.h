@@ -54,6 +54,18 @@ constexpr static Byte INS_JMP_IND = 0x6C;   // JMP IND
 constexpr static Byte INS_JMP_ABSX = 0x7C;  // JMP ABSX
 
 constexpr static Byte INS_TSX = 0xBA; // TSX
-constexpr static Byte INS_TXS = 0x9A; // TSX
+constexpr static Byte INS_TXS = 0x9A; // TXS
+
+constexpr static Byte INS_PHA = 0x48; // PHA
+constexpr static Byte INS_PLA = 0x68; // PLA
+
+constexpr static Byte INS_PHP = 0x08; // PHP
+constexpr static Byte INS_PLP = 0x28; // PLP
+
+constexpr static Byte INS_PHX = 0xDA; // PHX
+constexpr static Byte INS_PLX = 0xFA; // PLX
+
+constexpr static Byte INS_PHY = 0x5A; // PHY
+constexpr static Byte INS_PLY = 0x7A; // PLY
 
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H

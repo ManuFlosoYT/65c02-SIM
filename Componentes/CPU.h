@@ -27,6 +27,9 @@ public:
     void Reset(Mem& mem);
     void Ejecutar(Mem& mem);
 
+    const Byte GetStatus() const;
+    void SetStatus(Byte status);
+
     const Byte FetchByte(
         const Mem& mem);  // Lee un byte de memoria y avanza el PC
     const Word FetchWord(
