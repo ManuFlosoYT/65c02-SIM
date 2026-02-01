@@ -7,6 +7,8 @@ using Byte = uint8_t;
 using Word = uint16_t;
 
 constexpr static Byte INS_NOP = 0xEA;  // NOP
+constexpr static Byte INS_BRK = 0x00;  // BRK
+constexpr static Byte INS_RTI = 0x40;  // RTI
 
 constexpr static Byte INS_LDA_IM = 0xA9;    // LDA Inmediato
 constexpr static Byte INS_LDA_ZP = 0xA5;    // LDA ZP
@@ -187,5 +189,22 @@ constexpr static Byte INS_ROR_ZP = 0x66; // ROR ZP
 constexpr static Byte INS_ROR_ZPX = 0x76; // ROR ZPX
 constexpr static Byte INS_ROR_ABS = 0x6E; // ROR ABS
 constexpr static Byte INS_ROR_ABSX = 0x7E; // ROR ABSX
+
+constexpr static Byte INS_BCC = 0x90; // BCC
+constexpr static Byte INS_BCS = 0xB0; // BCS
+constexpr static Byte INS_BEQ = 0xF0; // BEQ
+constexpr static Byte INS_BMI = 0x30; // BMI
+constexpr static Byte INS_BNE = 0xD0; // BNE
+constexpr static Byte INS_BPL = 0x10; // BPL
+constexpr static Byte INS_BVC = 0x50; // BVC
+constexpr static Byte INS_BVS = 0x70; // BVS
+
+constexpr static Byte INS_CLC = 0x18; // CLC
+constexpr static Byte INS_SEC = 0x38; // SEC
+constexpr static Byte INS_CLI = 0x58; // CLI
+constexpr static Byte INS_SEI = 0x78; // SEI
+constexpr static Byte INS_CLD = 0xD8; // CLD
+constexpr static Byte INS_SED = 0xF8; // SED
+constexpr static Byte INS_CLV = 0xB8; // CLV
 
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H
