@@ -164,4 +164,28 @@ constexpr static Byte INS_CPY_IM = 0xC0; // CPY Inmediato
 constexpr static Byte INS_CPY_ZP = 0xC4; // CPY ZP
 constexpr static Byte INS_CPY_ABS = 0xCC; // CPY ABS
 
+constexpr static Byte INS_ASL_A = 0x0A; // ASL A
+constexpr static Byte INS_ASL_ZP = 0x06; // ASL ZP
+constexpr static Byte INS_ASL_ZPX = 0x16; // ASL ZPX
+constexpr static Byte INS_ASL_ABS = 0x0E; // ASL ABS
+constexpr static Byte INS_ASL_ABSX = 0x1E; // ASL ABSX
+
+constexpr static Byte INS_LSR_A = 0x4A; // LSR A
+constexpr static Byte INS_LSR_ZP = 0x46; // LSR ZP
+constexpr static Byte INS_LSR_ZPX = 0x56; // LSR ZPX
+constexpr static Byte INS_LSR_ABS = 0x4E; // LSR ABS
+constexpr static Byte INS_LSR_ABSX = 0x5E; // LSR ABSX
+
+constexpr static Byte INS_ROL_A = 0x2A; // ROL A
+constexpr static Byte INS_ROL_ZP = 0x26; // ROL ZP
+constexpr static Byte INS_ROL_ZPX = 0x36; // ROL ZPX
+constexpr static Byte INS_ROL_ABS = 0x2E; // ROL ABS
+constexpr static Byte INS_ROL_ABSX = 0x3E; // ROL ABSX
+
+constexpr static Byte INS_ROR_A = 0x6A; // ROR A
+constexpr static Byte INS_ROR_ZP = 0x66; // ROR ZP
+constexpr static Byte INS_ROR_ZPX = 0x76; // ROR ZPX
+constexpr static Byte INS_ROR_ABS = 0x6E; // ROR ABS
+constexpr static Byte INS_ROR_ABSX = 0x7E; // ROR ABSX
+
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H

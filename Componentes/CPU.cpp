@@ -41,6 +41,10 @@
 #include "../Instrucciones/CMP.h"
 #include "../Instrucciones/CPX.h"
 #include "../Instrucciones/CPY.h"
+#include "../Instrucciones/ASL.h"
+#include "../Instrucciones/LSR.h"
+#include "../Instrucciones/ROL.h"
+#include "../Instrucciones/ROR.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -561,6 +565,86 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_CPY_ABS: {
                 CPY::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_ASL_A: {
+                ASL::EjecutarAcumulador(*this, mem);
+                break;
+            }
+            case INS_ASL_ZP: {
+                ASL::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_ASL_ZPX: {
+                ASL::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_ASL_ABS: {
+                ASL::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_ASL_ABSX: {
+                ASL::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_LSR_A: {
+                LSR::EjecutarAcumulador(*this, mem);
+                break;
+            }
+            case INS_LSR_ZP: {
+                LSR::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_LSR_ZPX: {
+                LSR::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_LSR_ABS: {
+                LSR::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_LSR_ABSX: {
+                LSR::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_ROL_A: {
+                ROL::EjecutarAcumulador(*this, mem);
+                break;
+            }
+            case INS_ROL_ZP: {
+                ROL::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_ROL_ZPX: {
+                ROL::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_ROL_ABS: {
+                ROL::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_ROL_ABSX: {
+                ROL::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_ROR_A: {
+                ROR::EjecutarAcumulador(*this, mem);
+                break;
+            }
+            case INS_ROR_ZP: {
+                ROR::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_ROR_ZPX: {
+                ROR::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_ROR_ABS: {
+                ROR::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_ROR_ABSX: {
+                ROR::EjecutarABSX(*this, mem);
                 break;
             }
             default:
