@@ -1,10 +1,10 @@
-#ifndef MIPS_SIM_65C02_LDA_H
-#define MIPS_SIM_65C02_LDA_H
+#ifndef MIPS_SIM_65C02_AND_H
+#define MIPS_SIM_65C02_AND_H
 
 #include "../Componentes/CPU.h"
 #include "../Componentes/Mem.h"
 
-class LDA {
+class AND {
     public:
         static void EjecutarInmediato( CPU& cpu, Mem& mem );
         static void EjecutarZP( CPU& cpu, Mem& mem );
@@ -17,4 +17,4 @@ class LDA {
         static void EjecutarIND_ZP( CPU& cpu, Mem& mem );
 };
 
-#endif //MIPS_SIM_65C02_LDA_H
+#endif //MIPS_SIM_65C02_AND_H

@@ -16,6 +16,7 @@ constexpr static Byte INS_LDA_ABSX = 0xBD;  // LDA ABSX
 constexpr static Byte INS_LDA_ABSY = 0xB9;  // LDA ABSY
 constexpr static Byte INS_LDA_INDX = 0xA1;  // LDA INDX
 constexpr static Byte INS_LDA_INDY = 0xB1;  // LDA INDY
+constexpr static Byte INS_LDA_IND_ZP = 0xB2;  // LDA IND ZP
 
 constexpr static Byte INS_LDX_IM = 0xA2;    // LDX Inmediato
 constexpr static Byte INS_LDX_ZP = 0xA6;    // LDX ZP
@@ -67,5 +68,41 @@ constexpr static Byte INS_PLX = 0xFA; // PLX
 
 constexpr static Byte INS_PHY = 0x5A; // PHY
 constexpr static Byte INS_PLY = 0x7A; // PLY
+
+constexpr static Byte INS_TXA = 0x8A; // TXA
+constexpr static Byte INS_TAX = 0xAA; // TAX
+
+constexpr static Byte INS_TYA = 0x98; // TYA
+constexpr static Byte INS_TAY = 0xA8; // TAY
+
+constexpr static Byte INS_AND_IM = 0x29; // AND Inmediato
+constexpr static Byte INS_AND_ZP = 0x25; // AND ZP
+constexpr static Byte INS_AND_ZPX = 0x35; // AND ZPX
+constexpr static Byte INS_AND_ABS = 0x2D; // AND ABS
+constexpr static Byte INS_AND_ABSX = 0x3D; // AND ABSX
+constexpr static Byte INS_AND_ABSY = 0x39; // AND ABSY
+constexpr static Byte INS_AND_INDX = 0x21; // AND INDX
+constexpr static Byte INS_AND_INDY = 0x31; // AND INDY
+constexpr static Byte INS_AND_IND_ZP = 0x32; // AND IND ZP
+
+constexpr static Byte INS_ORA_IM = 0x09; // ORA Inmediato
+constexpr static Byte INS_ORA_ZP = 0x05; // ORA ZP
+constexpr static Byte INS_ORA_ZPX = 0x15; // ORA ZPX
+constexpr static Byte INS_ORA_ABS = 0x0D; // ORA ABS
+constexpr static Byte INS_ORA_ABSX = 0x1D; // ORA ABSX
+constexpr static Byte INS_ORA_ABSY = 0x19; // ORA ABSY
+constexpr static Byte INS_ORA_INDX = 0x01; // ORA INDX
+constexpr static Byte INS_ORA_INDY = 0x11; // ORA INDY
+constexpr static Byte INS_ORA_IND_ZP = 0x12; // ORA IND ZP
+
+constexpr static Byte INS_EOR_IM = 0x49; // EOR Inmediato
+constexpr static Byte INS_EOR_ZP = 0x45; // EOR ZP
+constexpr static Byte INS_EOR_ZPX = 0x55; // EOR ZPX
+constexpr static Byte INS_EOR_ABS = 0x4D; // EOR ABS
+constexpr static Byte INS_EOR_ABSX = 0x5D; // EOR ABSX
+constexpr static Byte INS_EOR_ABSY = 0x59; // EOR ABSY
+constexpr static Byte INS_EOR_INDX = 0x41; // EOR INDX
+constexpr static Byte INS_EOR_INDY = 0x51; // EOR INDY
+constexpr static Byte INS_EOR_IND_ZP = 0x52; // EOR IND ZP
 
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H

@@ -22,6 +22,13 @@
 #include "../Instrucciones/STY.h"
 #include "../Instrucciones/TSX.h"
 #include "../Instrucciones/TXS.h"
+#include "../Instrucciones/TAX.h"
+#include "../Instrucciones/TXA.h"
+#include "../Instrucciones/TAY.h"
+#include "../Instrucciones/TYA.h"
+#include "../Instrucciones/AND.h"
+#include "../Instrucciones/EOR.h"
+#include "../Instrucciones/ORA.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -62,6 +69,10 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_LDA_INDY: {
                 LDA::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_LDA_IND_ZP: {
+                LDA::EjecutarIND_ZP(*this, mem);
                 break;
             }
             case INS_JSR: {
@@ -218,6 +229,130 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_PLY: {
                 PLY::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_TAX: {
+                TAX::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_TXA: {
+                TXA::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_TAY: {
+                TAY::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_TYA: {
+                TYA::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_AND_IM: {
+                AND::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_AND_ZP: {
+                AND::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_AND_ZPX: {
+                AND::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_AND_ABS: {
+                AND::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_AND_ABSX: {
+                AND::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_AND_ABSY: {
+                AND::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_AND_INDX: {
+                AND::EjecutarINDX(*this, mem);
+                break;
+            }
+            case INS_AND_INDY: {
+                AND::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_AND_IND_ZP: {
+                AND::EjecutarIND_ZP(*this, mem);
+                break;
+            }
+            case INS_EOR_IM: {
+                EOR::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_EOR_ZP: {
+                EOR::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_EOR_ZPX: {
+                EOR::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_EOR_ABS: {
+                EOR::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_EOR_ABSX: {
+                EOR::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_EOR_ABSY: {
+                EOR::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_EOR_INDX: {
+                EOR::EjecutarINDX(*this, mem);
+                break;
+            }
+            case INS_EOR_INDY: {
+                EOR::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_EOR_IND_ZP: {
+                EOR::EjecutarIND_ZP(*this, mem);
+                break;
+            }
+            case INS_ORA_IM: {
+                ORA::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_ORA_ZP: {
+                ORA::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_ORA_ZPX: {
+                ORA::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_ORA_ABS: {
+                ORA::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_ORA_ABSX: {
+                ORA::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_ORA_ABSY: {
+                ORA::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_ORA_INDX: {
+                ORA::EjecutarINDX(*this, mem);
+                break;
+            }
+            case INS_ORA_INDY: {
+                ORA::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_ORA_IND_ZP: {
+                ORA::EjecutarIND_ZP(*this, mem);
                 break;
             }
             default:
