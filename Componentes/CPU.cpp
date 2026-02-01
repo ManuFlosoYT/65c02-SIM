@@ -9,6 +9,9 @@
 #include "../Instrucciones/LDY.h"
 #include "../Instrucciones/JMP.h"
 #include "../Instrucciones/STA.h"
+#include "../Instrucciones/STX.h"
+#include "../Instrucciones/STY.h"
+#include "../Instrucciones/RTS.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -53,6 +56,10 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_JSR: {
                 JSR::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_RTS: {
+                RTS::Ejecutar(*this, mem);
                 break;
             }
             case INS_LDX_IM: {
@@ -137,6 +144,30 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_STA_IND_ZP: {
                 STA::EjecutarINDZP(*this, mem);
+                break;
+            }
+            case INS_STX_ZP: {
+                STX::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_STX_ZPY: {
+                STX::EjecutarZPY(*this, mem);
+                break;
+            }
+            case INS_STX_ABS: {
+                STX::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_STY_ZP: {
+                STY::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_STY_ZPX: {
+                STY::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_STY_ABS: {
+                STY::EjecutarABS(*this, mem);
                 break;
             }
             default:

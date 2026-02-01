@@ -47,6 +47,7 @@ constexpr static Byte INS_STY_ZPX = 0x94;  // STY ZPX
 constexpr static Byte INS_STY_ABS = 0x8C;  // STY ABS
 
 constexpr static Byte INS_JSR = 0x20;  // JSR
+constexpr static Byte INS_RTS = 0x60;  // RTS
 
 constexpr static Byte INS_JMP_ABS = 0x4C;   // JMP ABS
 constexpr static Byte INS_JMP_IND = 0x6C;   // JMP IND

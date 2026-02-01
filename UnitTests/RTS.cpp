@@ -1,0 +1,53 @@
+#include <gtest/gtest.h>
+
+#include "../Componentes/CPU.h"
+#include "../Componentes/Mem.h"
+#include "../Instrucciones/ListaInstrucciones.h"
+
+class RTS_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+
+    Mem mem;
+    CPU cpu;
+};
+
+TEST_F(RTS_Test, RTS_Implied) {
+    // 0xFFFC: RTS
+    mem[0xFFFC] = INS_RTS;
+    mem[0xFFFD] = 0xFF;  // Stop
+
+    // Simulate Return Address on Stack
+    // Want to return to 0x2035
+    // JSR pushes PC+2 (instruction before JSR is 3 bytes usually, or JSR itself
+    // is 3 bytes) If JSR is at 0x2032, JSR 0x????, PC becomes 0x2035 after JSR
+    // reads address. JSR pushes PCH (0x20), then PCL (0x34) (Address of last
+    // byte of JSR instruction?) 6502 JSR pushes address - 1 of target? No. JSR
+    // pushes (PC + 2). Wait. JSR is 3 bytes. Op, Lo, Hi. PC points to Op. PC+1
+    // Lo, PC+2 Hi. It pushes the address of the third byte (High byte) of the
+    // JSR instruction? "The address pushed to the stack is the address of the
+    // last byte of the JSR instruction" (PC + 2) RTS pops it and adds 1. So it
+    // returns to execution at PC + 2 + 1 = PC + 3 (Instruction after JSR).
+
+    // Let's say we want to return to 0x8000.
+    // Stack should contain 0x7FFF.
+    // Pushed High then Low?
+    // SP starts at 0x01FF.
+    // Push High (0x7F) -> 0x01FF
+    // Push Low  (0xFF) -> 0x01FE
+    // SP is 0x01FD.
+
+    cpu.SP = 0x01FD;
+    mem[0x01FE] = 0xFF;
+    mem[0x01FF] = 0x7F;
+    mem[0x8000] = 0xFF;  // Stop opcode at return address
+
+    cpu.Ejecutar(mem);
+
+    // Expected PC:
+    // RTS sets PC = 0x8000.
+    // Loop fetches opcode at 0x8000 (0xFF), increments PC to 0x8001.
+    // Executes 0xFF (Stop), returns.
+    EXPECT_EQ(cpu.PC, 0x8001);
+    EXPECT_EQ(cpu.SP, 0x01FF);  // Stack pointer restored to 0x01FF
+}
