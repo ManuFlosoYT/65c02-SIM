@@ -129,4 +129,39 @@ constexpr static Byte INS_DEX = 0xCA; // DEX A
 constexpr static Byte INS_INY = 0xC8; // INY A
 constexpr static Byte INS_DEY = 0x88; // DEY A
 
+constexpr static Byte INS_ADC_IM = 0x69; // ADC Inmediato
+constexpr static Byte INS_ADC_ZP = 0x65; // ADC ZP
+constexpr static Byte INS_ADC_ZPX = 0x75; // ADC ZPX
+constexpr static Byte INS_ADC_ABS = 0x6D; // ADC ABS
+constexpr static Byte INS_ADC_ABSX = 0x7D; // ADC ABSX
+constexpr static Byte INS_ADC_ABSY = 0x79; // ADC ABSY
+constexpr static Byte INS_ADC_INDX = 0x61; // ADC INDX
+constexpr static Byte INS_ADC_INDY = 0x71; // ADC INDY
+
+constexpr static Byte INS_SBC_IM = 0xE9; // SBC Inmediato
+constexpr static Byte INS_SBC_ZP = 0xE5; // SBC ZP
+constexpr static Byte INS_SBC_ZPX = 0xF5; // SBC ZPX
+constexpr static Byte INS_SBC_ABS = 0xED; // SBC ABS
+constexpr static Byte INS_SBC_ABSX = 0xFD; // SBC ABSX
+constexpr static Byte INS_SBC_ABSY = 0xF9; // SBC ABSY
+constexpr static Byte INS_SBC_INDX = 0xE1; // SBC INDX
+constexpr static Byte INS_SBC_INDY = 0xF1; // SBC INDY
+
+constexpr static Byte INS_CMP_IM = 0xC9; // CMP Inmediato
+constexpr static Byte INS_CMP_ZP = 0xC5; // CMP ZP
+constexpr static Byte INS_CMP_ZPX = 0xD5; // CMP ZPX
+constexpr static Byte INS_CMP_ABS = 0xCD; // CMP ABS
+constexpr static Byte INS_CMP_ABSX = 0xDD; // CMP ABSX
+constexpr static Byte INS_CMP_ABSY = 0xD9; // CMP ABSY
+constexpr static Byte INS_CMP_INDX = 0xC1; // CMP INDX
+constexpr static Byte INS_CMP_INDY = 0xD1; // CMP INDY
+
+constexpr static Byte INS_CPX_IM = 0xE0; // CPX Inmediato
+constexpr static Byte INS_CPX_ZP = 0xE4; // CPX ZP
+constexpr static Byte INS_CPX_ABS = 0xEC; // CPX ABS
+
+constexpr static Byte INS_CPY_IM = 0xC0; // CPY Inmediato
+constexpr static Byte INS_CPY_ZP = 0xC4; // CPY ZP
+constexpr static Byte INS_CPY_ABS = 0xCC; // CPY ABS
+
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H

@@ -36,6 +36,11 @@
 #include "../Instrucciones/INY.h"
 #include "../Instrucciones/INC.h"
 #include "../Instrucciones/DEC.h"
+#include "../Instrucciones/ADC.h"
+#include "../Instrucciones/SBC.h"
+#include "../Instrucciones/CMP.h"
+#include "../Instrucciones/CPX.h"
+#include "../Instrucciones/CPY.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -436,6 +441,126 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_DEC_ABSX: {
                 DEC::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_ADC_IM: {
+                ADC::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_ADC_ZP: {
+                ADC::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_ADC_ZPX: {
+                ADC::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_ADC_ABS: {
+                ADC::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_ADC_ABSX: {
+                ADC::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_ADC_ABSY: {
+                ADC::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_ADC_INDX: {
+                ADC::EjecutarINDX(*this, mem);
+                break;
+            }
+            case INS_ADC_INDY: {
+                ADC::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_SBC_IM: {
+                SBC::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_SBC_ZP: {
+                SBC::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_SBC_ZPX: {
+                SBC::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_SBC_ABS: {
+                SBC::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_SBC_ABSX: {
+                SBC::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_SBC_ABSY: {
+                SBC::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_SBC_INDX: {
+                SBC::EjecutarINDX(*this, mem);
+                break;
+            }
+            case INS_SBC_INDY: {
+                SBC::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_CMP_IM: {
+                CMP::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_CMP_ZP: {
+                CMP::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_CMP_ZPX: {
+                CMP::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_CMP_ABS: {
+                CMP::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_CMP_ABSX: {
+                CMP::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_CMP_ABSY: {
+                CMP::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_CMP_INDX: {
+                CMP::EjecutarINDX(*this, mem);
+                break;
+            }
+            case INS_CMP_INDY: {
+                CMP::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_CPX_IM: {
+                CPX::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_CPX_ZP: {
+                CPX::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_CPX_ABS: {
+                CPX::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_CPY_IM: {
+                CPY::EjecutarInmediato(*this, mem);
+                break;
+            }
+            case INS_CPY_ZP: {
+                CPY::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_CPY_ABS: {
+                CPY::EjecutarABS(*this, mem);
                 break;
             }
             default:
