@@ -53,4 +53,7 @@ constexpr static Byte INS_JMP_ABS = 0x4C;   // JMP ABS
 constexpr static Byte INS_JMP_IND = 0x6C;   // JMP IND
 constexpr static Byte INS_JMP_ABSX = 0x7C;  // JMP ABSX
 
+constexpr static Byte INS_TSX = 0xBA; // TSX
+constexpr static Byte INS_TXS = 0x9A; // TSX
+
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H

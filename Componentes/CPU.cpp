@@ -12,6 +12,8 @@
 #include "../Instrucciones/STX.h"
 #include "../Instrucciones/STY.h"
 #include "../Instrucciones/RTS.h"
+#include "../Instrucciones/TXS.h"
+#include "../Instrucciones/TSX.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -168,6 +170,14 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_STY_ABS: {
                 STY::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_TSX: {
+                TSX::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_TXS: {
+                TXS::Ejecutar(*this, mem);
                 break;
             }
             default:

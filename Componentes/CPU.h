@@ -15,13 +15,13 @@ public:
 
     Byte A{}, X{}, Y{};  // Registros
 
-    Byte C : 1 {};  // Carry Flag
-    Byte Z : 1 {};  // Zero Flag
-    Byte I : 1 {};  // Interrupt Disable
-    Byte D : 1 {};  // Decimal Mode Flag
-    Byte B : 1 {};  // Break Command
-    Byte V : 1 {};  // Overflow Flag
-    Byte N : 1 {};  // Negative Flag
+    Byte C : 1;  // Carry Flag
+    Byte Z : 1;  // Zero Flag
+    Byte I : 1;  // Interrupt Disable
+    Byte D : 1;  // Decimal Mode Flag
+    Byte B : 1;  // Break Command
+    Byte V : 1;  // Overflow Flag
+    Byte N : 1;  // Negative Flag    
 
     CPU() = default;
     void Reset(Mem& mem);
