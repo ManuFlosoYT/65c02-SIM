@@ -8,6 +8,7 @@
 #include "../Instrucciones/LDX.h"
 #include "../Instrucciones/LDY.h"
 #include "../Instrucciones/JMP.h"
+#include "../Instrucciones/STA.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -104,6 +105,38 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_JMP_ABSX: {
                 JMP::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_STA_ZP: {
+                STA::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_STA_ZPX: {
+                STA::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_STA_ABS: {
+                STA::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_STA_ABSX: {
+                STA::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_STA_ABSY: {
+                STA::EjecutarABSY(*this, mem);
+                break;
+            }
+            case INS_STA_INDX: {
+                STA::EjecutarINDX(*this, mem);
+                break;
+            }
+            case INS_STA_INDY: {
+                STA::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_STA_IND_ZP: {
+                STA::EjecutarINDZP(*this, mem);
                 break;
             }
             default:

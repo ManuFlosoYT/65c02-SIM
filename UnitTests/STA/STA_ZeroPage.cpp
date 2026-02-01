@@ -1,0 +1,46 @@
+#include <gtest/gtest.h>
+
+#include "../../Componentes/CPU.h"
+#include "../../Componentes/Mem.h"
+#include "../../Instrucciones/ListaInstrucciones.h"
+
+class STA_ZeroPage_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+
+    Mem mem;
+    CPU cpu;
+};
+
+TEST_F(STA_ZeroPage_Test, STA_ZeroPage) {
+    // Programa en memoria:
+    // 0xFFFC: STA (ZeroPage) 0x42
+    // 0xFFFD: 0x42
+    // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
+    // 0x0042: 0x00 (Valor inicial)
+
+    cpu.A = 0x37;  // Valor a guardar
+
+    mem[0xFFFC] = INS_STA_ZP;
+    mem[0xFFFD] = 0x42;
+    mem[0x0042] = 0x00;
+    mem[0xFFFE] = 0xFF;
+
+    // Ciclo 1:
+    //    Lee STA (ZP) en 0xFFFC
+    //    PC avanza a 0xFFFD
+    //    Ejecuta STA (ZP)
+    // Ciclo 2:
+    //    Lee la dirección ZP (0x42) en 0xFFFD
+    //    PC avanza a 0xFFFE
+    // Ciclo 3:
+    //    Escribe el valor de A (0x37) en 0x0042
+    //    Opcode desconocido -> Retorna
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.PC, 0xFFFF);
+    EXPECT_EQ(mem[0x0042], 0x37);
+    EXPECT_EQ(cpu.A, 0x37);  // A no debe cambiar
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_FALSE(cpu.N);
+}
