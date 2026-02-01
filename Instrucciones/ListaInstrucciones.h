@@ -111,4 +111,22 @@ constexpr static Byte INS_BIT_ZPX = 0x34;   // BIT ZPX
 constexpr static Byte INS_BIT_ABS = 0x2C;   // BIT ABS
 constexpr static Byte INS_BIT_ABSX = 0x3C;  // BIT ABSX
 
+constexpr static Byte INS_INC_A = 0x1A; // INC A
+constexpr static Byte INS_INC_ZP = 0xE6; // INC ZP
+constexpr static Byte INS_INC_ZPX = 0xF6; // INC ZPX
+constexpr static Byte INS_INC_ABS = 0xEE; // INC ABS
+constexpr static Byte INS_INC_ABSX = 0xFE; // INC ABSX
+
+constexpr static Byte INS_DEC_A = 0x3A; // DEC A
+constexpr static Byte INS_DEC_ZP = 0xC6; // DEC ZP
+constexpr static Byte INS_DEC_ZPX = 0xD6; // DEC ZPX
+constexpr static Byte INS_DEC_ABS = 0xCE; // DEC ABS
+constexpr static Byte INS_DEC_ABSX = 0xDE; // DEC ABSX
+
+constexpr static Byte INS_INX_A = 0xE8; // INX A
+constexpr static Byte INS_DEX_A = 0xCA; // DEX A
+
+constexpr static Byte INS_INY_A = 0xC8; // INY A
+constexpr static Byte INS_DEY_A = 0x88; // DEY A
+
 #endif  // MIPS_SIM_65C02_LISTAINSTRUCCIONES_H
