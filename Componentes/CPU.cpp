@@ -7,6 +7,7 @@
 #include "../Instrucciones/NOP.h"
 #include "../Instrucciones/LDX.h"
 #include "../Instrucciones/LDY.h"
+#include "../Instrucciones/JMP.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -91,6 +92,18 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_LDY_ABSX: {
                 LDY::EjecutarABSX(*this, mem);
+                break;
+            }
+            case INS_JMP_ABS: {
+                JMP::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_JMP_IND: {
+                JMP::EjecutarIND(*this, mem);
+                break;
+            }
+            case INS_JMP_ABSX: {
+                JMP::EjecutarABSX(*this, mem);
                 break;
             }
             default:

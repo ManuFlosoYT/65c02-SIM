@@ -31,4 +31,8 @@ constexpr static Byte INS_LDY_ABSX  = 0xBC; // LDY ABSX
 
 constexpr static Byte INS_JSR       = 0x20; // JSR
 
+constexpr static Byte INS_JMP_ABS   = 0x4C; // JMP ABS
+constexpr static Byte INS_JMP_IND   = 0x6C; // JMP IND
+constexpr static Byte INS_JMP_ABSX = 0x7C; // JMP ABSX
+
 #endif //MIPS_SIM_65C02_LISTAINSTRUCCIONES_H
