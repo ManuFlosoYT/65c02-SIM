@@ -23,7 +23,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsFlagsFromMemory) {
     mem[0xFFFC] = INS_BIT_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0xC0;  // 1100 0000 -> N=1, V=1
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -42,7 +42,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsZeroFlag) {
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0xFE;  // 1111 1110. A & Mem = 0.
     // Mem also has N=1 (bit 7) and V=1 (bit 6)
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

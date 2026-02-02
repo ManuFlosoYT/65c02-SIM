@@ -22,7 +22,7 @@ TEST_F(SBC_ZeroPageX_Test, SBC_ZeroPageX) {
     mem[0xFFFC] = INS_SBC_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0043] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

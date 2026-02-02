@@ -23,7 +23,7 @@ TEST_F(ROL_Accumulator_Test, ROL_Accumulator_Rotate) {
     cpu.C = 0;  // Carry In should be ignored
 
     mem[0xFFFC] = INS_ROL_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -40,7 +40,7 @@ TEST_F(ROL_Accumulator_Test, ROL_Accumulator_NoCarryOut) {
     cpu.C = 1;  // Carry In should be ignored
 
     mem[0xFFFC] = INS_ROL_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

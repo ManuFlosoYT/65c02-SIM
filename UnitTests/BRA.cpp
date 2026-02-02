@@ -14,8 +14,8 @@ protected:
 TEST_F(BRA_Test, BRA_PositiveOffset) {
     cpu.PC = 0x1000;
     mem[0x1000] = INS_BRA;
-    mem[0x1001] = 0x05;  // Offset +5
-    mem[0x1007] = 0xFF;  // Stop instruction at 0x1000 + 2 + 5 = 1007
+    mem[0x1001] = 0x05;     // Offset +5
+    mem[0x1007] = INS_JAM;  // Stop instruction at 0x1000 + 2 + 5 = 1007
 
     cpu.Ejecutar(mem);
 
@@ -27,7 +27,7 @@ TEST_F(BRA_Test, BRA_NegativeOffset) {
     mem[0x1010] = INS_BRA;
     mem[0x1011] = 0xFB;  // Offset -5 (0xFB)
     // Destination: 0x1010 + 2 - 5 = 0x1012 - 5 = 0x100D
-    mem[0x100D] = 0xFF;  // Stop instruction
+    mem[0x100D] = INS_JAM;  // Stop instruction
 
     cpu.Ejecutar(mem);
 
@@ -40,7 +40,7 @@ TEST_F(BRA_Test, BRA_MaxPositiveOffset) {
     mem[0x2000] = INS_BRA;
     mem[0x2001] = 0x7F;
     // Dest: 0x2000 + 2 + 127 = 0x2002 + 0x7F = 0x2081
-    mem[0x2081] = 0xFF;
+    mem[0x2081] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -53,7 +53,7 @@ TEST_F(BRA_Test, BRA_MaxNegativeOffset) {
     mem[0x3000] = INS_BRA;
     mem[0x3001] = 0x80;
     // Dest: 0x3000 + 2 - 128 = 0x3002 - 128 = 0x3002 - 0x80 = 0x2F82
-    mem[0x2F82] = 0xFF;
+    mem[0x2F82] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

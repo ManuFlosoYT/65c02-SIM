@@ -16,7 +16,7 @@ TEST_F(CLV_Test, CLV_ClearsOverflow) {
     cpu.V = 1;
 
     mem[0xFFFC] = INS_CLV;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

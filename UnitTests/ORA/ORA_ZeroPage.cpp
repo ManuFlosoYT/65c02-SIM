@@ -17,7 +17,7 @@ TEST_F(ORA_ZeroPage_Test, ORA_ZeroPage) {
     mem[0xFFFC] = INS_ORA_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x0F;  // 0x00 | 0x0F = 0x0F
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

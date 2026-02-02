@@ -19,7 +19,7 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX) {
     // 0xFFFC: STA (ZeroPageX) 0x80
     mem[0xFFFC] = INS_STA_ZPX;
     mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
 
     // Target Zero Page Address = 0x80 + 0x0F = 0x8F
     mem[0x008F] = 0x00;
@@ -40,7 +40,7 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX_WrapAround) {
     // 0xFFFC: STA (ZeroPageX) 0x80
     mem[0xFFFC] = INS_STA_ZPX;
     mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
 
     // Target Address = (0x80 + 0xFF) & 0xFF = 0x7F
     mem[0x007F] = 0x00;

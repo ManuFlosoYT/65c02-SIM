@@ -16,7 +16,7 @@ TEST_F(EOR_Inmediato_Test, EOR_Inmediato) {
     cpu.A = 0xFF;  // Start with 0xFF
     mem[0xFFFC] = INS_EOR_IM;
     mem[0xFFFD] = 0x0F;  // 0xFF ^ 0x0F = 0xF0
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -30,7 +30,7 @@ TEST_F(EOR_Inmediato_Test, EOR_Inmediato_ZeroFlag) {
     cpu.A = 0xFF;
     mem[0xFFFC] = INS_EOR_IM;
     mem[0xFFFD] = 0xFF;  // 0xFF ^ 0xFF = 0x00
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -44,7 +44,7 @@ TEST_F(EOR_Inmediato_Test, EOR_Inmediato_NegativeFlag) {
     cpu.A = 0x00;
     mem[0xFFFC] = INS_EOR_IM;
     mem[0xFFFD] = 0x80;  // 0x00 ^ 0x80 = 0x80
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

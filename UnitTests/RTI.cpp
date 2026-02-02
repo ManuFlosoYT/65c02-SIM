@@ -24,8 +24,8 @@ TEST_F(RTI_Test, RTI_Operations) {
     mem[0x0100 + 0xFF] = 0x10;        // PC High
 
     mem[0xFFFC] = INS_RTI;
-    mem[0xFFFD] = 0xFF;
-    mem[0x1002] = 0xFF;  // Return Address
+    mem[0xFFFD] = INS_JAM;
+    mem[0x1002] = INS_JAM;  // Return Address
 
     cpu.Ejecutar(mem);
 

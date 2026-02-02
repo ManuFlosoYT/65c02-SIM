@@ -21,7 +21,7 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_NoCarry) {
     cpu.C = 1;
 
     mem[0xFFFC] = INS_LSR_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -36,7 +36,7 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_CarryOut) {
     cpu.A = 0x01;
 
     mem[0xFFFC] = INS_LSR_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

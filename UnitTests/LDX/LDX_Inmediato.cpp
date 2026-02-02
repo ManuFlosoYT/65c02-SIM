@@ -19,7 +19,7 @@ TEST_F(LDX_Inmediato_Test, LDX_Inmediato) {
     // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
     mem[0xFFFC] = INS_LDX_IM;
     mem[0xFFFD] = 0x42;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -35,7 +35,7 @@ TEST_F(LDX_Inmediato_Test, LDX_Inmediato_ZeroFlag) {
 
     mem[0xFFFC] = INS_LDX_IM;
     mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -50,7 +50,7 @@ TEST_F(LDX_Inmediato_Test, LDX_Inmediato_NegativeFlag) {
 
     mem[0xFFFC] = INS_LDX_IM;
     mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

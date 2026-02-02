@@ -19,14 +19,14 @@ TEST_F(STA_Absolute_Test, STA_Absolute) {
     mem[0xFFFC] = INS_STA_ABS;
     mem[0xFFFD] = 0x00;  // Low Byte
     mem[0xFFFE] = 0x80;  // High Byte
-    mem[0xFFFF] = 0xFF;  // Stop? No, PC is at 0xFFFF, need to be careful.
+    mem[0xFFFF] = INS_JAM;  // Stop? No, PC is at 0xFFFF, need to be careful.
     // STA ABS is 3 bytes.
     // 0xFFFC: Opcode
     // 0xFFFD: Low
     // 0xFFFE: High
     // 0xFFFF: Next Opcode.
 
-    mem[0xFFFF] = 0xFF;  // Stop
+    mem[0xFFFF] = INS_JAM;  // Stop
 
     mem[0x8000] = 0x00;
 

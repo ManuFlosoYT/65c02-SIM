@@ -24,7 +24,7 @@ TEST_F(STA_ZeroPage_Test, STA_ZeroPage) {
     mem[0xFFFC] = INS_STA_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x00;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     // Ciclo 1:
     //    Lee STA (ZP) en 0xFFFC

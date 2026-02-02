@@ -15,7 +15,7 @@ protected:
 TEST_F(PHY_Test, PHY) {
     // 0xFFFC: PHY
     mem[0xFFFC] = INS_PHY;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.Y = 0x42;
     cpu.SP = 0x01FF;

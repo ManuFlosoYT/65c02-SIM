@@ -19,7 +19,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage) {
     mem[0xFFFC] = INS_AND_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x37;  // Value to AND with
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -35,7 +35,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_ZeroFlag) {
     mem[0xFFFC] = INS_AND_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x0F;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -51,7 +51,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_NegativeFlag) {
     mem[0xFFFC] = INS_AND_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

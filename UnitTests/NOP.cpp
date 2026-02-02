@@ -17,7 +17,7 @@ TEST_F(PruebaNOP, NoHaceNada) {
     // 0xFFFC: NOP (0xEA)
     // 0xFFFD: Opcode desconocido (0xFF) para detener la ejecución
     mem[0xFFFC] = INS_NOP;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     // Ciclo 1:
     //     Lee NOP en 0xFFFC
@@ -50,7 +50,7 @@ TEST_F(PruebaNOP, NoModificaEstado) {
     cpu.N = 1;
 
     mem[0xFFFC] = INS_NOP;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

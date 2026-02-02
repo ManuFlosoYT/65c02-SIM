@@ -18,7 +18,7 @@ TEST_F(LSR_Absolute_Test, LSR_Absolute) {
     mem[0xFFFD] = 0x80;
     mem[0xFFFE] = 0x44;
     mem[0x4480] = 0x02;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

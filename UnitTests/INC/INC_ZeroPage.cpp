@@ -17,7 +17,7 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage) {
     mem[0xFFFC] = INS_INC_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -31,7 +31,7 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage_ZeroFlag) {
     mem[0xFFFC] = INS_INC_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0xFF;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -45,7 +45,7 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage_NegativeFlag) {
     mem[0xFFFC] = INS_INC_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x7F;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

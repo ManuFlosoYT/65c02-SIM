@@ -22,7 +22,7 @@ TEST_F(BCC_Test, BCC_NoBranch_CarrySet) {
     // BCC +0x5 (0x05)
     mem[0xFFFC] = INS_BCC;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;  // Stop instruction
+    mem[0xFFFE] = INS_JAM;  // Stop instruction
 
     cpu.Ejecutar(mem);
 
@@ -45,7 +45,7 @@ TEST_F(BCC_Test, BCC_Branch_CarryClear) {
 
     mem[0x1000] = INS_BCC;
     mem[0x1001] = 0x05;
-    mem[0x1007] = 0xFF;
+    mem[0x1007] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -59,7 +59,7 @@ TEST_F(BCC_Test, BCC_Branch_Backward) {
 
     mem[0x1010] = INS_BCC;
     mem[0x1011] = 0xFB;  // -5
-    mem[0x100D] = 0xFF;
+    mem[0x100D] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

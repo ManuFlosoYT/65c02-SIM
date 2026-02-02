@@ -20,7 +20,7 @@ TEST_F(BMI_Test, BMI_NoBranch_NegativeClear) {
 
     mem[0x1000] = INS_BMI;
     mem[0x1001] = 0x05;
-    mem[0x1002] = 0xFF;
+    mem[0x1002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -33,7 +33,7 @@ TEST_F(BMI_Test, BMI_Branch_NegativeSet) {
 
     mem[0x1000] = INS_BMI;
     mem[0x1001] = 0x05;
-    mem[0x1007] = 0xFF;
+    mem[0x1007] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

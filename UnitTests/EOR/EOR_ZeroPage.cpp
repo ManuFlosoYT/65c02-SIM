@@ -17,7 +17,7 @@ TEST_F(EOR_ZeroPage_Test, EOR_ZeroPage) {
     mem[0xFFFC] = INS_EOR_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x0F;  // 0xFF ^ 0x0F = 0xF0
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

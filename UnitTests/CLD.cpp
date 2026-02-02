@@ -16,7 +16,7 @@ TEST_F(CLD_Test, CLD_ClearsDecimal) {
     cpu.D = 1;
 
     mem[0xFFFC] = INS_CLD;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

@@ -19,7 +19,7 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato) {
 
     mem[0xFFFC] = INS_ADC_IM;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -37,7 +37,7 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato_CarryIn) {
 
     mem[0xFFFC] = INS_ADC_IM;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -52,7 +52,7 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato_CarryOut) {
 
     mem[0xFFFC] = INS_ADC_IM;
     mem[0xFFFD] = 0x01;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -68,7 +68,7 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato_Overflow) {
 
     mem[0xFFFC] = INS_ADC_IM;
     mem[0xFFFD] = 0x01;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

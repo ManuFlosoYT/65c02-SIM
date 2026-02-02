@@ -16,7 +16,7 @@ TEST_F(STZ_Absolute_Test, STZ_Absolute_ExecutesCorrectly) {
     mem[0xFFFC] = INS_STZ_ABS;
     mem[0xFFFD] = 0x00;  // Low
     mem[0xFFFE] = 0x20;  // High -> 0x2000
-    mem[0xFFFF] = 0xFF;  // Stop
+    mem[0xFFFF] = INS_JAM;  // Stop
 
     mem[0x2000] = 0xDD;
 

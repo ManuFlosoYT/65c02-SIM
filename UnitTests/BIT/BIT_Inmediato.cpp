@@ -21,7 +21,7 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_SetsZeroFlag) {
 
     mem[0xFFFC] = INS_BIT_IM;
     mem[0xFFFD] = 0xF0;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -38,7 +38,7 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_ClearsZeroFlag) {
 
     mem[0xFFFC] = INS_BIT_IM;
     mem[0xFFFD] = 0x0F;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -55,7 +55,7 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_DoesNotAffectNV) {
 
     mem[0xFFFC] = INS_BIT_IM;
     mem[0xFFFD] = 0xC0;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

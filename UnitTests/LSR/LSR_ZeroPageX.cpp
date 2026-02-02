@@ -20,7 +20,7 @@ TEST_F(LSR_ZeroPageX_Test, LSR_ZeroPageX) {
     mem[0xFFFC] = INS_LSR_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0044] = 0x02;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

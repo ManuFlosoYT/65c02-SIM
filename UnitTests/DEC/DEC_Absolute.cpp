@@ -19,7 +19,7 @@ TEST_F(DEC_Absolute_Test, DEC_Absolute) {
     mem[0xFFFD] = 0x80;
     mem[0xFFFE] = 0x44;
     mem[0x4480] = 0x05;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

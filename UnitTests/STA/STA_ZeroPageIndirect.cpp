@@ -18,7 +18,7 @@ TEST_F(STA_ZeroPageIndirect_Test, STA_ZeroPageIndirect) {
     // 0xFFFC: STA (ZeroPage Indirect) 0x20
     mem[0xFFFC] = INS_STA_IND_ZP;
     mem[0xFFFD] = 0x20;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
 
     // Pointer Address (ZP) = 0x20
     mem[0x0020] = 0x00;  // Low Byte

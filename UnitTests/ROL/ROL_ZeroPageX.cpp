@@ -20,7 +20,7 @@ TEST_F(ROL_ZeroPageX_Test, ROL_ZeroPageX) {
     mem[0xFFFC] = INS_ROL_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0044] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

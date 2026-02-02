@@ -20,7 +20,7 @@ TEST_F(BPL_Test, BPL_NoBranch_NegativeSet) {
 
     mem[0x1000] = INS_BPL;
     mem[0x1001] = 0x05;
-    mem[0x1002] = 0xFF;
+    mem[0x1002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -33,7 +33,7 @@ TEST_F(BPL_Test, BPL_Branch_NegativeClear) {
 
     mem[0x1000] = INS_BPL;
     mem[0x1001] = 0x05;
-    mem[0x1007] = 0xFF;
+    mem[0x1007] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

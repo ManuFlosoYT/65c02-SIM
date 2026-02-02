@@ -24,7 +24,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP) {
     mem[0x0020] = 0x00;
     mem[0x0021] = 0x80;
     mem[0x8000] = 0x37;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -41,7 +41,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_ZeroFlag) {
     mem[0x0020] = 0x00;
     mem[0x0021] = 0x80;
     mem[0x8000] = 0x00;  // Load 0x00
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -58,7 +58,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_NegativeFlag) {
     mem[0x0020] = 0x00;
     mem[0x0021] = 0x80;
     mem[0x8000] = 0x80;  // Load 0x80 (Negative)
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -78,7 +78,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_WrapAround) {
     mem[0x00FF] = 0x00;  // Low byte of target address
     mem[0x0000] = 0x90;  // High byte of target address -> Target: 0x9000
     mem[0x9000] = 0x42;  // Value to load
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

@@ -15,7 +15,7 @@ protected:
 TEST_F(TXS_Test, TXS) {
     // 0xFFFC: TXS
     mem[0xFFFC] = INS_TXS;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.X = 0x80;
     cpu.SP = 0x01FF;  // Default

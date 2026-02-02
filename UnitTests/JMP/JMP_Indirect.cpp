@@ -27,7 +27,7 @@ TEST_F(JMP_Indirect_Test, JMP_Indirect) {
     mem[0x8000] = 0x00;
     mem[0x8001] = 0x90;
 
-    mem[0x9000] = 0xFF;
+    mem[0x9000] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

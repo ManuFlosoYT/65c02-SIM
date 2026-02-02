@@ -74,7 +74,7 @@ TEST_F(Ampliados_Fibonacci, Serie_Fibonacci) {
     mem[PC++] = (Byte)offset;
 
     // Stop
-    mem[PC++] = 0xFF;
+    mem[PC++] = INS_JAM;
 
     // Ejecutar
     cpu.PC = CODE_START;

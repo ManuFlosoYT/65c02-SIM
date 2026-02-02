@@ -21,7 +21,7 @@ TEST_F(BIT_ZeroPageX_Test, BIT_ZeroPageX) {
     mem[0xFFFC] = INS_BIT_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0047] = 0xC0;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

@@ -16,7 +16,7 @@ TEST_F(ORA_Inmediato_Test, ORA_Inmediato) {
     cpu.A = 0x00;  // Start with 0x00
     mem[0xFFFC] = INS_ORA_IM;
     mem[0xFFFD] = 0x0F;  // 0x00 | 0x0F = 0x0F
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -30,7 +30,7 @@ TEST_F(ORA_Inmediato_Test, ORA_Inmediato_ZeroFlag) {
     cpu.A = 0x00;
     mem[0xFFFC] = INS_ORA_IM;
     mem[0xFFFD] = 0x00;  // 0x00 | 0x00 = 0x00
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -44,7 +44,7 @@ TEST_F(ORA_Inmediato_Test, ORA_Inmediato_NegativeFlag) {
     cpu.A = 0x00;
     mem[0xFFFC] = INS_ORA_IM;
     mem[0xFFFD] = 0x80;  // 0x00 | 0x80 = 0x80
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

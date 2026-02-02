@@ -15,7 +15,7 @@ protected:
 TEST_F(PHX_Test, PHX) {
     // 0xFFFC: PHX
     mem[0xFFFC] = INS_PHX;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.X = 0x42;
     cpu.SP = 0x01FF;

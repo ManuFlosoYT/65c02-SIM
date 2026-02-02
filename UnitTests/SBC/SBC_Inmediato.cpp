@@ -23,7 +23,7 @@ TEST_F(SBC_Inmediato_Test, SBC_Inmediato) {
 
     mem[0xFFFC] = INS_SBC_IM;
     mem[0xFFFD] = 0x03;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -41,7 +41,7 @@ TEST_F(SBC_Inmediato_Test, SBC_Inmediato_Borrow) {
 
     mem[0xFFFC] = INS_SBC_IM;
     mem[0xFFFD] = 0x06;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -59,7 +59,7 @@ TEST_F(SBC_Inmediato_Test, SBC_Inmediato_BorrowIn) {
 
     mem[0xFFFC] = INS_SBC_IM;
     mem[0xFFFD] = 0x03;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

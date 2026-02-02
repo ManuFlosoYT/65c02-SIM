@@ -21,7 +21,7 @@ TEST_F(JMP_Absolute_Test, JMP_Absolute) {
     mem[0xFFFC] = INS_JMP_ABS;
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
-    mem[0x8000] = 0xFF;
+    mem[0x8000] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

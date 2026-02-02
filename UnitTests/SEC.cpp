@@ -16,7 +16,7 @@ TEST_F(SEC_Test, SEC_SetsCarry) {
     cpu.C = 0;
 
     mem[0xFFFC] = INS_SEC;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

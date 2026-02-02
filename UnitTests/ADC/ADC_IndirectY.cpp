@@ -26,7 +26,7 @@ TEST_F(ADC_IndirectY_Test, ADC_IndirectY) {
     mem[0x0002] = 0x00;
     mem[0x0003] = 0x80;
     mem[0x8001] = 0x37;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

@@ -17,7 +17,7 @@ TEST_F(INY_Test, INY) {
     cpu.Y = 0x05;
 
     mem[0xFFFC] = INS_INY;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -31,7 +31,7 @@ TEST_F(INY_Test, INY_ZeroFlag) {
     cpu.Y = 0xFF;
 
     mem[0xFFFC] = INS_INY;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -45,7 +45,7 @@ TEST_F(INY_Test, INY_NegativeFlag) {
     cpu.Y = 0x7F;
 
     mem[0xFFFC] = INS_INY;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

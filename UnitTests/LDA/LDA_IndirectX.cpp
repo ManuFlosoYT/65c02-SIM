@@ -29,7 +29,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX) {
     mem[0x0006] = 0x00;
     mem[0x0007] = 0x80;
     mem[0x8000] = 0x37;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     // Ciclo 1:
     //    Lee LDA (INDX) en 0xFFFC -> PC=FFFD
@@ -66,7 +66,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_ZeroFlag) {
     mem[0x0006] = 0x00;
     mem[0x0007] = 0x80;
     mem[0x8000] = 0x00;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -84,7 +84,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
     mem[0x0006] = 0x00;
     mem[0x0007] = 0x80;
     mem[0x8000] = 0x88;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -102,7 +102,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_Wrapping) {
     mem[0x0002] = 0x12;
 
     mem[0x1234] = 0x99;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

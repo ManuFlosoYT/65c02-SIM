@@ -19,7 +19,7 @@ TEST_F(STA_IndirectX_Test, STA_IndirectX) {
     // 0xFFFC: STA (IndirectX) 0x20
     mem[0xFFFC] = INS_STA_INDX;
     mem[0xFFFD] = 0x20;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
 
     // Pointer Address = 0x20 + 0x04 = 0x24 (ZP)
     mem[0x0024] = 0x74;  // Low Byte

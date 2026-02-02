@@ -23,7 +23,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8001] = 0x37;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -44,7 +44,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_PageCrossing) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x80FF] = 0x37;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -62,7 +62,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_ZeroFlag) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8001] = 0x00;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -80,7 +80,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_NegativeFlag) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8001] = 0x80;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

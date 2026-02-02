@@ -16,7 +16,7 @@ TEST_F(CLI_Test, CLI_ClearsInterruptDisable) {
     cpu.I = 1;
 
     mem[0xFFFC] = INS_CLI;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

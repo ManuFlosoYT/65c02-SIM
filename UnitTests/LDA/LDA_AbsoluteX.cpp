@@ -26,7 +26,7 @@ TEST_F(LDA_AbsoluteX_Test, LDA_AbsoluteX) {
     mem[0xFFFD] = 0x80;
     mem[0xFFFE] = 0x44;
     mem[0x4481] = 0x37;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     // Ciclo 1:
     //    Lee LDA (ABSX) en 0xFFFC -> PC=FFFD
@@ -56,7 +56,7 @@ TEST_F(LDA_AbsoluteX_Test, LDA_AbsoluteX_ZeroFlag) {
     mem[0xFFFD] = 0x80;
     mem[0xFFFE] = 0x44;
     mem[0x4481] = 0x00;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -73,7 +73,7 @@ TEST_F(LDA_AbsoluteX_Test, LDA_AbsoluteX_NegativeFlag) {
     mem[0xFFFD] = 0x80;
     mem[0xFFFE] = 0x44;
     mem[0x4481] = 0x81;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

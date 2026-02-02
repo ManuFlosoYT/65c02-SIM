@@ -15,7 +15,7 @@ protected:
 TEST_F(PHA_Test, PHA) {
     // 0xFFFC: PHA
     mem[0xFFFC] = INS_PHA;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.A = 0x42;
 

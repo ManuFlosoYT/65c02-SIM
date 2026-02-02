@@ -24,7 +24,7 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX) {
     mem[0xFFFC] = INS_LDA_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0047] = 0x37;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     // Ciclo 1:
     //    Lee LDA (ZPX) en 0xFFFC
@@ -56,7 +56,7 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_ZeroFlag) {
     mem[0xFFFC] = INS_LDA_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0047] = 0x00;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -73,7 +73,7 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_NegativeFlag) {
     mem[0xFFFC] = INS_LDA_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0047] = 0x88;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -88,7 +88,7 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_Wrapping) {
     mem[0xFFFD] = 0x80;
     mem[0x007F] = 0x42;
     mem[0x017F] = 0xAD;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

@@ -20,7 +20,7 @@ TEST_F(BVC_Test, BVC_NoBranch_OverflowSet) {
 
     mem[0x1000] = INS_BVC;
     mem[0x1001] = 0x05;
-    mem[0x1002] = 0xFF;
+    mem[0x1002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -33,7 +33,7 @@ TEST_F(BVC_Test, BVC_Branch_OverflowClear) {
 
     mem[0x1000] = INS_BVC;
     mem[0x1001] = 0x05;
-    mem[0x1007] = 0xFF;
+    mem[0x1007] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

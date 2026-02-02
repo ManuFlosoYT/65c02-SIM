@@ -17,7 +17,7 @@ TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage) {
     mem[0xFFFC] = INS_LSR_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x04;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -32,7 +32,7 @@ TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage_Carry) {
     mem[0xFFFC] = INS_LSR_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x01;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

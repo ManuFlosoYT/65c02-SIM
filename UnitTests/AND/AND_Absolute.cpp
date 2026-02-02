@@ -18,7 +18,7 @@ TEST_F(AND_Absolute_Test, AND_Absolute) {
     mem[0xFFFD] = 0x80;  // Little Endian
     mem[0xFFFE] = 0x44;  // 0x4480
     mem[0x4480] = 0x37;
-    mem[0xFFFF] = 0xFF;  // Stop
+    mem[0xFFFF] = INS_JAM;  // Stop
 
     cpu.Ejecutar(mem);
 

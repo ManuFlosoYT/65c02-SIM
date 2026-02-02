@@ -20,7 +20,7 @@ TEST_F(STA_AbsoluteY_Test, STA_AbsoluteY) {
     mem[0xFFFC] = INS_STA_ABSY;
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x20;
-    mem[0xFFFF] = 0xFF;  // Stop
+    mem[0xFFFF] = INS_JAM;  // Stop
 
     // Target = 0x2000 + 0x10 = 0x2010
     mem[0x2010] = 0x00;

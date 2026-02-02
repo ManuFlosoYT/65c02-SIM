@@ -19,7 +19,7 @@ TEST_F(CPX_ZeroPage_Test, CPX_ZeroPage) {
     mem[0xFFFC] = INS_CPX_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

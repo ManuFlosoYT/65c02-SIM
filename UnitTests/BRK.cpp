@@ -25,7 +25,7 @@ TEST_F(BRK_Test, BRK_Operations) {
     // Interrupt Vector
     mem[0xFFFE] = 0x00;
     mem[0xFFFF] = 0x20;  // 0x2000
-    mem[0x2000] = 0xFF;  // STOP
+    mem[0x2000] = INS_JAM;  // STOP
 
     mem[0x1000] = INS_BRK;
 

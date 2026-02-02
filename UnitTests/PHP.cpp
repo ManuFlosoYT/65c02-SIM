@@ -15,7 +15,7 @@ protected:
 TEST_F(PHP_Test, PHP) {
     // 0xFFFC: PHP
     mem[0xFFFC] = INS_PHP;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     // Set some flags
     cpu.C = 1;

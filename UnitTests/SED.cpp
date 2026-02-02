@@ -16,7 +16,7 @@ TEST_F(SED_Test, SED_SetsDecimal) {
     cpu.D = 0;
 
     mem[0xFFFC] = INS_SED;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

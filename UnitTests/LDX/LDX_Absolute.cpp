@@ -26,7 +26,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute) {
     // Next instruction at 0xFFFF (but we are at FFFC+3 = FFFF)
     // The previous tests used 0xFFFE as the stop opcode, but if the instruction
     // is 3 bytes long: FFFC (Op), FFFD (AL), FFFE (AH) Next Opcode at FFFF.
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -56,7 +56,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_ZeroFlag) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8000] = 0x00;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -73,7 +73,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_NegativeFlag) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8000] = 0x80;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

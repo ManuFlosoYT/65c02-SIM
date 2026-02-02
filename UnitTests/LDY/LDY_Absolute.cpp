@@ -21,7 +21,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8000] = 0x37;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -39,7 +39,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute_ZeroFlag) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8000] = 0x00;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -56,7 +56,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute_NegativeFlag) {
     mem[0xFFFD] = 0x00;
     mem[0xFFFE] = 0x80;
     mem[0x8000] = 0x80;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

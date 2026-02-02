@@ -17,7 +17,7 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato) {
     // 0xFFFD: 0x42
     mem[0xFFFC] = INS_LDY_IM;
     mem[0xFFFD] = 0x42;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -33,7 +33,7 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato_ZeroFlag) {
 
     mem[0xFFFC] = INS_LDY_IM;
     mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -48,7 +48,7 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato_NegativeFlag) {
 
     mem[0xFFFC] = INS_LDY_IM;
     mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

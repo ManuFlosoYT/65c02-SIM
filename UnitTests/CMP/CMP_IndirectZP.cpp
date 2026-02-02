@@ -71,10 +71,10 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_PointerWrap) {  // ZP = 0xFF
     cpu.A = 0x50;
 
     mem[0xFFFC] = INS_CMP_IND_ZP;
-    mem[0xFFFD] = 0xFF;  // ZP Boundary
-    mem[0xFFFE] = 0xFF;  // Stop
-    mem[0x00FF] = 0x10;  // Low
-    mem[0x0000] = 0xB0;  // High (wrapped) -> 0xB010
+    mem[0xFFFD] = 0xFF;     // ZP Boundary
+    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0x00FF] = 0x10;     // Low
+    mem[0x0000] = 0xB0;     // High (wrapped) -> 0xB010
     mem[0xB010] = 0x50;
 
     cpu.Ejecutar(mem);

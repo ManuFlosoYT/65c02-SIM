@@ -18,7 +18,7 @@ TEST_F(CPY_Inmediato_Test, CPY_Inmediato) {
 
     mem[0xFFFC] = INS_CPY_IM;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

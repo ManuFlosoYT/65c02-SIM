@@ -24,7 +24,7 @@ TEST_F(AND_IndirectY_Test, AND_IndirectY) {
     mem[0x0002] = 0x00;  // Low Byte
     mem[0x0003] = 0x80;  // High Byte -> Base: 0x8000
     mem[0x8004] = 0x37;  // 0x8000 + 0x04 = 0x8004
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

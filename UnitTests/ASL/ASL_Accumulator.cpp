@@ -21,7 +21,7 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_NoCarry) {
     cpu.C = 1;  // Should be cleared
 
     mem[0xFFFC] = INS_ASL_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -37,7 +37,7 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_CarryOut) {
     cpu.C = 0;
 
     mem[0xFFFC] = INS_ASL_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -52,7 +52,7 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_Negative) {
     cpu.A = 0x40;
 
     mem[0xFFFC] = INS_ASL_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

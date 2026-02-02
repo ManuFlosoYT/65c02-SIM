@@ -19,7 +19,7 @@ TEST_F(EOR_IndirectZP_Test, EOR_IndirectZP) {
     mem[0x0020] = 0x00;  // Low Byte
     mem[0x0021] = 0x80;  // High Byte -> Target Base: 0x8000
     mem[0x8000] = 0x0F;  // Target Value. 0xFF ^ 0x0F = 0xF0
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

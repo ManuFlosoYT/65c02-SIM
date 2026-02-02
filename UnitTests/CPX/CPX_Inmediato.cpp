@@ -18,7 +18,7 @@ TEST_F(CPX_Inmediato_Test, CPX_Inmediato) {
 
     mem[0xFFFC] = INS_CPX_IM;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

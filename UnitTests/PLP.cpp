@@ -15,7 +15,7 @@ protected:
 TEST_F(PLP_Test, PLP) {
     // 0xFFFC: PLP
     mem[0xFFFC] = INS_PLP;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.SP = 0x01FE;
     // Stack contains flags to be set

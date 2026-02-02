@@ -20,7 +20,7 @@ TEST_F(ROR_Absolute_Test, ROR_Absolute) {
     mem[0xFFFD] = 0x80;
     mem[0xFFFE] = 0x44;
     mem[0x4480] = 0x01;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

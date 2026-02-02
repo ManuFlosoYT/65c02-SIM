@@ -21,7 +21,7 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX) {
     mem[0xFFFC] = INS_LDY_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0046] = 0x37;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -40,7 +40,7 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX_WrapAround) {
     mem[0xFFFC] = INS_LDY_ZPX;
     mem[0xFFFD] = 0x80;
     mem[0x007F] = 0x37;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -56,7 +56,7 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX_ZeroFlag) {
     mem[0xFFFC] = INS_LDY_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x004C] = 0x00;  // 0x42 + 0x0A
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -73,7 +73,7 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX_NegativeFlag) {
     mem[0xFFFC] = INS_LDY_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x004C] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

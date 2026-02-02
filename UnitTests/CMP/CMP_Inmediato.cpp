@@ -18,7 +18,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Equal) {
 
     mem[0xFFFC] = INS_CMP_IM;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -34,7 +34,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Less) {
 
     mem[0xFFFC] = INS_CMP_IM;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -50,7 +50,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Greater) {
 
     mem[0xFFFC] = INS_CMP_IM;
     mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

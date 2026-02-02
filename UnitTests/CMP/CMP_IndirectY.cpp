@@ -21,7 +21,7 @@ TEST_F(CMP_IndirectY_Test, CMP_IndirectY) {
     mem[0x0002] = 0x00;
     mem[0x0003] = 0x80;
     mem[0x8001] = 0x05;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

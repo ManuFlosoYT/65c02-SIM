@@ -20,7 +20,7 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato) {
     cpu.A = 0xFF;  // Start with A = 0xFF
     mem[0xFFFC] = INS_AND_IM;
     mem[0xFFFD] = 0x0F;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     // Ciclo 1: Lee AND #0x0F
     // Ciclo 2: Lee 0x0F, ejecuta AND
@@ -37,7 +37,7 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato_ZeroFlag) {
 
     mem[0xFFFC] = INS_AND_IM;
     mem[0xFFFD] = 0x0F;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -52,7 +52,7 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato_NegativeFlag) {
 
     mem[0xFFFC] = INS_AND_IM;
     mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

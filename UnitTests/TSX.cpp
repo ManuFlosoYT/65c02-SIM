@@ -15,7 +15,7 @@ protected:
 TEST_F(TSX_Test, TSX) {
     // 0xFFFC: TSX
     mem[0xFFFC] = INS_TSX;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     // Set SP to non-zero, non-negative value
     cpu.SP = 0x0150;
@@ -39,7 +39,7 @@ TEST_F(TSX_Test, TSX) {
 TEST_F(TSX_Test, TSX_ZeroFlag) {
     // 0xFFFC: TSX
     mem[0xFFFC] = INS_TSX;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.SP = 0x0100;  // Low byte is 0x00
     cpu.X = 0xFF;
@@ -55,7 +55,7 @@ TEST_F(TSX_Test, TSX_ZeroFlag) {
 TEST_F(TSX_Test, TSX_NegativeFlag) {
     // 0xFFFC: TSX
     mem[0xFFFC] = INS_TSX;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.SP = 0x0180;  // Low byte is 0x80 (Negative)
     cpu.X = 0x00;

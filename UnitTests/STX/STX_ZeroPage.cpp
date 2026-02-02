@@ -18,7 +18,7 @@ TEST_F(STX_ZeroPage_Test, STX_ZeroPage) {
     // 0xFFFC: STX (ZeroPage) 0x42
     mem[0xFFFC] = INS_STX_ZP;
     mem[0xFFFD] = 0x42;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
 
     mem[0x0042] = 0x00;
 

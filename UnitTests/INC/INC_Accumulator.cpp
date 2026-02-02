@@ -17,7 +17,7 @@ TEST_F(INC_Accumulator_Test, INC_Accumulator) {
     cpu.A = 0x05;
 
     mem[0xFFFC] = INS_INC_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -31,7 +31,7 @@ TEST_F(INC_Accumulator_Test, INC_Accumulator_ZeroFlag) {
     cpu.A = 0xFF;
 
     mem[0xFFFC] = INS_INC_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -45,7 +45,7 @@ TEST_F(INC_Accumulator_Test, INC_Accumulator_NegativeFlag) {
     cpu.A = 0x7F;
 
     mem[0xFFFC] = INS_INC_A;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

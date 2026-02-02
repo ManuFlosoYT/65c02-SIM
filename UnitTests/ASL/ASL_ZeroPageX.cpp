@@ -20,7 +20,7 @@ TEST_F(ASL_ZeroPageX_Test, ASL_ZeroPageX) {
     mem[0xFFFC] = INS_ASL_ZPX;
     mem[0xFFFD] = 0x42;
     mem[0x0047] = 0x01;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

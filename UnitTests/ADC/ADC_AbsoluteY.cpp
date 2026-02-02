@@ -23,7 +23,7 @@ TEST_F(ADC_AbsoluteY_Test, ADC_AbsoluteY) {
     mem[0xFFFD] = 0x80;
     mem[0xFFFE] = 0x44;
     mem[0x4481] = 0x05;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFF] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

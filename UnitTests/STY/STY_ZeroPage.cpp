@@ -18,7 +18,7 @@ TEST_F(STY_ZeroPage_Test, STY_ZeroPage) {
     // 0xFFFC: STY (ZeroPage) 0x42
     mem[0xFFFC] = INS_STY_ZP;
     mem[0xFFFD] = 0x42;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
 
     mem[0x0042] = 0x00;
 

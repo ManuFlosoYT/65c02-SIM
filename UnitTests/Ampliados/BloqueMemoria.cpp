@@ -58,7 +58,7 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
     mem[PC++] = (Byte)offset;
 
     // Stop
-    mem[PC++] = 0xFF;
+    mem[PC++] = INS_JAM;
 
     // Ejecutar
     cpu.PC = CODE_START;

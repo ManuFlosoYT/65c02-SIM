@@ -15,7 +15,7 @@ protected:
 TEST_F(PLY_Test, PLY) {
     // 0xFFFC: PLY
     mem[0xFFFC] = INS_PLY;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.SP = 0x01FE;
     mem[0x01FF] = 0x42;
@@ -31,7 +31,7 @@ TEST_F(PLY_Test, PLY) {
 TEST_F(PLY_Test, PLY_ZeroFlag) {
     // 0xFFFC: PLY
     mem[0xFFFC] = INS_PLY;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.SP = 0x01FE;
     mem[0x01FF] = 0x00;
@@ -46,7 +46,7 @@ TEST_F(PLY_Test, PLY_ZeroFlag) {
 TEST_F(PLY_Test, PLY_NegativeFlag) {
     // 0xFFFC: PLY
     mem[0xFFFC] = INS_PLY;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     cpu.SP = 0x01FE;
     mem[0x01FF] = 0x80;

@@ -16,7 +16,7 @@ TEST_F(CLC_Test, CLC_ClearsCarry) {
     cpu.C = 1;
 
     mem[0xFFFC] = INS_CLC;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

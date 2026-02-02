@@ -20,7 +20,7 @@ TEST_F(BCS_Test, BCS_NoBranch_CarryClear) {
 
     mem[0x1000] = INS_BCS;
     mem[0x1001] = 0x05;
-    mem[0x1002] = 0xFF;
+    mem[0x1002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -33,7 +33,7 @@ TEST_F(BCS_Test, BCS_Branch_CarrySet) {
 
     mem[0x1000] = INS_BCS;
     mem[0x1001] = 0x05;
-    mem[0x1007] = 0xFF;
+    mem[0x1007] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

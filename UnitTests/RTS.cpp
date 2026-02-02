@@ -15,7 +15,7 @@ protected:
 TEST_F(RTS_Test, RTS_Implied) {
     // 0xFFFC: RTS
     mem[0xFFFC] = INS_RTS;
-    mem[0xFFFD] = 0xFF;  // Stop
+    mem[0xFFFD] = INS_JAM;  // Stop
 
     // Simulate Return Address on Stack
     // Want to return to 0x2035
@@ -40,7 +40,7 @@ TEST_F(RTS_Test, RTS_Implied) {
     cpu.SP = 0x01FD;
     mem[0x01FE] = 0xFF;
     mem[0x01FF] = 0x7F;
-    mem[0x8000] = 0xFF;  // Stop opcode at return address
+    mem[0x8000] = INS_JAM;  // Stop opcode at return address
 
     cpu.Ejecutar(mem);
 

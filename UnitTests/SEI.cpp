@@ -16,7 +16,7 @@ TEST_F(SEI_Test, SEI_SetsInterruptDisable) {
     cpu.I = 0;
 
     mem[0xFFFC] = INS_SEI;
-    mem[0xFFFD] = 0xFF;
+    mem[0xFFFD] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

@@ -20,7 +20,7 @@ TEST_F(ORA_IndirectX_Test, ORA_IndirectX) {
     mem[0x0006] = 0x00;  // Low Byte
     mem[0x0007] = 0x80;  // High Byte -> Eff Address: 0x8000
     mem[0x8000] = 0x0F;  // 0x00 | 0x0F = 0x0F
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

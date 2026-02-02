@@ -65,7 +65,7 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
     mem[PC++] = ADDR_RES;
 
     // Fin (Stop)
-    mem[PC++] = 0xFF;  // Instruccion de parada custom en los tests
+    mem[PC++] = INS_JAM;  // Instruccion de parada custom en los tests
 
     // Ejecutar
     cpu.PC = CODE_START;

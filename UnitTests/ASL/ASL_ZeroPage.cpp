@@ -17,7 +17,7 @@ TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage) {
     mem[0xFFFC] = INS_ASL_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x01;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -32,7 +32,7 @@ TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage_Carry) {
     mem[0xFFFC] = INS_ASL_ZP;
     mem[0xFFFD] = 0x42;
     mem[0x0042] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

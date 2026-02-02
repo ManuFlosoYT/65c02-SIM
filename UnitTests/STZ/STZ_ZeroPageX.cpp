@@ -16,7 +16,7 @@ TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_ExecutesCorrectly) {
     cpu.X = 0x04;
     mem[0xFFFC] = INS_STZ_ZPX;
     mem[0xFFFD] = 0x20;  // Base 0x20
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     // Target: 0x20 + 0x04 = 0x24
     mem[0x0024] = 0xBB;
@@ -32,7 +32,7 @@ TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_Wrapping) {
     cpu.X = 0xFF;
     mem[0xFFFC] = INS_STZ_ZPX;
     mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0xFF;
+    mem[0xFFFE] = INS_JAM;
 
     // Target: 0x80 + 0xFF = 0x17F -> 0x7F (Zero page wrap)
     mem[0x007F] = 0xCC;
