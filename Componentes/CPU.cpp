@@ -68,6 +68,9 @@ void CPU::Ejecutar(Mem& mem) {
         Byte opcode = FetchByte(mem);
 
         switch (opcode) {
+            case INS_JAM: {
+                return;
+            }
             case INS_NOP: {
                 NOP::Ejecutar(*this, mem);
                 break;
@@ -734,11 +737,11 @@ void CPU::Ejecutar(Mem& mem) {
             }
             default:
 
-#ifndef TESTING_ENV
-                std::cout << "Opcode desconocido: 0x" << std::hex
-                          << static_cast<int>(opcode) << " PC: 0x" << PC
-                          << std::dec << " ejecución cancelada." << std::endl;
-#endif
+                #ifndef TESTING_ENV
+                    std::cout << "Opcode desconocido: 0x" << std::hex
+                        << static_cast<int>(opcode) << " PC: 0x" << PC
+                        << std::dec << " ejecución cancelada." << std::endl;
+                #endif
 
                 return;
         }

@@ -9,6 +9,7 @@ using Word = uint16_t;
 constexpr static Byte INS_NOP = 0xEA;  // NOP
 constexpr static Byte INS_BRK = 0x00;  // BRK
 constexpr static Byte INS_RTI = 0x40;  // RTI
+constexpr static Byte INS_JAM = 0x02;  // JAM
 
 constexpr static Byte INS_LDA_IM = 0xA9;      // LDA Inmediato
 constexpr static Byte INS_LDA_ZP = 0xA5;      // LDA ZP
