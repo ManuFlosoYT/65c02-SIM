@@ -1,0 +1,64 @@
+#include <gtest/gtest.h>
+
+#include "../../Componentes/CPU.h"
+#include "../../Componentes/Mem.h"
+#include "../../Instrucciones/ListaInstrucciones.h"
+
+class TSB_ZeroPage_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+
+    Mem mem;
+    CPU cpu;
+};
+
+TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_SetsZeroFlag) {
+    // A = 0xAA (1010 1010)
+    // M = 0x55 (0101 0101)
+    // A & M = 0 -> Z = 1
+    // M = A | M = 0xAA | 0x55 = 0xFF
+    cpu.A = 0xAA;
+    mem[0xFFFC] = INS_TSB_ZP;
+    mem[0xFFFD] = 0x20;
+    mem[0x0020] = 0x55;
+    mem[0xFFFE] = INS_JAM;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_TRUE(cpu.Z);
+    EXPECT_EQ(mem[0x0020], 0xFF);
+}
+
+TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_ClearsZeroFlag) {
+    // A = 0x01 (0000 0001)
+    // M = 0x01 (0000 0001)
+    // A & M = 1 != 0 -> Z = 0
+    // M = A | M = 0x01 | 0x01 = 0x01
+    cpu.A = 0x01;
+    mem[0xFFFC] = INS_TSB_ZP;
+    mem[0xFFFD] = 0x20;
+    mem[0x0020] = 0x01;
+    mem[0xFFFE] = INS_JAM;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_EQ(mem[0x0020], 0x01);
+}
+
+TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_SetsBits) {
+    // A = 0xF0 (1111 0000)
+    // M = 0x0F (0000 1111)
+    // A & M = 0 -> Z = 1
+    // M = A | M = 0xF0 | 0x0F = 0xFF
+    cpu.A = 0xF0;
+    mem[0xFFFC] = INS_TSB_ZP;
+    mem[0xFFFD] = 0x20;
+    mem[0x0020] = 0x0F;
+    mem[0xFFFE] = INS_JAM;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_TRUE(cpu.Z);
+    EXPECT_EQ(mem[0x0020], 0xFF);
+}

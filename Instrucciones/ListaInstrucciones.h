@@ -254,4 +254,10 @@ constexpr static Byte INS_BBS5 = 0xDF;  // BBS5
 constexpr static Byte INS_BBS6 = 0xEF;  // BBS6
 constexpr static Byte INS_BBS7 = 0xFF;  // BBS7
 
+constexpr static Byte INS_TRB_ABS = 0x1C;  // TRB ABS
+constexpr static Byte INS_TRB_ZP = 0x14;   // TRB ZP
+
+constexpr static Byte INS_TSB_ABS = 0x0C;  // TSB ABS
+constexpr static Byte INS_TSB_ZP = 0x04;   // TSB ZP
+
 #endif  // SIM_65C02_LISTAINSTRUCCIONES_H

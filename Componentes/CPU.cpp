@@ -68,6 +68,8 @@
 #include "../Instrucciones/SMB.h"
 #include "../Instrucciones/BBR.h"
 #include "../Instrucciones/BBS.h"
+#include "../Instrucciones/TRB.h"
+#include "../Instrucciones/TSB.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -899,6 +901,22 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_BBS7: {
                 BBS::Ejecutar7(*this, mem);
+                break;
+            }
+            case INS_TRB_ZP: {
+                TRB::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_TRB_ABS: {
+                TRB::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_TSB_ZP: {
+                TSB::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_TSB_ABS: {
+                TSB::EjecutarABS(*this, mem);
                 break;
             }
             default:

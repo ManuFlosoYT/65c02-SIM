@@ -1,0 +1,23 @@
+#include "TSB.h"
+
+void TSB::EjecutarZP(CPU& cpu, Mem& mem) {
+    Byte ZP_Dir = cpu.FetchByte(mem);
+    Byte dato = cpu.LeerByte(ZP_Dir, mem);
+    Byte res = cpu.A & dato;
+
+    cpu.Z = (res == 0);
+
+    Byte res2 = cpu.A | dato;
+    mem[ZP_Dir] = res2;
+}
+
+void TSB::EjecutarABS(CPU& cpu, Mem& mem) {
+    Word Dir = cpu.FetchWord(mem);
+    Byte dato = cpu.LeerByte(Dir, mem);
+    Byte res = cpu.A & dato;
+
+    cpu.Z = (res == 0);
+
+    Byte res2 = cpu.A | dato;
+    mem[Dir] = res2;
+}
