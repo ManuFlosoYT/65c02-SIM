@@ -227,4 +227,31 @@ constexpr static Byte INS_RMB5 = 0x57;  // RMB5
 constexpr static Byte INS_RMB6 = 0x67;  // RMB6
 constexpr static Byte INS_RMB7 = 0x77;  // RMB7
 
+constexpr static Byte INS_SMB0 = 0x87;  // SMB0
+constexpr static Byte INS_SMB1 = 0x97;  // SMB1
+constexpr static Byte INS_SMB2 = 0xA7;  // SMB2
+constexpr static Byte INS_SMB3 = 0xB7;  // SMB3
+constexpr static Byte INS_SMB4 = 0xC7;  // SMB4
+constexpr static Byte INS_SMB5 = 0xD7;  // SMB5
+constexpr static Byte INS_SMB6 = 0xE7;  // SMB6
+constexpr static Byte INS_SMB7 = 0xF7;  // SMB7
+
+constexpr static Byte INS_BBR0 = 0x0F;  // BBR0
+constexpr static Byte INS_BBR1 = 0x1F;  // BBR1
+constexpr static Byte INS_BBR2 = 0x2F;  // BBR2
+constexpr static Byte INS_BBR3 = 0x3F;  // BBR3
+constexpr static Byte INS_BBR4 = 0x4F;  // BBR4
+constexpr static Byte INS_BBR5 = 0x5F;  // BBR5
+constexpr static Byte INS_BBR6 = 0x6F;  // BBR6
+constexpr static Byte INS_BBR7 = 0x7F;  // BBR7
+
+constexpr static Byte INS_BBS0 = 0x8F;  // BBS0
+constexpr static Byte INS_BBS1 = 0x9F;  // BBS1
+constexpr static Byte INS_BBS2 = 0xAF;  // BBS2
+constexpr static Byte INS_BBS3 = 0xBF;  // BBS3
+constexpr static Byte INS_BBS4 = 0xCF;  // BBS4
+constexpr static Byte INS_BBS5 = 0xDF;  // BBS5
+constexpr static Byte INS_BBS6 = 0xEF;  // BBS6
+constexpr static Byte INS_BBS7 = 0xFF;  // BBS7
+
 #endif  // SIM_65C02_LISTAINSTRUCCIONES_H

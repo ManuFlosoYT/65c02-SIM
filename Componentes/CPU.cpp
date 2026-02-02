@@ -65,6 +65,9 @@
 #include "../Instrucciones/TXS.h"
 #include "../Instrucciones/TYA.h"
 #include "../Instrucciones/RMB.h"
+#include "../Instrucciones/SMB.h"
+#include "../Instrucciones/BBR.h"
+#include "../Instrucciones/BBS.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -800,6 +803,102 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_RMB7: {
                 RMB::Ejecutar7(*this, mem);
+                break;
+            }
+            case INS_SMB0: {
+                SMB::Ejecutar0(*this, mem);
+                break;
+            }
+            case INS_SMB1: {
+                SMB::Ejecutar1(*this, mem);
+                break;
+            }
+            case INS_SMB2: {
+                SMB::Ejecutar2(*this, mem);
+                break;
+            }
+            case INS_SMB3: {
+                SMB::Ejecutar3(*this, mem);
+                break;
+            }
+            case INS_SMB4: {
+                SMB::Ejecutar4(*this, mem);
+                break;
+            }
+            case INS_SMB5: {
+                SMB::Ejecutar5(*this, mem);
+                break;
+            }
+            case INS_SMB6: {
+                SMB::Ejecutar6(*this, mem);
+                break;
+            }
+            case INS_SMB7: {
+                SMB::Ejecutar7(*this, mem);
+                break;
+            }
+            case INS_BBR0: {
+                BBR::Ejecutar0(*this, mem);
+                break;
+            }
+            case INS_BBR1: {
+                BBR::Ejecutar1(*this, mem);
+                break;
+            }
+            case INS_BBR2: {
+                BBR::Ejecutar2(*this, mem);
+                break;
+            }
+            case INS_BBR3: {
+                BBR::Ejecutar3(*this, mem);
+                break;
+            }
+            case INS_BBR4: {
+                BBR::Ejecutar4(*this, mem);
+                break;
+            }
+            case INS_BBR5: {
+                BBR::Ejecutar5(*this, mem);
+                break;
+            }
+            case INS_BBR6: {
+                BBR::Ejecutar6(*this, mem);
+                break;
+            }
+            case INS_BBR7: {
+                BBR::Ejecutar7(*this, mem);
+                break;
+            }
+            case INS_BBS0: {
+                BBS::Ejecutar0(*this, mem);
+                break;
+            }
+            case INS_BBS1: {
+                BBS::Ejecutar1(*this, mem);
+                break;
+            }
+            case INS_BBS2: {
+                BBS::Ejecutar2(*this, mem);
+                break;
+            }
+            case INS_BBS3: {
+                BBS::Ejecutar3(*this, mem);
+                break;
+            }
+            case INS_BBS4: {
+                BBS::Ejecutar4(*this, mem);
+                break;
+            }
+            case INS_BBS5: {
+                BBS::Ejecutar5(*this, mem);
+                break;
+            }
+            case INS_BBS6: {
+                BBS::Ejecutar6(*this, mem);
+                break;
+            }
+            case INS_BBS7: {
+                BBS::Ejecutar7(*this, mem);
                 break;
             }
             default:

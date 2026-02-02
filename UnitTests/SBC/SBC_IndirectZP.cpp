@@ -17,11 +17,11 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_Basic) {
     cpu.C = 1;
 
     mem[0xFFFC] = INS_SBC_IND_ZP;
-    mem[0xFFFD] = 0x02;  // ZP address
-    mem[0xFFFE] = 0xFF;  // Stop
-    mem[0x0002] = 0x00;  // Pointer low
-    mem[0x0003] = 0x80;  // Pointer high -> 0x8000
-    mem[0x8000] = 0x05;  // Value
+    mem[0xFFFD] = 0x02;     // ZP address
+    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0x0002] = 0x00;     // Pointer low
+    mem[0x0003] = 0x80;     // Pointer high -> 0x8000
+    mem[0x8000] = 0x05;     // Value
 
     cpu.Ejecutar(mem);
 
@@ -37,7 +37,7 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_Borrow) {
 
     mem[0xFFFC] = INS_SBC_IND_ZP;
     mem[0xFFFD] = 0x10;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
     mem[0x0010] = 0x00;
     mem[0x0011] = 0x90;  // 0x9000
     mem[0x9000] = 0x0A;  // 5 - 10
@@ -55,10 +55,10 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_PointerWrap) {  // ZP = 0xFF
     cpu.C = 1;
 
     mem[0xFFFC] = INS_SBC_IND_ZP;
-    mem[0xFFFD] = 0xFF;  // ZP address at boundary
-    mem[0xFFFE] = 0xFF;  // Stop
-    mem[0x00FF] = 0x10;  // Low byte at 0xFF
-    mem[0x0000] = 0xA0;  // High byte at 0x00 (wrapped) -> 0xA010
+    mem[0xFFFD] = 0xFF;     // ZP address at boundary
+    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0x00FF] = 0x10;     // Low byte at 0xFF
+    mem[0x0000] = 0xA0;     // High byte at 0x00 (wrapped) -> 0xA010
     mem[0xA010] = 0x10;
 
     cpu.Ejecutar(mem);

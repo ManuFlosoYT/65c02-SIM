@@ -17,8 +17,8 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Equal) {
     cpu.C = 0;  // Pre-condition check
 
     mem[0xFFFC] = INS_CMP_IND_ZP;
-    mem[0xFFFD] = 0x05;  // ZP Addr
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFD] = 0x05;     // ZP Addr
+    mem[0xFFFE] = INS_JAM;  // Stop
     mem[0x0005] = 0x00;
     mem[0x0006] = 0x80;  // Pointer -> 0x8000
     mem[0x8000] = 0x10;  // Match A
@@ -36,7 +36,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Greater) {
 
     mem[0xFFFC] = INS_CMP_IND_ZP;
     mem[0xFFFD] = 0x10;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
     mem[0x0010] = 0x00;
     mem[0x0011] = 0x90;  // Pointer -> 0x9000
     mem[0x9000] = 0x10;  // A > M (0x20 > 0x10)
@@ -54,7 +54,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Less) {
 
     mem[0xFFFC] = INS_CMP_IND_ZP;
     mem[0xFFFD] = 0x20;
-    mem[0xFFFE] = 0xFF;  // Stop
+    mem[0xFFFE] = INS_JAM;  // Stop
     mem[0x0020] = 0x00;
     mem[0x0021] = 0xA0;  // Pointer -> 0xA000
     mem[0xA000] = 0x20;  // A < M (0x10 < 0x20)
