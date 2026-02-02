@@ -1,0 +1,32 @@
+#include <gtest/gtest.h>
+
+#include "../../Componentes/CPU.h"
+#include "../../Componentes/Mem.h"
+#include "../../Instrucciones/ListaInstrucciones.h"
+
+class STP_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+
+    Mem mem;
+    CPU cpu;
+};
+
+TEST_F(STP_Test, STP_HaltsExecution) {
+    // 0xFFFC: STP
+    // 0xFFFD: NOP (Should not be executed)
+    mem[0xFFFC] = INS_STP;
+    mem[0xFFFD] = INS_NOP;
+
+    // Run execution
+    cpu.Ejecutar(mem);
+
+    // PC should point to the instruction AFTER STP (it fetches STP, increments,
+    // executes). Wait, STP stops the clock. In a simulator loop, it should just
+    // return. The PC usually points to the next byte but the fetch cycle for
+    // the next instruction is never completed. If usage is `return` after
+    // fetch: Fetch STP (PC increments to FFFD) Execute STP -> Return So PC
+    // should be 0xFFFD.
+
+    EXPECT_EQ(cpu.PC, 0xFFFD);
+}

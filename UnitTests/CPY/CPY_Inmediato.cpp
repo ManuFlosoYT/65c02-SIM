@@ -27,3 +27,35 @@ TEST_F(CPY_Inmediato_Test, CPY_Inmediato) {
     EXPECT_TRUE(cpu.C);
     EXPECT_FALSE(cpu.N);
 }
+
+TEST_F(CPY_Inmediato_Test, CPY_Inmediato_Less) {
+    // Y = 4, M = 5. Result = 0xFF. Z=0, C=0. N=1.
+    cpu.Y = 0x04;
+
+    mem[0xFFFC] = INS_CPY_IM;
+    mem[0xFFFD] = 0x05;
+    mem[0xFFFE] = INS_JAM;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.Y, 0x04);
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_FALSE(cpu.C);
+    EXPECT_TRUE(cpu.N);
+}
+
+TEST_F(CPY_Inmediato_Test, CPY_Inmediato_Greater) {
+    // Y = 6, M = 5. Result = 1. Z=0, C=1. N=0.
+    cpu.Y = 0x06;
+
+    mem[0xFFFC] = INS_CPY_IM;
+    mem[0xFFFD] = 0x05;
+    mem[0xFFFE] = INS_JAM;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(cpu.Y, 0x06);
+    EXPECT_FALSE(cpu.Z);
+    EXPECT_TRUE(cpu.C);
+    EXPECT_FALSE(cpu.N);
+}
