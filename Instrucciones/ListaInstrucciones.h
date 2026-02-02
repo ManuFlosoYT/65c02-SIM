@@ -6,6 +6,9 @@
 using Byte = uint8_t;
 using Word = uint16_t;
 
+constexpr static Byte INS_WAI = 0xCB;  // WAI
+constexpr static Byte INS_STP = 0xDB;  // STP
+
 constexpr static Byte INS_NOP = 0xEA;  // NOP
 constexpr static Byte INS_BRK = 0x00;  // BRK
 constexpr static Byte INS_RTI = 0x40;  // RTI

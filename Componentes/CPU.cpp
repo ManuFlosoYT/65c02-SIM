@@ -76,6 +76,13 @@ void CPU::Ejecutar(Mem& mem) {
         Byte opcode = FetchByte(mem);
 
         switch (opcode) {
+            case INS_WAI: {
+                // TODO: Implementar WAI
+                return;
+            }
+            case INS_STP: {
+                return;
+            }
             case INS_JAM: {
                 return;
             }
