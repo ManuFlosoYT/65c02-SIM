@@ -140,6 +140,7 @@ constexpr static Byte INS_ADC_ABSX = 0x7D;  // ADC ABSX
 constexpr static Byte INS_ADC_ABSY = 0x79;  // ADC ABSY
 constexpr static Byte INS_ADC_INDX = 0x61;  // ADC INDX
 constexpr static Byte INS_ADC_INDY = 0x71;  // ADC INDY
+constexpr static Byte INS_ADC_IND_ZP = 0x72;  // ADC IND ZP
 
 constexpr static Byte INS_SBC_IM = 0xE9;    // SBC Inmediato
 constexpr static Byte INS_SBC_ZP = 0xE5;    // SBC ZP
@@ -159,6 +160,7 @@ constexpr static Byte INS_CMP_ABSX = 0xDD;  // CMP ABSX
 constexpr static Byte INS_CMP_ABSY = 0xD9;  // CMP ABSY
 constexpr static Byte INS_CMP_INDX = 0xC1;  // CMP INDX
 constexpr static Byte INS_CMP_INDY = 0xD1;  // CMP INDY
+constexpr static Byte INS_CMP_IND_ZP = 0xD2;  // CMP IND ZP
 
 constexpr static Byte INS_CPX_IM = 0xE0;   // CPX Inmediato
 constexpr static Byte INS_CPX_ZP = 0xE4;   // CPX ZP
@@ -215,5 +217,14 @@ constexpr static Byte INS_STZ_ABS = 0x9C;   // STZ ABS
 constexpr static Byte INS_STZ_ABSX = 0x9E;  // STZ ABSX
 
 constexpr static Byte INS_BRA = 0x80;  // BRA (Branch Always)
+
+constexpr static Byte INS_RMB0 = 0x07;  // RMB0
+constexpr static Byte INS_RMB1 = 0x17;  // RMB1
+constexpr static Byte INS_RMB2 = 0x27;  // RMB2
+constexpr static Byte INS_RMB3 = 0x37;  // RMB3
+constexpr static Byte INS_RMB4 = 0x47;  // RMB4
+constexpr static Byte INS_RMB5 = 0x57;  // RMB5
+constexpr static Byte INS_RMB6 = 0x67;  // RMB6
+constexpr static Byte INS_RMB7 = 0x77;  // RMB7
 
 #endif  // SIM_65C02_LISTAINSTRUCCIONES_H

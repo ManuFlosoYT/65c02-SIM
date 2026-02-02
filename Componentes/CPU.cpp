@@ -64,6 +64,7 @@
 #include "../Instrucciones/TXA.h"
 #include "../Instrucciones/TXS.h"
 #include "../Instrucciones/TYA.h"
+#include "../Instrucciones/RMB.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -521,6 +522,10 @@ void CPU::Ejecutar(Mem& mem) {
                 ADC::EjecutarINDY(*this, mem);
                 break;
             }
+            case INS_ADC_IND_ZP: {
+                ADC::EjecutarIND_ZP(*this, mem);
+                break;
+            }
             case INS_SBC_IM: {
                 SBC::EjecutarInmediato(*this, mem);
                 break;
@@ -587,6 +592,10 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_CMP_INDY: {
                 CMP::EjecutarINDY(*this, mem);
+                break;
+            }
+            case INS_CMP_IND_ZP: {
+                CMP::EjecutarIND_ZP(*this, mem);
                 break;
             }
             case INS_CPX_IM: {
@@ -759,6 +768,38 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_RTI: {
                 RTI::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_RMB0: {
+                RMB::Ejecutar0(*this, mem);
+                break;
+            }
+            case INS_RMB1: {
+                RMB::Ejecutar1(*this, mem);
+                break;
+            }
+            case INS_RMB2: {
+                RMB::Ejecutar2(*this, mem);
+                break;
+            }
+            case INS_RMB3: {
+                RMB::Ejecutar3(*this, mem);
+                break;
+            }
+            case INS_RMB4: {
+                RMB::Ejecutar4(*this, mem);
+                break;
+            }
+            case INS_RMB5: {
+                RMB::Ejecutar5(*this, mem);
+                break;
+            }
+            case INS_RMB6: {
+                RMB::Ejecutar6(*this, mem);
+                break;
+            }
+            case INS_RMB7: {
+                RMB::Ejecutar7(*this, mem);
                 break;
             }
             default:

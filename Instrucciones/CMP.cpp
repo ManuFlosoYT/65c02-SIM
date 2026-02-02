@@ -78,3 +78,20 @@ void CMP::EjecutarINDY(CPU& cpu, Mem& mem) {
     Byte dato = cpu.LeerByte(dir, mem);
     SetFlags(cpu, dato);
 }
+
+void CMP::EjecutarIND_ZP(CPU& cpu, Mem& mem) {
+    Byte ZP_Dir = cpu.FetchByte(mem);
+
+    Word dir;
+
+    if (ZP_Dir != 0xFF) {
+        dir = cpu.LeerWord(ZP_Dir, mem);
+    } else {
+        Byte low = cpu.LeerByte(0xFF, mem);
+        Byte high = cpu.LeerByte(0x00, mem);
+        dir = (high << 8) | low;
+    }
+
+    Byte dato = cpu.LeerByte(dir, mem);
+    SetFlags(cpu, dato);
+}   

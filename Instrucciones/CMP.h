@@ -14,6 +14,7 @@ public:
     static void EjecutarABSY(CPU& cpu, Mem& mem);
     static void EjecutarINDX(CPU& cpu, Mem& mem);
     static void EjecutarINDY(CPU& cpu, Mem& mem);
+    static void EjecutarIND_ZP(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_CMP_H
