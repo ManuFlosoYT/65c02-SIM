@@ -5,5 +5,5 @@ void BRK::Ejecutar(CPU& cpu, Mem& mem) {
     cpu.PushWord(cpu.PC + 1, mem);
     Byte PS = cpu.GetStatus();
     cpu.PushByte(PS, mem);
-    cpu.PC = 0xFFFE;
+    cpu.PC = cpu.LeerWord(0xFFFE, mem);
 }

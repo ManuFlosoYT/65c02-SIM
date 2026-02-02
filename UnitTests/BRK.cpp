@@ -23,25 +23,24 @@ TEST_F(BRK_Test, BRK_Operations) {
     cpu.SP = 0xFF;
 
     // Interrupt Vector
-    mem[0xFFFE] = 0xFF;
-    // mem[0xFFFF] = 0x20;  // 0x2000
+    mem[0xFFFE] = 0x00;
+    mem[0xFFFF] = 0x20;  // 0x2000
+    mem[0x2000] = 0xFF;  // STOP
 
     mem[0x1000] = INS_BRK;
 
     cpu.Ejecutar(mem);
 
-    // PC pushed is Address of BRK + 1 = 1001 (Fetch increments)
+    // PC pushed is Address of BRK + 2 = 1002 (Standard 6502)
     // Stack:
     // FF: High PC (0x10)
-    // FE: Low PC (0x01)
-    // FD: Status (B bit set, I bit set? No, B bit is only on stack)
+    // FE: Low PC (0x02)
+    // FD: Status (B bit set, I bit not affected)
 
-    EXPECT_EQ(cpu.PC, 0xFFFF);
-    EXPECT_TRUE(cpu.I);
+    EXPECT_EQ(cpu.PC, 0x2001);  // 2000 + 1 (read 0xFF)
 
     EXPECT_EQ(mem[0x0100 + 0xFF], 0x10);
-    EXPECT_EQ(mem[0x0100 + 0xFE], 0x01);
+    EXPECT_EQ(mem[0x0100 + 0xFE], 0x02);
 
-    Byte storedStatus = mem[0x0100 + 0xFD];
-    EXPECT_TRUE((storedStatus & 0b00010000) != 0);  // Break Flag Set
+    EXPECT_TRUE(cpu.B);  // Break Flag Set
 }

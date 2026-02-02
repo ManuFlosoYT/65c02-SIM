@@ -54,6 +54,13 @@
 #include "../Instrucciones/BPL.h"
 #include "../Instrucciones/BVC.h"
 #include "../Instrucciones/BVS.h"
+#include "../Instrucciones/CLC.h"
+#include "../Instrucciones/CLI.h"
+#include "../Instrucciones/CLD.h"
+#include "../Instrucciones/SEC.h"
+#include "../Instrucciones/SEI.h"
+#include "../Instrucciones/SED.h"
+#include "../Instrucciones/CLV.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -690,6 +697,34 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_BVC: {
                 BVC::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_CLC: {
+                CLC::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_CLI: {
+                CLI::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_CLD: {
+                CLD::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_SEC: {
+                SEC::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_SEI: {
+                SEI::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_SED: {
+                SED::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_CLV: {
+                CLV::Ejecutar(*this, mem);
                 break;
             }
             default:

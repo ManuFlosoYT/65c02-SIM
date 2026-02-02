@@ -22,7 +22,7 @@ TEST_F(SBC_IndirectY_Test, SBC_IndirectY) {
     mem[0x0002] = 0x00;
     mem[0x0003] = 0x80;
     mem[0x8001] = 0x05;
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFE] = 0xFF;
 
     cpu.Ejecutar(mem);
 
