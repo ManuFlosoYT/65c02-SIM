@@ -2,12 +2,41 @@
 
 #include <iostream>
 
+#include "../Instrucciones/ADC.h"
+#include "../Instrucciones/AND.h"
+#include "../Instrucciones/ASL.h"
+#include "../Instrucciones/BCC.h"
+#include "../Instrucciones/BCS.h"
+#include "../Instrucciones/BEQ.h"
+#include "../Instrucciones/BIT.h"
+#include "../Instrucciones/BMI.h"
+#include "../Instrucciones/BNE.h"
+#include "../Instrucciones/BPL.h"
+#include "../Instrucciones/BRK.h"
+#include "../Instrucciones/BVC.h"
+#include "../Instrucciones/BVS.h"
+#include "../Instrucciones/CLC.h"
+#include "../Instrucciones/CLD.h"
+#include "../Instrucciones/CLI.h"
+#include "../Instrucciones/CLV.h"
+#include "../Instrucciones/CMP.h"
+#include "../Instrucciones/CPX.h"
+#include "../Instrucciones/CPY.h"
+#include "../Instrucciones/DEC.h"
+#include "../Instrucciones/DEX.h"
+#include "../Instrucciones/DEY.h"
+#include "../Instrucciones/EOR.h"
+#include "../Instrucciones/INC.h"
+#include "../Instrucciones/INX.h"
+#include "../Instrucciones/INY.h"
 #include "../Instrucciones/JMP.h"
 #include "../Instrucciones/JSR.h"
 #include "../Instrucciones/LDA.h"
 #include "../Instrucciones/LDX.h"
 #include "../Instrucciones/LDY.h"
+#include "../Instrucciones/LSR.h"
 #include "../Instrucciones/NOP.h"
+#include "../Instrucciones/ORA.h"
 #include "../Instrucciones/PHA.h"
 #include "../Instrucciones/PHP.h"
 #include "../Instrucciones/PHX.h"
@@ -16,51 +45,23 @@
 #include "../Instrucciones/PLP.h"
 #include "../Instrucciones/PLX.h"
 #include "../Instrucciones/PLY.h"
+#include "../Instrucciones/ROL.h"
+#include "../Instrucciones/ROR.h"
+#include "../Instrucciones/RTI.h"
 #include "../Instrucciones/RTS.h"
+#include "../Instrucciones/SBC.h"
+#include "../Instrucciones/SEC.h"
+#include "../Instrucciones/SED.h"
+#include "../Instrucciones/SEI.h"
 #include "../Instrucciones/STA.h"
 #include "../Instrucciones/STX.h"
 #include "../Instrucciones/STY.h"
-#include "../Instrucciones/TSX.h"
-#include "../Instrucciones/TXS.h"
 #include "../Instrucciones/TAX.h"
-#include "../Instrucciones/TXA.h"
 #include "../Instrucciones/TAY.h"
+#include "../Instrucciones/TSX.h"
+#include "../Instrucciones/TXA.h"
+#include "../Instrucciones/TXS.h"
 #include "../Instrucciones/TYA.h"
-#include "../Instrucciones/AND.h"
-#include "../Instrucciones/EOR.h"
-#include "../Instrucciones/ORA.h"
-#include "../Instrucciones/BIT.h"
-#include "../Instrucciones/DEX.h"
-#include "../Instrucciones/DEY.h"
-#include "../Instrucciones/INX.h"
-#include "../Instrucciones/INY.h"
-#include "../Instrucciones/INC.h"
-#include "../Instrucciones/DEC.h"
-#include "../Instrucciones/ADC.h"
-#include "../Instrucciones/SBC.h"
-#include "../Instrucciones/CMP.h"
-#include "../Instrucciones/CPX.h"
-#include "../Instrucciones/CPY.h"
-#include "../Instrucciones/ASL.h"
-#include "../Instrucciones/LSR.h"
-#include "../Instrucciones/ROL.h"
-#include "../Instrucciones/ROR.h"
-#include "../Instrucciones/BCC.h"
-#include "../Instrucciones/BRK.h"
-#include "../Instrucciones/BCS.h"
-#include "../Instrucciones/BNE.h"
-#include "../Instrucciones/BEQ.h"
-#include "../Instrucciones/BMI.h"
-#include "../Instrucciones/BPL.h"
-#include "../Instrucciones/BVC.h"
-#include "../Instrucciones/BVS.h"
-#include "../Instrucciones/CLC.h"
-#include "../Instrucciones/CLI.h"
-#include "../Instrucciones/CLD.h"
-#include "../Instrucciones/SEC.h"
-#include "../Instrucciones/SEI.h"
-#include "../Instrucciones/SED.h"
-#include "../Instrucciones/CLV.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -727,13 +728,17 @@ void CPU::Ejecutar(Mem& mem) {
                 CLV::Ejecutar(*this, mem);
                 break;
             }
+            case INS_RTI: {
+                RTI::Ejecutar(*this, mem);
+                break;
+            }
             default:
 
-                #ifndef TESTING_ENV
-                    std::cout << "Opcode desconocido: 0x" << std::hex
-                            << static_cast<int>(opcode) << " PC: 0x" << PC
-                            << std::dec << " ejecución cancelada." << std::endl;
-                #endif
+#ifndef TESTING_ENV
+                std::cout << "Opcode desconocido: 0x" << std::hex
+                          << static_cast<int>(opcode) << " PC: 0x" << PC
+                          << std::dec << " ejecución cancelada." << std::endl;
+#endif
 
                 return;
         }

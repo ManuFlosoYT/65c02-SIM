@@ -20,7 +20,7 @@ TEST_F(BRK_Test, BRK_Operations) {
     // 4. PC loaded from Interrupt Vector (0xFFFE/0xFFFF)
 
     cpu.PC = 0x1000;
-    cpu.SP = 0xFF;
+    cpu.SP = 0x01FF;
 
     // Interrupt Vector
     mem[0xFFFE] = 0x00;

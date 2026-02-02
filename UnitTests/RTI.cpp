@@ -17,7 +17,7 @@ TEST_F(RTI_Test, RTI_Operations) {
     // Pull Status (P), Pull PC.
 
     // Fake Stack
-    cpu.SP = 0xFC;  // Stack Pointer pointing to empty
+    cpu.SP = 0x01FC;  // Stack Pointer pointing to empty
     // Pushed values (e.g. from BRK)
     mem[0x0100 + 0xFD] = 0b11000000;  // Status (N=1, V=1, others 0)
     mem[0x0100 + 0xFE] = 0x02;        // PC Low
@@ -32,5 +32,5 @@ TEST_F(RTI_Test, RTI_Operations) {
     EXPECT_EQ(cpu.PC, 0x1003);
     EXPECT_TRUE(cpu.N);
     EXPECT_TRUE(cpu.V);
-    EXPECT_EQ(cpu.SP, 0xFF);
+    EXPECT_EQ(cpu.SP, 0x01FF);
 }
