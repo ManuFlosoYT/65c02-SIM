@@ -149,6 +149,7 @@ constexpr static Byte INS_SBC_ABSX = 0xFD;  // SBC ABSX
 constexpr static Byte INS_SBC_ABSY = 0xF9;  // SBC ABSY
 constexpr static Byte INS_SBC_INDX = 0xE1;  // SBC INDX
 constexpr static Byte INS_SBC_INDY = 0xF1;  // SBC INDY
+constexpr static Byte INS_SBC_IND_ZP = 0xF2;  // SBC IND ZP
 
 constexpr static Byte INS_CMP_IM = 0xC9;    // CMP Inmediato
 constexpr static Byte INS_CMP_ZP = 0xC5;    // CMP ZP

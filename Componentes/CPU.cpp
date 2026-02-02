@@ -553,6 +553,10 @@ void CPU::Ejecutar(Mem& mem) {
                 SBC::EjecutarINDY(*this, mem);
                 break;
             }
+            case INS_SBC_IND_ZP: {
+                SBC::EjecutarIND_ZP(*this, mem);
+                break;
+            }
             case INS_CMP_IM: {
                 CMP::EjecutarInmediato(*this, mem);
                 break;
