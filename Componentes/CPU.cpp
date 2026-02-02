@@ -5,6 +5,8 @@
 #include "../Instrucciones/ADC.h"
 #include "../Instrucciones/AND.h"
 #include "../Instrucciones/ASL.h"
+#include "../Instrucciones/BBR.h"
+#include "../Instrucciones/BBS.h"
 #include "../Instrucciones/BCC.h"
 #include "../Instrucciones/BCS.h"
 #include "../Instrucciones/BEQ.h"
@@ -46,6 +48,7 @@
 #include "../Instrucciones/PLP.h"
 #include "../Instrucciones/PLX.h"
 #include "../Instrucciones/PLY.h"
+#include "../Instrucciones/RMB.h"
 #include "../Instrucciones/ROL.h"
 #include "../Instrucciones/ROR.h"
 #include "../Instrucciones/RTI.h"
@@ -54,22 +57,19 @@
 #include "../Instrucciones/SEC.h"
 #include "../Instrucciones/SED.h"
 #include "../Instrucciones/SEI.h"
+#include "../Instrucciones/SMB.h"
 #include "../Instrucciones/STA.h"
 #include "../Instrucciones/STX.h"
 #include "../Instrucciones/STY.h"
 #include "../Instrucciones/STZ.h"
 #include "../Instrucciones/TAX.h"
 #include "../Instrucciones/TAY.h"
+#include "../Instrucciones/TRB.h"
+#include "../Instrucciones/TSB.h"
 #include "../Instrucciones/TSX.h"
 #include "../Instrucciones/TXA.h"
 #include "../Instrucciones/TXS.h"
 #include "../Instrucciones/TYA.h"
-#include "../Instrucciones/RMB.h"
-#include "../Instrucciones/SMB.h"
-#include "../Instrucciones/BBR.h"
-#include "../Instrucciones/BBS.h"
-#include "../Instrucciones/TRB.h"
-#include "../Instrucciones/TSB.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -961,7 +961,7 @@ Word CPU::PopWord(Mem& mem) {
 }
 
 void CPU::Reset(Mem& mem) {
-    PC = 0xFFFC;  // Dirección de reinicio
+    PC = LeerWord(0xFFFC, mem);  // Dirección de reinicio
     SP = 0x01FF;  // Inicio de pila (Top of Stack)
 
     // Reset de registros

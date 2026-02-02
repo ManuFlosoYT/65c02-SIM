@@ -50,6 +50,11 @@ int main(int argc, char* argv[]) {
     fclose(fichero);
 
     std::cout << "--- Lanzando programa ---" << std::endl;
+    std::cout << "Vector Reset [FFFC]: 0x" << std::hex
+              << std::setw(2)
+              << std::setfill('0') << (int)mem.memoria[0xFFFD]
+              << std::setw(2)
+              << std::setfill('0') << (int)mem.memoria[0xFFFC] << std::endl;
 
     cpu.Ejecutar(mem);
 
@@ -59,11 +64,14 @@ int main(int argc, char* argv[]) {
               << std::setfill('0') << (int)mem.memoria[0x6767] << " ("
               << std::bitset<8>(mem.memoria[0x6767]) << ")" << std::endl;
 
-    std::cout << "PC: 0x" << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << cpu.PC << std::endl;
-    std::cout << "SP: 0x" << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << cpu.SP << std::endl;
+    std::cout << "PC: 0x" << std::hex << std::uppercase << std::setw(4)
+              << std::setfill('0') << cpu.PC << std::endl;
+    std::cout << "SP: 0x" << std::hex << std::uppercase << std::setw(4)
+              << std::setfill('0') << cpu.SP << std::endl;
 
     const int32_t flags = cpu.GetStatus();
 
-    std::cout << "Flags: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
-              << flags << " (" << std::bitset<8>(flags) << ")" << std::endl;
+    std::cout << "Flags: 0x" << std::hex << std::uppercase << std::setw(2)
+              << std::setfill('0') << flags << " (" << std::bitset<8>(flags)
+              << ")" << std::endl;
 }
