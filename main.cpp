@@ -49,17 +49,21 @@ int main(int argc, char* argv[]) {
 
     fclose(fichero);
 
-    std::cout << "--- Ejecutando instrucciones ---" << std::endl;
+    std::cout << "--- Lanzando programa ---" << std::endl;
 
     cpu.Ejecutar(mem);
 
-    std::cout << "--- Fin ejecucion ---" << std::endl;
+    std::cout << "--- Ejecucion finalizada ---" << std::endl;
 
-    std::cout << std::hex << std::uppercase << "0x6767: " << mem.memoria[0x6767] << std::endl;
+    std::cout << "0x6767: 0x" << std::hex << std::uppercase << std::setw(2)
+              << std::setfill('0') << (int)mem.memoria[0x6767] << " ("
+              << std::bitset<8>(mem.memoria[0x6767]) << ")" << std::endl;
 
-    std::cout << std::hex << std::uppercase << "PC: " << cpu.PC << std::endl;
-    std::cout << std::hex << std::uppercase << "SP: " << cpu.SP << std::endl;
+    std::cout << "PC: 0x" << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << cpu.PC << std::endl;
+    std::cout << "SP: 0x" << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << cpu.SP << std::endl;
 
-    std::cout << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << "Flags: 0x" << (int)cpu.GetStatus() 
-        << " (" << std::bitset<8>(cpu.GetStatus()) << ")" << std::endl;
+    const int32_t flags = cpu.GetStatus();
+
+    std::cout << "Flags: 0x" << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
+              << flags << " (" << std::bitset<8>(flags) << ")" << std::endl;
 }

@@ -1,8 +1,11 @@
-.vscode
 .DS_Store
-/.idea
+.vscode
 /.cache
 /build
-.prettierrc
 .clang-format
 compile_commands.json
+*.o
+*.bin
+*.map
+*.lst
+Linker/inicio.o

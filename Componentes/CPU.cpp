@@ -12,6 +12,7 @@
 #include "../Instrucciones/BMI.h"
 #include "../Instrucciones/BNE.h"
 #include "../Instrucciones/BPL.h"
+#include "../Instrucciones/BRA.h"
 #include "../Instrucciones/BRK.h"
 #include "../Instrucciones/BVC.h"
 #include "../Instrucciones/BVS.h"
@@ -56,6 +57,7 @@
 #include "../Instrucciones/STA.h"
 #include "../Instrucciones/STX.h"
 #include "../Instrucciones/STY.h"
+#include "../Instrucciones/STZ.h"
 #include "../Instrucciones/TAX.h"
 #include "../Instrucciones/TAY.h"
 #include "../Instrucciones/TSX.h"
@@ -70,6 +72,10 @@ void CPU::Ejecutar(Mem& mem) {
         switch (opcode) {
             case INS_JAM: {
                 return;
+            }
+            case INS_BRA: {
+                BRA::Ejecutar(*this, mem);
+                break;
             }
             case INS_NOP: {
                 NOP::Ejecutar(*this, mem);
@@ -225,6 +231,22 @@ void CPU::Ejecutar(Mem& mem) {
             }
             case INS_STY_ABS: {
                 STY::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_STZ_ZP: {
+                STZ::EjecutarZP(*this, mem);
+                break;
+            }
+            case INS_STZ_ZPX: {
+                STZ::EjecutarZPX(*this, mem);
+                break;
+            }
+            case INS_STZ_ABS: {
+                STZ::EjecutarABS(*this, mem);
+                break;
+            }
+            case INS_STZ_ABSX: {
+                STZ::EjecutarABSX(*this, mem);
                 break;
             }
             case INS_TSX: {
@@ -737,11 +759,11 @@ void CPU::Ejecutar(Mem& mem) {
             }
             default:
 
-                #ifndef TESTING_ENV
-                    std::cout << "Opcode desconocido: 0x" << std::hex
-                        << static_cast<int>(opcode) << " PC: 0x" << PC
-                        << std::dec << " ejecución cancelada." << std::endl;
-                #endif
+#ifndef TESTING_ENV
+                std::cout << "Opcode desconocido: 0x" << std::hex
+                          << static_cast<int>(opcode) << " PC: 0x" << PC
+                          << std::dec << " ejecución cancelada." << std::endl;
+#endif
 
                 return;
         }

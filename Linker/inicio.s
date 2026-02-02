@@ -1,5 +1,6 @@
 .export _startup
 .import _main
+.importzp sp
 
 ; Importamos símbolos creados por el linker para inicializar la pila C (opcional en este test, pero correcto)
 .import __STACKSTART__
@@ -11,8 +12,11 @@ _startup:
     ldx #$FF
     txs
 
-    ; 2. (Opcional) Aquí se configuraría el Stack de C, pero para este test simple
-    ;    saltaremos directo a main.
+    ; 2. Configurar el Stack de C
+    lda #<__STACKSTART__
+    sta sp
+    lda #>__STACKSTART__
+    sta sp+1
 
     jsr _main       ; Ejecuta el código C
 

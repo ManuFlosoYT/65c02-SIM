@@ -1,0 +1,57 @@
+#include <gtest/gtest.h>
+
+#include "../../Componentes/CPU.h"
+#include "../../Componentes/Mem.h"
+#include "../../Instrucciones/ListaInstrucciones.h"
+
+class STZ_ZeroPage_Test : public ::testing::Test {
+protected:
+    void SetUp() override { cpu.Reset(mem); }
+    Mem mem;
+    CPU cpu;
+};
+
+TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_ExecutesCorrectly) {
+    // Programa en memoria:
+    // 0xFFFC: STZ (ZeroPage) 0x42
+    // 0xFFFD: 0x42
+    // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
+    // 0x0042: 0xAA (Valor inicial)
+
+    cpu.PC = 0xFFFC;
+    mem[0xFFFC] = INS_STZ_ZP;
+    mem[0xFFFD] = 0x42;
+    mem[0xFFFE] = 0xFF;  // Stop
+
+    // Set initial value to non-zero
+    mem[0x0042] = 0xAA;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(mem[0x0042], 0x00);
+    EXPECT_EQ(cpu.PC, 0xFFFF);
+}
+
+TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_DoesNotAffectFlags) {
+    // STZ no afecta flags
+    cpu.PC = 0xFFFC;
+    mem[0xFFFC] = INS_STZ_ZP;
+    mem[0xFFFD] = 0x42;
+    mem[0xFFFE] = 0xFF;
+
+    mem[0x0042] = 0xAA;
+
+    // Set some flags
+    cpu.Z = 0;
+    cpu.N = 1;
+    cpu.C = 1;
+    cpu.V = 1;
+
+    cpu.Ejecutar(mem);
+
+    EXPECT_EQ(mem[0x0042], 0x00);
+    EXPECT_EQ(cpu.Z, 0);  // Should remain 0
+    EXPECT_EQ(cpu.N, 1);  // Should remain 1
+    EXPECT_EQ(cpu.C, 1);
+    EXPECT_EQ(cpu.V, 1);
+}

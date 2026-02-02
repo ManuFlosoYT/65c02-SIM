@@ -208,4 +208,11 @@ constexpr static Byte INS_CLD = 0xD8;  // CLD
 constexpr static Byte INS_SED = 0xF8;  // SED
 constexpr static Byte INS_CLV = 0xB8;  // CLV
 
+constexpr static Byte INS_STZ_ZP = 0x64;    // STZ ZP
+constexpr static Byte INS_STZ_ZPX = 0x74;   // STZ ZPX
+constexpr static Byte INS_STZ_ABS = 0x9C;   // STZ ABS
+constexpr static Byte INS_STZ_ABSX = 0x9E;  // STZ ABSX
+
+constexpr static Byte INS_BRA = 0x80;  // BRA (Branch Always)
+
 #endif  // SIM_65C02_LISTAINSTRUCCIONES_H
