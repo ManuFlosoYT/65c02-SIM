@@ -45,6 +45,15 @@
 #include "../Instrucciones/LSR.h"
 #include "../Instrucciones/ROL.h"
 #include "../Instrucciones/ROR.h"
+#include "../Instrucciones/BCC.h"
+#include "../Instrucciones/BRK.h"
+#include "../Instrucciones/BCS.h"
+#include "../Instrucciones/BNE.h"
+#include "../Instrucciones/BEQ.h"
+#include "../Instrucciones/BMI.h"
+#include "../Instrucciones/BPL.h"
+#include "../Instrucciones/BVC.h"
+#include "../Instrucciones/BVS.h"
 
 void CPU::Ejecutar(Mem& mem) {
     while (true) {
@@ -647,13 +656,49 @@ void CPU::Ejecutar(Mem& mem) {
                 ROR::EjecutarABSX(*this, mem);
                 break;
             }
+            case INS_BCC: {
+                BCC::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BRK: {
+                BRK::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BCS: {
+                BCS::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BNE: {
+                BNE::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BEQ: {
+                BEQ::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BMI: {
+                BMI::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BPL: {
+                BPL::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BVS: {
+                BVS::Ejecutar(*this, mem);
+                break;
+            }
+            case INS_BVC: {
+                BVC::Ejecutar(*this, mem);
+                break;
+            }
             default:
 
-#ifndef TESTING_ENV
-                std::cout << "Opcode desconocido: 0x" << std::hex
-                          << static_cast<int>(opcode) << " PC: 0x" << PC
-                          << std::dec << " ejecución cancelada." << std::endl;
-#endif
+                #ifndef TESTING_ENV
+                    std::cout << "Opcode desconocido: 0x" << std::hex
+                            << static_cast<int>(opcode) << " PC: 0x" << PC
+                            << std::dec << " ejecución cancelada." << std::endl;
+                #endif
 
                 return;
         }

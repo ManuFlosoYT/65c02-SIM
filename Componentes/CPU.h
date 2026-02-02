@@ -1,5 +1,5 @@
-#ifndef MIPS_SIM_65C02_CPU_H
-#define MIPS_SIM_65C02_CPU_H
+#ifndef SIM_65C02_CPU_H
+#define SIM_65C02_CPU_H
 #include <cstdint>
 
 #include "../Instrucciones/ListaInstrucciones.h"
@@ -21,7 +21,7 @@ public:
     Byte D : 1;  // Decimal Mode Flag
     Byte B : 1;  // Break Command
     Byte V : 1;  // Overflow Flag
-    Byte N : 1;  // Negative Flag    
+    Byte N : 1;  // Negative Flag
 
     CPU() = default;
     void Reset(Mem& mem);
@@ -49,4 +49,4 @@ public:
     Word PopWord(Mem& mem);
 };
 
-#endif  // MIPS_SIM_65C02_CPU_H
+#endif  // SIM_65C02_CPU_H

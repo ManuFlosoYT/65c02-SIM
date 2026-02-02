@@ -20,10 +20,11 @@ TEST_F(BMI_Test, BMI_NoBranch_NegativeClear) {
 
     mem[0x1000] = INS_BMI;
     mem[0x1001] = 0x05;
+    mem[0x1002] = 0xFF;
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0x1002);
+    EXPECT_EQ(cpu.PC, 0x1003);
 }
 
 TEST_F(BMI_Test, BMI_Branch_NegativeSet) {
@@ -32,8 +33,9 @@ TEST_F(BMI_Test, BMI_Branch_NegativeSet) {
 
     mem[0x1000] = INS_BMI;
     mem[0x1001] = 0x05;
+    mem[0x1007] = 0xFF;
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0x1007);
+    EXPECT_EQ(cpu.PC, 0x1008);
 }

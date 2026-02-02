@@ -1,5 +1,5 @@
-#ifndef MIPS_SIM_65C02_INX_H
-#define MIPS_SIM_65C02_INX_H
+#ifndef SIM_65C02_INX_H
+#define SIM_65C02_INX_H
 
 #include "../Componentes/CPU.h"
 #include "../Componentes/Mem.h"
@@ -8,4 +8,4 @@ public:
     static void Ejecutar(CPU& cpu, Mem& mem);
 };
 
-#endif  // MIPS_SIM_65C02_INX_H
+#endif  // SIM_65C02_INX_H

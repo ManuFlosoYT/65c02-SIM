@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31)
-project(65c02_SIM)
+project(SIM_65C02)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -15,8 +15,8 @@ add_library(65c02_core STATIC ${CORE_SOURCES})
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV)
 
-add_executable(65c02_SIM main.cpp)
-target_link_libraries(65c02_SIM PRIVATE 65c02_core)
+add_executable(SIM_65C02 main.cpp)
+target_link_libraries(SIM_65C02 PRIVATE 65c02_core)
 
 include(FetchContent)
 FetchContent_Declare(

@@ -25,10 +25,11 @@ TEST_F(RTI_Test, RTI_Operations) {
 
     mem[0xFFFC] = INS_RTI;
     mem[0xFFFD] = 0xFF;
+    mem[0x1002] = 0xFF;  // Return Address
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0x1002);
+    EXPECT_EQ(cpu.PC, 0x1003);
     EXPECT_TRUE(cpu.N);
     EXPECT_TRUE(cpu.V);
     EXPECT_EQ(cpu.SP, 0xFF);

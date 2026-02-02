@@ -25,7 +25,7 @@ TEST_F(ADC_IndirectX_Test, ADC_IndirectX) {
     mem[0x0006] = 0x00;
     mem[0x0007] = 0x80;
     mem[0x8000] = 0x37;  // 55
-    mem[0xFFFF] = 0xFF;
+    mem[0xFFFE] = 0xFF;
 
     cpu.Ejecutar(mem);
 

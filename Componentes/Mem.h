@@ -1,5 +1,5 @@
-#ifndef MIPS_SIM_65C02_MEM_H
-#define MIPS_SIM_65C02_MEM_H
+#ifndef SIM_65C02_MEM_H
+#define SIM_65C02_MEM_H
 
 #include <cstdint>
 
@@ -18,4 +18,4 @@ public:
     void WriteWord(Word dato, Word dir);
 };
 
-#endif  // MIPS_SIM_65C02_MEM_H
+#endif  // SIM_65C02_MEM_H
