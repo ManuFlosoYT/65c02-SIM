@@ -12,4 +12,4 @@ if [ ! -f "$BIN_FILE" ]; then
     exit 1
 fi
 
-./build/SIM_65C02 "$1"
+time ./build/SIM_65C02 "$1"
