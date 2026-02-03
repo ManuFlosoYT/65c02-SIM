@@ -14,8 +14,10 @@ protected:
 
 TEST_F(TXA_Test, TXA) {
     // 0xFFFC: TXA
-    mem[0xFFFC] = INS_TXA;
-    mem[0xFFFD] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_TXA;
+    mem[0x4001] = INS_JAM;  // Stop
 
     cpu.X = 0x42;
     cpu.A = 0x00;
@@ -29,8 +31,10 @@ TEST_F(TXA_Test, TXA) {
 
 TEST_F(TXA_Test, TXA_ZeroFlag) {
     // 0xFFFC: TXA
-    mem[0xFFFC] = INS_TXA;
-    mem[0xFFFD] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_TXA;
+    mem[0x4001] = INS_JAM;  // Stop
 
     cpu.X = 0x00;
     cpu.A = 0x42;
@@ -44,8 +48,10 @@ TEST_F(TXA_Test, TXA_ZeroFlag) {
 
 TEST_F(TXA_Test, TXA_NegativeFlag) {
     // 0xFFFC: TXA
-    mem[0xFFFC] = INS_TXA;
-    mem[0xFFFD] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_TXA;
+    mem[0x4001] = INS_JAM;  // Stop
 
     cpu.X = 0x80;
     cpu.A = 0x00;

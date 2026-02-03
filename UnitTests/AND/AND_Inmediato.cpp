@@ -18,9 +18,11 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato) {
     // 0xFFFD: 0x67
     // 0xFFFE: Opcode desconocido (0xFF)
     cpu.A = 0xFF;  // Start with A = 0xFF
-    mem[0xFFFC] = INS_AND_IM;
-    mem[0xFFFD] = 0x0F;
-    mem[0xFFFE] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_AND_IM;
+    mem[0x4001] = 0x0F;
+    mem[0x4002] = INS_JAM;
 
     // Ciclo 1: Lee AND #0x0F
     // Ciclo 2: Lee 0x0F, ejecuta AND
@@ -35,9 +37,11 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xF0;
 
-    mem[0xFFFC] = INS_AND_IM;
-    mem[0xFFFD] = 0x0F;
-    mem[0xFFFE] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_AND_IM;
+    mem[0x4001] = 0x0F;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -50,9 +54,11 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = INS_AND_IM;
-    mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_AND_IM;
+    mem[0x4001] = 0x80;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

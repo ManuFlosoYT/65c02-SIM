@@ -14,8 +14,10 @@ protected:
 
 TEST_F(RTS_Test, RTS_Implied) {
     // 0xFFFC: RTS
-    mem[0xFFFC] = INS_RTS;
-    mem[0xFFFD] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_RTS;
+    mem[0x4001] = INS_JAM;  // Stop
 
     // Simulate Return Address on Stack
     // Want to return to 0x2035

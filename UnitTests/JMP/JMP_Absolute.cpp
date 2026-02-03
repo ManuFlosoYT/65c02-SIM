@@ -18,9 +18,11 @@ TEST_F(JMP_Absolute_Test, JMP_Absolute) {
     // 0xFFFE: 0x80 (High Byte)
     // 0x8000: 0xFF (Stop)
 
-    mem[0xFFFC] = INS_JMP_ABS;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_JMP_ABS;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
     mem[0x8000] = INS_JAM;
 
     cpu.Ejecutar(mem);

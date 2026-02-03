@@ -16,9 +16,11 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Basic) {
     cpu.A = 0x10;
     cpu.C = 0;
 
-    mem[0xFFFC] = INS_ADC_IND_ZP;
-    mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ADC_IND_ZP;
+    mem[0x4001] = 0x05;
+    mem[0x4002] = INS_JAM;  // Stop
     mem[0x0005] = 0x00;
     mem[0x0006] = 0x80;  // Pointer -> 0x8000
     mem[0x8000] = 0x10;  // Value
@@ -36,9 +38,11 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Carry) {
     cpu.A = 0x10;
     cpu.C = 1;
 
-    mem[0xFFFC] = INS_ADC_IND_ZP;
-    mem[0xFFFD] = 0x05;
-    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ADC_IND_ZP;
+    mem[0x4001] = 0x05;
+    mem[0x4002] = INS_JAM;  // Stop
     mem[0x0005] = 0x00;
     mem[0x0006] = 0x80;  // Pointer -> 0x8000
     mem[0x8000] = 0x10;  // Value
@@ -54,9 +58,11 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Overflow) {
     cpu.A = 0x50;  // Positive (+80)
     cpu.C = 0;
 
-    mem[0xFFFC] = INS_ADC_IND_ZP;
-    mem[0xFFFD] = 0x10;
-    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ADC_IND_ZP;
+    mem[0x4001] = 0x10;
+    mem[0x4002] = INS_JAM;  // Stop
     mem[0x0010] = 0x00;
     mem[0x0011] = 0x90;  // Pointer -> 0x9000
     mem[0x9000] = 0x50;  // Positive (+80)
@@ -74,9 +80,11 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_PointerWrap) {  // ZP = 0xFF
     cpu.A = 0x01;
     cpu.C = 0;
 
-    mem[0xFFFC] = INS_ADC_IND_ZP;
-    mem[0xFFFD] = 0xFF;     // ZP Boundary
-    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ADC_IND_ZP;
+    mem[0x4001] = 0xFF;     // ZP Boundary
+    mem[0x4002] = INS_JAM;  // Stop
     mem[0x00FF] = 0x10;     // Low
     mem[0x0000] = 0xC0;     // High (wrapped) -> 0xC010
     mem[0xC010] = 0xFE;

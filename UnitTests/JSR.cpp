@@ -13,12 +13,14 @@ protected:
 };
 
 TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
-    mem[0xFFFC] = INS_JSR;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_JSR;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
     mem[0x8000] = INS_JAM;
 
-    Word PC_Inicial = 0xFFFC;
+    Word PC_Inicial = 0x4000;
     Word PC_RetornoEsperado = PC_Inicial + 2;
     Word SP_Inicial = cpu.SP;
 
@@ -35,10 +37,11 @@ TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
 }
 
 TEST_F(PruebaJSR, JSRAnidado) {
-
-    mem[0xFFFC] = INS_JSR;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_JSR;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
 
     mem[0x8000] = INS_JSR;
     mem[0x8001] = 0x00;
@@ -55,6 +58,6 @@ TEST_F(PruebaJSR, JSRAnidado) {
 
     EXPECT_EQ(mem[cpu.SP + 1], 0x02);
     EXPECT_EQ(mem[cpu.SP + 2], 0x80);
-    EXPECT_EQ(mem[cpu.SP + 3], 0xFE);
-    EXPECT_EQ(mem[cpu.SP + 4], 0xFF);
+    EXPECT_EQ(mem[cpu.SP + 3], 0x02);
+    EXPECT_EQ(mem[cpu.SP + 4], 0x40);
 }

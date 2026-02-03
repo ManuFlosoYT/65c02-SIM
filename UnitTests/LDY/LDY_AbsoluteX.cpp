@@ -19,15 +19,17 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX) {
     // 0xFFFE: 0x80
     // Address: 0x8000 + 0x01 = 0x8001
     // 0x8001: 0x37
-    mem[0xFFFC] = INS_LDY_ABSX;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_LDY_ABSX;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
     mem[0x8001] = 0x37;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0x0000);
+    EXPECT_EQ(cpu.PC, 0x4004);
     EXPECT_EQ(cpu.Y, 0x37);
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
@@ -40,11 +42,13 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX_PageCrossing) {
     // 0xFFFE: 0x80
     // Address: 0x8000 + 0xFF = 0x80FF
     // 0x80FF: 0x37
-    mem[0xFFFC] = INS_LDY_ABSX;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_LDY_ABSX;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
     mem[0x80FF] = 0x37;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -58,11 +62,13 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX_ZeroFlag) {
     cpu.Y = 0xFF;
     cpu.X = 0x01;
 
-    mem[0xFFFC] = INS_LDY_ABSX;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_LDY_ABSX;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
     mem[0x8001] = 0x00;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -76,11 +82,13 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX_NegativeFlag) {
     cpu.Y = 0x00;
     cpu.X = 0x01;
 
-    mem[0xFFFC] = INS_LDY_ABSX;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_LDY_ABSX;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
     mem[0x8001] = 0x80;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

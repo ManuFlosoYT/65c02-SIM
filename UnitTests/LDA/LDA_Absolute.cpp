@@ -19,11 +19,13 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute) {
     // 0xFFFE: 0x44 (High Byte)
     // 0xFFFF: Opcode desconocido (0xFF)
     // 0x4480: 0x37 (Valor a cargar)
-    mem[0xFFFC] = INS_LDA_ABS;
-    mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0x44;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_LDA_ABS;
+    mem[0x4001] = 0x80;
+    mem[0x4002] = 0x44;
     mem[0x4480] = 0x37;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     // Ciclo 1:
     //    Lee LDA (ABS) en 0xFFFC
@@ -41,7 +43,7 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute) {
     //    Opcode desconocido -> Retorna
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0x0000);
+    EXPECT_EQ(cpu.PC, 0x4004);
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
@@ -51,11 +53,13 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute_ZeroFlag) {
     cpu.A = 0xFF;
     cpu.Z = 0;
 
-    mem[0xFFFC] = INS_LDA_ABS;
-    mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0x44;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_LDA_ABS;
+    mem[0x4001] = 0x80;
+    mem[0x4002] = 0x44;
     mem[0x4480] = 0x00;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -67,11 +71,13 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute_ZeroFlag) {
 TEST_F(LDA_Absolute_Test, LDA_Absolute_NegativeFlag) {
     cpu.N = 0;
 
-    mem[0xFFFC] = INS_LDA_ABS;
-    mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0x44;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_LDA_ABS;
+    mem[0x4001] = 0x80;
+    mem[0x4002] = 0x44;
     mem[0x4480] = 0x80;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

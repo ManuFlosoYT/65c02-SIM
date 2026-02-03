@@ -69,6 +69,8 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
 
     // Ejecutar
     cpu.PC = CODE_START;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
     cpu.Ejecutar(mem);
 
     // Verificaciones

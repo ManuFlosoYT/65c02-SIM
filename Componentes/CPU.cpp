@@ -72,6 +72,7 @@
 #include "../Instrucciones/TYA.h"
 
 void CPU::Ejecutar(Mem& mem) {
+    PC = LeerWord(0xFFFC, mem);  // Cargar PC del vector reset
     while (true) {
         Byte opcode = FetchByte(mem);
 
@@ -961,7 +962,7 @@ Word CPU::PopWord(Mem& mem) {
 }
 
 void CPU::Reset(Mem& mem) {
-    PC = LeerWord(0xFFFC, mem);  // Dirección de reinicio
+    PC = 0xFFFC;
     SP = 0x01FF;  // Inicio de pila (Top of Stack)
 
     // Reset de registros

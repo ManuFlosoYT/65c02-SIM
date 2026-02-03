@@ -16,8 +16,10 @@ TEST_F(INX_Test, INX) {
     // X = 0x05 -> 0x06
     cpu.X = 0x05;
 
-    mem[0xFFFC] = INS_INX;
-    mem[0xFFFD] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_INX;
+    mem[0x4001] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -30,8 +32,10 @@ TEST_F(INX_Test, INX_ZeroFlag) {
     // X = 0xFF -> 0x00
     cpu.X = 0xFF;
 
-    mem[0xFFFC] = INS_INX;
-    mem[0xFFFD] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_INX;
+    mem[0x4001] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -44,8 +48,10 @@ TEST_F(INX_Test, INX_NegativeFlag) {
     // X = 0x7F -> 0x80
     cpu.X = 0x7F;
 
-    mem[0xFFFC] = INS_INX;
-    mem[0xFFFD] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_INX;
+    mem[0x4001] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

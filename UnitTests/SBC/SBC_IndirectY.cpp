@@ -17,12 +17,14 @@ TEST_F(SBC_IndirectY_Test, SBC_IndirectY) {
     cpu.A = 0x0A;
     cpu.C = 1;
 
-    mem[0xFFFC] = INS_SBC_INDY;
-    mem[0xFFFD] = 0x02;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_SBC_INDY;
+    mem[0x4001] = 0x02;
     mem[0x0002] = 0x00;
     mem[0x0003] = 0x80;
     mem[0x8001] = 0x05;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

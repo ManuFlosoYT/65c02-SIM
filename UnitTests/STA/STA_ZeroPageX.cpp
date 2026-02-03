@@ -17,16 +17,18 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX) {
     cpu.X = 0x0F;
 
     // 0xFFFC: STA (ZeroPageX) 0x80
-    mem[0xFFFC] = INS_STA_ZPX;
-    mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_STA_ZPX;
+    mem[0x4001] = 0x80;
+    mem[0x4002] = INS_JAM;  // Stop
 
     // Target Zero Page Address = 0x80 + 0x0F = 0x8F
     mem[0x008F] = 0x00;
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0xFFFF);
+    EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(mem[0x008F], 0x37);
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);
@@ -38,15 +40,17 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX_WrapAround) {
     cpu.X = 0xFF;
 
     // 0xFFFC: STA (ZeroPageX) 0x80
-    mem[0xFFFC] = INS_STA_ZPX;
-    mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_STA_ZPX;
+    mem[0x4001] = 0x80;
+    mem[0x4002] = INS_JAM;  // Stop
 
     // Target Address = (0x80 + 0xFF) & 0xFF = 0x7F
     mem[0x007F] = 0x00;
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0xFFFF);
+    EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(mem[0x007F], 0x22);
 }

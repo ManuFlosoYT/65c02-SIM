@@ -16,10 +16,12 @@ TEST_F(STX_Absolute_Test, STX_Absolute) {
     cpu.X = 0x37;
 
     // 0xFFFC: STX (Absolute) 0x8000
-    mem[0xFFFC] = INS_STX_ABS;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x80;
-    mem[0xFFFF] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_STX_ABS;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x80;
+    mem[0x4003] = INS_JAM;  // Stop
 
     mem[0x8000] = 0x00;
 

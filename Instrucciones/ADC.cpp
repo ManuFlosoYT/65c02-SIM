@@ -7,14 +7,43 @@ static void SetFlags(CPU& cpu, Word res, Byte dato, Byte oldA) {
     cpu.V = (~(oldA ^ dato) & (oldA ^ res) & 0b10000000) > 0;
 }
 
+static void SetFlagsBCD(CPU& cpu, Word res, Byte dato, Byte oldA) {
+    cpu.Z = (cpu.A == 0);
+    cpu.N = (cpu.A & 0b10000000) > 0;
+    cpu.C = (res > 0x99);
+    cpu.V = (~(oldA ^ dato) & (oldA ^ res) & 0b10000000) > 0;
+}
+
+static Word ADC_Decimal(CPU& cpu, Byte dato) {
+    Byte low = (cpu.A & 0x0F) + (dato & 0x0F) + cpu.C;
+    Byte high = (cpu.A >> 4) + (dato >> 4);
+
+    if (low > 9) {
+        low += 6;
+        high++;
+    }
+
+    if (high > 9) {
+        high += 6;
+    }
+
+    return (high << 4) | low;
+}
+
 void ADC::EjecutarInmediato(CPU& cpu, Mem& mem) {
     Byte dato = cpu.FetchByte(mem);
     Byte oldA = cpu.A;
 
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarZP(CPU& cpu, Mem& mem) {
@@ -22,10 +51,16 @@ void ADC::EjecutarZP(CPU& cpu, Mem& mem) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarZPX(CPU& cpu, Mem& mem) {
@@ -34,10 +69,16 @@ void ADC::EjecutarZPX(CPU& cpu, Mem& mem) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarABS(CPU& cpu, Mem& mem) {
@@ -45,10 +86,16 @@ void ADC::EjecutarABS(CPU& cpu, Mem& mem) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.LeerByte(Dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarABSX(CPU& cpu, Mem& mem) {
@@ -57,10 +104,16 @@ void ADC::EjecutarABSX(CPU& cpu, Mem& mem) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.LeerByte(Dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarABSY(CPU& cpu, Mem& mem) {
@@ -69,10 +122,16 @@ void ADC::EjecutarABSY(CPU& cpu, Mem& mem) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.LeerByte(Dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarINDX(CPU& cpu, Mem& mem) {
@@ -83,10 +142,16 @@ void ADC::EjecutarINDX(CPU& cpu, Mem& mem) {
     Word Dir = cpu.LeerWord(ZP_Dir, mem);
 
     Byte dato = cpu.LeerByte(Dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarINDY(CPU& cpu, Mem& mem) {
@@ -106,10 +171,16 @@ void ADC::EjecutarINDY(CPU& cpu, Mem& mem) {
     dir += cpu.Y;
 
     Byte dato = cpu.LeerByte(dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }
 
 void ADC::EjecutarIND_ZP(CPU& cpu, Mem& mem) {
@@ -127,8 +198,14 @@ void ADC::EjecutarIND_ZP(CPU& cpu, Mem& mem) {
     }
 
     Byte dato = cpu.LeerByte(dir, mem);
-    Word res = cpu.A + dato + cpu.C;
-    cpu.A = res;
-
-    SetFlags(cpu, res, dato, oldA);
+    Word res;
+    if (cpu.D == 0) {
+        res = cpu.A + dato + cpu.C;
+        cpu.A = res;
+        SetFlags(cpu, res, dato, oldA);
+    } else {
+        res = ADC_Decimal(cpu, dato);
+        cpu.A = res;
+        SetFlagsBCD(cpu, res, dato, oldA);
+    }
 }

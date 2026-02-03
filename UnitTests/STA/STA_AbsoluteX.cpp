@@ -17,10 +17,12 @@ TEST_F(STA_AbsoluteX_Test, STA_AbsoluteX) {
     cpu.X = 0x10;
 
     // 0xFFFC: STA (AbsoluteX) 0x2000
-    mem[0xFFFC] = INS_STA_ABSX;
-    mem[0xFFFD] = 0x00;
-    mem[0xFFFE] = 0x20;
-    mem[0xFFFF] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_STA_ABSX;
+    mem[0x4001] = 0x00;
+    mem[0x4002] = 0x20;
+    mem[0x4003] = INS_JAM;  // Stop
 
     // Target = 0x2000 + 0x10 = 0x2010
     mem[0x2010] = 0x00;

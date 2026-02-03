@@ -17,10 +17,12 @@ TEST_F(DEC_ZeroPageX_Test, DEC_ZeroPageX) {
     // Mem[0x47] = 0x05 -> 0x04
     cpu.X = 0x05;
 
-    mem[0xFFFC] = INS_DEC_ZPX;
-    mem[0xFFFD] = 0x42;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_DEC_ZPX;
+    mem[0x4001] = 0x42;
     mem[0x0047] = 0x05;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -34,10 +36,12 @@ TEST_F(DEC_ZeroPageX_Test, DEC_ZeroPageX_WrapAround) {
     // Mem[0x7F] = 0x05 -> 0x04
     cpu.X = 0xFF;
 
-    mem[0xFFFC] = INS_DEC_ZPX;
-    mem[0xFFFD] = 0x80;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_DEC_ZPX;
+    mem[0x4001] = 0x80;
     mem[0x007F] = 0x05;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

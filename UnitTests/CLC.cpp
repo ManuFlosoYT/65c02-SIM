@@ -15,8 +15,10 @@ protected:
 TEST_F(CLC_Test, CLC_ClearsCarry) {
     cpu.C = 1;
 
-    mem[0xFFFC] = INS_CLC;
-    mem[0xFFFD] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_CLC;
+    mem[0x4001] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

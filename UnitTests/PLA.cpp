@@ -14,8 +14,10 @@ protected:
 
 TEST_F(PLA_Test, PLA) {
     // 0xFFFC: PLA
-    mem[0xFFFC] = INS_PLA;
-    mem[0xFFFD] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_PLA;
+    mem[0x4001] = INS_JAM;  // Stop
 
     cpu.SP = 0x01FE;
     mem[0x01FF] = 0x42;
@@ -30,8 +32,10 @@ TEST_F(PLA_Test, PLA) {
 
 TEST_F(PLA_Test, PLA_ZeroFlag) {
     // 0xFFFC: PLA
-    mem[0xFFFC] = INS_PLA;
-    mem[0xFFFD] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_PLA;
+    mem[0x4001] = INS_JAM;  // Stop
 
     cpu.SP = 0x01FE;
     mem[0x01FF] = 0x00;
@@ -45,8 +49,10 @@ TEST_F(PLA_Test, PLA_ZeroFlag) {
 
 TEST_F(PLA_Test, PLA_NegativeFlag) {
     // 0xFFFC: PLA
-    mem[0xFFFC] = INS_PLA;
-    mem[0xFFFD] = INS_JAM;  // Stop
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_PLA;
+    mem[0x4001] = INS_JAM;  // Stop
 
     cpu.SP = 0x01FE;
     mem[0x01FF] = 0x80;

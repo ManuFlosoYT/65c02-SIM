@@ -22,8 +22,10 @@ TEST_F(ROR_Accumulator_Test, ROR_Accumulator_Rotate) {
     cpu.A = 0x01;
     cpu.C = 0;  // Carry In ignored
 
-    mem[0xFFFC] = INS_ROR_A;
-    mem[0xFFFD] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ROR_A;
+    mem[0x4001] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -39,8 +41,10 @@ TEST_F(ROR_Accumulator_Test, ROR_Accumulator_NoCarryOut) {
     cpu.A = 0x02;
     cpu.C = 1;  // Carry In ignored
 
-    mem[0xFFFC] = INS_ROR_A;
-    mem[0xFFFD] = INS_JAM;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ROR_A;
+    mem[0x4001] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

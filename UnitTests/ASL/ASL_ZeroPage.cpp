@@ -14,10 +14,12 @@ protected:
 
 TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage) {
     // Mem[0x42] = 0x01 -> 0x02
-    mem[0xFFFC] = INS_ASL_ZP;
-    mem[0xFFFD] = 0x42;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ASL_ZP;
+    mem[0x4001] = 0x42;
     mem[0x0042] = 0x01;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -29,10 +31,12 @@ TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage) {
 
 TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage_Carry) {
     // Mem[0x42] = 0x80 -> 0x00, C=1
-    mem[0xFFFC] = INS_ASL_ZP;
-    mem[0xFFFD] = 0x42;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_ASL_ZP;
+    mem[0x4001] = 0x42;
     mem[0x0042] = 0x80;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

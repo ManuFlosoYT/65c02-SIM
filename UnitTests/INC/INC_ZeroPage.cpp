@@ -14,10 +14,12 @@ protected:
 
 TEST_F(INC_ZeroPage_Test, INC_ZeroPage) {
     // Mem[0x42] = 0x05 -> 0x06
-    mem[0xFFFC] = INS_INC_ZP;
-    mem[0xFFFD] = 0x42;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_INC_ZP;
+    mem[0x4001] = 0x42;
     mem[0x0042] = 0x05;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -28,10 +30,12 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage) {
 
 TEST_F(INC_ZeroPage_Test, INC_ZeroPage_ZeroFlag) {
     // Mem[0x42] = 0xFF -> 0x00
-    mem[0xFFFC] = INS_INC_ZP;
-    mem[0xFFFD] = 0x42;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_INC_ZP;
+    mem[0x4001] = 0x42;
     mem[0x0042] = 0xFF;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 
@@ -42,10 +46,12 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage_ZeroFlag) {
 
 TEST_F(INC_ZeroPage_Test, INC_ZeroPage_NegativeFlag) {
     // Mem[0x42] = 0x7F -> 0x80
-    mem[0xFFFC] = INS_INC_ZP;
-    mem[0xFFFD] = 0x42;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_INC_ZP;
+    mem[0x4001] = 0x42;
     mem[0x0042] = 0x7F;
-    mem[0xFFFE] = INS_JAM;
+    mem[0x4002] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

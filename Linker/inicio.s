@@ -4,13 +4,13 @@
 .import copydata
 .import zerobss
 
-; Importamos símbolos creados por el linker para inicializar la pila C (opcional en este test, pero correcto)
+; Importamos símbolos creados por el linker para inicializar la pila C
 .import __STACKSTART__
 
 .segment "CODE"
 
 _startup:
-    ; 1. Hardware Stack (Tu emulador lo pone en 01FF, esto lo asegura)
+    ; 1. Hardware Stack
     ldx #$FF
     txs
 

@@ -22,6 +22,8 @@ TEST_F(BCS_Test, BCS_NoBranch_CarryClear) {
     mem[0x1001] = 0x05;
     mem[0x1002] = INS_JAM;
 
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x10;
     cpu.Ejecutar(mem);
 
     EXPECT_EQ(cpu.PC, 0x1003);
@@ -35,6 +37,8 @@ TEST_F(BCS_Test, BCS_Branch_CarrySet) {
     mem[0x1001] = 0x05;
     mem[0x1007] = INS_JAM;
 
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x10;
     cpu.Ejecutar(mem);
 
     EXPECT_EQ(cpu.PC, 0x1008);

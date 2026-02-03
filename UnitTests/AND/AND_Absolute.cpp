@@ -14,11 +14,13 @@ protected:
 
 TEST_F(AND_Absolute_Test, AND_Absolute) {
     cpu.A = 0xFF;
-    mem[0xFFFC] = INS_AND_ABS;
-    mem[0xFFFD] = 0x80;  // Little Endian
-    mem[0xFFFE] = 0x44;  // 0x4480
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_AND_ABS;
+    mem[0x4001] = 0x80;  // Little Endian
+    mem[0x4002] = 0x44;  // 0x4480
     mem[0x4480] = 0x37;
-    mem[0xFFFF] = INS_JAM;  // Stop
+    mem[0x4003] = INS_JAM;  // Stop
 
     cpu.Ejecutar(mem);
 

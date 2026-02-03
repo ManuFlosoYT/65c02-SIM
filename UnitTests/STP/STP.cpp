@@ -15,8 +15,10 @@ protected:
 TEST_F(STP_Test, STP_HaltsExecution) {
     // 0xFFFC: STP
     // 0xFFFD: NOP (Should not be executed)
-    mem[0xFFFC] = INS_STP;
-    mem[0xFFFD] = INS_NOP;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_STP;
+    mem[0x4001] = INS_NOP;
 
     // Run execution
     cpu.Ejecutar(mem);
@@ -28,5 +30,5 @@ TEST_F(STP_Test, STP_HaltsExecution) {
     // fetch: Fetch STP (PC increments to FFFD) Execute STP -> Return So PC
     // should be 0xFFFD.
 
-    EXPECT_EQ(cpu.PC, 0xFFFD);
+    EXPECT_EQ(cpu.PC, 0x4001);
 }

@@ -17,11 +17,13 @@ TEST_F(DEC_AbsoluteX_Test, DEC_AbsoluteX) {
     // Mem[0x4481] = 0x05 -> 0x04
     cpu.X = 0x01;
 
-    mem[0xFFFC] = INS_DEC_ABSX;
-    mem[0xFFFD] = 0x80;
-    mem[0xFFFE] = 0x44;
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_DEC_ABSX;
+    mem[0x4001] = 0x80;
+    mem[0x4002] = 0x44;
     mem[0x4481] = 0x05;
-    mem[0xFFFF] = INS_JAM;
+    mem[0x4003] = INS_JAM;
 
     cpu.Ejecutar(mem);
 

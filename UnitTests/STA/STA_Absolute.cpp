@@ -16,23 +16,25 @@ TEST_F(STA_Absolute_Test, STA_Absolute) {
     cpu.A = 0x37;
 
     // 0xFFFC: STA (Absolute) 0x8000
-    mem[0xFFFC] = INS_STA_ABS;
-    mem[0xFFFD] = 0x00;  // Low Byte
-    mem[0xFFFE] = 0x80;  // High Byte
-    mem[0xFFFF] = INS_JAM;  // Stop? No, PC is at 0xFFFF, need to be careful.
+    mem[0xFFFC] = 0x00;
+    mem[0xFFFD] = 0x40;
+    mem[0x4000] = INS_STA_ABS;
+    mem[0x4001] = 0x00;  // Low Byte
+    mem[0x4002] = 0x80;  // High Byte
+    mem[0x4003] = INS_JAM;  // Stop? No, PC is at 0xFFFF, need to be careful.
     // STA ABS is 3 bytes.
     // 0xFFFC: Opcode
     // 0xFFFD: Low
     // 0xFFFE: High
     // 0xFFFF: Next Opcode.
 
-    mem[0xFFFF] = INS_JAM;  // Stop
+    mem[0x4003] = INS_JAM;  // Stop
 
     mem[0x8000] = 0x00;
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(cpu.PC, 0x0000);  // 0xFFFF + 1 causes wrap to 0x0000 if not
+    EXPECT_EQ(cpu.PC, 0x4004);  // 0xFFFF + 1 causes wrap to 0x0000 if not
                                 // handled, but FetchByte increments PC.
     // Wait, 0xFFFC -> 0xFFFD (Fetch Opcode)
     // 0xFFFD -> 0xFFFE (Fetch Low)
