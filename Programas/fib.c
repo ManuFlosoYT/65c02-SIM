@@ -1,4 +1,4 @@
-#define PORTB 0x6000
+#include "lcd.h"
 
 unsigned char a;
 unsigned char b;
@@ -6,6 +6,8 @@ unsigned char siguiente;
 
 int main(void) {
     unsigned char centenas, resto, decenas, unidades;
+
+    lcd_inicializar();
 
     a = 0;
     b = 1;
@@ -24,14 +26,14 @@ int main(void) {
     unidades = resto % 10;
 
     if (centenas > 0) {
-        (*(volatile unsigned char*)PORTB) = '0' + centenas;
-        (*(volatile unsigned char*)PORTB) = '0' + decenas;
-        (*(volatile unsigned char*)PORTB) = '0' + unidades;
+        lcd_imprimir_caracter('0' + centenas);
+        lcd_imprimir_caracter('0' + decenas);
+        lcd_imprimir_caracter('0' + unidades);
     } else if (decenas > 0) {
-        (*(volatile unsigned char*)PORTB) = '0' + decenas;
-        (*(volatile unsigned char*)PORTB) = '0' + unidades;
+        lcd_imprimir_caracter('0' + decenas);
+        lcd_imprimir_caracter('0' + unidades);
     } else {
-        (*(volatile unsigned char*)PORTB) = '0' + unidades;
+        lcd_imprimir_caracter('0' + unidades);
     }
 
     return 0;

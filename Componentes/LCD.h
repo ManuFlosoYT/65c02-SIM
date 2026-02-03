@@ -5,10 +5,16 @@
 
 class LCD {
 public:
-    Byte PORTB_DATA;
-    Byte DDRB_DATA;
+    Byte DATO_PORTB;
+    Byte DATO_DDRB;
 
-    void init(Mem& mem);
+    void Inicializar(Mem& mem);
+
+private:
+    bool modo_cuatro_bits = false;
+    bool esperando_nibble_bajo = false;
+    Byte nibble_alto_actual = 0;
+    Byte ultimo_portb = 0;
 };
 
 #endif  // SIM_65C02_LCD_H

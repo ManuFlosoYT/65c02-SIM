@@ -1,4 +1,4 @@
-#define PORTB 0x6000
+#include "lcd.h"
 
 /* Definición de variables globales */
 unsigned char i, j, k;
@@ -36,8 +36,30 @@ unsigned char matC[4][4] = {
 unsigned int matTemp[4][4];
 unsigned int matFinal[4][4];
 
+/* Variable global temporal para impresion */
+unsigned char p_centenas, p_resto, p_decenas, p_unidades;
+
+void imprimir_numero(unsigned int num) {
+    p_centenas = num / 100;
+    p_resto = num % 100;
+    p_decenas = p_resto / 10;
+    p_unidades = p_resto % 10;
+
+    if (p_centenas > 0) {
+        lcd_imprimir_caracter('0' + p_centenas);
+        lcd_imprimir_caracter('0' + p_decenas);
+        lcd_imprimir_caracter('0' + p_unidades);
+    } else if (p_decenas > 0) {
+        lcd_imprimir_caracter('0' + p_decenas);
+        lcd_imprimir_caracter('0' + p_unidades);
+    } else {
+        lcd_imprimir_caracter('0' + p_unidades);
+    }
+}
+
 int main(void) {
-    unsigned char centenas, resto, decenas, unidades;
+    lcd_inicializar();
+
     suma_total = 0;
 
     /* 1. Multiplicar MatA x MatB = MatTemp */
@@ -62,6 +84,20 @@ int main(void) {
         }
     }
 
+    /* Imprimir Matriz Final */
+    lcd_imprimir("Matriz Resultante:\n");
+    for (i = 0; i < 4; i++) {
+        lcd_imprimir_caracter('[');
+        for (j = 0; j < 4; j++) {
+            imprimir_numero(matFinal[i][j]);
+            if (j < 3) {
+                lcd_imprimir(", ");
+            }
+        }
+        lcd_imprimir("]\n");
+    }
+    lcd_imprimir("\n");
+
     /* 3. Sumar todos los elementos de la matriz resultante */
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
@@ -69,21 +105,9 @@ int main(void) {
         }
     }
 
-    centenas = suma_total / 100;
-    resto = suma_total % 100;
-    decenas = resto / 10;
-    unidades = resto % 10;
-
-    if (centenas > 0) {
-        (*(volatile unsigned char*)PORTB) = '0' + centenas;
-        (*(volatile unsigned char*)PORTB) = '0' + decenas;
-        (*(volatile unsigned char*)PORTB) = '0' + unidades;
-    } else if (decenas > 0) {
-        (*(volatile unsigned char*)PORTB) = '0' + decenas;
-        (*(volatile unsigned char*)PORTB) = '0' + unidades;
-    } else {
-        (*(volatile unsigned char*)PORTB) = '0' + unidades;
-    }
+    lcd_imprimir("Suma Total: ");
+    imprimir_numero(suma_total);
+    lcd_imprimir("\n");
 
     return 0;
 }

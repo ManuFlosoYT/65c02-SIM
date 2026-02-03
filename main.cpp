@@ -2,8 +2,8 @@
 #include <iostream>
 
 #include "Componentes/CPU.h"
-#include "Componentes/Mem.h"
 #include "Componentes/LCD.h"
+#include "Componentes/Mem.h"
 
 void CargarBinario(Mem& mem, const std::string& bin) {
     std::string ruta = "Programas/build/" + bin + ".bin";
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     CPU cpu{};
     LCD lcd;
     cpu.Reset(mem);
-    lcd.init(mem);
+    lcd.Inicializar(mem);
 
     std::string bin;
     if (argc > 1) {

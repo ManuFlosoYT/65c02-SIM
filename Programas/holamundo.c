@@ -1,11 +1,7 @@
-#define PORTB 0x6000
-
-unsigned char test_array[13] = "Hola Mundo!\n";
+#include "lcd.h"
 
 int main(void) {
-    int i;
-    for (i = 0; i < sizeof(test_array); i++) {
-        (*(volatile unsigned char*)PORTB) = test_array[i];
-    }
+    lcd_inicializar();
+    lcd_imprimir("Hola Mundo!\n");
     return 0;
 }
