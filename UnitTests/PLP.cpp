@@ -14,10 +14,10 @@ protected:
 
 TEST_F(PLP_Test, PLP) {
     // 0xFFFC: PLP
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PLP;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PLP);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
     // Stack contains flags to be set
@@ -27,7 +27,7 @@ TEST_F(PLP_Test, PLP) {
     // not set by PLP). Break flag (bit 4) is ignored. Unused bit (bit 5) is
     // ignored.
 
-    mem[0x01FF] = 0xEF;
+    mem.Write(0x01FF, 0xEF);
 
     cpu.Ejecutar(mem);
 

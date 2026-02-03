@@ -22,13 +22,13 @@ TEST_F(JMP_AbsoluteX_Test, JMP_AbsoluteX) {
 
     cpu.X = 0x04;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_JMP_ABSX;
-    mem[0x4001] = 0x00;
-    mem[0x4002] = 0x80;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_JMP_ABSX);
+    mem.Write(0x4001, 0x00);
+    mem.Write(0x4002, 0x80);
 
-    mem[0x8004] = INS_JAM;
+    mem.Write(0x8004, INS_JAM);
 
     cpu.Ejecutar(mem);
 

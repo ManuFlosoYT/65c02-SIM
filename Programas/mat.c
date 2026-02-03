@@ -1,3 +1,5 @@
+#define PORTB 0x6000
+
 /* Definición de variables globales */
 unsigned char i, j, k;
 unsigned int suma_temp;
@@ -35,6 +37,7 @@ unsigned int matTemp[4][4];
 unsigned int matFinal[4][4];
 
 int main(void) {
+    unsigned char centenas, resto, decenas, unidades;
     suma_total = 0;
 
     /* 1. Multiplicar MatA x MatB = MatTemp */
@@ -66,9 +69,21 @@ int main(void) {
         }
     }
 
-    /* 4. Escribir el resultado en 0x6767 */
-    /* La suma total matemática es 31, por lo que cabe en unsigned char sin problemas */
-    (*(volatile unsigned char*)0x6767) = (unsigned char)suma_total;
+    centenas = suma_total / 100;
+    resto = suma_total % 100;
+    decenas = resto / 10;
+    unidades = resto % 10;
+
+    if (centenas > 0) {
+        (*(volatile unsigned char*)PORTB) = '0' + centenas;
+        (*(volatile unsigned char*)PORTB) = '0' + decenas;
+        (*(volatile unsigned char*)PORTB) = '0' + unidades;
+    } else if (decenas > 0) {
+        (*(volatile unsigned char*)PORTB) = '0' + decenas;
+        (*(volatile unsigned char*)PORTB) = '0' + unidades;
+    } else {
+        (*(volatile unsigned char*)PORTB) = '0' + unidades;
+    }
 
     return 0;
 }

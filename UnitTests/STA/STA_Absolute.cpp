@@ -16,21 +16,21 @@ TEST_F(STA_Absolute_Test, STA_Absolute) {
     cpu.A = 0x37;
 
     // 0xFFFC: STA (Absolute) 0x8000
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STA_ABS;
-    mem[0x4001] = 0x00;  // Low Byte
-    mem[0x4002] = 0x80;  // High Byte
-    mem[0x4003] = INS_JAM;  // Stop? No, PC is at 0xFFFF, need to be careful.
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STA_ABS);
+    mem.Write(0x4001, 0x00);  // Low Byte
+    mem.Write(0x4002, 0x80);  // High Byte
+    mem.Write(0x4003, INS_JAM);  // Stop? No, PC is at 0xFFFF, need to be careful.
     // STA ABS is 3 bytes.
     // 0xFFFC: Opcode
     // 0xFFFD: Low
     // 0xFFFE: High
     // 0xFFFF: Next Opcode.
 
-    mem[0x4003] = INS_JAM;  // Stop
+    mem.Write(0x4003, INS_JAM);  // Stop
 
-    mem[0x8000] = 0x00;
+    mem.Write(0x8000, 0x00);
 
     cpu.Ejecutar(mem);
 

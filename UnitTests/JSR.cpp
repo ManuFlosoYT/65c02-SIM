@@ -13,12 +13,12 @@ protected:
 };
 
 TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_JSR;
-    mem[0x4001] = 0x00;
-    mem[0x4002] = 0x80;
-    mem[0x8000] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_JSR);
+    mem.Write(0x4001, 0x00);
+    mem.Write(0x4002, 0x80);
+    mem.Write(0x8000, INS_JAM);
 
     Word PC_Inicial = 0x4000;
     Word PC_RetornoEsperado = PC_Inicial + 2;
@@ -37,17 +37,17 @@ TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
 }
 
 TEST_F(PruebaJSR, JSRAnidado) {
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_JSR;
-    mem[0x4001] = 0x00;
-    mem[0x4002] = 0x80;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_JSR);
+    mem.Write(0x4001, 0x00);
+    mem.Write(0x4002, 0x80);
 
-    mem[0x8000] = INS_JSR;
-    mem[0x8001] = 0x00;
-    mem[0x8002] = 0x90;
+    mem.Write(0x8000, INS_JSR);
+    mem.Write(0x8001, 0x00);
+    mem.Write(0x8002, 0x90);
 
-    mem[0x9000] = INS_JAM;
+    mem.Write(0x9000, INS_JAM);
 
     Word SP_Inicial = cpu.SP;
 

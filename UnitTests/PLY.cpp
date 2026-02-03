@@ -14,13 +14,13 @@ protected:
 
 TEST_F(PLY_Test, PLY) {
     // 0xFFFC: PLY
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PLY;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PLY);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
-    mem[0x01FF] = 0x42;
+    mem.Write(0x01FF, 0x42);
 
     cpu.Ejecutar(mem);
 
@@ -32,13 +32,13 @@ TEST_F(PLY_Test, PLY) {
 
 TEST_F(PLY_Test, PLY_ZeroFlag) {
     // 0xFFFC: PLY
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PLY;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PLY);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
-    mem[0x01FF] = 0x00;
+    mem.Write(0x01FF, 0x00);
 
     cpu.Ejecutar(mem);
 
@@ -49,13 +49,13 @@ TEST_F(PLY_Test, PLY_ZeroFlag) {
 
 TEST_F(PLY_Test, PLY_NegativeFlag) {
     // 0xFFFC: PLY
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PLY;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PLY);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
-    mem[0x01FF] = 0x80;
+    mem.Write(0x01FF, 0x80);
 
     cpu.Ejecutar(mem);
 

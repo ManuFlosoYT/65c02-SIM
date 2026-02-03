@@ -21,12 +21,12 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX) {
     // Dirección objetivo: 0x42 + 0x05 = 0x47
     // 0x0047: 0x37 (Valor a cargar)
     cpu.X = 0x05;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_ZPX;
-    mem[0x4001] = 0x42;
-    mem[0x0047] = 0x37;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_ZPX);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0047, 0x37);
+    mem.Write(0x4002, INS_JAM);
 
     // Ciclo 1:
     //    Lee LDA (ZPX) en 0xFFFC
@@ -55,12 +55,12 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_ZPX;
-    mem[0x4001] = 0x42;
-    mem[0x0047] = 0x00;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_ZPX);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0047, 0x00);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -74,12 +74,12 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_ZPX;
-    mem[0x4001] = 0x42;
-    mem[0x0047] = 0x88;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_ZPX);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0047, 0x88);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -90,13 +90,13 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_NegativeFlag) {
 
 TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_Wrapping) {
     cpu.X = 0xFF;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_ZPX;
-    mem[0x4001] = 0x80;
-    mem[0x007F] = 0x42;
-    mem[0x017F] = 0xAD;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_ZPX);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x007F, 0x42);
+    mem.Write(0x017F, 0xAD);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

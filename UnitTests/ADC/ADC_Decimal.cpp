@@ -18,11 +18,11 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Simple) {
     cpu.D = 1;
     cpu.C = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ADC_IM;
-    mem[0x4001] = 0x05;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ADC_IM);
+    mem.Write(0x4001, 0x05);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -37,11 +37,11 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Carry) {
     cpu.D = 1;
     cpu.C = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ADC_IM;
-    mem[0x4001] = 0x51;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ADC_IM);
+    mem.Write(0x4001, 0x51);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -56,11 +56,11 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_CarryIn) {
     cpu.D = 1;
     cpu.C = 1;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ADC_IM;
-    mem[0x4001] = 0x01;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ADC_IM);
+    mem.Write(0x4001, 0x01);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

@@ -19,14 +19,14 @@ TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_ExecutesCorrectly) {
     // 0x0042: 0xAA (Valor inicial)
 
     cpu.PC = 0xFFFC;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STZ_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x4002] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STZ_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x4002, INS_JAM);  // Stop
 
     // Set initial value to non-zero
-    mem[0x0042] = 0xAA;
+    mem.Write(0x0042, 0xAA);
 
     cpu.Ejecutar(mem);
 
@@ -37,13 +37,13 @@ TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_ExecutesCorrectly) {
 TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_DoesNotAffectFlags) {
     // STZ no afecta flags
     cpu.PC = 0xFFFC;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STZ_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STZ_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x4002, INS_JAM);
 
-    mem[0x0042] = 0xAA;
+    mem.Write(0x0042, 0xAA);
 
     // Set some flags
     cpu.Z = 0;

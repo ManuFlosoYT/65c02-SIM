@@ -16,12 +16,12 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage) {
     // 0xFFFC: AND (ZP) 0x42
     // 0x0042: 0x37
     cpu.A = 0xFF;  // Start with A = 0xFF
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_AND_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x0042] = 0x37;  // Value to AND with
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_AND_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0042, 0x37);  // Value to AND with
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -34,12 +34,12 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xF0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_AND_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x0042] = 0x0F;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_AND_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0042, 0x0F);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -52,12 +52,12 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_AND_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x0042] = 0x80;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_AND_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0042, 0x80);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

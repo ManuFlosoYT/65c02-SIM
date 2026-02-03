@@ -21,15 +21,15 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
 
     // Inicializar memoria origen con valores
     for (int i = 0; i < 256; i++) {
-        mem[SRC_PAGE + i] = (Byte)i;
-        mem[DST_PAGE + i] = 0;  // Limpiar destino
+        mem.Write(SRC_PAGE + i, (Byte)i);
+        mem.Write(DST_PAGE + i, 0);  // Limpiar destino
     }
 
     Word PC = CODE_START;
 
     // LDX #$00 (Indice)
-    mem[PC++] = INS_LDX_IM;
-    mem[PC++] = 0x00;
+    mem.Write(PC++, INS_LDX_IM);
+    mem.Write(PC++, 0x00);
 
     Word LOOP_START = PC;
     // Bucle:
@@ -37,28 +37,28 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
     // LDA SRC_PAGE, X
     // Nota: Como es Absoluto indexed X, toma 2 bytes de direccion.
     // Usaremos direccion base SRC_PAGE (0x8000)
-    mem[PC++] = INS_LDA_ABSX;
-    mem[PC++] = (Byte)(SRC_PAGE & 0xFF);  // Low byte
-    mem[PC++] = (Byte)(SRC_PAGE >> 8);    // High byte
+    mem.Write(PC++, INS_LDA_ABSX);
+    mem.Write(PC++, (Byte)(SRC_PAGE & 0xFF));  // Low byte
+    mem.Write(PC++, (Byte)(SRC_PAGE >> 8));    // High byte
 
     // STA DST_PAGE, X
-    mem[PC++] = INS_STA_ABSX;
-    mem[PC++] = (Byte)(DST_PAGE & 0xFF);  // Low byte
-    mem[PC++] = (Byte)(DST_PAGE >> 8);    // High byte
+    mem.Write(PC++, INS_STA_ABSX);
+    mem.Write(PC++, (Byte)(DST_PAGE & 0xFF));  // Low byte
+    mem.Write(PC++, (Byte)(DST_PAGE >> 8));    // High byte
 
     // INX
-    mem[PC++] = INS_INX;
+    mem.Write(PC++, INS_INX);
 
     // BNE LOOP_START
     // INX incrementa y, al desbordar de 255 a 0, Z flag se pondra a 1.
     // Eso ocurrira DESPUES de copiar el byte en indice 255 (0xFF).
     // Cuando X pasa de 0xFF a 0x00, Z=1, y BNE no salta.
-    mem[PC++] = INS_BNE;
+    mem.Write(PC++, INS_BNE);
     int8_t offset = LOOP_START - (PC + 1);
-    mem[PC++] = (Byte)offset;
+    mem.Write(PC++, (Byte)offset);
 
     // Stop
-    mem[PC++] = INS_JAM;
+    mem.Write(PC++, INS_JAM);
 
     // Ejecutar
     cpu.PC = CODE_START;

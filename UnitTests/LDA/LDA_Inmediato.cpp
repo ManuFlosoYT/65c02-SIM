@@ -17,11 +17,11 @@ TEST_F(LDA_Inmediato_Test, LDA_Inmediato) {
     // 0xFFFC: LDA #0xA9
     // 0xFFFD: 0x67
     // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_IM;
-    mem[0x4001] = 0x67;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_IM);
+    mem.Write(0x4001, 0x67);
+    mem.Write(0x4002, INS_JAM);
 
     // Ciclo 1:
     //    Lee LDA #0xA9 en 0xFFFC
@@ -43,11 +43,11 @@ TEST_F(LDA_Inmediato_Test, LDA_Inmediato_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_IM;
-    mem[0x4001] = 0x00;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_IM);
+    mem.Write(0x4001, 0x00);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -60,11 +60,11 @@ TEST_F(LDA_Inmediato_Test, LDA_Inmediato_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_IM;
-    mem[0x4001] = 0x80;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_IM);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

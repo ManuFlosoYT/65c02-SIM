@@ -13,14 +13,14 @@ protected:
 
 TEST_F(STZ_Absolute_Test, STZ_Absolute_ExecutesCorrectly) {
     cpu.PC = 0xFFFC;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STZ_ABS;
-    mem[0x4001] = 0x00;  // Low
-    mem[0x4002] = 0x20;  // High -> 0x2000
-    mem[0x4003] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STZ_ABS);
+    mem.Write(0x4001, 0x00);  // Low
+    mem.Write(0x4002, 0x20);  // High -> 0x2000
+    mem.Write(0x4003, INS_JAM);  // Stop
 
-    mem[0x2000] = 0xDD;
+    mem.Write(0x2000, 0xDD);
 
     cpu.Ejecutar(mem);
 

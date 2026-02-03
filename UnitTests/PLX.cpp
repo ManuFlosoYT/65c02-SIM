@@ -14,13 +14,13 @@ protected:
 
 TEST_F(PLX_Test, PLX) {
     // 0xFFFC: PLX
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PLX;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PLX);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
-    mem[0x01FF] = 0x42;
+    mem.Write(0x01FF, 0x42);
 
     cpu.Ejecutar(mem);
 
@@ -32,13 +32,13 @@ TEST_F(PLX_Test, PLX) {
 
 TEST_F(PLX_Test, PLX_ZeroFlag) {
     // 0xFFFC: PLX
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PLX;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PLX);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
-    mem[0x01FF] = 0x00;
+    mem.Write(0x01FF, 0x00);
 
     cpu.Ejecutar(mem);
 
@@ -49,13 +49,13 @@ TEST_F(PLX_Test, PLX_ZeroFlag) {
 
 TEST_F(PLX_Test, PLX_NegativeFlag) {
     // 0xFFFC: PLX
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PLX;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PLX);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
-    mem[0x01FF] = 0x80;
+    mem.Write(0x01FF, 0x80);
 
     cpu.Ejecutar(mem);
 

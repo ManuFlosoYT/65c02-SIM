@@ -14,7 +14,7 @@ void INC::EjecutarZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
     dato++;
-    mem[ZP_Dir] = dato;
+    mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato);
 }
 
@@ -23,7 +23,7 @@ void INC::EjecutarZPX(CPU& cpu, Mem& mem) {
     ZP_Dir += cpu.X;
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
     dato++;
-    mem[ZP_Dir] = dato;
+    mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato);
 }
 
@@ -31,7 +31,7 @@ void INC::EjecutarABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Byte dato = cpu.LeerByte(Dir, mem);
     dato++;
-    mem[Dir] = dato;
+    mem.Write(Dir, dato);
     SetFlags(cpu, dato);
 }
 
@@ -40,6 +40,6 @@ void INC::EjecutarABSX(CPU& cpu, Mem& mem) {
     Dir += cpu.X;
     Byte dato = cpu.LeerByte(Dir, mem);
     dato++;
-    mem[Dir] = dato;
+    mem.Write(Dir, dato);
     SetFlags(cpu, dato);
 }

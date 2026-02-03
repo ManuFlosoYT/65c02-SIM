@@ -20,11 +20,11 @@ TEST_F(BCC_Test, BCC_NoBranch_CarrySet) {
     cpu.PC = 0xFFFC;
 
     // BCC +0x5 (0x05)
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_BCC;
-    mem[0x4001] = 0x05;
-    mem[0x4002] = INS_JAM;  // Stop instruction
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_BCC);
+    mem.Write(0x4001, 0x05);
+    mem.Write(0x4002, INS_JAM);  // Stop instruction
 
     cpu.Ejecutar(mem);
 
@@ -45,12 +45,12 @@ TEST_F(BCC_Test, BCC_Branch_CarryClear) {
 
     cpu.PC = 0x1000;
 
-    mem[0x1000] = INS_BCC;
-    mem[0x1001] = 0x05;
-    mem[0x1007] = INS_JAM;
+    mem.Write(0x1000, INS_BCC);
+    mem.Write(0x1001, 0x05);
+    mem.Write(0x1007, INS_JAM);
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x10;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x10);
     cpu.Ejecutar(mem);
 
     EXPECT_EQ(cpu.PC, 0x1008);
@@ -61,12 +61,12 @@ TEST_F(BCC_Test, BCC_Branch_Backward) {
     cpu.C = 0;
     cpu.PC = 0x1010;
 
-    mem[0x1010] = INS_BCC;
-    mem[0x1011] = 0xFB;  // -5
-    mem[0x100D] = INS_JAM;
+    mem.Write(0x1010, INS_BCC);
+    mem.Write(0x1011, 0xFB);  // -5
+    mem.Write(0x100D, INS_JAM);
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x10;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x10);
     cpu.Ejecutar(mem);
 
     EXPECT_EQ(cpu.PC, 0x100E);

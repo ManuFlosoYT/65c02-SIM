@@ -8,7 +8,7 @@ void TSB::EjecutarZP(CPU& cpu, Mem& mem) {
     cpu.Z = (res == 0);
 
     Byte res2 = cpu.A | dato;
-    mem[ZP_Dir] = res2;
+    mem.Write(ZP_Dir, res2);
 }
 
 void TSB::EjecutarABS(CPU& cpu, Mem& mem) {
@@ -19,5 +19,5 @@ void TSB::EjecutarABS(CPU& cpu, Mem& mem) {
     cpu.Z = (res == 0);
 
     Byte res2 = cpu.A | dato;
-    mem[Dir] = res2;
+    mem.Write(Dir, res2);
 }

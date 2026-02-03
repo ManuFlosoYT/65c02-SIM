@@ -39,6 +39,7 @@ int main(int argc, char* argv[]) {
     CPU cpu{};
     LCD lcd;
     cpu.Reset(mem);
+    lcd.init(mem);
 
     std::string bin;
     if (argc > 1) {
@@ -50,12 +51,9 @@ int main(int argc, char* argv[]) {
 
     CargarBinario(mem, bin);
 
-    std::cout << "--- Lanzando programa ---" << std::endl;
-    lcd.init(mem);
+    std::cout << "--- Lanzando programa ---\n";
 
-    while (cpu.Ejecutar(mem, false) == 0) {
-        lcd.update(mem);
-    }
+    cpu.Ejecutar(mem);
 
-    std::cout << "--- Ejecucion finalizada ---" << std::endl;
+    std::cout << "\n--- Ejecucion finalizada ---\n";
 }

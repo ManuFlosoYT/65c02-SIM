@@ -15,11 +15,11 @@ protected:
 TEST_F(LDY_Inmediato_Test, LDY_Inmediato) {
     // 0xFFFC: LDY #0x42
     // 0xFFFD: 0x42
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDY_IM;
-    mem[0x4001] = 0x42;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDY_IM);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -33,11 +33,11 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato_ZeroFlag) {
     cpu.Z = 0;
     cpu.Y = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDY_IM;
-    mem[0x4001] = 0x00;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDY_IM);
+    mem.Write(0x4001, 0x00);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -50,11 +50,11 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato_NegativeFlag) {
     cpu.N = 0;
     cpu.Y = 0x00;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDY_IM;
-    mem[0x4001] = 0x80;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDY_IM);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

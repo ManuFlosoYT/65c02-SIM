@@ -24,14 +24,14 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX) {
     // 0x0007: 0x80 (High Byte Address)
     // Dirección final: 0x8000
     // 0x8000: 0x37 (Valor a cargar)
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDX;
-    mem[0x4001] = 0x02;
-    mem[0x0006] = 0x00;
-    mem[0x0007] = 0x80;
-    mem[0x8000] = 0x37;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDX);
+    mem.Write(0x4001, 0x02);
+    mem.Write(0x0006, 0x00);
+    mem.Write(0x0007, 0x80);
+    mem.Write(0x8000, 0x37);
+    mem.Write(0x4002, INS_JAM);
 
     // Ciclo 1:
     //    Lee LDA (INDX) en 0xFFFC -> PC=FFFD
@@ -63,14 +63,14 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_ZeroFlag) {
     cpu.A = 0xFF;
     cpu.Z = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDX;
-    mem[0x4001] = 0x02;
-    mem[0x0006] = 0x00;
-    mem[0x0007] = 0x80;
-    mem[0x8000] = 0x00;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDX);
+    mem.Write(0x4001, 0x02);
+    mem.Write(0x0006, 0x00);
+    mem.Write(0x0007, 0x80);
+    mem.Write(0x8000, 0x00);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -83,14 +83,14 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
     cpu.X = 0x04;
     cpu.N = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDX;
-    mem[0x4001] = 0x02;
-    mem[0x0006] = 0x00;
-    mem[0x0007] = 0x80;
-    mem[0x8000] = 0x88;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDX);
+    mem.Write(0x4001, 0x02);
+    mem.Write(0x0006, 0x00);
+    mem.Write(0x0007, 0x80);
+    mem.Write(0x8000, 0x88);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -101,16 +101,16 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
 
 TEST_F(LDA_IndirectX_Test, LDA_IndirectX_Wrapping) {
     cpu.X = 0x02;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDX;
-    mem[0x4001] = 0xFF;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDX);
+    mem.Write(0x4001, 0xFF);
 
-    mem[0x0001] = 0x34;
-    mem[0x0002] = 0x12;
+    mem.Write(0x0001, 0x34);
+    mem.Write(0x0002, 0x12);
 
-    mem[0x1234] = 0x99;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0x1234, 0x99);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

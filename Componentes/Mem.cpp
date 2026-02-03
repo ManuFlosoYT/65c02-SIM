@@ -6,7 +6,16 @@ void Mem::Init() {
     }
 }
 
-void Mem::WriteWord(Word dato, Word dir){
-    memoria[dir]        = dato & 0xFF; // 8 bits menos significativos
-    memoria[dir + 1]    = (dato >> 8); // 8 bits mas significativos
+void Mem::WriteWord(Word dato, Word dir) {
+    Write(dir, dato & 0xFF);
+    Write(dir + 1, dato >> 8);
 }
+
+void Mem::Write(Word dir, Byte val) {
+    if (writeHook) {
+        writeHook(dir, val);
+    }
+    memoria[dir] = val;
+}
+
+void Mem::SetWriteHook(WriteHook hook) { writeHook = hook; }

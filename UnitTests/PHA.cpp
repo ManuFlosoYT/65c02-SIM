@@ -14,10 +14,10 @@ protected:
 
 TEST_F(PHA_Test, PHA) {
     // 0xFFFC: PHA
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_PHA;
-    mem[0x4001] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_PHA);
+    mem.Write(0x4001, INS_JAM);  // Stop
 
     cpu.A = 0x42;
 

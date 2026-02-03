@@ -17,11 +17,11 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato) {
     cpu.A = 0x00;
     cpu.C = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ADC_IM;
-    mem[0x4001] = 0x05;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ADC_IM);
+    mem.Write(0x4001, 0x05);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -37,11 +37,11 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato_CarryIn) {
     cpu.A = 0x00;
     cpu.C = 1;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ADC_IM;
-    mem[0x4001] = 0x05;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ADC_IM);
+    mem.Write(0x4001, 0x05);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -54,11 +54,11 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato_CarryOut) {
     cpu.A = 0xFF;
     cpu.C = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ADC_IM;
-    mem[0x4001] = 0x01;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ADC_IM);
+    mem.Write(0x4001, 0x01);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -72,11 +72,11 @@ TEST_F(ADC_Inmediato_Test, ADC_Inmediato_Overflow) {
     cpu.A = 0x7F;
     cpu.C = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ADC_IM;
-    mem[0x4001] = 0x01;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ADC_IM);
+    mem.Write(0x4001, 0x01);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

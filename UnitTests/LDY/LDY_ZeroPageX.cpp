@@ -18,12 +18,12 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX) {
     // 0xFFFD: 0x42
     // Address: 0x42 + 0x04 = 0x46
     // 0x0046: 0x37
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDY_ZPX;
-    mem[0x4001] = 0x42;
-    mem[0x0046] = 0x37;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDY_ZPX);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0046, 0x37);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -39,12 +39,12 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX_WrapAround) {
     // 0xFFFD: 0x80
     // Address: (0x80 + 0xFF) & 0xFF = 0x7F
     // 0x007F: 0x37
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDY_ZPX;
-    mem[0x4001] = 0x80;
-    mem[0x007F] = 0x37;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDY_ZPX);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x007F, 0x37);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -57,12 +57,12 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX_ZeroFlag) {
     cpu.Y = 0xFF;
     cpu.X = 0x0A;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDY_ZPX;
-    mem[0x4001] = 0x42;
-    mem[0x004C] = 0x00;  // 0x42 + 0x0A
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDY_ZPX);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x004C, 0x00);  // 0x42 + 0x0A
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -76,12 +76,12 @@ TEST_F(LDY_ZeroPageX_Test, LDY_ZeroPageX_NegativeFlag) {
     cpu.Y = 0x00;
     cpu.X = 0x0A;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDY_ZPX;
-    mem[0x4001] = 0x42;
-    mem[0x004C] = 0x80;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDY_ZPX);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x004C, 0x80);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

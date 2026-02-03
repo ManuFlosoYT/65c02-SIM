@@ -25,14 +25,14 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY) {
     // Dirección efectiva: 0x8000 + Y (0x01) = 0x8001
     // 0x8001: 0x37 (Valor a cargar)
     cpu.Y = 0x01;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDY;
-    mem[0x4001] = 0x02;
-    mem[0x0002] = 0x00;
-    mem[0x0003] = 0x80;
-    mem[0x8001] = 0x37;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDY);
+    mem.Write(0x4001, 0x02);
+    mem.Write(0x0002, 0x00);
+    mem.Write(0x0003, 0x80);
+    mem.Write(0x8001, 0x37);
+    mem.Write(0x4002, INS_JAM);
 
     // Ciclo 1:
     //    Lee LDA (INDY) en 0xFFFC -> PC=FFFD
@@ -68,14 +68,14 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDY;
-    mem[0x4001] = 0x02;
-    mem[0x0002] = 0x00;
-    mem[0x0003] = 0x80;
-    mem[0x8001] = 0x00;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDY);
+    mem.Write(0x4001, 0x02);
+    mem.Write(0x0002, 0x00);
+    mem.Write(0x0003, 0x80);
+    mem.Write(0x8001, 0x00);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -88,14 +88,14 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_NegativeFlag) {
     cpu.Y = 0x01;
     cpu.N = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDY;
-    mem[0x4001] = 0x02;
-    mem[0x0002] = 0x00;
-    mem[0x0003] = 0x80;
-    mem[0x8001] = 0xAA;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDY);
+    mem.Write(0x4001, 0x02);
+    mem.Write(0x0002, 0x00);
+    mem.Write(0x0003, 0x80);
+    mem.Write(0x8001, 0xAA);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -106,16 +106,16 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_NegativeFlag) {
 
 TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PageCrossing) {
     cpu.Y = 0x10;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDY;
-    mem[0x4001] = 0x02;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDY);
+    mem.Write(0x4001, 0x02);
 
-    mem[0x0002] = 0xF0;
-    mem[0x0003] = 0x10;
+    mem.Write(0x0002, 0xF0);
+    mem.Write(0x0003, 0x10);
 
-    mem[0x1100] = 0x55;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0x1100, 0x55);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -124,16 +124,16 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PageCrossing) {
 
 TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PointerWrapping) {
     cpu.Y = 0x00;
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDA_INDY;
-    mem[0x4001] = 0xFF;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDA_INDY);
+    mem.Write(0x4001, 0xFF);
 
-    mem[0x00FF] = 0x34;
-    mem[0x0000] = 0x12;
+    mem.Write(0x00FF, 0x34);
+    mem.Write(0x0000, 0x12);
 
-    mem[0x1234] = 0x88;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0x1234, 0x88);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

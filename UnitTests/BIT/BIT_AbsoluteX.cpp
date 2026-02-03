@@ -18,13 +18,13 @@ TEST_F(BIT_AbsoluteX_Test, BIT_AbsoluteX) {
     cpu.X = 0x01;
     cpu.A = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_BIT_ABSX;
-    mem[0x4001] = 0x80;
-    mem[0x4002] = 0x44;
-    mem[0x4481] = 0x80;
-    mem[0x4003] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_BIT_ABSX);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x4002, 0x44);
+    mem.Write(0x4481, 0x80);
+    mem.Write(0x4003, INS_JAM);
 
     cpu.Ejecutar(mem);
 

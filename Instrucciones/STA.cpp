@@ -2,37 +2,37 @@
 
 void STA::EjecutarZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
-    mem[ZP_Dir] = cpu.A;
+    mem.Write(ZP_Dir, cpu.A);
 }
 
 void STA::EjecutarZPX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
-    mem[ZP_Dir] = cpu.A;
+    mem.Write(ZP_Dir, cpu.A);
 }
 
 void STA::EjecutarABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
-    mem[Dir] = cpu.A;
+    mem.Write(Dir, cpu.A);
 }
 
 void STA::EjecutarABSX(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.X;
-    mem[Dir] = cpu.A;
+    mem.Write(Dir, cpu.A);
 }
 
 void STA::EjecutarABSY(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.Y;
-    mem[Dir] = cpu.A;
+    mem.Write(Dir, cpu.A);
 }
 
 void STA::EjecutarINDX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
     Word Dir = cpu.LeerWord(ZP_Dir, mem);
-    mem[Dir] = cpu.A;
+    mem.Write(Dir, cpu.A);
 }
 
 void STA::EjecutarINDY(CPU& cpu, Mem& mem) {
@@ -49,7 +49,7 @@ void STA::EjecutarINDY(CPU& cpu, Mem& mem) {
 
     dir += cpu.Y;
 
-    mem[dir] = cpu.A;
+    mem.Write(dir, cpu.A);
 }
 
 
@@ -65,5 +65,5 @@ Byte ZP_Dir = cpu.FetchByte(mem);
         dir = (high << 8) | low;
     }
 
-    mem[dir] = cpu.A;
+    mem.Write(dir, cpu.A);
 }

@@ -18,13 +18,13 @@ TEST_F(ROL_AbsoluteX_Test, ROL_AbsoluteX) {
     cpu.C = 0;
     cpu.X = 0x04;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ROL_ABSX;
-    mem[0x4001] = 0x80;
-    mem[0x4002] = 0x20;  // 0x2080 + X(4) = 0x2084
-    mem[0x2084] = 0x80;
-    mem[0x4003] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ROL_ABSX);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x4002, 0x20);  // 0x2080 + X(4) = 0x2084
+    mem.Write(0x2084, 0x80);
+    mem.Write(0x4003, INS_JAM);
 
     cpu.Ejecutar(mem);
 

@@ -17,14 +17,14 @@ TEST_F(STX_ZeroPageY_Test, STX_ZeroPageY) {
     cpu.Y = 0x0F;
 
     // 0xFFFC: STX (ZeroPageY) 0x80
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STX_ZPY;
-    mem[0x4001] = 0x80;
-    mem[0x4002] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STX_ZPY);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x4002, INS_JAM);  // Stop
 
     // Target Zero Page Address = 0x80 + 0x0F = 0x8F
-    mem[0x008F] = 0x00;
+    mem.Write(0x008F, 0x00);
 
     cpu.Ejecutar(mem);
 

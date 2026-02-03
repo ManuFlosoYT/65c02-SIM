@@ -16,10 +16,10 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator) {
     // A = 0x05 -> A - 1 = 0x04
     cpu.A = 0x05;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_DEC_A;
-    mem[0x4001] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_DEC_A);
+    mem.Write(0x4001, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -32,10 +32,10 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator_ZeroFlag) {
     // A = 0x01 -> A - 1 = 0x00
     cpu.A = 0x01;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_DEC_A;
-    mem[0x4001] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_DEC_A);
+    mem.Write(0x4001, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -48,10 +48,10 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator_NegativeFlag) {
     // A = 0x00 -> A - 1 = 0xFF
     cpu.A = 0x00;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_DEC_A;
-    mem[0x4001] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_DEC_A);
+    mem.Write(0x4001, INS_JAM);
 
     cpu.Ejecutar(mem);
 

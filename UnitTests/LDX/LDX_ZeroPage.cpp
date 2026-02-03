@@ -16,12 +16,12 @@ TEST_F(LDX_ZeroPage_Test, LDX_ZeroPage) {
     // 0xFFFC: LDX 0x42
     // 0xFFFD: 0x42
     // 0x0042: 0x37
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDX_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x0042] = 0x37;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDX_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0042, 0x37);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -35,12 +35,12 @@ TEST_F(LDX_ZeroPage_Test, LDX_ZeroPage_ZeroFlag) {
     cpu.Z = 0;
     cpu.X = 0xFF;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDX_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x0042] = 0x00;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDX_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0042, 0x00);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -53,12 +53,12 @@ TEST_F(LDX_ZeroPage_Test, LDX_ZeroPage_NegativeFlag) {
     cpu.N = 0;
     cpu.X = 0x00;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LDX_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x0042] = 0x80;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LDX_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0042, 0x80);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 

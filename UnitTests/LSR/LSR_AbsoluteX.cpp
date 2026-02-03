@@ -16,13 +16,13 @@ TEST_F(LSR_AbsoluteX_Test, LSR_AbsoluteX) {
     // Addr = 0x4480 + 1 = 0x4481
     cpu.X = 0x01;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_LSR_ABSX;
-    mem[0x4001] = 0x80;
-    mem[0x4002] = 0x44;
-    mem[0x4481] = 0x02;
-    mem[0x4003] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_LSR_ABSX);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x4002, 0x44);
+    mem.Write(0x4481, 0x02);
+    mem.Write(0x4003, INS_JAM);
 
     cpu.Ejecutar(mem);
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 mkdir -p ./Programas/build
 
 if [ -z "$1" ]; then

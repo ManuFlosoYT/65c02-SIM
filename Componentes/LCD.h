@@ -9,7 +9,6 @@ public:
     Byte DDRB_DATA;
 
     void init(Mem& mem);
-    void update(Mem& mem);
 };
 
 #endif  // SIM_65C02_LCD_H

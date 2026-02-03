@@ -15,10 +15,10 @@ protected:
 TEST_F(SED_Test, SED_SetsDecimal) {
     cpu.D = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_SED;
-    mem[0x4001] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_SED);
+    mem.Write(0x4001, INS_JAM);
 
     cpu.Ejecutar(mem);
 

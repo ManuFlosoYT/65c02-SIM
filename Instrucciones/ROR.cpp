@@ -20,7 +20,7 @@ void ROR::EjecutarZP(CPU& cpu, Mem& mem) {
     Byte A = dato;
     Byte oldCarry = cpu.C ? 0x80 : 0;
     dato = (dato >> 1) | oldCarry;
-    mem[ZP_Dir] = dato;
+    mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
@@ -31,7 +31,7 @@ void ROR::EjecutarZPX(CPU& cpu, Mem& mem) {
     Byte A = dato;
     Byte oldCarry = cpu.C ? 0x80 : 0;
     dato = (dato >> 1) | oldCarry;
-    mem[ZP_Dir] = dato;
+    mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
@@ -41,7 +41,7 @@ void ROR::EjecutarABS(CPU& cpu, Mem& mem) {
     Byte A = dato;
     Byte oldCarry = cpu.C ? 0x80 : 0;
     dato = (dato >> 1) | oldCarry;
-    mem[Dir] = dato;
+    mem.Write(Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
@@ -52,6 +52,6 @@ void ROR::EjecutarABSX(CPU& cpu, Mem& mem) {
     Byte A = dato;
     Byte oldCarry = cpu.C ? 0x80 : 0;
     dato = (dato >> 1) | oldCarry;
-    mem[Dir] = dato;
+    mem.Write(Dir, dato);
     SetFlags(cpu, dato, A);
 }

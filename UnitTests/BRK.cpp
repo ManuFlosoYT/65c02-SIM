@@ -23,14 +23,14 @@ TEST_F(BRK_Test, BRK_Operations) {
     cpu.SP = 0x01FF;
 
     // Interrupt Vector
-    mem[0xFFFE] = 0x00;
-    mem[0xFFFF] = 0x20;  // 0x2000
-    mem[0x2000] = INS_JAM;  // STOP
+    mem.Write(0xFFFE, 0x00);
+    mem.Write(0xFFFF, 0x20);  // 0x2000
+    mem.Write(0x2000, INS_JAM);  // STOP
 
-    mem[0x1000] = INS_BRK;
+    mem.Write(0x1000, INS_BRK);
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x10;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x10);
     cpu.Ejecutar(mem);
 
     // PC pushed is Address of BRK + 2 = 1002 (Standard 6502)

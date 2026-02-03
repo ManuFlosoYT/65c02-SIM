@@ -14,16 +14,16 @@ protected:
 TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_ExecutesCorrectly) {
     cpu.PC = 0x1000;
     cpu.X = 0x05;
-    mem[0x1000] = INS_STZ_ABSX;
-    mem[0x1001] = 0x00;
-    mem[0x1002] = 0x20;     // 0x2000
-    mem[0x1003] = INS_JAM;  // Stop
+    mem.Write(0x1000, INS_STZ_ABSX);
+    mem.Write(0x1001, 0x00);
+    mem.Write(0x1002, 0x20);     // 0x2000
+    mem.Write(0x1003, INS_JAM);  // Stop
 
     // Target: 0x2000 + 0x05 = 0x2005
-    mem[0x2005] = 0xEE;
+    mem.Write(0x2005, 0xEE);
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x10;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x10);
     cpu.Ejecutar(mem);
 
     EXPECT_EQ(mem[0x2005], 0x00);
@@ -33,16 +33,16 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_ExecutesCorrectly) {
 TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_PageCrossing) {
     cpu.PC = 0x1000;
     cpu.X = 0xFF;
-    mem[0x1000] = INS_STZ_ABSX;
-    mem[0x1001] = 0x00;
-    mem[0x1002] = 0x20;  // 0x2000
-    mem[0x1003] = INS_JAM;
+    mem.Write(0x1000, INS_STZ_ABSX);
+    mem.Write(0x1001, 0x00);
+    mem.Write(0x1002, 0x20);  // 0x2000
+    mem.Write(0x1003, INS_JAM);
 
     // Target: 0x2000 + 0xFF = 0x20FF
-    mem[0x20FF] = 0xEE;
+    mem.Write(0x20FF, 0xEE);
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x10;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x10);
     cpu.Ejecutar(mem);
 
     EXPECT_EQ(mem[0x20FF], 0x00);

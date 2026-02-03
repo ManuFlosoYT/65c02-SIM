@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 if [ -z "$1" ]; then
     echo "Uso: ./run.sh <nombre_bin_sin_extension>"
     exit 1

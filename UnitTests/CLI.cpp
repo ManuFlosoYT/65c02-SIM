@@ -15,10 +15,10 @@ protected:
 TEST_F(CLI_Test, CLI_ClearsInterruptDisable) {
     cpu.I = 1;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_CLI;
-    mem[0x4001] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_CLI);
+    mem.Write(0x4001, INS_JAM);
 
     cpu.Ejecutar(mem);
 

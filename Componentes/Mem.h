@@ -2,6 +2,7 @@
 #define SIM_65C02_MEM_H
 
 #include <cstdint>
+#include <functional>
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -18,10 +19,16 @@ public:
     Byte memoria[MAX_MEM]{};
     void Init();
 
-    Byte& operator[](Word dir) { return memoria[dir]; }
     Byte operator[](Word dir) const { return memoria[dir]; }
 
+    using WriteHook = std::function<void(Word, Byte)>;
+    void SetWriteHook(WriteHook hook);
+
+    void Write(Word dir, Byte val);
     void WriteWord(Word dato, Word dir);
+
+private:
+    WriteHook writeHook;
 };
 
 #endif  // SIM_65C02_MEM_H

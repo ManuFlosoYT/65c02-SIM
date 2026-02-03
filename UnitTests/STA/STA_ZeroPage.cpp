@@ -21,12 +21,12 @@ TEST_F(STA_ZeroPage_Test, STA_ZeroPage) {
 
     cpu.A = 0x37;  // Valor a guardar
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STA_ZP;
-    mem[0x4001] = 0x42;
-    mem[0x0042] = 0x00;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STA_ZP);
+    mem.Write(0x4001, 0x42);
+    mem.Write(0x0042, 0x00);
+    mem.Write(0x4002, INS_JAM);
 
     // Ciclo 1:
     //    Lee STA (ZP) en 0xFFFC

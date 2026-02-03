@@ -19,7 +19,7 @@ void LSR::EjecutarZP(CPU& cpu, Mem& mem) {
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
     Byte A = dato;
     dato >>= 1;
-    mem[ZP_Dir] = dato;
+    mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
@@ -29,7 +29,7 @@ void LSR::EjecutarZPX(CPU& cpu, Mem& mem) {
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
     Byte A = dato;
     dato >>= 1;
-    mem[ZP_Dir] = dato;
+    mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
@@ -38,7 +38,7 @@ void LSR::EjecutarABS(CPU& cpu, Mem& mem) {
     Byte dato = cpu.LeerByte(Dir, mem);
     Byte A = dato;
     dato >>= 1;
-    mem[Dir] = dato;
+    mem.Write(Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
@@ -48,6 +48,6 @@ void LSR::EjecutarABSX(CPU& cpu, Mem& mem) {
     Byte dato = cpu.LeerByte(Dir, mem);
     Byte A = dato;
     dato >>= 1;
-    mem[Dir] = dato;
+    mem.Write(Dir, dato);
     SetFlags(cpu, dato, A);
 }

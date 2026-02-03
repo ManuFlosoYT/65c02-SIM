@@ -946,7 +946,7 @@ int CPU::Ejecutar(Mem& mem, bool ejecutar) {
 int CPU::Ejecutar(Mem& mem) { return Ejecutar(mem, true); }
 
 void CPU::PushByte(Byte val, Mem& mem) {
-    mem[SP] = val;
+    mem.Write(SP, val);
     SP--;
 }
 

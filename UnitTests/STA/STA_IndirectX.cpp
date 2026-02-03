@@ -17,18 +17,18 @@ TEST_F(STA_IndirectX_Test, STA_IndirectX) {
     cpu.X = 0x04;
 
     // 0xFFFC: STA (IndirectX) 0x20
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STA_INDX;
-    mem[0x4001] = 0x20;
-    mem[0x4002] = INS_JAM;  // Stop
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STA_INDX);
+    mem.Write(0x4001, 0x20);
+    mem.Write(0x4002, INS_JAM);  // Stop
 
     // Pointer Address = 0x20 + 0x04 = 0x24 (ZP)
-    mem[0x0024] = 0x74;  // Low Byte
-    mem[0x0025] = 0x20;  // High Byte
+    mem.Write(0x0024, 0x74);  // Low Byte
+    mem.Write(0x0025, 0x20);  // High Byte
 
     // Effective Address = 0x2074
-    mem[0x2074] = 0x00;
+    mem.Write(0x2074, 0x00);
 
     cpu.Ejecutar(mem);
 

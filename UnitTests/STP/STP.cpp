@@ -15,10 +15,10 @@ protected:
 TEST_F(STP_Test, STP_HaltsExecution) {
     // 0xFFFC: STP
     // 0xFFFD: NOP (Should not be executed)
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_STP;
-    mem[0x4001] = INS_NOP;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_STP);
+    mem.Write(0x4001, INS_NOP);
 
     // Run execution
     cpu.Ejecutar(mem);

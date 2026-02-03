@@ -17,13 +17,13 @@ TEST_F(ROL_Absolute_Test, ROL_Absolute) {
     // Carry Out = Old Bit 7 (1).
     cpu.C = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_ROL_ABS;
-    mem[0x4001] = 0x80;
-    mem[0x4002] = 0x20;  // 0x2080
-    mem[0x2080] = 0x80;
-    mem[0x4003] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_ROL_ABS);
+    mem.Write(0x4001, 0x80);
+    mem.Write(0x4002, 0x20);  // 0x2080
+    mem.Write(0x2080, 0x80);
+    mem.Write(0x4003, INS_JAM);
 
     cpu.Ejecutar(mem);
 

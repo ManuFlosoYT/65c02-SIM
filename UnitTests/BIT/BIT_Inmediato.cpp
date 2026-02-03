@@ -19,11 +19,11 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_SetsZeroFlag) {
     cpu.N = 0;  // Should remain 0
     cpu.V = 0;  // Should remain 0
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_BIT_IM;
-    mem[0x4001] = 0xF0;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_BIT_IM);
+    mem.Write(0x4001, 0xF0);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -38,11 +38,11 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_ClearsZeroFlag) {
     cpu.A = 0xFF;
     cpu.Z = 1;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_BIT_IM;
-    mem[0x4001] = 0x0F;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_BIT_IM);
+    mem.Write(0x4001, 0x0F);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
@@ -57,11 +57,11 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_DoesNotAffectNV) {
     cpu.N = 0;
     cpu.V = 0;
 
-    mem[0xFFFC] = 0x00;
-    mem[0xFFFD] = 0x40;
-    mem[0x4000] = INS_BIT_IM;
-    mem[0x4001] = 0xC0;
-    mem[0x4002] = INS_JAM;
+    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFD, 0x40);
+    mem.Write(0x4000, INS_BIT_IM);
+    mem.Write(0x4001, 0xC0);
+    mem.Write(0x4002, INS_JAM);
 
     cpu.Ejecutar(mem);
 
