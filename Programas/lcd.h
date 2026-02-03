@@ -65,4 +65,24 @@ void lcd_imprimir(const char* cadena) {
     }
 }
 
+void lcd_imprimir_numero(unsigned int num) {
+    unsigned char centenas, resto, decenas, unidades;
+
+    centenas = num / 100;
+    resto = num % 100;
+    decenas = resto / 10;
+    unidades = resto % 10;
+
+    if (centenas > 0) {
+        lcd_imprimir_caracter('0' + centenas);
+        lcd_imprimir_caracter('0' + decenas);
+        lcd_imprimir_caracter('0' + unidades);
+    } else if (decenas > 0) {
+        lcd_imprimir_caracter('0' + decenas);
+        lcd_imprimir_caracter('0' + unidades);
+    } else {
+        lcd_imprimir_caracter('0' + unidades);
+    }
+}
+
 #endif

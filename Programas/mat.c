@@ -36,27 +36,6 @@ unsigned char matC[4][4] = {
 unsigned int matTemp[4][4];
 unsigned int matFinal[4][4];
 
-/* Variable global temporal para impresion */
-unsigned char p_centenas, p_resto, p_decenas, p_unidades;
-
-void imprimir_numero(unsigned int num) {
-    p_centenas = num / 100;
-    p_resto = num % 100;
-    p_decenas = p_resto / 10;
-    p_unidades = p_resto % 10;
-
-    if (p_centenas > 0) {
-        lcd_imprimir_caracter('0' + p_centenas);
-        lcd_imprimir_caracter('0' + p_decenas);
-        lcd_imprimir_caracter('0' + p_unidades);
-    } else if (p_decenas > 0) {
-        lcd_imprimir_caracter('0' + p_decenas);
-        lcd_imprimir_caracter('0' + p_unidades);
-    } else {
-        lcd_imprimir_caracter('0' + p_unidades);
-    }
-}
-
 int main(void) {
     lcd_inicializar();
 
@@ -89,7 +68,7 @@ int main(void) {
     for (i = 0; i < 4; i++) {
         lcd_imprimir_caracter('[');
         for (j = 0; j < 4; j++) {
-            imprimir_numero(matFinal[i][j]);
+            lcd_imprimir_numero(matFinal[i][j]);
             if (j < 3) {
                 lcd_imprimir(", ");
             }
@@ -106,7 +85,7 @@ int main(void) {
     }
 
     lcd_imprimir("Suma Total: ");
-    imprimir_numero(suma_total);
+    lcd_imprimir_numero(suma_total);
     lcd_imprimir("\n");
 
     return 0;
