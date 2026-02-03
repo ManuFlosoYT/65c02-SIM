@@ -71,21 +71,23 @@
 #include "../Instrucciones/TXS.h"
 #include "../Instrucciones/TYA.h"
 
-void CPU::Ejecutar(Mem& mem) {
-    PC = LeerWord(0xFFFC, mem);  // Cargar PC del vector reset
-    while (true) {
+int CPU::Ejecutar(Mem& mem, bool ejecutar) {
+    if (!isInit) {
+        PC = LeerWord(0xFFFC, mem);  // Cargar PC del vector reset
+        isInit = true;
+    }
+    do {
         Byte opcode = FetchByte(mem);
-
         switch (opcode) {
             case INS_WAI: {
                 // TODO: Implementar WAI
-                return;
+                return 1;
             }
             case INS_STP: {
-                return;
+                return 1;
             }
             case INS_JAM: {
-                return;
+                return 1;
             }
             case INS_BRA: {
                 BRA::Ejecutar(*this, mem);
@@ -935,10 +937,13 @@ void CPU::Ejecutar(Mem& mem) {
                           << std::dec << " ejecución cancelada." << std::endl;
 #endif
 
-                return;
+                return -1;
         }
-    }
+    } while (ejecutar);
+    return 0;
 }
+
+int CPU::Ejecutar(Mem& mem) { return Ejecutar(mem, true); }
 
 void CPU::PushByte(Byte val, Mem& mem) {
     mem[SP] = val;
@@ -978,8 +983,7 @@ void CPU::Reset(Mem& mem) {
     B = 0;
     V = 0;
     N = 0;
-
-    mem.Init();
+    isInit = false;
 }
 
 const Byte CPU::FetchByte(const Mem& mem) {

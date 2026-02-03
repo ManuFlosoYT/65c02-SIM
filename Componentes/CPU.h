@@ -23,9 +23,12 @@ public:
     Byte V : 1;  // Overflow Flag
     Byte N : 1;  // Negative Flag
 
+    bool isInit{false};
+
     CPU() = default;
     void Reset(Mem& mem);
-    void Ejecutar(Mem& mem);
+    int Ejecutar(Mem& mem);
+    int Ejecutar(Mem& mem, bool ejecutar);
 
     const Byte GetStatus() const;
     void SetStatus(Byte status);
@@ -42,7 +45,6 @@ public:
         const Word dir,
         const Mem& mem);  // Lee un word de memoria sin avanzar el PC
 
-    // Stack Operations
     void PushByte(Byte val, Mem& mem);
     Byte PopByte(Mem& mem);
     void PushWord(Word val, Mem& mem);
