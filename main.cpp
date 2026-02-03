@@ -2,8 +2,8 @@
 #include <iostream>
 
 #include "Componentes/CPU.h"
-#include "Componentes/LCD.h"
 #include "Componentes/Mem.h"
+#include "Componentes/LCD.h"
 
 void CargarBinario(Mem& mem, const std::string& bin) {
     std::string ruta = "Programas/build/" + bin + ".bin";
