@@ -13,7 +13,8 @@ protected:
 };
 
 TEST_F(ROL_ZeroPage_Test, ROL_ZeroPage) {
-    // Mem = 0x80 -> 0x01. C=1.
+    // Mem = 0x80 -> 0x00 (Shift Left, C=0 into bit 0).
+    // Carry Out = Old Bit 7 (1).
     cpu.C = 0;
 
     mem[0xFFFC] = 0x00;
@@ -25,6 +26,7 @@ TEST_F(ROL_ZeroPage_Test, ROL_ZeroPage) {
 
     cpu.Ejecutar(mem);
 
-    EXPECT_EQ(mem[0x0042], 0x01);
+    EXPECT_EQ(mem[0x0042], 0x00);
     EXPECT_TRUE(cpu.C);
+    EXPECT_TRUE(cpu.Z);
 }

@@ -14,29 +14,30 @@ static void SetFlagsBCD(CPU& cpu, Word res, Byte dato, Byte oldA) {
 }
 
 static Word SBC_Decimal(CPU& cpu, Byte dato) {
-    bool carry = cpu.C;
+    bool acarreoPrevio = cpu.C;
 
-    // Binary subtraction for Carry flag
-    Word bin_diff = cpu.A - dato - (1 - (carry ? 1 : 0));
+    Word diferenciaBinariaCompleta =
+        cpu.A - dato - (1 - (acarreoPrevio ? 1 : 0));
 
-    // Carry is cleared if overflow (borrow) occurred
-    bool no_borrow = !(bin_diff > 0xFF);
-    cpu.C = no_borrow;
+    bool noHuboPrestamo = !(diferenciaBinariaCompleta > 0xFF);
+    cpu.C = noHuboPrestamo;
 
-    int l = (cpu.A & 0x0F) - (dato & 0x0F) - (1 - (carry ? 1 : 0));
-    int h = (cpu.A >> 4) - (dato >> 4);
+    int diferenciaNibbleBajo =
+        (cpu.A & 0x0F) - (dato & 0x0F) - (1 - (acarreoPrevio ? 1 : 0));
+    int diferenciaNibbleAlto = (cpu.A >> 4) - (dato >> 4);
 
-    if (l < 0) {
-        l -= 6;
-        h--;
+    if (diferenciaNibbleBajo < 0) {
+        diferenciaNibbleBajo -= 6;
+        diferenciaNibbleAlto--;
     }
 
-    if (h < 0) {
-        h -= 6;
+    if (diferenciaNibbleAlto < 0) {
+        diferenciaNibbleAlto -= 6;
     }
 
-    Word res = ((h & 0x0F) << 4) | (l & 0x0F);
-    return res;
+    Word resultadoFinal =
+        ((diferenciaNibbleAlto & 0x0F) << 4) | (diferenciaNibbleBajo & 0x0F);
+    return resultadoFinal;
 }
 
 void SBC::EjecutarInmediato(CPU& cpu, Mem& mem) {

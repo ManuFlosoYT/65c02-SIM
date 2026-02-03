@@ -7,11 +7,9 @@ static void SetFlags(CPU& cpu, Byte val, Byte A) {
 }
 
 void ROL::EjecutarAcumulador(CPU& cpu, Mem& mem) {
-    
     Byte A = cpu.A;
-
-    cpu.A = (A << 1) | (A >> 7);
-
+    Byte oldCarry = cpu.C ? 1 : 0;
+    cpu.A = (A << 1) | oldCarry;
     SetFlags(cpu, cpu.A, A);
 }
 
@@ -19,7 +17,8 @@ void ROL::EjecutarZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
     Byte A = dato;
-    dato = (dato << 1) | (dato >> 7);
+    Byte oldCarry = cpu.C ? 1 : 0;
+    dato = (dato << 1) | oldCarry;
     mem[ZP_Dir] = dato;
     SetFlags(cpu, dato, A);
 }
@@ -29,7 +28,8 @@ void ROL::EjecutarZPX(CPU& cpu, Mem& mem) {
     ZP_Dir += cpu.X;
     Byte dato = cpu.LeerByte(ZP_Dir, mem);
     Byte A = dato;
-    dato = (dato << 1) | (dato >> 7);
+    Byte oldCarry = cpu.C ? 1 : 0;
+    dato = (dato << 1) | oldCarry;
     mem[ZP_Dir] = dato;
     SetFlags(cpu, dato, A);
 }
@@ -38,7 +38,8 @@ void ROL::EjecutarABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Byte dato = cpu.LeerByte(Dir, mem);
     Byte A = dato;
-    dato = (dato << 1) | (dato >> 7);
+    Byte oldCarry = cpu.C ? 1 : 0;
+    dato = (dato << 1) | oldCarry;
     mem[Dir] = dato;
     SetFlags(cpu, dato, A);
 }
@@ -48,7 +49,8 @@ void ROL::EjecutarABSX(CPU& cpu, Mem& mem) {
     Dir += cpu.X;
     Byte dato = cpu.LeerByte(Dir, mem);
     Byte A = dato;
-    dato = (dato << 1) | (dato >> 7);
+    Byte oldCarry = cpu.C ? 1 : 0;
+    dato = (dato << 1) | oldCarry;
     mem[Dir] = dato;
     SetFlags(cpu, dato, A);
 }

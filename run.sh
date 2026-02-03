@@ -5,7 +5,7 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-BIN_FILE="./Programas/$1.bin"
+BIN_FILE="./Programas/build/$1.bin"
 
 if [ ! -f "$BIN_FILE" ]; then
     echo "Error: El archivo $BIN_FILE no existe."

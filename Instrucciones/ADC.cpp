@@ -15,19 +15,19 @@ static void SetFlagsBCD(CPU& cpu, Word res, Byte dato, Byte oldA) {
 }
 
 static Word ADC_Decimal(CPU& cpu, Byte dato) {
-    Byte low = (cpu.A & 0x0F) + (dato & 0x0F) + cpu.C;
-    Byte high = (cpu.A >> 4) + (dato >> 4);
+    Byte sumaNibbleBajo = (cpu.A & 0x0F) + (dato & 0x0F) + cpu.C;
+    Byte sumaNibbleAlto = (cpu.A >> 4) + (dato >> 4);
 
-    if (low > 9) {
-        low += 6;
-        high++;
+    if (sumaNibbleBajo > 9) {
+        sumaNibbleBajo += 6;
+        sumaNibbleAlto++;
     }
 
-    if (high > 9) {
-        high += 6;
+    if (sumaNibbleAlto > 9) {
+        sumaNibbleAlto += 6;
     }
 
-    return (high << 4) | low;
+    return (sumaNibbleAlto << 4) | sumaNibbleBajo;
 }
 
 void ADC::EjecutarInmediato(CPU& cpu, Mem& mem) {

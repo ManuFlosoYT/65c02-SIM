@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
         std::cin >> bin;
     }
 
-    std::string ruta = "Programas/" + bin + ".bin";
+    std::string ruta = "Programas/build/" + bin + ".bin";
 
     FILE* fichero = fopen(ruta.c_str(), "rb");
     if (fichero == nullptr) {
@@ -50,10 +50,8 @@ int main(int argc, char* argv[]) {
     fclose(fichero);
 
     std::cout << "--- Lanzando programa ---" << std::endl;
-    std::cout << "Vector Reset [FFFC]: 0x" << std::hex
-              << std::setw(2)
-              << std::setfill('0') << (int)mem.memoria[0xFFFD]
-              << std::setw(2)
+    std::cout << "Vector Reset [FFFC]: 0x" << std::hex << std::setw(2)
+              << std::setfill('0') << (int)mem.memoria[0xFFFD] << std::setw(2)
               << std::setfill('0') << (int)mem.memoria[0xFFFC] << std::endl;
 
     cpu.Ejecutar(mem);
