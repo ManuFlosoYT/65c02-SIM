@@ -61,6 +61,7 @@ void LCD::Inicializar(Mem& mem) {
 
                     if (rs) {
                         // Dato (Caracter)
+                        if (full_byte == '\n') std::cout << '\r';
                         std::cout << (char)full_byte;
                         std::cout.flush();
                     } else {

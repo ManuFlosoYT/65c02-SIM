@@ -11,6 +11,7 @@ int main() {
     bios_putchar('n');
     bios_putchar('d');
     bios_putchar('o');
+    bios_putchar('!');
     bios_putchar('\n');
     return 0;
 }
