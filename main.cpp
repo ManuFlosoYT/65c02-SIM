@@ -1,9 +1,40 @@
+#include <sys/select.h>
+#include <termios.h>
+#include <unistd.h>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
+#include <string>
 
+#include "Componentes/ACIA.h"
 #include "Componentes/CPU.h"
 #include "Componentes/LCD.h"
 #include "Componentes/Mem.h"
+
+struct termios orig_termios;
+
+void reset_terminal_mode() { tcsetattr(0, TCSANOW, &orig_termios); }
+
+void set_conio_terminal_mode() {
+    struct termios new_termios;
+
+    // take two copies - one for now, one for later
+    tcgetattr(0, &orig_termios);
+    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
+
+    // register cleanup handler, and set the new terminal mode
+    atexit(reset_terminal_mode);
+    cfmakeraw(&new_termios);
+    tcsetattr(0, TCSANOW, &new_termios);
+}
+
+int kbhit() {
+    struct timeval tv = {0L, 0L};
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
+}
 
 void CargarBinario(Mem& mem, const std::string& bin) {
     std::string ruta = "Programas/build/" + bin + ".bin";
@@ -38,8 +69,11 @@ int main(int argc, char* argv[]) {
     Mem mem{};
     CPU cpu{};
     LCD lcd;
+    ACIA acia;
+
     cpu.Reset(mem);
     lcd.Inicializar(mem);
+    acia.Inicializar(mem);
 
     std::string bin;
     if (argc > 1) {
@@ -53,7 +87,31 @@ int main(int argc, char* argv[]) {
 
     std::cout << "--- Lanzando programa ---\n";
 
-    cpu.Ejecutar(mem);
+    // Interactive mode for Wozmon (or always)
+    bool interactive = true;
+    if (interactive) {
+        set_conio_terminal_mode();
+        std::cout << "Interactive Mode. Press Ctrl-C to exit.\r\n";
+    }
+
+    while (true) {
+        int res = cpu.Step(mem);
+        if (res != 0) break;
+
+        if (interactive && kbhit()) {
+            char c = getchar();
+            if (c == 3) break;  // Ctrl-C
+
+            // Simular ACIA: Escribir dato y activar IRQ
+            mem.memoria[ACIA_DATA] = c;
+            mem.memoria[ACIA_STATUS] |=
+                0x80;  // Bit 7: Data Register Full / IRQ
+
+            cpu.IRQ(mem);
+        }
+    }
+
+    if (interactive) reset_terminal_mode();
 
     std::cout << "\n--- Ejecucion finalizada ---\n";
 }

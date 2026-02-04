@@ -3,6 +3,7 @@
 .importzp sp
 .import copydata
 .import zerobss
+.import IRQ_HANDLER
 
 ; Importamos símbolos creados por el linker para inicializar la pila C
 .import __STACKSTART__
@@ -29,7 +30,7 @@ _startup:
     ; 3. Al volver, crash intencional
     .byte $02
 
-.segment "VECTORS"
-    .word _startup
-    .word _startup
-    .word _startup
+.segment "RESETVEC"
+    .word $0F00        ; NMI
+    .word _startup     ; RESET (C startup)
+    .word IRQ_HANDLER  ; IRQ (BIOS handler)

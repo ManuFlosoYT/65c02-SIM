@@ -29,6 +29,8 @@ public:
     void Reset(Mem& mem);
     int Ejecutar(Mem& mem);
     int Ejecutar(Mem& mem, bool ejecutar);
+    int Step(Mem& mem);
+    void IRQ(Mem& mem);
 
     const Byte GetStatus() const;
     void SetStatus(Byte status);
@@ -38,12 +40,10 @@ public:
     const Word FetchWord(
         const Mem& mem);  // Lee un word de memoria y avanza el PC + 2
 
-    const Byte LeerByte(
-        const Word dir,
-        const Mem& mem);  // Lee un byte de memoria sin avanzar el PC
-    const Word LeerWord(
-        const Word dir,
-        const Mem& mem);  // Lee un word de memoria sin avanzar el PC
+    const Byte LeerByte(const Word dir,
+                        Mem& mem);  // Lee un byte de memoria sin avanzar el PC
+    const Word LeerWord(const Word dir,
+                        Mem& mem);  // Lee un word de memoria sin avanzar el PC
 
     void PushByte(Byte val, Mem& mem);
     Byte PopByte(Mem& mem);
