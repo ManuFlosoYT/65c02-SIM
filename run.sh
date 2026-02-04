@@ -15,7 +15,16 @@ if [ ! -f "$SOURCE" ]; then
 fi
 
 echo "--- Compilando $1 ---"
-cl65 -O --cpu 65C02 -t none -C Linker/memoria.cfg -o "./Programas/build/$1.bin" -m "./Programas/build/$1.map" -l "./Programas/build/$1.lst" Linker/bios.s Linker/inicio.s "$SOURCE"
+
+EXTRA_SOURCES=""
+ASM_FLAGS=""
+
+if [ "$1" == "basic" ]; then
+    EXTRA_SOURCES="Linker/msbasic/msbasic.s"
+    ASM_FLAGS="--asm-define eater -I Linker/msbasic"
+fi
+
+cl65 -O --cpu 65C02 -t none -C Linker/memoria.cfg $ASM_FLAGS -o "./Programas/build/$1.bin" -m "./Programas/build/$1.map" -l "./Programas/build/$1.lst" Linker/bios.s Linker/inicio.s $EXTRA_SOURCES "$SOURCE"
 mv "./Programas/$1.o" "./Programas/build/$1.o"
 echo "Binario compilado correctamente"
 echo ""
