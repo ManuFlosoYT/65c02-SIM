@@ -87,6 +87,7 @@ int CPU::Ejecutar(Mem& mem, bool ejecutar) {
 }
 
 void CPU::IRQ(Mem& mem) {
+    waiting = false;
     if (!I) {
         PushWord(PC, mem);
         B = 0;
@@ -108,11 +109,20 @@ int CPU::Step(Mem& mem) {
     // lo inyectamos manualmente) Como no tenemos simulación de línea de
     // hardware, volvemos a disparar si el estado está establecido
 
+    // Si estamos en espera (WAI), revisamos si hay interrupción pendiente
+    if (waiting) {
+        if ((mem.Read(ACIA_STATUS) & 0x80) != 0) {
+            waiting = false;
+        } else {
+            return 0;
+        }
+    }
+
     Byte opcode = FetchByte(mem);
     switch (opcode) {
         case INS_WAI: {
-            // TODO: Implementar WAI
-            return 1;
+            waiting = true;
+            return 0;
         }
         case INS_STP: {
             return 1;

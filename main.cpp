@@ -137,6 +137,7 @@ int main(int argc, char* argv[]) {
 
                     int res = cpu.Step(mem);
                     if (res != 0) break;
+                    fprintf(stderr, "Intro injected.\r\n");
                     fprintf(stderr,
                             "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X "
                             "OP:%02X\r\n",
@@ -167,10 +168,10 @@ int main(int argc, char* argv[]) {
             }
             if (c == 5) {  // Ctrl-E toggle Pause
                 paused = true;
-                fprintf(stderr,
-                        "\n\rPAUSED. Keys: 's' Step, 'c' Continue, 'q' Quit, 'i' "
-                        "Input 1 char, 'Enter' Newline+Step\r\n");
-                // Print current state immediately
+                fprintf(
+                    stderr,
+                    "\n\rPAUSED. Keys: 's' Step, 'c' Continue, 'q' Quit, 'i' "
+                    "Input 1 char, 'Enter' Newline+Step\r\n");
                 fprintf(
                     stderr,
                     "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X OP:%02X\r\n",
@@ -178,8 +179,8 @@ int main(int argc, char* argv[]) {
                     mem.memoria[cpu.PC]);
                 continue;
             }
-            if (c == 3) break;        // Ctrl-C
-            if (c == '\n') c = '\r';  // Mapear LF a CR para BASIC
+            if (c == 3) break;  // Ctrl-C
+            //if (c == '\n') c = '\r';
 
             // Simular ACIA: Escribir dato y activar IRQ
             mem.memoria[ACIA_DATA] = c;

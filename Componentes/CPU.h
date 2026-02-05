@@ -24,6 +24,7 @@ public:
     Byte N : 1;  // Negative Flag
 
     bool isInit{false};
+    bool waiting{false};
 
     CPU() = default;
     void Reset(Mem& mem);

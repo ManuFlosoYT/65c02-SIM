@@ -10,14 +10,17 @@ void ACIA::Inicializar(Mem& mem) {
         std::cout << (char)val;
         std::cout.flush();
     });
-    mem.SetWriteHook(ACIA_STATUS, [this](Word dir, Byte val) {
-        this->STATUS = val;
+    
+    mem.SetWriteHook(ACIA_STATUS, [this](Word dir, Byte val) { 
+        this->STATUS = val; 
     });
-    mem.SetWriteHook(ACIA_CMD, [this](Word dir, Byte val) {
-        this->CMD = val;
+
+    mem.SetWriteHook(ACIA_CMD, [this](Word dir, Byte val) { 
+        this->CMD = val; 
     });
-    mem.SetWriteHook(ACIA_CTRL, [this](Word dir, Byte val) {
-        this->CTRL = val;
+    
+    mem.SetWriteHook(ACIA_CTRL, [this](Word dir, Byte val) { 
+        this->CTRL = val; 
     });
 
     mem.SetReadHook(ACIA_DATA, [this, &mem](Word dir) {
