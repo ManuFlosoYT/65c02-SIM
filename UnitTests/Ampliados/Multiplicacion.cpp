@@ -69,6 +69,7 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
 
     // Ejecutar
     cpu.PC = CODE_START;
+    cpu.isInit = true;  // Previen3 Reset
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
     cpu.Ejecutar(mem);

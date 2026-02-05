@@ -46,10 +46,14 @@ Compile and run programs
 ./run.sh
 ```
 
+Pressing CTRL + E toggles debug mode (quite usefull if something goes wrong)
+Pressing CTRL + D toggles printing the CPU status on every cicle
 
 ## :wave: Contributing
 
 Contributions are always welcome!
+
+The entire UnitTests/ folder has been AI generated, sorry for the mess. 😅😅
 
 ## :handshake: Contact
 

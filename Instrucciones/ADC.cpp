@@ -7,11 +7,10 @@ static void SetFlags(CPU& cpu, Word res, Byte dato, Byte oldA) {
     cpu.V = (~(oldA ^ dato) & (oldA ^ res) & 0b10000000) > 0;
 }
 
-static void SetFlagsBCD(CPU& cpu, Word res, Byte dato, Byte oldA) {
-    cpu.Z = (cpu.A == 0);
-    cpu.N = (cpu.A & 0b10000000) > 0;
-    cpu.C = (res > 0x99);
-    cpu.V = (~(oldA ^ dato) & (oldA ^ res) & 0b10000000) > 0;
+static void SetFlagsBCD(CPU& cpu, Word binaryRes, Byte dato, Byte oldA) {
+    cpu.Z = ((binaryRes & 0xFF) == 0);
+    cpu.N = (binaryRes & 0b10000000) > 0;
+    cpu.V = (~(oldA ^ dato) & (oldA ^ binaryRes) & 0b10000000) > 0;
 }
 
 static Word ADC_Decimal(CPU& cpu, Byte dato) {
@@ -40,9 +39,11 @@ void ADC::EjecutarInmediato(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -57,9 +58,11 @@ void ADC::EjecutarZP(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -75,9 +78,11 @@ void ADC::EjecutarZPX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -92,9 +97,11 @@ void ADC::EjecutarABS(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -110,9 +117,11 @@ void ADC::EjecutarABSX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -128,9 +137,11 @@ void ADC::EjecutarABSY(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -148,9 +159,11 @@ void ADC::EjecutarINDX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -177,9 +190,11 @@ void ADC::EjecutarINDY(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }
 
@@ -204,8 +219,10 @@ void ADC::EjecutarIND_ZP(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
+        cpu.C = (res > 0x99);
     }
 }

@@ -31,7 +31,7 @@ TEST_F(BRA_Test, BRA_NegativeOffset) {
     // Destination: 0x1010 + 2 - 5 = 0x1012 - 5 = 0x100D
     mem.Write(0x100D, INS_JAM);  // Stop instruction
 
-    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFC, 0x10);
     mem.Write(0xFFFD, 0x10);
     cpu.Ejecutar(mem);
 

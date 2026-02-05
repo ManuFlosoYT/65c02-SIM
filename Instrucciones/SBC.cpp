@@ -7,10 +7,10 @@ static void SetFlags(CPU& cpu, Word res, Byte dato, Byte oldA) {
     cpu.V = ((oldA ^ res) & (oldA ^ dato) & 0b10000000) > 0;
 }
 
-static void SetFlagsBCD(CPU& cpu, Word res, Byte dato, Byte oldA) {
-    cpu.Z = (cpu.A == 0);
-    cpu.N = (cpu.A & 0b10000000) > 0;
-    cpu.V = ((oldA ^ res) & (oldA ^ dato) & 0b10000000) > 0;
+static void SetFlagsBCD(CPU& cpu, Word binaryRes, Byte dato, Byte oldA) {
+    cpu.Z = ((binaryRes & 0xFF) == 0);
+    cpu.N = (binaryRes & 0b10000000) > 0;
+    cpu.V = ((oldA ^ binaryRes) & (oldA ^ dato) & 0b10000000) > 0;
 }
 
 static Word SBC_Decimal(CPU& cpu, Byte dato) {
@@ -50,9 +50,10 @@ void SBC::EjecutarInmediato(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 
@@ -67,9 +68,10 @@ void SBC::EjecutarZP(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 
@@ -85,9 +87,10 @@ void SBC::EjecutarZPX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 
@@ -102,9 +105,10 @@ void SBC::EjecutarABS(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 
@@ -120,9 +124,10 @@ void SBC::EjecutarABSX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 
@@ -138,9 +143,10 @@ void SBC::EjecutarABSY(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 
@@ -158,9 +164,10 @@ void SBC::EjecutarINDX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 
@@ -187,9 +194,10 @@ void SBC::EjecutarINDY(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        Word binaryRes = cpu.A - dato - (1 - cpu.C);
         res = SBC_Decimal(cpu, dato);
         cpu.A = res;
-        SetFlagsBCD(cpu, res, dato, oldA);
+        SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
 

@@ -62,6 +62,7 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
 
     // Ejecutar
     cpu.PC = CODE_START;
+    cpu.isInit = true;  // Previene ejecutar de resetear PC a vector 0xFFFC (que es 0)
     cpu.Ejecutar(mem);
 
     // Verificacion

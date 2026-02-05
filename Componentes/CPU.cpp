@@ -80,8 +80,8 @@ int CPU::Ejecutar(Mem& mem, bool ejecutar) {
     }
     do {
         int res = Step(mem);
-        if (res == 1) return 1;    // Stop/Wait/Jam encountered
-        if (res == -1) return -1;  // Unknown opcode encountered
+        if (res == 1) return 1;    // Stop/Wait/Jam
+        if (res == -1) return -1;  // Opcode no válido
     } while (ejecutar);
     return 0;
 }
@@ -92,6 +92,7 @@ void CPU::IRQ(Mem& mem) {
         B = 0;
         PushByte(GetStatus(), mem);
         I = 1;
+        D = 0;  // 65C02 limpia el flag Decimal en IRQ
         PC = LeerWord(0xFFFE, mem);
     }
 }
@@ -102,8 +103,10 @@ int CPU::Step(Mem& mem) {
         isInit = true;
     }
 
-    // Check for interrupts here if we implement delayed IRQ.
-    // However, existing code doesn't have IRQ logic.
+    // Comprobar si hay IRQ pendiente de ACIA (si los interrupciones están
+    // habilitadas en CPU, Step lo analizaría si tuviéramos una línea, pero aquí
+    // lo inyectamos manualmente) Como no tenemos simulación de línea de
+    // hardware, volvemos a disparar si el estado está establecido
 
     Byte opcode = FetchByte(mem);
     switch (opcode) {
@@ -971,11 +974,13 @@ int CPU::Step(Mem& mem) {
 void CPU::PushByte(Byte val, Mem& mem) {
     mem.Write(SP, val);
     SP--;
+    if (SP < 0x0100) SP = 0x01FF;  // Wrap a la cima de la pila
 }
 
 Byte CPU::PopByte(Mem& mem) {
     SP++;
-    return mem[SP];
+    if (SP > 0x01FF) SP = 0x0100;  // Wrap a la base de la pila
+    return mem.Read(SP);
 }
 
 void CPU::PushWord(Word val, Mem& mem) {

@@ -13,6 +13,7 @@ protected:
 
 TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_ExecutesCorrectly) {
     cpu.PC = 0x1000;
+    cpu.isInit = true;
     cpu.X = 0x05;
     mem.Write(0x1000, INS_STZ_ABSX);
     mem.Write(0x1001, 0x00);
@@ -32,6 +33,7 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_ExecutesCorrectly) {
 
 TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_PageCrossing) {
     cpu.PC = 0x1000;
+    cpu.isInit = true;
     cpu.X = 0xFF;
     mem.Write(0x1000, INS_STZ_ABSX);
     mem.Write(0x1001, 0x00);

@@ -1,6 +1,8 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
+
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -94,13 +96,78 @@ int main(int argc, char* argv[]) {
         std::cout << "Interactive Mode. Press Ctrl-C to exit.\r\n";
     }
 
+    // Debug trace state
+    static bool debugTrace = false;
+    static bool paused = false;
+
     while (true) {
+        if (paused) {
+            if (kbhit()) {
+                char c = getchar();
+                if (c == 's' || c == ' ') {  // Step
+                    int res = cpu.Step(mem);
+                    if (res != 0) break;
+                    fprintf(stderr,
+                            "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X "
+                            "OP:%02X\r\n",
+                            cpu.PC, cpu.A, cpu.X, cpu.Y, cpu.SP,
+                            cpu.GetStatus(), mem.memoria[cpu.PC]);
+                } else if (c == 'c') {  // Continue
+                    paused = false;
+                    fprintf(stderr, "Resuming...\r\n");
+                } else if (c == 'q') {  // Quit
+                    break;
+                } else if (c == 'i') {  // Inject input
+                    fprintf(stderr, "Character to inject: ");
+                    // Simple blocking wait for next char
+                    while (!kbhit()) usleep(1000);
+                    char input = getchar();
+
+                    mem.memoria[ACIA_DATA] = input;
+                    mem.memoria[ACIA_STATUS] |= 0x80;
+                    // Trigger IRQ logic (simulation)
+                    cpu.IRQ(mem);
+                    fprintf(stderr,
+                            "\r\nInjected '%c' (%02X). IRQ Triggered.\r\n",
+                            (isprint(input) ? input : '?'), input);
+                }
+            } else {
+                usleep(10000);  // Sleep to avoid CPU hogging
+            }
+            continue;  // Skip normal execution
+        }
+
+        // Normal execution
         int res = cpu.Step(mem);
         if (res != 0) break;
 
+        if ((mem.memoria[ACIA_STATUS] & 0x80) != 0) {
+            cpu.IRQ(mem);
+        }
+
         if (interactive && kbhit()) {
             char c = getchar();
-            if (c == 3) break;  // Ctrl-C
+            if (c == 4) {  // Ctrl-D toggle debug trace
+                debugTrace = !debugTrace;
+                fprintf(stderr, "Debug Trace: %s\r\n",
+                        debugTrace ? "ON" : "OFF");
+                continue;
+            }
+            if (c == 5) {  // Ctrl-E toggle Pause
+                paused = true;
+                fprintf(stderr,
+                        "\nPAUSED. Keys: 's' Step, 'c' Continue, 'q' Quit, 'i' "
+                        "Input 1 char\r\n");
+                // Print current state immediately
+                fprintf(
+                    stderr,
+                    "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X OP:%02X\r\n",
+                    cpu.PC, cpu.A, cpu.X, cpu.Y, cpu.SP, cpu.GetStatus(),
+                    mem.memoria[cpu.PC]);
+                continue;
+            }
+            if (c == 3) break;        // Ctrl-C
+            if (c == '\n') c = '\r';  // Mapear LF a CR para BASIC
 
             // Simular ACIA: Escribir dato y activar IRQ
             mem.memoria[ACIA_DATA] = c;
@@ -108,6 +175,13 @@ int main(int argc, char* argv[]) {
                 0x80;  // Bit 7: Data Register Full / IRQ
 
             cpu.IRQ(mem);
+        }
+
+        if (debugTrace) {
+            fprintf(stderr,
+                    "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X OP:%02X\r\n",
+                    cpu.PC, cpu.A, cpu.X, cpu.Y, cpu.SP, cpu.GetStatus(),
+                    mem.memoria[cpu.PC]);
         }
     }
 

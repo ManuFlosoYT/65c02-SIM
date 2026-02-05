@@ -65,7 +65,7 @@ TEST_F(BCC_Test, BCC_Branch_Backward) {
     mem.Write(0x1011, 0xFB);  // -5
     mem.Write(0x100D, INS_JAM);
 
-    mem.Write(0xFFFC, 0x00);
+    mem.Write(0xFFFC, 0x10);
     mem.Write(0xFFFD, 0x10);
     cpu.Ejecutar(mem);
 
