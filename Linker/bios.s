@@ -181,6 +181,9 @@ IRQ_HANDLER:
 _wozmon_entry:
                 jmp GORESTART
 
+.export WOZMON_RESET
+WOZMON_RESET = RESET
+
 .include "wozmon.s"
 
 

@@ -41,9 +41,9 @@ Build the project
 ./build.sh
 ```
 
-Compile and run programs
+Compile and run programs from ./Programas/ (basic, wozmon or <program_name>)
 ```bash
-./run.sh
+./run.sh <program_name>
 ```
 
 Pressing CTRL + E toggles debug mode (quite usefull if something goes wrong)
