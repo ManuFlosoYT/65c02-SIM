@@ -1,6 +1,6 @@
 .setcpu "65C02"
 .debuginfo
-.export MONRDKEY, MONCOUT, LOAD, SAVE, INIT_BUFFER, IRQ_HANDLER
+.export MONRDKEY, MONCOUT, LOAD, SAVE, INIT_BUFFER, IRQ_HANDLER, MONPEEK
 .export _MONRDKEY, _MONCOUT, _LOAD, _SAVE, _INIT_BUFFER
 
 _MONRDKEY = MONRDKEY
@@ -81,12 +81,13 @@ SAVE:
 ; On return, carry flag indicates whether a key was pressed
 ; If a key was pressed, the key value will be in the A register
 ;
-; Modifies: flags, A
 MONRDKEY:
 CHRIN:
                 phx
+@wait_key:
                 jsr     BUFFER_SIZE
-                beq     @no_keypressed
+                beq     @wait_key
+                
                 jsr     READ_BUFFER
                 jsr     CHROUT                  ; echo
                 pha
@@ -101,7 +102,19 @@ CHRIN:
                 plx
                 sec
                 rts
-@no_keypressed:
+
+; Peek a character from input buffer without removing it
+; Modifies: flags, A, X
+MONPEEK:
+                phx
+                jsr BUFFER_SIZE
+                beq @no_keyp
+                ldx READ_PTR
+                lda INPUT_BUFFER,x
+                plx
+                sec
+                rts
+@no_keyp:
                 plx
                 clc
                 rts
