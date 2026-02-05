@@ -163,8 +163,9 @@ int main(int argc, char* argv[]) {
 
         // Drain stdin into inputBuffer
         if (interactive) {
-            while (kbhit()) {
-                char c = getchar();
+            while (kbhit() > 0) {
+                int c = getchar();
+                if (c == EOF) break;
                 if (c == 4) {  // Ctrl-D toggle debug trace
                     debugTrace = !debugTrace;
                     fprintf(stderr, "Debug Trace: %s\r\n",
