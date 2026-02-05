@@ -102,6 +102,8 @@ int main(int argc, char* argv[]) {
     static bool paused = false;
 
     std::deque<char> inputBuffer;
+    int baudDelay = 0;
+    int inputPollDelay = 0;
 
     while (true) {
         if (paused) {
@@ -157,47 +159,56 @@ int main(int argc, char* argv[]) {
         int res = cpu.Step(mem);
         if (res != 0) break;
 
+        if (baudDelay > 0) baudDelay--;
+
         if ((mem.memoria[ACIA_STATUS] & 0x80) != 0) {
             cpu.IRQ(mem);
         }
 
-        // Drain stdin into inputBuffer
+        // Drain stdin into inputBuffer (Throttled to avoid syscall spam)
         if (interactive) {
-            while (kbhit() > 0) {
-                int c = getchar();
-                if (c == EOF) break;
-                if (c == 4) {  // Ctrl-D toggle debug trace
-                    debugTrace = !debugTrace;
-                    fprintf(stderr, "Debug Trace: %s\r\n",
-                            debugTrace ? "ON" : "OFF");
-                    continue;
-                }
-                if (c == 5) {  // Ctrl-E toggle Pause
-                    paused = true;
-                    fprintf(stderr,
-                            "\n\rPAUSED. Keys: 's' Step, 'c' Continue, 'q' "
-                            "Quit, 'i' "
-                            "Input 1 char, 'Enter' Newline+Step\r\n");
-                    fprintf(stderr,
-                            "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X "
-                            "OP:%02X\r\n",
-                            cpu.PC, cpu.A, cpu.X, cpu.Y, cpu.SP,
-                            cpu.GetStatus(), mem.memoria[cpu.PC]);
-                    continue;
-                }
-                if (c == 3) {  // Ctrl-C
-                    reset_terminal_mode();
-                    std::cout << "\n--- Ejecucion interrumpida ---\n";
-                    exit(0);
-                }
+            if (inputPollDelay > 0) {
+                inputPollDelay--;
+            } else {
+                inputPollDelay = 1000;  // Check input every 1000 instructions
+                while (kbhit() > 0) {
+                    int c = getchar();
+                    if (c == EOF) break;
+                    if (c == 4) {  // Ctrl-D toggle debug trace
+                        debugTrace = !debugTrace;
+                        fprintf(stderr, "Debug Trace: %s\r\n",
+                                debugTrace ? "ON" : "OFF");
+                        continue;
+                    }
+                    if (c == 5) {  // Ctrl-E toggle Pause
+                        paused = true;
+                        fprintf(stderr,
+                                "\n\rPAUSED. Keys: 's' Step, 'c' Continue, 'q' "
+                                "Quit, 'i' "
+                                "Input 1 char, 'Enter' Newline+Step\r\n");
+                        fprintf(stderr,
+                                "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X "
+                                "OP:%02X\r\n",
+                                cpu.PC, cpu.A, cpu.X, cpu.Y, cpu.SP,
+                                cpu.GetStatus(), mem.memoria[cpu.PC]);
+                        continue;
+                    }
+                    if (c == 3) {  // Ctrl-C
+                        reset_terminal_mode();
+                        std::cout << "\n--- Ejecucion interrumpida ---\n";
+                        exit(0);
+                    }
 
-                if (c == '\n') c = '\r';
-                inputBuffer.push_back(c);
+                    if (c == '\n') c = '\r';
+                    inputBuffer.push_back(c);
+                }
             }
         }
 
         // Process input buffer if ACIA is ready
-        if (!inputBuffer.empty() && (mem.memoria[ACIA_STATUS] & 0x80) == 0) {
+        // Check Flow Control (PORTA bit 0, 0 = Ready to Receive) and Baud Delay
+        if (!inputBuffer.empty() && (mem.memoria[ACIA_STATUS] & 0x80) == 0 &&
+            (mem.memoria[PORTA] & 0x01) == 0 && baudDelay <= 0) {
             char c = inputBuffer.front();
             inputBuffer.pop_front();
 
@@ -206,6 +217,10 @@ int main(int argc, char* argv[]) {
             mem.memoria[ACIA_STATUS] |=
                 0x80;  // Bit 7: Data Register Full / IRQ
             cpu.IRQ(mem);
+
+            // Set delay for next character (approx 2000 instructions ~2ms @
+            // 1MHz)
+            baudDelay = 2000;
         }
 
         if (debugTrace) {
