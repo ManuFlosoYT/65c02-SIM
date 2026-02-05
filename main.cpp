@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "--- Lanzando programa ---\n";
 
-    // Interactive mode for Wozmon (or always)
+    // Modo interactivo para Wozmon y BASIC
     bool interactive = true;
     if (interactive) {
         set_conio_terminal_mode();
@@ -130,6 +130,18 @@ int main(int argc, char* argv[]) {
                     fprintf(stderr,
                             "\r\nInjected '%c' (%02X). IRQ Triggered.\r\n",
                             (isprint(input) ? input : '?'), input);
+                } else if (c == '\n' || c == '\r') {  // Newline + Step
+                    mem.memoria[ACIA_DATA] = '\r';
+                    mem.memoria[ACIA_STATUS] |= 0x80;
+                    cpu.IRQ(mem);
+
+                    int res = cpu.Step(mem);
+                    if (res != 0) break;
+                    fprintf(stderr,
+                            "PC: %04X A:%02X X:%02X Y:%02X SP:%04X P:%02X "
+                            "OP:%02X\r\n",
+                            cpu.PC, cpu.A, cpu.X, cpu.Y, cpu.SP,
+                            cpu.GetStatus(), mem.memoria[cpu.PC]);
                 }
             } else {
                 usleep(10000);  // Sleep to avoid CPU hogging
@@ -156,8 +168,8 @@ int main(int argc, char* argv[]) {
             if (c == 5) {  // Ctrl-E toggle Pause
                 paused = true;
                 fprintf(stderr,
-                        "\nPAUSED. Keys: 's' Step, 'c' Continue, 'q' Quit, 'i' "
-                        "Input 1 char\r\n");
+                        "\n\rPAUSED. Keys: 's' Step, 'c' Continue, 'q' Quit, 'i' "
+                        "Input 1 char, 'Enter' Newline+Step\r\n");
                 // Print current state immediately
                 fprintf(
                     stderr,
