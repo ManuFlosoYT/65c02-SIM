@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
             if (c == 3) break;  // Ctrl-C
-            //if (c == '\n') c = '\r';
+            if (c == '\n') c = '\r';
 
             // Simular ACIA: Escribir dato y activar IRQ
             mem.memoria[ACIA_DATA] = c;
