@@ -5,7 +5,8 @@ NAME=${1:?"Uso: $0 <nombre_bin_sin_extension> o basic"}
 mkdir -p Programas/build
 
 if [ "$NAME" == "basic" ]; then
-    (cd Linker/msbasic && chmod +x make.sh && ./make.sh)
+    echo "--- Compilando BASIC ---"
+    (cd Linker/msbasic && chmod +x make.sh && ./make.sh) > /dev/null 2>&1
     cp Linker/msbasic/tmp/eater.bin Programas/build/basic.bin
 else
     [ -f "Programas/$NAME.c" ] || { echo "Error: Programas/$NAME.c no existe"; exit 1; }

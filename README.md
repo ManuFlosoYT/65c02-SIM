@@ -41,9 +41,14 @@ Build the project
 ./build.sh
 ```
 
-Compile and run programs from ./Programas/ (basic, wozmon or <program_name>)
+Compile and run programs from ./Programas/
 ```bash
 ./run.sh <program_name>
+```
+
+Compile and run wozmon/msbasic from Ben Eater's repository
+```bash
+./run.sh basic
 ```
 
 Pressing CTRL + E toggles debug mode (quite usefull if something goes wrong)
