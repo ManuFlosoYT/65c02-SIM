@@ -10,6 +10,11 @@ using Word = uint16_t;
 
 class CPU {
 public:
+    // RETURNS:
+    // 0: OK
+    // 1: STOP/JAM
+    // -1: Opcode no válido
+
     Word PC{};  // Program Counter
     Word SP{};  // Stack Pointer
 

@@ -80,7 +80,7 @@ int CPU::Ejecutar(Mem& mem, bool ejecutar) {
     }
     do {
         int res = Step(mem);
-        if (res == 1) return 1;    // Stop/Wait/Jam
+        if (res == 1) return 1;    // Stop/Jam
         if (res == -1) return -1;  // Opcode no válido
     } while (ejecutar);
     return 0;
