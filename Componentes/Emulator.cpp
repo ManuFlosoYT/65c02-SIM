@@ -24,9 +24,7 @@ void Emulator::PrintState() {
               << (int)cpu.GetStatus() << "\r" << std::dec << std::endl;
 }
 
-static void reset_terminal_mode() { 
-    tcsetattr(0, TCSANOW, &orig_termios); 
-}
+static void reset_terminal_mode() { tcsetattr(0, TCSANOW, &orig_termios); }
 
 static void set_conio_terminal_mode() {
     struct termios new_termios;
@@ -93,7 +91,7 @@ void Emulator::Init(const std::string& bin) {
 
     fclose(fichero);
 
-    if (bin == "basic") {
+    if (bin == "basic" || bin.find("basic.bin") != std::string::npos) {
         interactive = true;
     }
 
