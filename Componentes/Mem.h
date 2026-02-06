@@ -8,6 +8,9 @@
 using Byte = uint8_t;
 using Word = uint16_t;
 
+using WriteHook = std::function<void(Word, Byte)>;
+using ReadHook = std::function<Byte(Word)>;
+
 #define ACIA_DATA 0x5000
 #define ACIA_STATUS 0x5001
 #define ACIA_CMD 0x5002
@@ -29,15 +32,12 @@ public:
     void Init();
 
     Byte operator[](Word dir) const { return memoria[dir]; }
-
-    using WriteHook = std::function<void(Word, Byte)>;
+    
     void SetWriteHook(Word address, WriteHook hook);
-
-    using ReadHook = std::function<Byte(Word)>;
-    void SetReadHook(Word address, ReadHook hook);
-
     void Write(Word dir, Byte val);
     void WriteWord(Word dato, Word dir);
+    
+    void SetReadHook(Word address, ReadHook hook);
     Byte Read(Word dir);
 
 private:

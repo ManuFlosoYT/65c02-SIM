@@ -41,20 +41,16 @@ public:
     const Byte GetStatus() const;
     void SetStatus(Byte status);
 
-    const Byte FetchByte(
-        const Mem& mem);  // Lee un byte de memoria y avanza el PC
-    const Word FetchWord(
-        const Mem& mem);  // Lee un word de memoria y avanza el PC + 2
+    const Byte FetchByte(const Mem& mem);  // Lee un byte de memoria y avanza el PC
+    const Byte LeerByte(const Word dir, Mem& mem);  // Lee un byte de memoria sin avanzar el PC
+    const Word FetchWord(const Mem& mem);  // Lee un word de memoria y avanza el PC + 2
+    const Word LeerWord(const Word dir, Mem& mem);  // Lee un word de memoria sin avanzar el PC
 
-    const Byte LeerByte(const Word dir,
-                        Mem& mem);  // Lee un byte de memoria sin avanzar el PC
-    const Word LeerWord(const Word dir,
-                        Mem& mem);  // Lee un word de memoria sin avanzar el PC
 
-    void PushByte(Byte val, Mem& mem);
     Byte PopByte(Mem& mem);
-    void PushWord(Word val, Mem& mem);
     Word PopWord(Mem& mem);
+    void PushByte(Byte val, Mem& mem);
+    void PushWord(Word val, Mem& mem);
 };
 
 #endif  // SIM_65C02_CPU_H
