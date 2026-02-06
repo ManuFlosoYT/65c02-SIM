@@ -19,8 +19,6 @@ PR_WRITTEN_BY:
     .endif
   .endif
 .endif
-.export COLD_START, _COLD_START
-_COLD_START = COLD_START
 COLD_START:
 .ifdef SYM1
         jsr     ACCESS

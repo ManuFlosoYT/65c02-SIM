@@ -29,5 +29,5 @@
 .endif
 
 .ifdef EATER
-.include "imports.s"
+.include "bios.s"
 .endif

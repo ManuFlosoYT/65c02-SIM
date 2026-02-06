@@ -1,7 +1,6 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
-
 #include <cctype>
 #include <cstdio>
 #include <cstring>
