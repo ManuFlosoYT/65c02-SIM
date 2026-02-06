@@ -33,7 +33,7 @@ Build the project
 ./build.sh
 ```
 
-Alternativelly go to releases and download the latest release
+Alternativelly go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
 
 Compile and run programs from ./Programas/
 ```bash
