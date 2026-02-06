@@ -1,6 +1,7 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
+
 #include <cctype>
 #include <cstdio>
 #include <cstring>
@@ -170,9 +171,14 @@ int main(int argc, char* argv[]) {
                 inputPollDelay--;
             } else {
                 inputPollDelay = 1000;  // Check input every 1000 instructions
+                // ANSI escape sequence state machine
+                // 0: Normal, 1: ESC, 2: CSI (ESC [)
+                static int inputState = 0;
+
                 while (kbhit() > 0) {
                     int c = getchar();
                     if (c == EOF) break;
+
                     if (c == 4) {  // Ctrl-D toggle debug trace
                         debugTrace = !debugTrace;
                         fprintf(stderr, "Debug Trace: %s\r\n",
@@ -198,8 +204,32 @@ int main(int argc, char* argv[]) {
                         exit(0);
                     }
 
-                    if (c == '\n') c = '\r';
-                    inputBuffer.push_back(c);
+                    if (inputState == 0) {
+                        if (c == 0x1B) {
+                            inputState = 1;  // Got ESC
+                        } else {
+                            if (c == '\n') c = '\r';
+                            inputBuffer.push_back(c);
+                        }
+                    } else if (inputState == 1) {
+                        if (c == '[') {
+                            inputState = 2;  // Got CSI
+                        } else {
+                            // Not a CSI sequence, push buffered ESC and current
+                            // char
+                            inputBuffer.push_back(0x1B);
+                            if (c == '\n') c = '\r';
+                            inputBuffer.push_back(c);
+                            inputState = 0;
+                        }
+                    } else if (inputState == 2) {
+                        // In CSI sequence, consume bytes until final byte
+                        // (0x40-0x7E)
+                        if (c >= 0x40 && c <= 0x7E) {
+                            inputState = 0;  // Sequence ended (and dropped)
+                        }
+                        // else: still in sequence, ignore char
+                    }
                 }
             }
         }
