@@ -1,0 +1,46 @@
+name: Build and Release
+
+# Se ejecuta cuando subes un tag (ej. v1.0.0)
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # Tu CMakeLists.txt requiere CMake 3.31 y C++26.
+      # Es necesario instalar versiones recientes de GCC y CMake.
+      - name: Instalar dependencias (GCC 14 y CMake reciente)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-14 gcc-14 ninja-build
+          
+          # Configurar GCC-14 como predeterminado
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 --slave /usr/bin/g++ g++ /usr/bin/g++-14
+          
+          # Instalar CMake más reciente via pip (versiones de apt suelen ser antiguas)
+          pip install cmake --upgrade
+
+      - name: Compilar con build.sh
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Crear Release y subir ejecutables
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          # Esta opción genera automáticamente el changelog basado en los commits
+          generate_release_notes: true
+          files: |
+            build/SIM_65C02
+            build/unit_tests
