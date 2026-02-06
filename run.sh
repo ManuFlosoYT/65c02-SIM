@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
 
-NAME=${1:?"Uso: $0 <nombre_bin_sin_extension> o basic"}
+NAME=${1:?"Uso: $0 <nombre_bin_sin_extension> o eater"}
 mkdir -p Programas/build
 
-if [ "$NAME" == "basic" ]; then
+if [ "$NAME" == "eater" ]; then
     echo "--- Compilando BASIC ---"
     (cd Linker/msbasic && chmod +x make.sh && ./make.sh) > /dev/null 2>&1
-    cp Linker/msbasic/tmp/eater.bin Programas/build/basic.bin
+    cp Linker/msbasic/tmp/eater.bin Programas/build/eater.bin
 else
     [ -f "Programas/$NAME.c" ] || { echo "Error: Programas/$NAME.c no existe"; exit 1; }
     cl65 -O --cpu 65C02 -t none -C Linker/memoria.cfg \

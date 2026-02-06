@@ -91,7 +91,7 @@ void Emulator::Init(const std::string& bin) {
 
     fclose(fichero);
 
-    if (bin == "basic" || bin.find("basic.bin") != std::string::npos) {
+    if (bin == "eater" || bin.find("eater.bin") != std::string::npos) {
         interactive = true;
     }
 
