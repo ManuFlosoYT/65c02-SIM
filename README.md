@@ -33,6 +33,8 @@ Build the project
 ./build.sh
 ```
 
+Alternativelly go to releases and download the latest release
+
 Compile and run programs from ./Programas/
 ```bash
 ./run.sh <program_name>
