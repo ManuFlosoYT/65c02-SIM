@@ -54,9 +54,19 @@ void Emulator::Init(const std::string& bin) {
     lcd.Inicializar(mem);
     acia.Inicializar(mem);
 
-    std::string ruta = "Programas/build/" + bin + ".bin";
+    std::string ruta = bin;
 
+    // Try opening as is
     FILE* fichero = fopen(ruta.c_str(), "rb");
+
+    // If fail, try appending .bin
+    if (fichero == nullptr && ruta.find(".bin") == std::string::npos) {
+        std::string tryBin = ruta + ".bin";
+        fichero = fopen(tryBin.c_str(), "rb");
+        if (fichero != nullptr) {
+            ruta = tryBin;
+        }
+    }
     if (fichero == nullptr) {
         std::cerr << "Error al abrir el archivo " << ruta << std::endl;
         exit(-1);
@@ -221,10 +231,12 @@ void Emulator::HandleInput() {
     while (kbhit() > 0) {
         int c = getchar();
         switch (c) {
-            case EOF: break;
+            case EOF:
+                break;
             case 4:  // Ctrl-D toggle debug trace
                 debugTrace = !debugTrace;
-                std::cerr << "Debug Trace: " << (debugTrace ? "ON" : "OFF") << "\r" << std::endl;
+                std::cerr << "Debug Trace: " << (debugTrace ? "ON" : "OFF")
+                          << "\r" << std::endl;
                 continue;
             case 5:  // Ctrl-E toggle Pause
                 paused = true;
@@ -238,7 +250,8 @@ void Emulator::HandleInput() {
                 reset_terminal_mode();
                 std::cout << "\n--- Ejecucion interrumpida ---" << std::endl;
                 exit(0);
-            default: break;
+            default:
+                break;
         }
 
         switch (inputState) {

@@ -18,4 +18,4 @@ else
     mv "Programas/$NAME.o" "Programas/build/$NAME.o" 2>/dev/null || true
 fi
 
-./build/SIM_65C02 "$NAME"
+./build/SIM_65C02 "Programas/build/$NAME.bin"

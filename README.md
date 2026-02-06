@@ -21,7 +21,7 @@ sudo dnf install cmake
 sudo dnf install cc65
 ```
 
-### :running: Run Locally
+### :running: Compile and Run Locally
 
 Clone the project
 
@@ -33,8 +33,6 @@ Build the project
 ./build.sh
 ```
 
-Alternativelly go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
-
 Compile and run programs from ./Programas/
 ```bash
 ./run.sh <program_name>
@@ -44,6 +42,20 @@ Compile and run wozmon/msbasic from Ben Eater's repository
 ```bash
 ./run.sh basic
 ```
+
+### :running: Run already compiled programs
+
+Go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
+
+```bash
+./unit_tests
+```
+
+```bash
+./SIM_65c02 <bin_file>
+```
+
+### :running: Debugging
 
 Pressing CTRL + E toggles debug mode (quite usefull if something goes wrong)
 
