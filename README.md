@@ -8,14 +8,6 @@
 
 </div>
 
-# :notebook_with_decorative_cover: Table of Contents
-
-- [About the Project](#star2-about-the-project)
-- [Contributing](#wave-contributing)
-- [Contact](#handshake-contact)
-- [Acknowledgements](#gem-acknowledgements)
-
-
 ## :toolbox: Getting Started
 
 ### :bangbang: Prerequisites
@@ -52,6 +44,7 @@ Compile and run wozmon/msbasic from Ben Eater's repository
 ```
 
 Pressing CTRL + E toggles debug mode (quite usefull if something goes wrong)
+
 Pressing CTRL + D toggles printing the CPU status on every cicle
 
 ## :wave: Contributing

@@ -14,18 +14,14 @@ Emulator::Emulator() : mem(), cpu(), lcd(), acia() {}
 
 static struct termios orig_termios;
 
-
 void Emulator::PrintState() {
-    std::cerr 
-        << "PC: 0x" << std::hex << std::uppercase << std::setw(4)
-            << std::setfill('0') << (int)cpu.PC 
-        << " OP: 0x" << std::setw(2) << (int)mem.memoria[cpu.PC] 
-        << " SP: 0x" << std::setw(4) << (int)cpu.SP 
-        << " A: 0x" << std::setw(2) << (int)cpu.A 
-        << " X: 0x" << std::setw(2) << (int)cpu.X
-        << " Y: 0x" << std::setw(2) << (int)cpu.Y 
-        << " Flags: 0x" << std::setw(2) << (int)cpu.GetStatus()
-        << "\r" << std::dec << std::endl;
+    std::cerr << "PC: 0x" << std::hex << std::uppercase << std::setw(4)
+              << std::setfill('0') << (int)cpu.PC << " OP: 0x" << std::setw(2)
+              << (int)mem.memoria[cpu.PC] << " SP: 0x" << std::setw(4)
+              << (int)cpu.SP << " A: 0x" << std::setw(2) << (int)cpu.A
+              << " X: 0x" << std::setw(2) << (int)cpu.X << " Y: 0x"
+              << std::setw(2) << (int)cpu.Y << " Flags: 0x" << std::setw(2)
+              << (int)cpu.GetStatus() << "\r" << std::dec << std::endl;
 }
 
 static void reset_terminal_mode() { 
@@ -153,18 +149,31 @@ void Emulator::StepLoop() {
 }
 
 void Emulator::HandleDebug() {
-    if (kbhit()) {
-        char c = getchar();
-        if (c == 's' || c == ' ') {  // Step
-            int res = cpu.Step(mem);
-            if (res != 0) running = false;
+    if (!kbhit()) {
+        usleep(10000);
+        return;
+    }
+
+    char c = getchar();
+    switch (c) {
+        case 's':
+        case ' ':  // Step
+        {
+            if (cpu.Step(mem) != 0) {
+                running = false;
+            }
             PrintState();
-        } else if (c == 'c') {  // Continue
+            break;
+        }
+        case 'c':  // Continue
             paused = false;
             std::cerr << "Resuming...\r" << std::endl;
-        } else if (c == 'q') {  // Quit
+            break;
+        case 'q':  // Quit
             running = false;
-        } else if (c == 'i') {  // Inject input
+            break;
+        case 'i':  // Inject input
+        {
             std::cerr << "Character to inject: ";
             // Simple blocking wait for next char
             while (!kbhit()) usleep(1000);
@@ -172,85 +181,93 @@ void Emulator::HandleDebug() {
 
             mem.memoria[ACIA_DATA] = input;
             mem.memoria[ACIA_STATUS] |= 0x80;
-            // Trigger IRQ logic (simulation)
             cpu.IRQ(mem);
+
             std::cerr << "\r\nInjected '"
                       << (char)(isprint(input) ? input : '?') << "' ("
                       << std::hex << std::uppercase << std::setw(2)
                       << std::setfill('0') << (int)(unsigned char)input
                       << "). IRQ Triggered.\r\n"
                       << std::dec;
-        } else if (c == '\n' || c == '\r') {  // Newline + Step
+            break;
+        }
+        case '\n':
+        case '\r':  // Newline + Step
+        {
             mem.memoria[ACIA_DATA] = '\r';
             mem.memoria[ACIA_STATUS] |= 0x80;
             cpu.IRQ(mem);
 
-            int res = cpu.Step(mem);
-            if (res != 0) running = false;
+            if (cpu.Step(mem) != 0) {
+                running = false;
+            }
             std::cerr << "Intro injected.\r" << std::endl;
             PrintState();
+            break;
         }
-    } else {
-        usleep(10000);  // Sleep to avoid CPU hogging
+        default:
+            break;
     }
 }
 
 void Emulator::HandleInput() {
     if (inputPollDelay > 0) {
         inputPollDelay--;
-    } else {
-        inputPollDelay = 1000;  // Check input every 1000 instructions
+        return;
+    }
 
-        while (kbhit() > 0) {
-            int c = getchar();
-            if (c == EOF) break;
+    inputPollDelay = 1000;  // Check input every 1000 instructions
 
-            if (c == 4) {  // Ctrl-D toggle debug trace
+    while (kbhit() > 0) {
+        int c = getchar();
+        switch (c) {
+            case EOF: break;
+            case 4:  // Ctrl-D toggle debug trace
                 debugTrace = !debugTrace;
-                std::cerr << "Debug Trace: " << (debugTrace ? "ON" : "OFF")
-                          << "\r" << std::endl;
+                std::cerr << "Debug Trace: " << (debugTrace ? "ON" : "OFF") << "\r" << std::endl;
                 continue;
-            }
-            if (c == 5) {  // Ctrl-E toggle Pause
+            case 5:  // Ctrl-E toggle Pause
                 paused = true;
                 std::cerr << "\n\rPAUSED. Keys: 's' Step, 'c' Continue, 'q' "
                              "Quit, 'i' "
-                             "Input 1 char, 'Enter' Newline+Step\r" << std::endl;
+                             "Input 1 char, 'Enter' Newline+Step\r"
+                          << std::endl;
                 PrintState();
                 continue;
-            }
-            if (c == 3) {  // Ctrl-C
+            case 3:  // Ctrl-C
                 reset_terminal_mode();
-                std::cout << "\n--- Ejecucion interrumpida ---\n";
+                std::cout << "\n--- Ejecucion interrumpida ---" << std::endl;
                 exit(0);
-            }
+            default: break;
+        }
 
-            if (inputState == 0) {
+        switch (inputState) {
+            case 0:
                 if (c == 0x1B) {
                     inputState = 1;  // Got ESC
                 } else {
                     if (c == '\n') c = '\r';
                     inputBuffer.push_back(c);
                 }
-            } else if (inputState == 1) {
+                break;
+            case 1:
                 if (c == '[') {
                     inputState = 2;  // Got CSI
                 } else {
-                    // Not a CSI sequence, push buffered ESC and current
-                    // char
+                    // Not a CSI sequence, push buffered ESC and current char
                     inputBuffer.push_back(0x1B);
                     if (c == '\n') c = '\r';
                     inputBuffer.push_back(c);
                     inputState = 0;
                 }
-            } else if (inputState == 2) {
-                // In CSI sequence, consume bytes until final byte
-                // (0x40-0x7E)
+                break;
+            case 2:
                 if (c >= 0x40 && c <= 0x7E) {
                     inputState = 0;  // Sequence ended (and dropped)
                 }
-                // else: still in sequence, ignore char
-            }
+                break;
+            default:
+                break;
         }
     }
 }
