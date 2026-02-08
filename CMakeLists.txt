@@ -22,9 +22,11 @@ FetchContent_MakeAvailable(googletest)
 FetchContent_Declare(
   SDL2
   GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-  GIT_TAG release-2.30.0
+  GIT_TAG release-2.32.x
 )
+set(CMAKE_WARN_DEPRECATED OFF)
 FetchContent_MakeAvailable(SDL2)
+set(CMAKE_WARN_DEPRECATED ON)
 
 # 3. Dear ImGui
 FetchContent_Declare(

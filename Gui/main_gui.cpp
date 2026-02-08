@@ -42,8 +42,18 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("65C02 Simulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    SDL_WindowFlags window_flags =
+        (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
+                          SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_Window* window = 
+        SDL_CreateWindow(
+            "65C02 Simulator", 
+            SDL_WINDOWPOS_CENTERED, 
+            SDL_WINDOWPOS_CENTERED, 
+            1920, 1080, 
+            window_flags
+        );
+
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1);  // Enable vsync
@@ -69,7 +79,7 @@ int main(int argc, char* argv[]) {
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Load emulator
-    std::string bin = "eater.bin"; // TODO: Remove this hardcoding
+    std::string bin = "eater.bin";  // TODO: Remove this hardcoding
     if (argc > 1) {
         bin = argv[1];
     }
@@ -102,7 +112,9 @@ int main(int argc, char* argv[]) {
         ImGui::NewFrame();
 
         // Main Menu Bar
+        float main_menu_height = 0.0f;
         if (ImGui::BeginMainMenuBar()) {
+            main_menu_height = ImGui::GetWindowSize().y;
             if (ImGui::BeginMenu("File")) {
                 if (ImGui::MenuItem("Open File...")) {
                     ImGuiFileDialog::Instance()->OpenDialog(
@@ -112,6 +124,20 @@ int main(int argc, char* argv[]) {
             }
             ImGui::EndMainMenuBar();
         }
+
+        // Layout Configuration
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImVec2 work_pos = viewport->WorkPos;
+        ImVec2 work_size = viewport->WorkSize;
+        work_pos.y += main_menu_height;
+        work_size.y -= main_menu_height;
+
+        float top_section_height = work_size.y * 0.25f;
+        float bottom_section_height = work_size.y - top_section_height;
+        const ImGuiWindowFlags window_flags =
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         // File Dialog
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
@@ -128,7 +154,11 @@ int main(int argc, char* argv[]) {
 
         // Control Window
         {
-            ImGui::Begin("Control");
+            ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
+            ImGui::SetNextWindowSize(
+                ImVec2(work_size.x * 0.75f, top_section_height),
+                ImGuiCond_Always);
+            ImGui::Begin("Control", nullptr, window_flags);
             if (ImGui::Button(emulationRunning ? "Pause" : "Run")) {
                 emulationRunning = !emulationRunning;
             }
@@ -142,15 +172,23 @@ int main(int argc, char* argv[]) {
                 emulator.Init(bin);
             }
 
-            ImGui::SliderInt("Speed (Instructions per frame)", &instructionsPerFrame, 1, 1000000);
+            ImGui::SliderInt("Speed (Instructions per frame)",
+                             &instructionsPerFrame, 1, 1000000);
 
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+                        1000.0f / io.Framerate, io.Framerate);
             ImGui::End();
         }
 
         // Registers Window
         {
-            ImGui::Begin("Registers");
+            ImGui::SetNextWindowPos(
+                ImVec2(work_pos.x + work_size.x * 0.75f, work_pos.y),
+                ImGuiCond_Always);
+            ImGui::SetNextWindowSize(
+                ImVec2(work_size.x * 0.25f, top_section_height),
+                ImGuiCond_Always);
+            ImGui::Begin("Registers", nullptr, window_flags);
             const auto& cpu = emulator.GetCPU();
             ImGui::Text("PC: %04X", cpu.PC);
             ImGui::Text("SP: %04X", cpu.SP);
@@ -167,7 +205,12 @@ int main(int argc, char* argv[]) {
 
         // Console Window
         {
-            ImGui::Begin("Console");
+            ImGui::SetNextWindowPos(
+                ImVec2(work_pos.x, work_pos.y + top_section_height),
+                ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(work_size.x, bottom_section_height),
+                                     ImGuiCond_Always);
+            ImGui::Begin("Console", nullptr, window_flags);
             if (ImGui::IsWindowFocused()) {
                 for (int n = 0; n < io.InputQueueCharacters.Size; n++) {
                     unsigned int c = io.InputQueueCharacters[n];
