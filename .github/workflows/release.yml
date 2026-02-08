@@ -1,6 +1,5 @@
 name: Build and Release
 
-# Se ejecuta cuando subes un tag (ej. v1.0.0)
 on:
   push:
     tags:
@@ -17,15 +16,11 @@ jobs:
       - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Instalar dependencias (GCC 14 y CMake reciente)
+      - name: Instalar dependencias
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++-14 gcc-14 ninja-build
-          
-          # Configurar GCC-14 como predeterminado
+          sudo apt-get install -y g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 --slave /usr/bin/g++ g++ /usr/bin/g++-14
-          
-          # Instalar CMake más reciente via pip (versiones de apt suelen ser antiguas)
           pip install cmake --upgrade
 
       - name: Compilar con build.sh
@@ -37,7 +32,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          # Esta opción genera automáticamente el changelog basado en los commits
           generate_release_notes: true
           files: |
             output/SIM_65C02_CLI
