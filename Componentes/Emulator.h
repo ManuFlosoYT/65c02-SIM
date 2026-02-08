@@ -12,29 +12,24 @@ public:
     ~Emulator() = default;
 
     void Init(const std::string& binPath);
-    void Run();
+    void Step();
+    void InjectKey(char c);
+    void SetOutputCallback(std::function<void(char)> cb);
+
+    // Getters for GUI/Debug
+    const CPU& GetCPU() const { return cpu; }
+    const Mem& GetMem() const { return mem; }
+
+    void PrintState();  // Keep for legacy terminal
 
 private:
-    void StepLoop();
-    void HandleInput();
-    void HandleDebug();
-    void PrintState();
-
     // Componentes
     Mem mem;
     CPU cpu;
     LCD lcd;
     ACIA acia;
 
-    // Estado
-    bool running = true;
-    bool paused = false;
-    bool debugTrace = false;
-    bool interactive = false;
-
     // Buffer de entrada
     std::deque<char> inputBuffer;
     int baudDelay = 0;
-    int inputPollDelay = 0;
-    int inputState = 0;
 };

@@ -1,7 +1,12 @@
 #!/bin/bash
 set -e
-echo Compilando programa y pruebas unitarias
+echo Compiling program and unit tests
 cmake -S . -B build
 cmake --build build -j$(nproc)
-echo Lanzando pruebas unitarias
+echo Running unit tests
 ./build/unit_tests
+
+mkdir -p output
+cp build/SIM_65C02_CLI output/ 2>/dev/null || true
+cp build/SIM_65C02_GUI output/ 2>/dev/null || true
+echo "Build executables copied to output/"

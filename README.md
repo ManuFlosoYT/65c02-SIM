@@ -40,25 +40,25 @@ Build the project
 Compile and run programs from ./Programas/
 
 ```bash
-./run.sh <program_name>
+./compile_bin.sh <program_name>
 ```
 
 Compile and run wozmon/msbasic from Ben Eater's repository
 
 ```bash
-./run.sh eater
+./compile_bin.sh eater
 ```
 
-### :running: Run already compiled programs
+### :running: Run compiled programs
 
 Go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
 
 ```bash
-./unit_tests
+./SIM_65C02_CLI <bin_file>
 ```
 
 ```bash
-./SIM_65c02 <bin_file>
+./SIM_65c02_GUI (optional) <bin_file>
 ```
 
 ### :running: Debugging
