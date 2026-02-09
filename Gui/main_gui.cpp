@@ -185,8 +185,8 @@ int main(int argc, char* argv[]) {
         float main_menu_height = 0.0f;
         if (ImGui::BeginMainMenuBar()) {
             main_menu_height = ImGui::GetWindowSize().y;
-            if (ImGui::BeginMenu("File")) {
-                if (ImGui::MenuItem("Open File...")) {
+            if (ImGui::BeginMenu("Load ROM File")) {
+                if (ImGui::MenuItem("Open ROM File...")) {
                     ImGuiFileDialog::Instance()->OpenDialog(
                         "ChooseFileDlgKey", "Choose File", ".bin", ".");
                 }
@@ -210,6 +210,7 @@ int main(int argc, char* argv[]) {
             ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         // File Dialog
+        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::string filePathName =
