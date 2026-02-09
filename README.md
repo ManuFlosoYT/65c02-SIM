@@ -53,12 +53,32 @@ Compile and run wozmon/msbasic from Ben Eater's repository
 
 Go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
 
-```bash
-./SIM_65C02_CLI <bin_file>
-```
+#### CLI
+
+Run without arguments to be prompted for the file path:
 
 ```bash
-./SIM_65c02_GUI (optional) <bin_file>
+./SIM_65C02_CLI
+```
+
+Or provide the path directly:
+
+```bash
+./SIM_65C02_CLI <path/to/bin_file>
+```
+
+#### GUI
+
+Run without arguments or double click on your file browser to open the file selector:
+
+```bash
+./SIM_65c02_GUI
+```
+
+Or provide the path directly:
+
+```bash
+./SIM_65c02_GUI <path/to/bin_file>
 ```
 
 ### :running: Debugging

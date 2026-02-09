@@ -1,6 +1,6 @@
 #include "LCD.h"
 
-#include <iostream>
+#include <cstring>
 
 #include "Mem.h"
 
@@ -12,14 +12,12 @@ void LCD::Inicializar(Mem& mem) {
     DATO_PORTB = 0;
     DATO_DDRB = 0;
 
-    mem.SetWriteHook(DDRB, [this](Word addr, Byte val) {
-        DATO_DDRB = val;
-        // Si estuviéramos simulando el Busy Flag, manejaríamos los bits de
-        // Entrada (0) aquí. Pero dado que el código escribe 0s en los bits
-        // de datos durante las verificaciones de espera, y que nuestra
-        // memoria simple devuelve lo que se escribió, efectivamente
-        // devolvemos 0 (No Ocupado) por defecto.
-    });
+    // Clear screen buffer
+    std::memset(screen, ' ', sizeof(screen));
+    cursorX = 0;
+    cursorY = 0;
+
+    mem.SetWriteHook(DDRB, [this](Word addr, Byte val) { DATO_DDRB = val; });
 
     mem.SetWriteHook(PORTB, [this](Word addr, Byte val) {
         Byte old_val = ultimo_portb;
@@ -41,8 +39,6 @@ void LCD::Inicializar(Mem& mem) {
 
             if (!modo_cuatro_bits) {
                 // Detección de modo 8-bits
-                // Buscando específicamente el cambio a modo 4-bits
-                // (Comando 0x02)
                 if (!rs && data_nibble == 0x02) {
                     modo_cuatro_bits = true;
                     esperando_nibble_bajo = false;
@@ -61,16 +57,50 @@ void LCD::Inicializar(Mem& mem) {
 
                     if (rs) {
                         // Dato (Caracter)
-                        if (full_byte == '\n') std::cout << '\r';
-                        std::cout << (char)full_byte;
-                        std::cout.flush();
+                        WriteCharToScreen((char)full_byte);
                     } else {
                         // Comando
-                        // Podríamos implementar limpiar pantalla (0x01) u otros
-                        // aquí.
+                        HandleCommand(full_byte);
                     }
                 }
             }
         }
     });
+}
+
+void LCD::WriteCharToScreen(char c) {
+    if (onChar) {
+        if (c == '\n') onChar('\r');  // Convert \n to \r\n for terminal
+        onChar(c);
+        if (c == '\n')
+            return;  // Don't print newline to LCD buffer directly as character
+    }
+
+    if (c == '\n' || c == '\r') {
+        cursorX = 0;
+        cursorY++;
+        if (cursorY >= 2) cursorY = 0;  // Wrap to top
+        return;
+    }
+
+    if (cursorX < 16 && cursorY < 2) {
+        screen[cursorY][cursorX] = c;
+    }
+
+    cursorX++;
+    if (cursorX >= 16) {
+        cursorX = 0;
+        cursorY++;
+        if (cursorY >= 2) cursorY = 0;
+    }
+}
+
+void LCD::HandleCommand(Byte cmd) {
+    if (cmd == 0x01) {
+        // Clear Display
+        std::memset(screen, ' ', sizeof(screen));
+        cursorX = 0;
+        cursorY = 0;
+    }
+    // Other commands could be implemented here
 }

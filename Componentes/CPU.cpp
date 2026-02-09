@@ -971,11 +971,9 @@ int CPU::Step(Mem& mem) {
             break;
         }
         default:
-#ifndef TESTING_ENV
-            std::cout << "Opcode desconocido: 0x" << std::hex
+            std::cerr << "Unknown opcode: 0x" << std::hex
                       << static_cast<int>(opcode) << " PC: 0x" << PC << std::dec
-                      << " ejecución cancelada." << std::endl;
-#endif
+                      << " execution cancelled." << std::endl;
             return -1;
     }
     return 0;

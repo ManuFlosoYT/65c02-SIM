@@ -17,7 +17,7 @@ void Emulator::PrintState() {
               << (int)cpu.GetStatus() << "\r" << std::dec << std::endl;
 }
 
-void Emulator::Init(const std::string& bin) {
+bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     cpu.Reset(mem);
     lcd.Inicializar(mem);
     acia.Inicializar(mem);
@@ -36,35 +36,36 @@ void Emulator::Init(const std::string& bin) {
         }
     }
     if (fichero == nullptr) {
-        std::cerr << "Error opening file " << ruta << std::endl;
-        exit(-1);
+        errorMsg = "Error opening file " + ruta;
+        return false;
     }
 
     // asegurar que el bin tiene tamaño correcto
     fseek(fichero, 0, SEEK_END);
     long fileSize = ftell(fichero);
     if (fileSize != mem.ROM_SIZE) {
-        std::cerr << "Error: The file " << ruta << " does not have size "
-                  << mem.ROM_SIZE << std::endl;
+        errorMsg = "Error: The file " + ruta + " does not have size " +
+                   std::to_string(mem.ROM_SIZE);
         fclose(fichero);
-        exit(-2);
+        return false;
     }
     fseek(fichero, 0, SEEK_SET);
 
     // leer el bin en la memoria (0x8000-0xFFFF)
     size_t bytesRead = fread(mem.memoria + 0x8000, 1, mem.ROM_SIZE, fichero);
     if (bytesRead == 0) {
-        std::cerr << "Error reading file " << ruta << std::endl;
+        errorMsg = "Error reading file " + ruta;
         fclose(fichero);
-        exit(-3);
+        return false;
     }
 
     fclose(fichero);
+    return true;
 }
 
-void Emulator::Step() {
+int Emulator::Step() {
     // Normal execution
-    cpu.Step(mem);
+    int res = cpu.Step(mem);
 
     if (baudDelay > 0) baudDelay--;
 
@@ -86,6 +87,7 @@ void Emulator::Step() {
         // Set delay (2000 ciclos de reloj)
         baudDelay = 2000;
     }
+    return res;
 }
 
 void Emulator::InjectKey(char c) {

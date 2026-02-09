@@ -13,9 +13,7 @@
 
 static struct termios orig_termios;
 
-static void reset_terminal_mode() { 
-    tcsetattr(0, TCSANOW, &orig_termios); 
-}
+static void reset_terminal_mode() { tcsetattr(0, TCSANOW, &orig_termios); }
 
 static void set_conio_terminal_mode() {
     struct termios new_termios;
@@ -44,9 +42,7 @@ bool debugTrace = false;
 int inputState = 0;
 Emulator emulator;
 
-void PrintState() { 
-    emulator.PrintState(); 
-}
+void PrintState() { emulator.PrintState(); }
 
 void HandleInput() {
     while (kbhit() > 0) {
@@ -79,9 +75,18 @@ void HandleInput() {
             switch (c) {
                 case 's':
                 case ' ':  // Step
-                    emulator.Step();
+                {
+                    int res = emulator.Step();
+                    if (res != 0) {
+                        if (res == 1)
+                            std::cerr << "CPU Stopped (STOP/JAM)\n";
+                        else
+                            std::cerr << "Step failed/stopped (Code: " << res
+                                      << ")\n";
+                    }
                     emulator.PrintState();
                     break;
+                }
                 case 'c':  // Continue
                     paused = false;
                     std::cerr << "Resuming...\r" << std::endl;
@@ -106,11 +111,20 @@ void HandleInput() {
                 }
                 case '\n':
                 case '\r':  // Newline + Step
+                {
                     emulator.InjectKey('\r');
-                    emulator.Step();
+                    int res = emulator.Step();
+                    if (res != 0) {
+                        if (res == 1)
+                            std::cerr << "CPU Stopped (STOP/JAM)\n";
+                        else
+                            std::cerr << "Step failed/stopped (Code: " << res
+                                      << ")\n";
+                    }
                     std::cerr << "Intro injected.\r" << std::endl;
                     emulator.PrintState();
                     break;
+                }
                 default:
                     break;
             }
@@ -149,12 +163,12 @@ void HandleInput() {
 // eater.bin is hardcoded to be an interactive program
 // TODO: Remove this hardcoding
 int main(int argc, char* argv[]) {
-
     std::string bin;
     if (argc > 1) {
         bin = argv[1];
     } else {
-        std::cout << "Enter the name of the binary without extension:";
+        std::cout << "Enter the full path to the binary file (relative or "
+                     "absolute): ";
         std::cin >> bin;
     }
 
@@ -163,8 +177,16 @@ int main(int argc, char* argv[]) {
         interactive = true;
     }
 
-    emulator.Init(bin);
+    std::string errorMsg;
+    if (!emulator.Init(bin, errorMsg)) {
+        std::cerr << "Failed to initialize emulator: " << errorMsg << std::endl;
+        return 1;
+    }
     emulator.SetOutputCallback([](char c) {
+        std::cout << c;
+        std::cout.flush();
+    });
+    emulator.SetLCDOutputCallback([](char c) {
         std::cout << c;
         std::cout.flush();
     });
@@ -183,7 +205,16 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        emulator.Step();
+        int res = emulator.Step();
+        if (res != 0) {
+            if (res == 1) {
+                std::cout << "\nCPU Stopped (STOP/JAM)" << std::endl;
+            } else {
+                std::cout << "\nEmulator stopped (Code: " << res << ")"
+                          << std::endl;
+            }
+            running = false;
+        }
 
         if (interactive) {
             HandleInput();

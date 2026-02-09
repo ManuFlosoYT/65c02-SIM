@@ -1,4 +1,5 @@
 #include <deque>
+#include <functional>
 #include <string>
 
 #include "ACIA.h"
@@ -11,16 +12,20 @@ public:
     Emulator();
     ~Emulator() = default;
 
-    void Init(const std::string& binPath);
-    void Step();
+    bool Init(const std::string& binPath, std::string& errorMsg);
+    int Step();
     void InjectKey(char c);
-    void SetOutputCallback(std::function<void(char)> cb);
 
-    // Getters for GUI/Debug
+    void SetOutputCallback(std::function<void(char)> cb);
+    void SetLCDOutputCallback(std::function<void(char)> cb) {
+        lcd.SetOutputCallback(cb);
+    }
+
+    const char (&GetLCDScreen() const)[2][16] { return lcd.GetScreen(); }
     const CPU& GetCPU() const { return cpu; }
     const Mem& GetMem() const { return mem; }
 
-    void PrintState();  // Keep for legacy terminal
+    void PrintState();
 
 private:
     // Componentes

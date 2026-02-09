@@ -1,5 +1,9 @@
-#include <gtest/gtest.h>
 #include "../Componentes/LCD.h"
+
+#include <gtest/gtest.h>
+
+#include <iostream>
+
 #include "../Componentes/Mem.h"
 
 class TestLCD : public ::testing::Test {
@@ -10,6 +14,10 @@ protected:
     void SetUp() override {
         mem.Init();
         lcd.Inicializar(mem);
+        lcd.SetOutputCallback([](char c) {
+            std::cout << c;
+            std::cout.flush();
+        });
     }
 
     // Helper to simulate VIA 6522 writes to PORTB
