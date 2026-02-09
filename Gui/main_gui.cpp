@@ -132,17 +132,16 @@ int main(int argc, char* argv[]) {
                 fpsCount = 0;
                 lastAdjustmentTime = currentTime;
 
-                // VSync target is ~60 FPS.
-                if (avgFPS >= 59.5f) {
+                if (avgFPS >= 50.0f) {
                     // Slowly increase IPS to probe limits.
                     instructionsPerFrame =
                         (int)(instructionsPerFrame * 1.01f) + 100;
                 } else {
                     // Reduce IPS.
-                    float drop = 60.0f - avgFPS;
+                    float drop = 50.0f - avgFPS;
                     if (drop < 0) drop = 0;
 
-                    float factor = 1.0f - (drop / 120.0f);
+                    float factor = 1.0f - (drop / 100.0f);
 
                     if (factor < 0.5f)
                         factor = 0.5f;  // Clamp max reduction per step
@@ -281,10 +280,6 @@ int main(int argc, char* argv[]) {
             if (ImGui::Button(autoOptimize ? "Auto (On)" : "Auto (Off)")) {
                 autoOptimize = !autoOptimize;
             }
-
-            ImGui::SameLine();
-            ImGui::Text("Avg %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate,
-                        io.Framerate);
 
             ImGui::SliderInt("Speed (IPS)", &instructionsPerFrame, 1, 1000000);
             ImGui::SetScrollHereY(1.0f);
