@@ -1,7 +1,21 @@
 #!/bin/bash
 set -e
 
-NAME=${1:?"Usage: $0 <bin_name_without_extension> or eater"}
+list_programs() {
+    echo "Available programs:"
+    echo "  - eater (WOZMON / BASIC)"
+    for f in Programas/*.c; do
+        echo "  - $(basename "${f%.c}") (C)"
+    done
+}
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <program_name>"
+    list_programs
+    exit 1
+fi
+
+NAME=$1
 mkdir -p Programas/build
 
 if [ "$NAME" == "eater" ]; then
@@ -10,9 +24,13 @@ if [ "$NAME" == "eater" ]; then
     cp Linker/msbasic/tmp/eater.bin Programas/build/eater.bin
     cp Linker/msbasic/tmp/eater.bin output/eater.bin
 else
-    [ -f "Programas/$NAME.c" ] || { echo "Error: Programas/$NAME.c does not exist"; exit 1; }
+    if [ ! -f "Programas/$NAME.c" ]; then
+        echo "Error: Programas/$NAME.c does not exist"
+        list_programs
+        exit 1
+    fi
     echo "--- Compiling $NAME.c ---"
-    cl65 -O --cpu 65C02 -t none -C Linker/memoria.cfg \
+    cl65 -O -Oi -Or --static-locals --cpu 65C02 -t none -C Linker/memoria.cfg \
         -o "Programas/build/$NAME.bin" \
         -m "Programas/build/$NAME.map" \
         -l "Programas/build/$NAME.lst" \

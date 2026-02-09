@@ -22,34 +22,6 @@ unsigned char matC[4][4] = {
 unsigned int matTemp[4][4];
 unsigned int matFinal[4][4];
 
-void print_str(const char* s) {
-    while (*s) {
-        if (*s == '\n') {
-            bios_putchar('\r');
-            bios_putchar('\n');
-        } else {
-            bios_putchar(*s);
-        }
-        s++;
-    }
-}
-
-void print_num(unsigned int n) {
-    char buffer[10];
-    int idx = 0;
-    if (n == 0) {
-        bios_putchar('0');
-        return;
-    }
-    while (n > 0) {
-        buffer[idx++] = (n % 10) + '0';
-        n /= 10;
-    }
-    while (idx > 0) {
-        bios_putchar(buffer[--idx]);
-    }
-}
-
 int main(void) {
     INIT_BUFFER();
 

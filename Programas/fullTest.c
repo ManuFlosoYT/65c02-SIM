@@ -5,48 +5,6 @@
 unsigned int failures = 0;
 unsigned int tests_run = 0;
 
-/* --- Helpers --- */
-
-void print_str(const char* s) {
-    while (*s) {
-        if (*s == '\n') {
-            bios_putchar('\r');
-            bios_putchar('\n');
-        } else {
-            bios_putchar(*s);
-        }
-        s++;
-    }
-}
-
-void print_num(unsigned int n) {
-    char buffer[10];
-    int idx = 0;
-    if (n == 0) {
-        bios_putchar('0');
-        return;
-    }
-    while (n > 0) {
-        buffer[idx++] = (n % 10) + '0';
-        n /= 10;
-    }
-    while (idx > 0) {
-        bios_putchar(buffer[--idx]);
-    }
-}
-
-void print_hex(unsigned int n) {
-    const char hex_chars[] = "0123456789ABCDEF";
-    bios_putchar('0');
-    bios_putchar('x');
-    if (n > 255) {
-        bios_putchar(hex_chars[(n >> 12) & 0xF]);
-        bios_putchar(hex_chars[(n >> 8) & 0xF]);
-    }
-    bios_putchar(hex_chars[(n >> 4) & 0xF]);
-    bios_putchar(hex_chars[n & 0xF]);
-}
-
 void assert_true(int condition, const char* name) {
     tests_run++;
     print_str("Test: ");

@@ -14,10 +14,14 @@
 
 Emulator emulator;
 bool emulationRunning = false;
-int instructionsPerFrame = 100000;
+int instructionsPerFrame = 1000000;
 bool autoOptimize = true;
 std::deque<char> consoleOutput;
-const size_t CONSOLE_MAX_SIZE = 2000;
+const size_t CONSOLE_MAX_SIZE = 20000;
+
+void ClearConsole() {
+    consoleOutput.clear();
+}
 
 void OutputCallback(char c) {
     consoleOutput.push_back(c);
@@ -264,6 +268,7 @@ int main(int argc, char* argv[]) {
             ImGui::SameLine();
             if (ImGui::Button("Reset")) {
                 if (romLoaded) {
+                    ClearConsole();
                     std::string errorMsg;
                     if (!emulator.Init(bin, errorMsg)) {
                         std::cerr << "Error resetting ROM: " << errorMsg
