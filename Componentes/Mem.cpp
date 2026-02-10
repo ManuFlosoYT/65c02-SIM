@@ -14,7 +14,8 @@ void Mem::WriteWord(Word dato, Word dir) {
 void Mem::Write(Word dir, Byte val) {
     auto iterador = writeHooks.find(dir);   // Buscar el hook
     if (iterador != writeHooks.end()) {
-        iterador->second(dir, val);        // Ejecutar el hook
+        iterador->second(dir, val);         // Ejecutar el hook
+        return;
     }
     memoria[dir] = val;
 }

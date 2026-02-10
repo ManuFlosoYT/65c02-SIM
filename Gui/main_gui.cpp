@@ -5,34 +5,50 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
 
+#include <cmath>
 #include <cstring>
-#include <deque>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "../Componentes/Emulator.h"
 
 Emulator emulator;
 bool emulationRunning = false;
 int instructionsPerFrame = 1000000;
+float ipsLogScale = 6.0f;
 bool autoOptimize = true;
-std::deque<char> consoleOutput;
-const size_t CONSOLE_MAX_SIZE = 20000;
+bool gpuEnabled = false;
+
+std::vector<std::string> consoleLines;
+std::string currentLine;
+int cursorX = 0;
+const size_t CONSOLE_MAX_LINES = 1000;
 
 void ClearConsole() {
-    consoleOutput.clear();
+    consoleLines.clear();
+    currentLine.clear();
+    cursorX = 0;
 }
 
 void OutputCallback(char c) {
-    consoleOutput.push_back(c);
-    if (consoleOutput.size() > CONSOLE_MAX_SIZE) {
-        // Remove entire lines from the top to avoid "cutting" characters
-        char removed;
-        do {
-            if (consoleOutput.empty()) break;
-            removed = consoleOutput.front();
-            consoleOutput.pop_front();
-        } while (removed != '\n');
+    if (c == '\r') {
+        cursorX = 0;
+    } else if (c == '\n') {
+        consoleLines.push_back(currentLine);
+        if (consoleLines.size() > CONSOLE_MAX_LINES) {
+            consoleLines.erase(consoleLines.begin());
+        }
+        currentLine.clear();
+        cursorX = 0;
+    } else if (c == 0x08 || c == 0x7F) {  // Backspace
+        if (cursorX > 0) cursorX--;
+    } else if (c >= 32) {
+        if (cursorX >= (int)currentLine.size()) {
+            currentLine.resize(cursorX + 1, ' ');
+        }
+        currentLine[cursorX] = c;
+        cursorX++;
     }
 }
 
@@ -73,6 +89,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Create OpenGL texture for VRAM display
+    GLuint vramTexture;
+    glGenTextures(1, &vramTexture);
+    glBindTexture(GL_TEXTURE_2D, vramTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    unsigned char emptyPixels[GPU::VRAM_HEIGHT * GPU::VRAM_WIDTH * 3] = {0};
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, emptyPixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -102,6 +131,7 @@ int main(int argc, char* argv[]) {
         }
     }
     emulator.SetOutputCallback(OutputCallback);
+    emulator.SetGPUEnabled(gpuEnabled);
 
     // Main loop
     bool done = false;
@@ -133,30 +163,25 @@ int main(int argc, char* argv[]) {
                 lastAdjustmentTime = currentTime;
 
                 if (avgFPS >= 50.0f) {
-                    // Slowly increase IPS to probe limits.
                     instructionsPerFrame =
-                        (int)(instructionsPerFrame * 1.01f) + 100;
+                        (int)(instructionsPerFrame * 1.1f) + 100;
                 } else {
-                    // Reduce IPS.
                     float drop = 50.0f - avgFPS;
                     if (drop < 0) drop = 0;
-
                     float factor = 1.0f - (drop / 100.0f);
-
-                    if (factor < 0.5f)
-                        factor = 0.5f;  // Clamp max reduction per step
-
+                    if (factor < 0.5f) factor = 0.5f;
                     instructionsPerFrame = (int)(instructionsPerFrame * factor);
                 }
 
-                // Clamp
                 if (instructionsPerFrame < 100) instructionsPerFrame = 100;
                 const int MAX_IPS = 1000000;
                 if (instructionsPerFrame > MAX_IPS)
                     instructionsPerFrame = MAX_IPS;
+
+                // Update log scale for slider sync
+                ipsLogScale = log10((double)instructionsPerFrame);
             }
         } else {
-            // Reset stats when not optimizing or paused to avoid stale data
             fpsSum = 0;
             fpsCount = 0;
             lastAdjustmentTime = SDL_GetTicks();
@@ -184,27 +209,13 @@ int main(int argc, char* argv[]) {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // Main Menu Bar
-        float main_menu_height = 0.0f;
-        if (ImGui::BeginMainMenuBar()) {
-            main_menu_height = ImGui::GetWindowSize().y;
-            if (ImGui::BeginMenu("Load ROM File")) {
-                if (ImGui::MenuItem("Open ROM File...")) {
-                    ImGuiFileDialog::Instance()->OpenDialog(
-                        "ChooseFileDlgKey", "Choose File", ".bin", ".");
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
-        }
-
         // Layout Configuration
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos;
         ImVec2 work_size = viewport->WorkSize;
-        work_pos.y += main_menu_height;
-        work_size.y -= main_menu_height;
 
+        float left_width = work_size.x * 0.5f;
+        float right_width = work_size.x - left_width;
         float top_section_height = work_size.y * 0.25f;
         float bottom_section_height = work_size.y - top_section_height;
         const ImGuiWindowFlags window_flags =
@@ -223,6 +234,7 @@ int main(int argc, char* argv[]) {
                 if (emulator.Init(filePathName, errorMsg)) {
                     bin = filePathName;
                     romLoaded = true;
+                    emulator.SetGPUEnabled(gpuEnabled);
                 } else {
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }
@@ -237,12 +249,6 @@ int main(int argc, char* argv[]) {
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
-        }
-
-        if (!romLoaded &&
-            !ImGuiFileDialog::Instance()->IsOpened("ChooseFileDlgKey")) {
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey",
-                                                    "Choose File", ".bin", ".");
         }
 
         // Control Window
@@ -261,7 +267,7 @@ int main(int argc, char* argv[]) {
             ImGui::SameLine();
             if (ImGui::Button("Step")) {
                 emulator.Step();
-                emulationRunning = false;  // Stepping pauses automatic run
+                emulationRunning = false;
             }
             ImGui::EndDisabled();
             ImGui::SameLine();
@@ -273,6 +279,9 @@ int main(int argc, char* argv[]) {
                         std::cerr << "Error resetting ROM: " << errorMsg
                                   << std::endl;
                         romLoaded = false;
+                    } else {
+                        emulator.SetGPUEnabled(gpuEnabled);
+                        emulator.GetGPU().Init();
                     }
                 }
             }
@@ -280,8 +289,19 @@ int main(int argc, char* argv[]) {
             if (ImGui::Button(autoOptimize ? "Auto (On)" : "Auto (Off)")) {
                 autoOptimize = !autoOptimize;
             }
+            ImGui::SameLine();
+            if (ImGui::Button(gpuEnabled ? "GPU (On)" : "GPU (Off)")) {
+                gpuEnabled = !gpuEnabled;
+                emulator.SetGPUEnabled(gpuEnabled);
+            }
 
-            ImGui::SliderInt("Speed (IPS)", &instructionsPerFrame, 1, 1000000);
+            if (ImGui::SliderFloat("Speed (IPS)", &ipsLogScale, 0.0f, 6.0f,
+                                   "")) {
+                instructionsPerFrame = (int)pow(10.0, (double)ipsLogScale);
+                if (instructionsPerFrame < 1) instructionsPerFrame = 1;
+            }
+            ImGui::SameLine();
+            ImGui::Text("(%d IPS)", instructionsPerFrame);
             ImGui::SetScrollHereY(1.0f);
             ImGui::End();
         }
@@ -297,17 +317,14 @@ int main(int argc, char* argv[]) {
             ImGui::Begin("LCD Output", nullptr, window_flags);
 
             const auto& screen = emulator.GetLCDScreen();
-
             char line1[17];
             char line2[17];
             std::memcpy(line1, screen[0], 16);
             line1[16] = 0;
             std::memcpy(line2, screen[1], 16);
             line2[16] = 0;
-
             ImGui::Text("%s", line1);
             ImGui::Text("%s", line2);
-
             ImGui::End();
         }
 
@@ -326,7 +343,6 @@ int main(int argc, char* argv[]) {
             ImGui::Text("A:  %02X", cpu.A);
             ImGui::Text("X:  %02X", cpu.X);
             ImGui::Text("Y:  %02X", cpu.Y);
-
             ImGui::Separator();
             ImGui::Text("Flags: %02X", cpu.GetStatus());
             ImGui::Text("N: %d V: %d B: %d D: %d I: %d Z: %d C: %d", cpu.N,
@@ -339,42 +355,126 @@ int main(int argc, char* argv[]) {
             ImGui::SetNextWindowPos(
                 ImVec2(work_pos.x, work_pos.y + top_section_height),
                 ImGuiCond_Always);
-            ImGui::SetNextWindowSize(ImVec2(work_size.x, bottom_section_height),
-                                     ImGuiCond_Always);
+            ImGui::SetNextWindowSize(
+                ImVec2(gpuEnabled ? left_width : work_size.x,
+                       bottom_section_height),
+                ImGuiCond_Always);
             ImGui::Begin("Console", nullptr, window_flags);
+
+            if (ImGui::Button("Load ROM")) {
+                if (!ImGuiFileDialog::Instance()->IsOpened()) {
+                    ImGuiFileDialog::Instance()->OpenDialog(
+                        "ChooseFileDlgKey", "Choose File", ".bin", ".");
+                }
+            }
+            ImGui::Separator();
+
             if (ImGui::IsWindowFocused()) {
                 for (int n = 0; n < io.InputQueueCharacters.Size; n++) {
                     unsigned int c = io.InputQueueCharacters[n];
                     if (c > 0 && c < 0x80) {
+                        if (c == '\r' || c == '\n')
+                            continue;  // Handled separately
                         emulator.InjectKey((char)c);
                     }
                 }
-
-                // Special keys
-                if (ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
+                if (ImGui::IsKeyPressed(ImGuiKey_Backspace))
                     emulator.InjectKey(0x7F);
-                }
                 if (ImGui::IsKeyPressed(ImGuiKey_Enter) ||
-                    ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)) {
+                    ImGui::IsKeyPressed(ImGuiKey_KeypadEnter))
                     emulator.InjectKey('\r');
-                }
             }
 
-            // Simple text dump
-            for (char c : consoleOutput) {
-                if (c == '\r') continue;
-                if (c == '\n')
-                    ImGui::TextUnformatted("\n");
-                else {
-                    char str[2] = {c, 0};
-                    ImGui::TextUnformatted(str);
-                    ImGui::SameLine();
-                }
+            for (const auto& line : consoleLines) {
+                ImGui::TextUnformatted(line.c_str());
             }
-            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            ImGui::TextUnformatted(currentLine.c_str());
+
+            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 20)
                 ImGui::SetScrollHereY(1.0f);
 
             ImGui::End();
+        }
+
+        // VRAM Viewer Window
+        if (gpuEnabled) {
+            ImGui::SetNextWindowPos(ImVec2(work_pos.x + left_width,
+                                           work_pos.y + top_section_height),
+                                    ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(right_width, bottom_section_height),
+                                     ImGuiCond_Always);
+            ImGui::Begin("VRAM Viewer", nullptr, window_flags);
+
+            if (ImGui::Button("Load Image")) {
+                if (!ImGuiFileDialog::Instance()->IsOpened()) {
+                    ImGuiFileDialog::Instance()->OpenDialog(
+                        "ChooseVRAMImageKey", "Choose VRAM Image", ".bin", ".",
+                        "");
+                }
+            }
+
+            GPU& gpu = emulator.GetGPU();
+            unsigned char pixels[GPU::VRAM_HEIGHT * GPU::VRAM_WIDTH * 3];
+            for (int y = 0; y < GPU::VRAM_HEIGHT; y++) {
+                for (int x = 0; x < GPU::VRAM_WIDTH; x++) {
+                    int idx = (y * GPU::VRAM_WIDTH + x) * 3;
+                    Byte val = gpu.vram[y][x];
+                    pixels[idx + 0] = ((val >> 4) & 0x03) * 85;
+                    pixels[idx + 1] = ((val >> 2) & 0x03) * 85;
+                    pixels[idx + 2] = (val & 0x03) * 85;
+                }
+            }
+            glBindTexture(GL_TEXTURE_2D, vramTexture);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH,
+                            GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            ImVec2 avail = ImGui::GetContentRegionAvail();
+            int scaleX = (int)(avail.x / GPU::VRAM_WIDTH);
+            int scaleY = (int)(avail.y / GPU::VRAM_HEIGHT);
+            int scale = scaleX < scaleY ? scaleX : scaleY;
+            if (scale < 1) scale = 1;
+
+            float imgW = (float)(GPU::VRAM_WIDTH * scale);
+            float imgH = (float)(GPU::VRAM_HEIGHT * scale);
+            float offsetX = (avail.x - imgW) * 0.5f;
+            float offsetY = (avail.y - imgH) * 0.5f;
+            if (offsetX > 0)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+            if (offsetY > 0)
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
+
+            ImGui::Image((ImTextureID)(intptr_t)vramTexture,
+                         ImVec2(imgW, imgH));
+            ImGui::End();
+        }
+
+        // VRAM Image Load Dialog
+        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+        if (ImGuiFileDialog::Instance()->Display("ChooseVRAMImageKey")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::string imgPath =
+                    ImGuiFileDialog::Instance()->GetFilePathName();
+                FILE* f = fopen(imgPath.c_str(), "rb");
+                if (f) {
+                    fseek(f, 0, SEEK_END);
+                    long fileSize = ftell(f);
+                    fseek(f, 0, SEEK_SET);
+                    unsigned char* buf = new unsigned char[fileSize];
+                    fread(buf, 1, fileSize, f);
+                    fclose(f);
+                    GPU& gpu = emulator.GetGPU();
+                    for (int y = 0; y < GPU::VRAM_HEIGHT; y++) {
+                        for (int x = 0; x < GPU::VRAM_WIDTH; x++) {
+                            size_t addr = (size_t)y * 128 + x;
+                            if (addr < (size_t)fileSize)
+                                gpu.vram[y][x] = buf[addr];
+                        }
+                    }
+                    delete[] buf;
+                }
+            }
+            ImGuiFileDialog::Instance()->Close();
         }
 
         ImGui::Render();
@@ -386,10 +486,10 @@ int main(int argc, char* argv[]) {
     }
 
     // Cleanup
+    glDeleteTextures(1, &vramTexture);
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
-
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();

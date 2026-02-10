@@ -22,6 +22,21 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     lcd.Inicializar(mem);
     acia.Inicializar(mem);
 
+    // Set up GPU VRAM write hook for RAM addresses 0x2000-0x3FFF (3 MSB = 001)
+    // The hook will write to VRAM when CPU writes to these addresses
+    for (Word addr = 0x2000; addr < 0x4000; addr++) {
+        mem.SetWriteHook(addr, [this, addr](Word, Byte val) {
+            this->mem.memoria[addr] = val;
+
+            // Only write to VRAM if GPU is enabled
+            if (gpuEnabled) {
+                // Calculate VRAM address by subtracting base address
+                Word vramAddr = addr - 0x2000;
+                gpu.Write(vramAddr, val);
+            }
+        });
+    }
+
     std::string ruta = bin;
 
     // Try opening as is
@@ -64,8 +79,21 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 }
 
 int Emulator::Step() {
-    // Normal execution
-    int res = cpu.Step(mem);
+    int res = 0;
+
+    // Clock the GPU first to advance pixel counters
+    if (gpuEnabled) {
+        gpu.Clock();
+
+        // CPU only executes during blanking interval
+        // During drawing time, GPU has control of the bus
+        if (gpu.IsInBlankingInterval()) {
+            res = cpu.Step(mem);
+        }
+    } else {
+        // If GPU is disabled, CPU runs normally
+        res = cpu.Step(mem);
+    }
 
     if (baudDelay > 0) baudDelay--;
 
@@ -74,24 +102,29 @@ int Emulator::Step() {
     }
 
     // Procesar input buffer si ACIA está listo
-    if (!inputBuffer.empty() && (mem.memoria[ACIA_STATUS] & 0x80) == 0 &&
-        (mem.memoria[PORTA] & 0x01) == 0 && baudDelay <= 0) {
-        char c = inputBuffer.front();
-        inputBuffer.pop_front();
+    {
+        std::lock_guard<std::mutex> lock(bufferMutex);
+        if (!inputBuffer.empty() && (mem.memoria[ACIA_STATUS] & 0x80) == 0 &&
+            (mem.memoria[PORTA] & 0x01) == 0 && baudDelay <= 0) {
+            char c = inputBuffer.front();
+            inputBuffer.pop_front();
 
-        // Simular ACIA: Escribir dato y activar IRQ
-        mem.memoria[ACIA_DATA] = c;
-        mem.memoria[ACIA_STATUS] |= 0x80;  // Bit 7: Data Register Full / IRQ
-        cpu.IRQ(mem);
+            // Simular ACIA: Escribir dato y activar IRQ
+            mem.memoria[ACIA_DATA] = c;
+            mem.memoria[ACIA_STATUS] |=
+                0x80;  // Bit 7: Data Register Full / IRQ
+            cpu.IRQ(mem);
 
-        // Set delay (2000 ciclos de reloj)
-        baudDelay = 2000;
+            // Set delay (2000 ciclos de reloj)
+            baudDelay = 2000;
+        }
     }
     return res;
 }
 
 void Emulator::InjectKey(char c) {
     if (c == '\n') c = '\r';
+    std::lock_guard<std::mutex> lock(bufferMutex);
     inputBuffer.push_back(c);
 }
 

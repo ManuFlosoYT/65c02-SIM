@@ -31,29 +31,34 @@ Clone the project
 git clone https://github.com/ManuFlosoYT/65c02-SIM
 ```
 
-Build the project
+Build the project, all binaries will be placed in the `output` folder:
 
 ```bash
 ./build.sh
 ```
 
-Compile and run programs from ./Programas/
+Compile and run assembly or C programs from `./Programas/` into the `output` folder:
 
 ```bash
 ./compile_bin.sh <program_name>
 ```
 
-Compile and run wozmon/msbasic from Ben Eater's repository
+_(Note: This tool automatically handles both `.s` and `.c` files, and also the special `eater` ROM target.)_
+
+Convert images to VRAM binary format into the `output` folder:
 
 ```bash
-./compile_bin.sh eater
+./image-to-bin.sh <image_name.png>
 ```
 
 ### :running: Run compiled programs
 
 Go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
 
-#### CLI
+#### CLI (Legacy)
+
+> [!WARNING]
+> The CLI version is considered **Legacy**. It is only recommended for basic CPU testing and does not support advanced features like the LCD or GPU.
 
 Run without arguments to be prompted for the file path:
 
@@ -67,7 +72,9 @@ Or provide the path directly:
 ./SIM_65C02_CLI <path/to/bin_file>
 ```
 
-#### GUI
+#### GUI (Recommended)
+
+This is the main version with full feature support (LCD, GPU, etc.).
 
 Run without arguments or double click on your file browser to open the file selector:
 
@@ -81,7 +88,7 @@ Or provide the path directly:
 ./SIM_65c02_GUI <path/to/bin_file>
 ```
 
-### :running: Debugging
+### :running: Debugging (Only on CLI)
 
 Pressing CTRL + E toggles debug mode (quite usefull if something goes wrong)
 
