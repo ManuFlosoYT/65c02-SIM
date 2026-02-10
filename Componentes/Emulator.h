@@ -8,6 +8,7 @@
 #include "GPU.h"
 #include "LCD.h"
 #include "Mem.h"
+#include "SID.h"
 
 class Emulator {
 public:
@@ -30,6 +31,8 @@ public:
     void SetGPUEnabled(bool enabled) { gpuEnabled = enabled; }
     bool IsGPUEnabled() const { return gpuEnabled; }
 
+    SID& GetSID() { return sid; }
+
     void PrintState();
 
 private:
@@ -39,6 +42,7 @@ private:
     LCD lcd;
     ACIA acia;
     GPU gpu;
+    SID sid;
 
     // Buffer de entrada
     std::deque<char> inputBuffer;

@@ -81,11 +81,13 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(65c02_core STATIC ${CORE_SOURCES})
 target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(65c02_core PUBLIC SDL2::SDL2)
 
 # Test version of core (for unit tests if needed, though usually same lib works)
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV)
 target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(65c02_core_test PUBLIC SDL2::SDL2)
 
 # ------------------------------------------------------------------------------
 # ImGui Library (Static helper)

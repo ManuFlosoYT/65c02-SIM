@@ -48,7 +48,13 @@ _(Note: This tool automatically handles both `.s` and `.c` files, and also the s
 Convert images to VRAM binary format into the `output` folder:
 
 ```bash
-./image-to-bin.sh <image_name.png>
+./image-to-bin.sh <image_name>
+```
+
+Convert MIDI files to SID assembly code into the `output` folder:
+
+```bash
+./midi-to-bin.sh <midi_file>
 ```
 
 ### :running: Run compiled programs

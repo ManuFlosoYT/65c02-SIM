@@ -37,6 +37,20 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
         });
     }
 
+    // Reset SID state
+    sid.Reset();
+
+    // Map SID to 0x4800 - 0x481F
+    for (Word addr = 0x4800; addr <= 0x481F; addr++) {
+        mem.SetWriteHook(addr, [this](Word addr, Byte val) {
+            this->sid.Write(addr - 0x4800, val);
+            this->mem.memoria[addr] = val;
+        });
+        mem.SetReadHook(addr, [this](Word addr) -> Byte {
+            return this->sid.Read(addr - 0x4800);
+        });
+    }
+
     std::string ruta = bin;
 
     // Try opening as is

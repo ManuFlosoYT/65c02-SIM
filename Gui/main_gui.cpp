@@ -54,11 +54,13 @@ void OutputCallback(char c) {
 
 int main(int argc, char* argv[]) {
     // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) !=
-        0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER |
+                 SDL_INIT_AUDIO) != 0) {
         std::cerr << "Error: " << SDL_GetError() << std::endl;
         return -1;
     }
+
+    emulator.GetSID().Init();
 
     // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
@@ -135,6 +137,7 @@ int main(int argc, char* argv[]) {
 
     // Main loop
     bool done = false;
+    emulator.GetSID().SetEmulationPaused(true);  // Start paused
     while (!done) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -263,11 +266,14 @@ int main(int argc, char* argv[]) {
             ImGui::BeginDisabled(!romLoaded);
             if (ImGui::Button(emulationRunning ? "Pause" : "Run")) {
                 emulationRunning = !emulationRunning;
+                emulator.GetSID().SetEmulationPaused(!emulationRunning);
             }
             ImGui::SameLine();
             if (ImGui::Button("Step")) {
+                emulator.GetSID().SetEmulationPaused(false);
                 emulator.Step();
                 emulationRunning = false;
+                emulator.GetSID().SetEmulationPaused(true);
             }
             ImGui::EndDisabled();
             ImGui::SameLine();
@@ -293,6 +299,11 @@ int main(int argc, char* argv[]) {
             if (ImGui::Button(gpuEnabled ? "GPU (On)" : "GPU (Off)")) {
                 gpuEnabled = !gpuEnabled;
                 emulator.SetGPUEnabled(gpuEnabled);
+            }
+            ImGui::SameLine();
+            bool soundEnabled = emulator.GetSID().IsSoundEnabled();
+            if (ImGui::Button(soundEnabled ? "Sound (On)" : "Sound (Off)")) {
+                emulator.GetSID().EnableSound(!soundEnabled);
             }
 
             if (ImGui::SliderFloat("Speed (IPS)", &ipsLogScale, 0.0f, 6.0f,

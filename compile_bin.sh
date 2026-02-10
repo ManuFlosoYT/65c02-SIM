@@ -27,10 +27,18 @@ if [ "$NAME" == "eater" ]; then
     cp Linker/msbasic/tmp/eater.bin Programas/build/eater.bin
     cp Linker/msbasic/tmp/eater.bin output/eater.bin
 
+elif [ -f "SID/$NAME.s" ]; then
+    echo "--- Assembling $NAME.s (ASM from SID/) ---"
+    ca65 --cpu 65C02 -o "Programas/build/$NAME.o" "SID/$NAME.s"
+    ld65 -C Linker/raw.cfg -o "Programas/build/$NAME.bin" "Programas/build/$NAME.o"
+    mkdir -p output
+    cp "Programas/build/$NAME.bin" "output/$NAME.bin"
+
 elif [ -f "Programas/$NAME.s" ]; then
     echo "--- Assembling $NAME.s (ASM) ---"
     ca65 --cpu 65C02 -o "Programas/build/$NAME.o" "Programas/$NAME.s"
     ld65 -C Linker/raw.cfg -o "Programas/build/$NAME.bin" "Programas/build/$NAME.o"
+    mkdir -p output
     cp "Programas/build/$NAME.bin" "output/$NAME.bin"
 
 elif [ -f "Programas/$NAME.c" ]; then
