@@ -1,7 +1,7 @@
 <div align='center'>
 
 <h1>65c02 emulator for the BenEater memory layout implementation</h1>
-<p>65c02 emulator for the BenEater memory layout implementation</p>
+<p>Emulated components: CPU, VIA, ACIA, SID, GPU, 32KB RAM, 32KB ROM, 7.5KB VRAM</p>
 
 <h4> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/blob/master/README.md"> Documentation </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Request Feature </a> </h4>
 
@@ -28,6 +28,26 @@ Each release includes an `SDK.zip` file containing everything needed to develop 
 - `compile-bin.sh`: Script to compile programs.
 - `image-to-bin.sh`: Script to convert images.
 - `midi-to-bin.sh`: Script to convert MIDI files.
+
+Compile and run assembly or C programs from `./Binaries/` into the `output` folder:
+
+```bash
+./compile-bin.sh <program_name>
+```
+
+_(Note: This tool automatically handles both `.s` and `.c` files, and also the special `eater` ROM target.)_
+
+Convert images to VRAM binary format into the `output` folder:
+
+```bash
+./image-to-bin.sh <image_name>
+```
+
+Convert MIDI files to SID assembly code into the `output` folder:
+
+```bash
+./midi-to-bin.sh <midi_file>
+```
 
 ### :hammer_and_wrench: Build from Source
 
@@ -76,26 +96,6 @@ Build the project, all binaries will be placed in the `output` folder:
 
 ```bash
 ./build.sh
-```
-
-Compile and run assembly or C programs from `./Binaries/` into the `output` folder:
-
-```bash
-./compile-bin.sh <program_name>
-```
-
-_(Note: This tool automatically handles both `.s` and `.c` files, and also the special `eater` ROM target.)_
-
-Convert images to VRAM binary format into the `output` folder:
-
-```bash
-./image-to-bin.sh <image_name>
-```
-
-Convert MIDI files to SID assembly code into the `output` folder:
-
-```bash
-./midi-to-bin.sh <midi_file>
 ```
 
 ## :wave: Contributing
