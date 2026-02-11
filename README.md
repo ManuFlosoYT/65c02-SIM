@@ -9,27 +9,53 @@
 
 ## :toolbox: Getting Started
 
-### :bangbang: Prerequisites
+### :running: Run Pre-compiled Binaries
 
-- CMake
+Go to releases and download the latest release (and SDK if needed). [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
+
+#### Run the Simulator
+
+Run the application and select the binary file you want to run.
+
+### :package: SDK
+
+Each release includes an `SDK.zip` file containing everything needed to develop for this simulator:
+
+- `Binaries/`: Example C and Assembly programs.
+- `Linker/`: Linker configurations and BIOS.
+- `GPU/`: GPU assets and conversion tools.
+- `SID/`: Sound assets and conversion tools.
+- `compile-bin.sh`: Script to compile programs.
+- `image-to-bin.sh`: Script to convert images.
+- `midi-to-bin.sh`: Script to convert MIDI files.
+
+### :hammer_and_wrench: Build from Source
+
+#### Prerequisites
+
+To compile the simulator from source, you need the following dependencies:
+
+**Ubuntu / Debian / Mint (`apt`)**
 
 ```bash
-sudo dnf install cmake
+sudo apt install g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev mingw-w64 libasound2-dev libpulse-dev cmake cc65
 ```
 
-- CC65
+**Fedora (`dnf`)**
 
 ```bash
-sudo dnf install cc65
+sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65
 ```
 
-- MinGW-w64
+**Arch Linux (`pacman`)**
 
 ```bash
-sudo dnf install "mingw64-gcc*" "mingw32-gcc*"
+sudo pacman -S base-devel gcc ninja mesa glu libx11 libxrandr libxinerama libxcursor libxi wayland libxkbcommon mingw-w64-gcc alsa-lib libpulse cmake
+# Install cc65 from AUR (e.g. using yay)
+yay -S cc65
 ```
 
-### :running: Compile and Run Locally
+#### Compile and Run Locally
 
 Clone the project
 
@@ -61,36 +87,6 @@ Convert MIDI files to SID assembly code into the `output` folder:
 
 ```bash
 ./midi-to-bin.sh <midi_file>
-```
-
-### :package: SDK
-
-Each release includes an `SDK.zip` file containing everything needed to develop for this simulator:
-
-- `Binaries/`: Example C and Assembly programs.
-- `Linker/`: Linker configurations and BIOS.
-- `GPU/`: GPU assets and conversion tools.
-- `SID/`: Sound assets and conversion tools.
-- `compile-bin.sh`: Script to compile programs.
-- `image-to-bin.sh`: Script to convert images.
-- `midi-to-bin.sh`: Script to convert MIDI files.
-
-### :running: Run compiled programs
-
-Go to releases and download the latest release (and SDK if needed). [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
-
-#### Run the Simulator
-
-Run without arguments or double click on your file browser to open the file selector:
-
-```bash
-./SIM_65C02
-```
-
-Or provide the path directly:
-
-```bash
-./SIM_65C02 <path/to/bin_file>
 ```
 
 ## :wave: Contributing
