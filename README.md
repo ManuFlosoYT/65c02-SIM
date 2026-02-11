@@ -51,6 +51,15 @@ sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-d
 
 ```bash
 sudo pacman -S base-devel gcc ninja mesa glu libx11 libxrandr libxinerama libxcursor libxi wayland libxkbcommon mingw-w64-gcc alsa-lib libpulse cmake
+
+# Install yay
+sudo pacman -S --needed base-devel git
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si
+cd ..
+rm -rf yay
+
 # Install cc65 from AUR (e.g. using yay)
 yay -S cc65
 ```
