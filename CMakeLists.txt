@@ -77,10 +77,10 @@ find_package(OpenGL REQUIRED)
 # Core Library
 # ------------------------------------------------------------------------------
 file(GLOB CORE_SOURCES
-    "Instrucciones/*.cpp"
-    "Instrucciones/*.h"
-    "Componentes/*.cpp"
-    "Componentes/*.h"
+    "Hardware/CPU/*.cpp"
+    "Hardware/CPU/*.h"
+    "Hardware/*.cpp"
+    "Hardware/*.h"
 )
 # Exclude main.cpp if it gets globbed (it is not in subdirs so likely fine, GLOB above is restrictive)
 # But just in case
@@ -120,7 +120,7 @@ target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 libglew_static OpenGL::GL)
 # ------------------------------------------------------------------------------
 if(WIN32)
     add_executable(SIM_65C02 WIN32
-        Gui/main_gui.cpp
+        main.cpp
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
     # Static linking for Windows to avoid missing DLLs
@@ -128,7 +128,7 @@ if(WIN32)
     target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib mingw32 SDL2::SDL2main SDL2::SDL2 libglew_static OpenGL::GL)
 else()
     add_executable(SIM_65C02 
-        Gui/main_gui.cpp
+        main.cpp
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
     # Static runtime linking for Linux (optional but good for portability)

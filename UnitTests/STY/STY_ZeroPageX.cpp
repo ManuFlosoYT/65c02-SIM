@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "../../Componentes/CPU.h"
-#include "../../Componentes/Mem.h"
-#include "../../Instrucciones/ListaInstrucciones.h"
+#include "../../Hardware/CPU.h"
+#include "../../Hardware/Mem.h"
+#include "../../Hardware/CPU/ListaInstrucciones.h"
 
 class STY_ZeroPageX_Test : public ::testing::Test {
 protected:

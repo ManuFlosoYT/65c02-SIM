@@ -68,7 +68,7 @@ for midi_file in "${files[@]}"; do
         
         # 2. Compile ASM to BIN
         echo "   Compiling..."
-        if ./compile_bin.sh "$clean_name" > /dev/null 2>&1; then
+        if ./compile-bin.sh "$clean_name" > /dev/null 2>&1; then
             echo "   [OK] Compilation SUCCESS with mode '$mode'!"
             success=true
             break # Exit mode loop, done with this file

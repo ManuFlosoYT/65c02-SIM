@@ -1,10 +1,10 @@
-#include "../Componentes/LCD.h"
+#include "../Hardware/LCD.h"
 
 #include <gtest/gtest.h>
 
 #include <iostream>
 
-#include "../Componentes/Mem.h"
+#include "../Hardware/Mem.h"
 
 class TestLCD : public ::testing::Test {
 protected:

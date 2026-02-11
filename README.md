@@ -43,10 +43,10 @@ Build the project, all binaries will be placed in the `output` folder:
 ./build.sh
 ```
 
-Compile and run assembly or C programs from `./Programas/` into the `output` folder:
+Compile and run assembly or C programs from `./Binaries/` into the `output` folder:
 
 ```bash
-./compile_bin.sh <program_name>
+./compile-bin.sh <program_name>
 ```
 
 _(Note: This tool automatically handles both `.s` and `.c` files, and also the special `eater` ROM target.)_
@@ -63,9 +63,21 @@ Convert MIDI files to SID assembly code into the `output` folder:
 ./midi-to-bin.sh <midi_file>
 ```
 
+### :package: SDK
+
+Each release includes an `SDK.zip` file containing everything needed to develop for this simulator:
+
+- `Binaries/`: Example C and Assembly programs.
+- `Linker/`: Linker configurations and BIOS.
+- `GPU/`: GPU assets and conversion tools.
+- `SID/`: Sound assets and conversion tools.
+- `compile-bin.sh`: Script to compile programs.
+- `image-to-bin.sh`: Script to convert images.
+- `midi-to-bin.sh`: Script to convert MIDI files.
+
 ### :running: Run compiled programs
 
-Go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
+Go to releases and download the latest release (and SDK if needed). [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
 
 #### Run the Simulator
 

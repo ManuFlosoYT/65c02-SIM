@@ -28,6 +28,10 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+      - name: Crear SDK
+        run: |
+          zip -r SDK.zip Binaries/ Linker/ GPU/ SID/ compile-bin.sh image-to-bin.sh midi-to-bin.sh -x "Binaries/build/*"
+
       - name: Crear Release y subir ejecutables
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -36,3 +40,4 @@ jobs:
           files: |
             output/linux/SIM_65C02
             output/windows/SIM_65C02.exe
+            SDK.zip

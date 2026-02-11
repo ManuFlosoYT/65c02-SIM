@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include "../Componentes/ACIA.h"
-#include "../Componentes/CPU.h"
-#include "../Componentes/Mem.h"
+#include "../Hardware/ACIA.h"
+#include "../Hardware/CPU.h"
+#include "../Hardware/Mem.h"
 #include "gtest/gtest.h"
 
 class FreezeRepro : public ::testing::Test {
