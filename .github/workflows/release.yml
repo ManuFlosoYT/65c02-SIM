@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -19,7 +19,7 @@ jobs:
       - name: Instalar dependencias
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
+          sudo apt-get install -y g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev mingw-w64
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 --slave /usr/bin/g++ g++ /usr/bin/g++-14
           pip install cmake --upgrade
 
@@ -34,5 +34,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            output/SIM_65C02_CLI
-            output/SIM_65C02_GUI
+            output/linux/SIM_65C02
+            output/windows/SIM_65C02.exe

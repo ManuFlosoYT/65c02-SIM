@@ -11,16 +11,22 @@
 
 ### :bangbang: Prerequisites
 
-- CMake<a href="https://github.com/Kitware/CMake"> Here</a>
+- CMake
 
 ```bash
 sudo dnf install cmake
 ```
 
-- CC65<a href="https://github.com/cc65/cc65"> Here</a>
+- CC65
 
 ```bash
 sudo dnf install cc65
+```
+
+- MinGW-w64
+
+```bash
+sudo dnf install "mingw64-gcc*" "mingw32-gcc*"
 ```
 
 ### :running: Compile and Run Locally
@@ -61,44 +67,19 @@ Convert MIDI files to SID assembly code into the `output` folder:
 
 Go to releases and download the latest release. [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
 
-#### CLI (Legacy)
-
-> [!WARNING]
-> The CLI version is considered **Legacy**. It is only recommended for basic CPU testing and does not support advanced features like the LCD or GPU.
-
-Run without arguments to be prompted for the file path:
-
-```bash
-./SIM_65C02_CLI
-```
-
-Or provide the path directly:
-
-```bash
-./SIM_65C02_CLI <path/to/bin_file>
-```
-
-#### GUI (Recommended)
-
-This is the main version with full feature support (LCD, GPU, etc.).
+#### Run the Simulator
 
 Run without arguments or double click on your file browser to open the file selector:
 
 ```bash
-./SIM_65c02_GUI
+./SIM_65C02
 ```
 
 Or provide the path directly:
 
 ```bash
-./SIM_65c02_GUI <path/to/bin_file>
+./SIM_65C02 <path/to/bin_file>
 ```
-
-### :running: Debugging (Only on CLI)
-
-Pressing CTRL + E toggles debug mode (quite usefull if something goes wrong)
-
-Pressing CTRL + D toggles printing the CPU status on every cicle
 
 ## :wave: Contributing
 

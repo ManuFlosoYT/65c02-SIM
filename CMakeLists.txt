@@ -22,15 +22,22 @@ endif()
 include(FetchContent)
 
 # 1. GoogleTest
-FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/refs/heads/main.zip
-)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+if(NOT WIN32)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/refs/heads/main.zip
+    )
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+endif()
 
 # 2. SDL2
+# Build SDL2 as a static library
+set(SDL_SHARED OFF CACHE BOOL "Build shared SDL2" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build static SDL2" FORCE)
+set(SDL_TEST OFF CACHE BOOL "Build SDL2 test" FORCE)
+
 FetchContent_Declare(
   SDL2
   GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
@@ -109,32 +116,41 @@ target_include_directories(imgui_lib PUBLIC
 target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 libglew_static OpenGL::GL)
 
 # ------------------------------------------------------------------------------
-# Target 1: Terminal Application
+# Target: Simulator Application
 # ------------------------------------------------------------------------------
-add_executable(SIM_65C02_CLI Terminal/main_term.cpp)
-target_link_libraries(SIM_65C02_CLI PRIVATE 65c02_core)
+if(WIN32)
+    add_executable(SIM_65C02 WIN32
+        Gui/main_gui.cpp
+        ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+    )
+    # Static linking for Windows to avoid missing DLLs
+    target_link_options(SIM_65C02 PRIVATE -static -static-libgcc -static-libstdc++)
+    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib mingw32 SDL2::SDL2main SDL2::SDL2 libglew_static OpenGL::GL)
+else()
+    add_executable(SIM_65C02 
+        Gui/main_gui.cpp
+        ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+    )
+    # Static runtime linking for Linux (optional but good for portability)
+    target_link_options(SIM_65C02 PRIVATE -static-libgcc -static-libstdc++)
+    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib SDL2::SDL2 libglew_static OpenGL::GL)
+endif()
 
-# ------------------------------------------------------------------------------
-# Target 2: GUI Application
-# ------------------------------------------------------------------------------
-add_executable(SIM_65C02_GUI 
-    Gui/main_gui.cpp
-    ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
-)
-target_include_directories(SIM_65C02_GUI PRIVATE ${glew_SOURCE_DIR}/include ${imguifiledialog_SOURCE_DIR})
-target_compile_definitions(SIM_65C02_GUI PRIVATE IMGUI_DEFINE_MATH_OPERATORS USE_BOOKMARK)
-target_link_libraries(SIM_65C02_GUI PRIVATE 65c02_core imgui_lib SDL2::SDL2 libglew_static OpenGL::GL)
+target_include_directories(SIM_65C02 PRIVATE ${glew_SOURCE_DIR}/include ${imguifiledialog_SOURCE_DIR})
+target_compile_definitions(SIM_65C02 PRIVATE IMGUI_DEFINE_MATH_OPERATORS USE_BOOKMARK)
 
 # ------------------------------------------------------------------------------
 # Target 3: Unit Tests
 # ------------------------------------------------------------------------------
-enable_testing()
-file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
+if(NOT WIN32)
+    enable_testing()
+    file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
 
-if(TEST_SOURCES)
-    add_executable(unit_tests ${TEST_SOURCES})
-    target_link_libraries(unit_tests PRIVATE 65c02_core_test GTest::gtest_main)
+    if(TEST_SOURCES)
+        add_executable(unit_tests ${TEST_SOURCES})
+        target_link_libraries(unit_tests PRIVATE 65c02_core_test GTest::gtest_main)
 
-    include(GoogleTest)
-    gtest_discover_tests(unit_tests)
+        include(GoogleTest)
+        gtest_discover_tests(unit_tests)
+    endif()
 endif()

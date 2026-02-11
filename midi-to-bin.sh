@@ -9,14 +9,38 @@ fi
 
 echo "--- MIDI to BIN Automation (Smart Optimization) ---"
 
-# Loop through all MIDI files in SID/
-shopt -s nullglob
-files=(SID/*.mid SID/*.midi)
-shopt -u nullglob
+# Input Handling
+target_file=""
 
-if [ ${#files[@]} -eq 0 ]; then
-    echo "No MIDI files found in SID/"
+if [ "$#" -eq 0 ]; then
+    echo "Available MIDI files:"
+    shopt -s nullglob
+    files=(SID/*.mid SID/*.midi)
+    shopt -u nullglob
+    
+    if [ ${#files[@]} -eq 0 ]; then
+        echo "  (No MIDI files found in SID/)"
+    else
+        for f in "${files[@]}"; do
+            echo "  - $(basename "$f")"
+        done
+    fi
+    echo ""
+    echo "Usage: ./midi-to-bin.sh [filename.mid]"
     exit 0
+else
+    # Argument provided
+    input_arg="$1"
+    # Check if exact path or just filename
+    if [ -f "$input_arg" ]; then
+        target_file="$input_arg"
+    elif [ -f "SID/$input_arg" ]; then
+        target_file="SID/$input_arg"
+    else
+        echo "Error: File '$input_arg' not found."
+        exit 1
+    fi
+    files=("$target_file")
 fi
 
 # Levels: l1 (2ms) -> l8 (100ms + Chords)
@@ -55,6 +79,7 @@ for midi_file in "${files[@]}"; do
     
     if [ "$success" = false ]; then
         echo ">> CRITICAL: Could not compile '$clean_name' even in EXTREME mode."
+        exit -1
     fi
 done
 

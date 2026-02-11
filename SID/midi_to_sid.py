@@ -34,6 +34,13 @@ WAVE_SAW   = 0x20
 WAVE_PULSE = 0x40
 WAVE_NOISE = 0x80
 
+# --- Additional SID Constants ---
+ENV_1     = 0x1C 
+CUTOFF_LO = 0x15
+CUTOFF_HI = 0x16
+RESON_FILT= 0x17
+MODE_VOL  = 0x18
+
 def get_voice_offset(voice_idx):
     return (voice_idx - 1) * 7
 
@@ -42,6 +49,7 @@ def freq_for_note(note_num):
     sid_freq = int(freq_hz * 16.777216)
     return sid_freq
 
+# --- Instrument Configuration ---
 # --- Configuration Enums ---
 MODE_LEVEL_1 = "l1" # Raw / High Fidelity
 MODE_LEVEL_2 = "l2" # Fine
@@ -52,6 +60,97 @@ MODE_LEVEL_6 = "l6" # High
 MODE_LEVEL_7 = "l7" # Extreme
 MODE_LEVEL_8 = "l8" # Insane
 
+def _get_instrument_params(program, channel, note, velocity):
+    # Default: Pulse with generic envelope
+    wave = WAVE_PULSE
+    attack_decay = 0x09  # Short Attack, Long Decay
+    sustain_release = 0xF5 # High Sustain, Medium Release
+    pulse_width = 0x0800 # 50%
+    
+    # Flags
+    is_drum = (channel == 9)
+    features = []
+
+    if is_drum:
+        # Drum Map (GM)
+        if note in [35, 36]: # Kick
+            wave = WAVE_TRI
+            attack_decay = 0x05 # Fast attack, med decay
+            sustain_release = 0x00 # No sustain, fast release
+            features.append("kick_slide")
+        elif note in [38, 40]: # Snare
+            wave = WAVE_NOISE
+            attack_decay = 0x05
+            sustain_release = 0x00
+            features.append("snare_macro") # Use macro for noise+tone
+        elif note in [42, 44, 46]: # HiHats
+            wave = WAVE_NOISE
+            attack_decay = 0x00 # Instant
+            sustain_release = 0x04 # Short release
+        elif note in [49, 57]: # Crash
+            wave = WAVE_NOISE
+            attack_decay = 0x0F # Soft
+            sustain_release = 0x08 # Long release
+        else: # Generic Perc
+            wave = WAVE_NOISE
+            attack_decay = 0x05
+            sustain_release = 0x40 
+            
+    else:
+        # Melodic Instruments
+        # Velocity -> Sustain Level mapping (High nibble of SR)
+        sus_nibble = int((velocity / 127.0) * 15)
+        if sus_nibble < 4: sus_nibble = 4 # Min sustain
+        
+        # Base patches
+        if 0 <= program <= 7: # Piano
+            wave = WAVE_PULSE
+            attack_decay = 0x09
+            sustain_release = (0x8 << 4) | 0x5 # Sus 8, Rel 5
+            pulse_width = 0x0600
+        elif 8 <= program <= 15: # Chromatic Perc (Glock etc)
+            wave = WAVE_TRI
+            attack_decay = 0x05
+            sustain_release = 0x05 # Low sustain
+        elif 16 <= program <= 23: # Organ
+            wave = WAVE_PULSE
+            attack_decay = 0x11 # Fast
+            sustain_release = 0xF2 # Full Sus
+            pulse_width = 0x0400
+        elif 24 <= program <= 31: # Guitar
+            wave = WAVE_SAW # Nylon/Steel
+            if program >= 29: wave = WAVE_PULSE # Overdrive -> Square
+            attack_decay = 0x09
+            sustain_release = 0xA4
+        elif 32 <= program <= 39: # Bass
+            wave = WAVE_SAW # Or Triangle? Saw is punchier
+            if program in [33, 34]: wave = WAVE_PULSE # Finger/Pick
+            attack_decay = 0x05
+            sustain_release = 0xA4
+            features.append("bass_filter")
+        elif 40 <= program <= 47: # Strings
+            wave = WAVE_SAW
+            attack_decay = 0x68 # Slow attack
+            sustain_release = 0x89 # Med sus, long release
+            features.append("pwm_sweep") # Chorus effect
+        elif 56 <= program <= 63: # Brass
+            wave = WAVE_SAW
+            attack_decay = 0x25
+            sustain_release = 0x85
+        elif 80 <= program <= 95: # Lead
+            wave = WAVE_PULSE # Square leads
+            if program in [81, 87]: wave = WAVE_SAW
+            attack_decay = 0x05
+            sustain_release = 0xC9 # Long release for smoother transitions
+            features.append("pwm_sweep")
+        else:
+            # Default fallback
+            wave = WAVE_PULSE
+            attack_decay = 0x09
+            sustain_release = (sus_nibble << 4) | 0x9 # 750ms release
+    
+    return wave, attack_decay, sustain_release, pulse_width, features
+
 class Voice:
     def __init__(self, index):
         self.index = index
@@ -59,8 +158,16 @@ class Voice:
         self.channel = None
         self.start_time = 0
         self.active = False 
+        self.released = False # Track release phase
         self.priority_score = 0
         self.wave = WAVE_PULSE # Default
+        self.arpeggio_notes = []
+        self.arp_index = 0
+        self.arp_counter = 0
+        self.pwm_counter = 0
+        self.pwm_val = 0x800
+        self.pwm_dir = 1
+        self.features = []
 
 class MidiProcessor:
     def __init__(self, midi_path, mode=MODE_LEVEL_1):
@@ -72,7 +179,6 @@ class MidiProcessor:
         self.bass_channel = -1
         self.melody_channel = -1
         
-        # Mode Parameters
         self.quant_grid = 0.001 
         self.min_note_duration = 0.0
         self.chord_reduce = False
@@ -80,69 +186,53 @@ class MidiProcessor:
         self._configure_mode()
 
     def _configure_mode(self):
-        # Default Baseline (L1)
         self.quant_grid = 0.002 
         self.min_note_duration = 0.01
         self.chord_reduce = False
         self.chord_window = 0.01 
         self.max_polyphony = 4 
         
-        # Smoother Gradient Strategy (Size vs Quality):
-        # L1: Raw (No dedup, Max Detail)
-        # L2-L3: Dedup + Cap at 3 Voices (Hardware Limit) -> Saves space, same audio
-        # L4: Cap Chords at 3 notes (Light reduction)
-        # L5: Cap Chords at 2 notes (Medium reduction) 
-        # L6: Cap Chords at 1 note (Melody focus)
-        # L7-L8: Aggressive Grid + Mono
-
         if self.mode == MODE_LEVEL_1: # Raw
             self.quant_grid = 0.002
             self.min_note_duration = 0.005
             self.chord_reduce = False
-            self.max_polyphony = 4 # Keep as is (allow arpeggio overlaps)
-            
-        elif self.mode == MODE_LEVEL_2: # Fine (Hardware Limit)
+            self.max_polyphony = 4 
+        elif self.mode == MODE_LEVEL_2: # Fine
             self.quant_grid = 0.005
             self.min_note_duration = 0.01
             self.chord_reduce = True 
-            self.chord_window = 0.01 # 10ms window to catch simultaneous chords
-            self.max_polyphony = 3 # Hardware limit
-            
-        elif self.mode == MODE_LEVEL_3: # Light (Hardware Limit + Grid)
+            self.chord_window = 0.01
+            self.max_polyphony = 3 
+        elif self.mode == MODE_LEVEL_3: # Light
             self.quant_grid = 0.010
             self.min_note_duration = 0.02
             self.chord_reduce = True
             self.chord_window = 0.01
             self.max_polyphony = 3
-            
-        elif self.mode == MODE_LEVEL_4: # Standard (Poly 3 + Loose Window)
+        elif self.mode == MODE_LEVEL_4: # Standard
             self.quant_grid = 0.020 
             self.min_note_duration = 0.03
             self.chord_reduce = True
-            self.chord_window = 0.02 # 20ms window
+            self.chord_window = 0.02 
             self.max_polyphony = 3 
-            
-        elif self.mode == MODE_LEVEL_5: # Medium (Poly 2)
+        elif self.mode == MODE_LEVEL_5: # Medium
             self.quant_grid = 0.030 
             self.min_note_duration = 0.04
             self.chord_reduce = True
             self.chord_window = 0.02
-            self.max_polyphony = 2 # Stronger trim
-            
-        elif self.mode == MODE_LEVEL_6: # High (Poly 1 - Melody/Bass)
+            self.max_polyphony = 2 
+        elif self.mode == MODE_LEVEL_6: # High
             self.quant_grid = 0.040 
             self.min_note_duration = 0.05
             self.chord_reduce = True
             self.chord_window = 0.03
             self.max_polyphony = 2 
-            
-        elif self.mode == MODE_LEVEL_7: # Extreme (Poly 1 Strict)
+        elif self.mode == MODE_LEVEL_7: # Extreme
             self.quant_grid = 0.060 
             self.min_note_duration = 0.08
             self.chord_reduce = True
             self.chord_window = 0.05
             self.max_polyphony = 1 
-            
         elif self.mode == MODE_LEVEL_8: # Insane
             self.quant_grid = 0.100 
             self.min_note_duration = 0.10
@@ -151,7 +241,7 @@ class MidiProcessor:
             self.max_polyphony = 1
             
         print(f">> Mode: {self.mode.upper()}")
-        print(f"   Grid: {self.quant_grid*1000:.1f}ms, MinDur: {self.min_note_duration*1000:.0f}ms, Reduce: {self.chord_reduce} (Win: {self.chord_window*1000:.0f}ms, MaxPoly: {self.max_polyphony})")
+        print(f"   Grid: {self.quant_grid*1000:.1f}ms, MinDur: {self.min_note_duration*1000:.0f}ms, MaxPoly: {self.max_polyphony}")
 
     def process(self):
         print(f"Parsing '{self.midi_path}'...")
@@ -160,25 +250,20 @@ class MidiProcessor:
         self._analyze_key()
         self._analyze_density()
         
-        # Pre-calculation Phases
         if self.mode != MODE_LEVEL_1:
             self._filter_short_notes()
             
         if self.chord_reduce:
             self._reduce_chords()
             
-        # Quantize Time (Dynamic Grid Support)
-        # If we computed a density map, use it. Otherwise use static grid.
         if hasattr(self, 'density_map') and self.density_map:
              self._quantize_dynamic()
         else:
             for ev in self.events:
                 ev['time'] = round(ev['time'] / self.quant_grid) * self.quant_grid
             
-        # Re-sort after quantizing
         self.events.sort(key=lambda x: (x['time'], 0 if x['type'] == 'note_off' else 1))
         
-        # Remove duplicates (Unison) after quantization
         if self.mode != MODE_LEVEL_1:
              self._deduplicate()
 
@@ -234,7 +319,6 @@ class MidiProcessor:
                 })
 
     def _analyze_channels(self):
-        # Scan for channel roles
         stats = {}
         for ev in self.events:
             if ev['type'] == 'note_on':
@@ -254,7 +338,6 @@ class MidiProcessor:
         print(f"   Detected Roles -> Bass: Ch{self.bass_channel}, Melody: Ch{self.melody_channel}")
 
     def _filter_short_notes(self):
-        # Map note_on to index to calculate duration
         note_starts = {} 
         drop_indices = set()
         
@@ -277,7 +360,6 @@ class MidiProcessor:
         print(f"   Filter Short Notes: Removed {len(drop_indices)} events.")
 
     def _analyze_key(self):
-        # Weighted Histogram of 12 semitones
         pitch_counts = [0] * 12
         major_profile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
         minor_profile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
@@ -290,7 +372,6 @@ class MidiProcessor:
         total_notes = sum(pitch_counts)
         if total_notes == 0: return
 
-        # Normalize
         norm_counts = [x / total_notes * 100 for x in pitch_counts]
         
         best_r = -1.0
@@ -298,7 +379,6 @@ class MidiProcessor:
         keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         
         for i in range(12):
-            # Test Major
             r_maj = 0
             for j in range(12):
                 r_maj += norm_counts[(i + j) % 12] * major_profile[j]
@@ -307,7 +387,6 @@ class MidiProcessor:
                 best_r = r_maj
                 best_key = f"{keys[i]} Major"
                 
-            # Test Minor
             r_min = 0
             for j in range(12):
                 r_min += norm_counts[(i + j) % 12] * minor_profile[j]
@@ -368,6 +447,7 @@ class MidiProcessor:
             else:
                 ev['time'] = round(t / self.quant_grid) * self.quant_grid
 
+    def _reduce_chords(self):
         window = self.chord_window 
         new_events = []
         i = 0
@@ -386,68 +466,26 @@ class MidiProcessor:
                         others.append(scan_ev)
                     j += 1
                 
-                # Check if we need to reduce
                 if len(chord_candidates) > self.max_polyphony:
-                    # Sort by pitch
                     chord_candidates.sort(key=lambda x: x['note'])
+                    arp_notes = [c['note'] for c in chord_candidates]
                     
-                    # Logic: 
-                    # If max=1: Keep Top (Melody)
-                    # If max=2: Keep Top & Bottom
-                    # If max=3: Keep Top, Bottom, and one from middle
+                    arp_ev = {
+                        'time': ev['time'],
+                        'type': 'arpeggio_on',
+                        'channel': ev['channel'],
+                        'notes': arp_notes,
+                        'velocity': max([c.get('velocity',0) for c in chord_candidates]),
+                        'note': chord_candidates[0]['note'] 
+                    }
                     
-                    kept = []
-                    # 1. Always Keep Top (Melody)
-                    kept.append(chord_candidates[-1]) 
-                    
-                    if self.max_polyphony >= 2:
-                        # 2. Keep Bottom (Bass) if distinct
-                        if chord_candidates[0] != chord_candidates[-1]:
-                            kept.append(chord_candidates[0])
-                            
-                    if self.max_polyphony >= 3:
-                        # 3. Keep a middle note if available
-                        if len(chord_candidates) > 2:
-                             # Pick closest to center index?
-                            mid_idx = len(chord_candidates) // 2
-                            if chord_candidates[mid_idx] not in kept:
-                                kept.append(chord_candidates[mid_idx])
-                                
-                    # Fill up if we have slots (e.g. if Top==Bottom)
-                    # (logic covers distinct checks, but if candidates=[C4, C4, C4] and max=2, we keep C4)
-                    
-                    # Add kept notes to new_events
-                    for k in kept:
-                        k['time'] = ev['time'] # Snap to leader
-                        new_events.append(k)
-                    
-                    new_events.extend(others)
+                    new_events.append(arp_ev)
+                    new_events.extend(others) 
                     i = j - 1
                 else:
-                    # No reduction needed (count <= max)
-                    # Just append all found events in order?
-                    # Since we scanned ahead, we must handle them correctly.
-                    # Best to just append them all and advance i.
-                    # BUT we split them into 'chord_candidates' and 'others'.
-                    # Re-merge sorted by time/type? They are already roughly sorted.
-                    # But 'others' might be interleaved.
-                    
-                    # To allow 'no-op' passthrough without reordering issues:
-                    # Since we only gathered them, we can just dump them.
-                    # But they are split.
-                    # Let's re-add them sorted by original index?
-                    # Actually, we can just NOT touch loop 'i' if no reduction.
-                    # Wait, if we DON'T touch 'i', next iteration processes i+1...
-                    # which is inside the window we just scanned.
-                    # Is that safe? Yes, because next iter will see a smaller window.
-                    # BUT efficient? No. O(N^2).
-                    # Better: Emit current 'ev' and continue i+1.
-                    # BUT we pulled 'others' out. Logic must be consistent.
-                    
-                    new_events.append(ev)
-                    # We did NOT consume others or lookaheads.
-                    # So just continue main loop.
-                    # i increment at end handles it.
+                    new_events.append(ev) 
+                    # Did not consume others, so we proceed normally. 
+                    # Others will be picked up by main loop.
             else:
                 new_events.append(ev)
             i += 1
@@ -463,8 +501,11 @@ class MidiProcessor:
                 unique.append(ev)
                 continue
                 
-            # key = time + type + note + channel
-            k = (ev['time'], ev['type'], ev['note'], ev.get('channel', 0))
+            n = ev.get('note', -1)
+            if ev['type'] == 'arpeggio_on':
+                n = tuple(ev['notes'])
+                
+            k = (ev['time'], ev['type'], n, ev.get('channel', 0))
             if k not in seen:
                 seen.add(k)
                 unique.append(ev)
@@ -472,154 +513,260 @@ class MidiProcessor:
         print(f"   Deduplication: Reduced to {len(self.events)} events.")
 
     def _get_priority(self, note, channel, now):
-        # Increased separation (Reference style)
         score = 0
         if channel == self.melody_channel: score += 8000
         elif channel == self.bass_channel: score += 5000
-        elif channel == 9: score += 3000 # Drums still high but below Melody/Bass
+        elif channel == 9: score += 3000 
         
-        # Pitch bias still useful for tie-breaking
         if note > 80: score += 500
         if note < 40: score += 500
         
         return score
 
     def _allocate_voice(self, note, channel, time):
-        # 1. Check for empty voice
+        # 1. Try to find a completely inactive voice
         for v in self.voices:
             if not v.active:
                 return v
 
-        # 2. Steal
-        new_priority = self._get_priority(note, channel, time)
-        
-        best_victim = None
+        # 2. Find best victim
+        # Criteria: Released > Quietest > Oldest
         min_score = 999999
+        best_victim = None
         
         for v in self.voices:
             age = time - v.start_time
             age_bonus = 0
             if age < 0.05: age_bonus = 10000 
             
-            # Check if this voice is playing a high priority role?
-            # Priority is calculated on allocation.
-            # We should probably re-eval priority?
-            # Start with stored priority.
-            
+            # Base priority
             current_score = v.priority_score + age_bonus
+            
+            # If voice is in Release phase, it is a PRIME CANDIDATE for stealing
+            if getattr(v, 'released', False):
+                 current_score -= 50000 
             
             if current_score < min_score:
                 min_score = current_score
                 best_victim = v
 
         if best_victim:
-            # Only steal if new note is reasonably important?
-            # Reference doesn't check new vs old score, just picks victim.
-            # But implicitly, if we steal, we are replacing.
             return best_victim
             
         return self.voices[0]
-
-    def _map_program_to_wave(self, program):
-        # GM Mapping
-        # 0-7: Piano -> Pulse
-        # 8-15: Chrom Perc -> Tri
-        # 16-23: Organ -> Pulse
-        # 24-31: Guitar -> Saw (Distortion) or Pulse
-        # 32-39: Bass -> Saw
-        # 40-47: Strings -> Saw/Tri
-        # 48-55: Ensemble -> Saw
-        # 56-63: Brass -> Saw
-        # 64-71: Reed -> Square
-        # 72-79: Pipe -> Tri
-        # 80-95: Synth Lead -> Pulse
-        # 96-103: Synth Pad -> Saw
-        # 113-119: Perc -> Noise
-        
-        if 24 <= program <= 31: return WAVE_SAW # Guitar
-        if 32 <= program <= 39: return WAVE_SAW # Bass
-        if 40 <= program <= 47: return WAVE_TRI # Strings
-        if 56 <= program <= 63: return WAVE_SAW # Brass
-        if 80 <= program <= 95: return WAVE_PULSE # Lead
-        if 113 <= program <= 119: return WAVE_NOISE # Tinklebell/Agogo etc
-        
-        return WAVE_PULSE # Default
 
     def _generate_bytecode(self):
         print(f"Generating Bytecode from {len(self.events)} events...")
         bytecode = []
         
-        # Init
-        bytecode.extend([0x18, 0x0F]) 
+        # Init SID
+        bytecode.extend([MODE_VOL, 0x0F]) 
+        
+        # Reset Voices
         for i in range(1, 4):
             base = get_voice_offset(i)
-            bytecode.extend([base + AD_1, 0x09, base + SR_1, 0xF5])
+            bytecode.extend([base + CTRL_1, 0x00]) # Gate Off
+            bytecode.extend([base + AD_1, 0x00, base + SR_1, 0x00])
+            
+            # Reset Python Voice State
+            self.voices[i-1].arpeggio_notes = []
+            self.voices[i-1].arp_index = 0
+            self.voices[i-1].arp_counter = 0
+            self.voices[i-1].pwm_val = 0x0800
+            self.voices[i-1].pwm_dir = 1
+            self.voices[i-1].features = []
+        # Time constants for effects (Optimized for size)
+        # 0.02s (50Hz) was too heavy (~399KB). 
+        # Reducing to ~16Hz (0.06s) for standard effects.
+        FRAME_TIME = 0.02 
+        
+        # Rate at which we actually process/emit effects
+        # L1-L3: High Quality (0.03s)
+        # L4-L6: Mid Quality (0.06s)
+        # L7-L8: Low Quality (0.10s)
+        
+        if self.mode in [MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3]:
+            EFFECT_STEP = 0.03
+        elif self.mode in [MODE_LEVEL_7, MODE_LEVEL_8]:
+            EFFECT_STEP = 0.10
+        else:
+            EFFECT_STEP = 0.06
 
-        last_time = 0.0
-        MAX_LOOPS = 65535 * 10
         
-        # Track current program per channel
-        channel_patches = {} 
+        # We need a unified time tracker for effects
+        self.next_arp_time = 0.0
+        self.next_pwm_time = 0.0
         
-        for ev in self.events:
-            dt = ev['time'] - last_time
-            if dt > 0.0:
-                cycles = dt * SID_CLOCK
-                loops = int(cycles / 15.0)
-                if loops > MAX_LOOPS: loops = MAX_LOOPS 
-                while loops > 0xFFFF:
-                     bytecode.extend([0x81, 0xFF, 0xFF])
-                     loops -= 0xFFFF
-                if loops > 0:
+        def emit_delay_and_effects(dt, current_abs_time):
+             # We want to traverse 'dt' in chunks of 'EFFECT_STEP'
+             # BUT only if we actually HAVE active effects.
+             
+             # fast check: active effects?
+             has_effects = False
+             for v in self.voices:
+                 if v.active and (len(v.arpeggio_notes) > 1 or "pwm_sweep" in v.features):
+                     has_effects = True
+                     break
+             
+             if not has_effects:
+                 # Just wait
+                 cycles = dt * SID_CLOCK
+                 loops = int(cycles / 15.0)
+                 if loops > 0:
+                     if loops > 0xFFFF: loops = 0xFFFF
+                     lo = loops & 0xFF
+                     hi = (loops >> 8) & 0xFF
+                     bytecode.extend([0x81, lo, hi])
+                 return
+
+             # If we have effects, we must slice the time
+             remaining = dt
+             while remaining > 0:
+                 step = remaining
+                 if step > EFFECT_STEP: step = EFFECT_STEP
+                 
+                 cycles = step * SID_CLOCK
+                 loops = int(cycles / 15.0)
+                 
+                 if loops > 0:
+                    if loops > 0xFFFF: 
+                        loops = 0xFFFF
                     lo = loops & 0xFF
                     hi = (loops >> 8) & 0xFF
                     bytecode.extend([0x81, lo, hi])
+                 
+                 # Update Effects
+                 for v in self.voices:
+                     if not v.active: continue
+                     base = get_voice_offset(v.index)
+                     
+                     # 1. Arpeggios (Every step)
+                     if len(getattr(v, 'arpeggio_notes', [])) > 1:
+                         v.arp_index = (v.arp_index + 1) % len(v.arpeggio_notes)
+                         note = v.arpeggio_notes[v.arp_index]
+                         freq = freq_for_note(note)
+                         bytecode.extend([base + FREQ_LO_1, freq & 0xFF])
+                         bytecode.extend([base + FREQ_HI_1, (freq >> 8) & 0xFF])
+                     
+                     # 2. PWM Sweep (Every step)
+                     if "pwm_sweep" in getattr(v, 'features', []):
+                         cur = getattr(v, 'pwm_val', 0x800)
+                         d = getattr(v, 'pwm_dir', 1)
+                         cur += (64 * d) # Faster sweep since step is larger
+                         if cur > 0x0E00: 
+                             cur = 0x0E00
+                             v.pwm_dir = -1
+                         elif cur < 0x0200:
+                             cur = 0x0200
+                             v.pwm_dir = 1
+                         v.pwm_val = cur
+                         # Optimization: Only write HI byte? No, rough.
+                         bytecode.extend([base + PW_LO_1, cur & 0xFF, base + PW_HI_1, (cur >> 8) & 0xFF])
+                             
+                 remaining -= step
+
+        
+        last_time = 0.0
+        MAX_LOOPS = 0xFFFF 
+        channel_patches = {}
+        for ev in self.events:
+            dt = ev['time'] - last_time
+            if dt > 0.0:
+                emit_delay_and_effects(dt, last_time)
                 last_time = ev['time']
             
             if ev['type'] == 'program_change':
                 channel_patches[ev['channel']] = ev['program']
                 
-            elif ev['type'] == 'note_on':
-                v = self._allocate_voice(ev['note'], ev['channel'], ev['time'])
+            elif ev['type'] == 'note_on' or ev['type'] == 'arpeggio_on':
+                notes = []
+                note_val = 0
+                if ev['type'] == 'arpeggio_on':
+                    notes = ev['notes']
+                    note_val = notes[0] 
+                else:
+                    notes = [ev['note']]
+                    note_val = ev['note']
+                
+                v = self._allocate_voice(note_val, ev['channel'], ev['time'])
                 if v:
-                    v.note = ev['note']
+                    v.note = note_val 
                     v.channel = ev['channel']
                     v.active = True
                     v.start_time = ev['time']
-                    v.priority_score = self._get_priority(ev['note'], ev['channel'], ev['time'])
+                    v.priority_score = self._get_priority(note_val, ev['channel'], ev['time'])
+                    v.arpeggio_notes = notes 
+                    v.arp_index = 0
+                    v.arp_counter = 0
+                    v.pwm_counter = 0
                     
                     base = get_voice_offset(v.index)
-                    freq = freq_for_note(ev['note'])
+                    freq = freq_for_note(notes[0])
                     if freq > 0xFFFF: freq = 0xFFFF 
                     
-                    # Dynamic Waveform Selection
-                    wave = WAVE_PULSE
                     prog = channel_patches.get(ev['channel'], 0)
+                    vel = ev.get('velocity', 100)
                     
-                    if ev.get('channel') == 9: 
-                        wave = WAVE_NOISE
-                    else:
-                        wave = self._map_program_to_wave(prog)
-                        # Fallback heuristic if program is 0 (Piano) but pitch is super low/high?
-                        if prog == 0:
-                            if ev['note'] < 48: wave = WAVE_SAW
-                            elif ev['note'] > 85: wave = WAVE_TRI
-                    
+                    wave, ad, sr, pw, features = _get_instrument_params(prog, ev['channel'], note_val, vel)
                     v.wave = wave 
+                    v.features = features
+                    v.pwm_val = pw
+                    v.pwm_dir = 1
                     
-                    bytecode.extend([base + CTRL_1, wave]) 
-                    bytecode.extend([base + FREQ_LO_1, freq & 0xFF])
-                    bytecode.extend([base + FREQ_HI_1, (freq >> 8) & 0xFF])
-                    bytecode.extend([base + CTRL_1, wave | WAVE_GATE]) 
+                    # 1. Gate Off (Hard Restart)
+                    bytecode.extend([base + CTRL_1, wave & ~WAVE_GATE]) 
+                    
+                    # 2. Setup Registers
+                    bytecode.extend([base + AD_1, ad, base + SR_1, sr])
+                    
+                    # Pulse Width
+                    if wave & (WAVE_PULSE | WAVE_TEST): 
+                         bytecode.extend([base + PW_LO_1, pw & 0xFF, base + PW_HI_1, (pw >> 8) & 0xFF])
+                    
+                    # Filter Setup (Bass LPF)
+                    if "bass_filter" in features:
+                        filt_route = 1 << (v.index - 1)
+                        bytecode.extend([CUTOFF_LO, 0x00, CUTOFF_HI, 0x20])
+                        bytecode.extend([RESON_FILT, 0x40 | filt_route]) 
+                        bytecode.extend([MODE_VOL, 0x1F]) 
+                    
+                    # 3. Trigger
+                    if "kick_slide" in features:
+                         start_freq = freq_for_note(note_val + 12) 
+                         bytecode.extend([base + FREQ_LO_1, start_freq & 0xFF])
+                         bytecode.extend([base + FREQ_HI_1, (start_freq >> 8) & 0xFF])
+                         bytecode.extend([base + CTRL_1, wave | WAVE_GATE])
+                         bytecode.extend([base + FREQ_HI_1, ((start_freq >> 8) - 2) & 0xFF])
+                         bytecode.extend([base + FREQ_HI_1, ((start_freq >> 8) - 4) & 0xFF])
+                         bytecode.extend([base + FREQ_HI_1, ((start_freq >> 8) - 8) & 0xFF])
+                    else:
+                        bytecode.extend([base + FREQ_LO_1, freq & 0xFF])
+                        bytecode.extend([base + FREQ_HI_1, (freq >> 8) & 0xFF])
+                        bytecode.extend([base + CTRL_1, wave | WAVE_GATE]) 
             
             elif ev['type'] == 'note_off':
                 for v in self.voices:
-                    if v.active and v.note == ev['note'] and v.channel == ev.get('channel', 0):
-                        v.active = False
-                        base = get_voice_offset(v.index)
-                        release_wave = v.wave & (~WAVE_GATE) 
-                        if release_wave == 0: release_wave = WAVE_PULSE 
-                        bytecode.extend([base + CTRL_1, release_wave])
+                    if v.active and v.channel == ev.get('channel', 0):
+                        # Check if this note is part of the voice (Arpeggio or Single)
+                        if ev['note'] in getattr(v, 'arpeggio_notes', []):
+                            # Remove it
+                            if ev['note'] in v.arpeggio_notes:
+                                v.arpeggio_notes.remove(ev['note'])
+                            
+                            # If empty, enter Release phase
+                            if not v.arpeggio_notes:
+                                v.released = True
+                                # v.active stays True so tail plays and effects run!
+                                base = get_voice_offset(v.index)
+                                release_cmd = v.wave & (~WAVE_GATE)
+                                bytecode.extend([base + CTRL_1, release_cmd])
+                                
+                        elif v.note == ev['note']: # Fallback for single note 
+                             v.released = True
+                             # v.active = False <-- REMOVED! Keep active for tail.
+                             base = get_voice_offset(v.index)
+                             release_cmd = v.wave & (~WAVE_GATE)
+                             bytecode.extend([base + CTRL_1, release_cmd])
 
         bytecode.append(0xFF) 
         return bytecode
