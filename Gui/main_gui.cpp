@@ -5,7 +5,6 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
 
-#include <cmath>
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -14,10 +13,8 @@
 #include "../Componentes/Emulator.h"
 
 Emulator emulator;
-bool emulationRunning = false;
 int instructionsPerFrame = 1000000;
 float ipsLogScale = 6.0f;
-bool autoOptimize = true;
 bool gpuEnabled = false;
 
 std::vector<std::string> consoleLines;
@@ -137,7 +134,7 @@ int main(int argc, char* argv[]) {
 
     // Main loop
     bool done = false;
-    emulator.GetSID().SetEmulationPaused(true);  // Start paused
+    emulator.Start();  // Start the thread (it will start paused)
     while (!done) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -149,62 +146,8 @@ int main(int argc, char* argv[]) {
                 done = true;
         }
 
-        // Auto-optimize IPS
-        static Uint32 lastAdjustmentTime = 0;
-        static float fpsSum = 0.0f;
-        static int fpsCount = 0;
-
-        if (autoOptimize && emulationRunning) {
-            fpsSum += io.Framerate;
-            fpsCount++;
-            Uint32 currentTime = SDL_GetTicks();
-
-            if (currentTime - lastAdjustmentTime > 250) {
-                float avgFPS = fpsSum / fpsCount;
-                fpsSum = 0;
-                fpsCount = 0;
-                lastAdjustmentTime = currentTime;
-
-                if (avgFPS >= 50.0f) {
-                    instructionsPerFrame =
-                        (int)(instructionsPerFrame * 1.1f) + 100;
-                } else {
-                    float drop = 50.0f - avgFPS;
-                    if (drop < 0) drop = 0;
-                    float factor = 1.0f - (drop / 100.0f);
-                    if (factor < 0.5f) factor = 0.5f;
-                    instructionsPerFrame = (int)(instructionsPerFrame * factor);
-                }
-
-                if (instructionsPerFrame < 100) instructionsPerFrame = 100;
-                const int MAX_IPS = 1000000;
-                if (instructionsPerFrame > MAX_IPS)
-                    instructionsPerFrame = MAX_IPS;
-
-                // Update log scale for slider sync
-                ipsLogScale = log10((double)instructionsPerFrame);
-            }
-        } else {
-            fpsSum = 0;
-            fpsCount = 0;
-            lastAdjustmentTime = SDL_GetTicks();
-        }
-
-        // Emulation Step
-        if (emulationRunning) {
-            for (int i = 0; i < instructionsPerFrame; ++i) {
-                int res = emulator.Step();
-                if (res != 0) {
-                    emulationRunning = false;
-                    if (res == 1) {
-                        std::cerr << "CPU Stopped (STOP/JAM)" << std::endl;
-                    } else {
-                        std::cerr << "Emulator stopped (Code: " << res << ")"
-                                  << std::endl;
-                    }
-                    break;
-                }
-            }
+        if (!emulator.IsPaused()) {
+            instructionsPerFrame = emulator.GetTargetIPS();
         }
 
         // Start the Dear ImGui frame
@@ -232,7 +175,7 @@ int main(int argc, char* argv[]) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::string filePathName =
                     ImGuiFileDialog::Instance()->GetFilePathName();
-                emulationRunning = false;
+                emulator.Pause();
                 std::string errorMsg;
                 if (emulator.Init(filePathName, errorMsg)) {
                     bin = filePathName;
@@ -264,15 +207,18 @@ int main(int argc, char* argv[]) {
                          window_flags | ImGuiWindowFlags_NoScrollbar |
                              ImGuiWindowFlags_NoScrollWithMouse);
             ImGui::BeginDisabled(!romLoaded);
-            if (ImGui::Button(emulationRunning ? "Pause" : "Run")) {
-                emulationRunning = !emulationRunning;
-                emulator.GetSID().SetEmulationPaused(!emulationRunning);
+            if (ImGui::Button(emulator.IsPaused() ? "Run" : "Pause")) {
+                if (emulator.IsPaused())
+                    emulator.Resume();
+                else
+                    emulator.Pause();
+                emulator.GetSID().SetEmulationPaused(emulator.IsPaused());
             }
             ImGui::SameLine();
             if (ImGui::Button("Step")) {
                 emulator.GetSID().SetEmulationPaused(false);
+                emulator.Pause();  // Ensure it is paused
                 emulator.Step();
-                emulationRunning = false;
                 emulator.GetSID().SetEmulationPaused(true);
             }
             ImGui::EndDisabled();
@@ -292,10 +238,6 @@ int main(int argc, char* argv[]) {
                 }
             }
             ImGui::SameLine();
-            if (ImGui::Button(autoOptimize ? "Auto (On)" : "Auto (Off)")) {
-                autoOptimize = !autoOptimize;
-            }
-            ImGui::SameLine();
             if (ImGui::Button(gpuEnabled ? "GPU (On)" : "GPU (Off)")) {
                 gpuEnabled = !gpuEnabled;
                 emulator.SetGPUEnabled(gpuEnabled);
@@ -305,14 +247,19 @@ int main(int argc, char* argv[]) {
             if (ImGui::Button(soundEnabled ? "Sound (On)" : "Sound (Off)")) {
                 emulator.GetSID().EnableSound(!soundEnabled);
             }
-
-            if (ImGui::SliderFloat("Speed (IPS)", &ipsLogScale, 0.0f, 6.0f,
-                                   "")) {
-                instructionsPerFrame = (int)pow(10.0, (double)ipsLogScale);
-                if (instructionsPerFrame < 1) instructionsPerFrame = 1;
-            }
             ImGui::SameLine();
-            ImGui::Text("(%d IPS)", instructionsPerFrame);
+            ImGui::Text("Actual: %d IPS", emulator.GetActualIPS());
+
+            int tempIPS = instructionsPerFrame;
+            if (ImGui::InputInt("Target IPS", &tempIPS, 100000, 100000)) {
+                if (instructionsPerFrame == 1 && tempIPS == 100001)
+                    tempIPS = 100000;
+
+                if (tempIPS < 1) tempIPS = 1;
+                if (tempIPS > 1000000) tempIPS = 1000000;
+                instructionsPerFrame = tempIPS;
+                emulator.SetTargetIPS(instructionsPerFrame);
+            }
             ImGui::SetScrollHereY(1.0f);
             ImGui::End();
         }
@@ -378,6 +325,10 @@ int main(int argc, char* argv[]) {
                         "ChooseFileDlgKey", "Choose File", ".bin", ".");
                 }
             }
+            ImGui::SameLine();
+            if (ImGui::Button("Copy Output")) {
+                ImGui::OpenPopup("CopyConsoleOutput");
+            }
             ImGui::Separator();
 
             if (ImGui::IsWindowFocused()) {
@@ -403,6 +354,32 @@ int main(int argc, char* argv[]) {
 
             if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 20)
                 ImGui::SetScrollHereY(1.0f);
+
+            // Copy Output Modal
+            if (ImGui::BeginPopupModal("CopyConsoleOutput", NULL,
+                                       ImGuiWindowFlags_AlwaysAutoResize)) {
+                static std::string fullText;
+                if (fullText.empty() ||
+                    fullText.length() < 10) {
+                    fullText.clear();
+                    for (const auto& line : consoleLines)
+                        fullText += line + "\n";
+                    fullText += currentLine;
+                }
+
+                std::vector<char> buffer(fullText.begin(), fullText.end());
+                buffer.push_back(0);
+
+                ImGui::InputTextMultiline("##CopySource", buffer.data(),
+                                          buffer.size(), ImVec2(800, 600),
+                                          ImGuiInputTextFlags_ReadOnly);
+
+                if (ImGui::Button("Close", ImVec2(120, 0))) {
+                    fullText.clear();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
 
             ImGui::End();
         }
@@ -497,6 +474,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Cleanup
+    emulator.Stop();
     glDeleteTextures(1, &vramTexture);
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();

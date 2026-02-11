@@ -10,3 +10,4 @@ mkdir -p output
 cp build/SIM_65C02_CLI output/ 2>/dev/null || true
 cp build/SIM_65C02_GUI output/ 2>/dev/null || true
 echo "Build executables copied to output/"
+exit 0

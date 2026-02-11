@@ -145,3 +145,83 @@ void Emulator::InjectKey(char c) {
 void Emulator::SetOutputCallback(std::function<void(char)> cb) {
     acia.SetOutputCallback(cb);
 }
+void Emulator::Start() {
+    if (running) return;
+    running = true;
+    paused = true;  // Start paused
+    emulatorThread = std::thread(&Emulator::ThreadLoop, this);
+}
+
+void Emulator::Stop() {
+    running = false;
+    Resume();  // Unpause to let thread finish
+    if (emulatorThread.joinable()) {
+        emulatorThread.join();
+    }
+}
+
+void Emulator::Pause() {
+    paused = true;
+    pauseCV.notify_all();
+}
+
+void Emulator::Resume() {
+    paused = false;
+    pauseCV.notify_all();
+}
+
+void Emulator::ThreadLoop() {
+    using namespace std::chrono;
+    auto nextSliceTime = high_resolution_clock::now();
+    int instructionsThisSecond = 0;
+    auto lastSecondTime = high_resolution_clock::now();
+
+    while (running) {
+        {
+            std::unique_lock<std::mutex> lock(threadMutex);
+            pauseCV.wait(lock, [this] { return !paused || !running; });
+        }
+        if (!running) break;
+
+        int currentTarget = targetIPS.load();
+        if (currentTarget <= 0) currentTarget = 1;
+
+        // Execute in 10ms slices
+        int sliceDurationMs = 10;
+        int instructionsPerSlice = currentTarget / (1000 / sliceDurationMs);
+        if (instructionsPerSlice < 1) instructionsPerSlice = 1;
+
+        auto sliceStartTime = high_resolution_clock::now();
+
+        for (int i = 0; i < instructionsPerSlice; ++i) {
+            int res = Step();
+            if (res != 0) {
+                paused = true;
+                std::cerr << "Emulator stopped with code: " << res << std::endl;
+                break;
+            }
+            // Check if paused during execution loop for faster response
+            if (paused) break;
+        }
+
+        instructionsThisSecond += instructionsPerSlice;
+
+        auto now = high_resolution_clock::now();
+        if (duration_cast<seconds>(now - lastSecondTime).count() >= 1) {
+            actualIPS = instructionsThisSecond;
+            instructionsThisSecond = 0;
+            lastSecondTime = now;
+        }
+
+        nextSliceTime += milliseconds(sliceDurationMs);
+
+        // Sleep until next slice time
+        std::this_thread::sleep_until(nextSliceTime);
+
+        // If we are lagging behind (processing took longer than slice
+        // duration), reset the schedule to avoid running too fast to catch up.
+        if (high_resolution_clock::now() > nextSliceTime) {
+            nextSliceTime = high_resolution_clock::now();
+        }
+    }
+}

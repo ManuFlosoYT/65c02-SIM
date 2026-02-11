@@ -1,7 +1,10 @@
+#include <atomic>
+#include <condition_variable>
 #include <deque>
 #include <functional>
 #include <mutex>
 #include <string>
+#include <thread>
 
 #include "ACIA.h"
 #include "CPU.h"
@@ -35,7 +38,21 @@ public:
 
     void PrintState();
 
+    // Threading
+    void Start();
+    void Stop();
+    void Pause();
+    void Resume();
+    bool IsRunning() const { return running; }
+    bool IsPaused() const { return paused; }
+
+    void SetTargetIPS(int ips) { targetIPS = ips; }
+    int GetTargetIPS() const { return targetIPS; }
+    int GetActualIPS() const { return actualIPS; }
+
 private:
+    void ThreadLoop();
+
     // Componentes
     Mem mem;
     CPU cpu;
@@ -49,4 +66,13 @@ private:
     std::mutex bufferMutex;
     int baudDelay = 0;
     bool gpuEnabled = false;
+
+    // Threading control
+    std::atomic<bool> running{false};
+    std::atomic<bool> paused{false};
+    std::atomic<int> targetIPS{1000000};
+    std::atomic<int> actualIPS{0};
+    std::thread emulatorThread;
+    std::mutex threadMutex;
+    std::condition_variable pauseCV;
 };
