@@ -11,6 +11,10 @@ extern char __fastcall__ MONRDKEY(void);
 extern void __fastcall__ MONCOUT(char c);
 #define bios_putchar MONCOUT
 
+// Lee un caracter sin bloquear (retorna 0 si no hay tecla)
+extern char __fastcall__ MONGETCHAR_NB(void);
+#define bios_getchar_nb MONGETCHAR_NB
+
 // Inicializa el buffer.
 extern void __fastcall__ INIT_BUFFER(void);
 
@@ -37,13 +41,13 @@ void read_line(char* buffer, int max_len) {
         /* Seguimos pidiendo la tecla mientras sea 0 (null) */
         do {
             c = bios_getchar();
-        } while (c == 0); 
+        } while (c == 0);
 
         /* Detectar Enter (retorno de carro \r o salto de línea \n) */
         if (c == '\r' || c == '\n') {
             bios_putchar('\r');
             bios_putchar('\n');
-            break; // Salir del bucle si se pulsa Enter
+            break;  // Salir del bucle si se pulsa Enter
         }
 
         /* Echo: imprimir lo que se escribe */
@@ -91,13 +95,11 @@ void print_num(unsigned int n) {
     }
 }
 
-
-
 /* Función: delay
-* Descripción: Genera un retardo en milisegundos.
-* Parámetros: ms (cantidad de milisegundos a esperar)
-*/
-#define ITERACIONES_POR_MS  4000
+ * Descripción: Genera un retardo en milisegundos.
+ * Parámetros: ms (cantidad de milisegundos a esperar)
+ */
+#define ITERACIONES_POR_MS 4000
 void delay(unsigned int ms) {
     volatile unsigned int i;
     volatile unsigned int j;

@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Handle arguments
+if [[ "$1" == "--clean" ]]; then
+    echo "Cleaning build directory..."
+    rm -rf build
+fi
+
 # Detect ccache
 CMAKE_OPTS=""
 if command -v ccache >/dev/null 2>&1; then
@@ -8,10 +14,25 @@ if command -v ccache >/dev/null 2>&1; then
     CMAKE_OPTS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
 fi
 
+# Detect Ninja
+if command -v ninja >/dev/null 2>&1; then
+    echo "Ninja found, using it as generator..."
+    export CMAKE_GENERATOR=Ninja
+    
+    # Check for generator mismatch in existing cache
+    if [ -f build/CMakeCache.txt ]; then
+        if grep -q "CMAKE_GENERATOR:INTERNAL=Unix Makefiles" build/CMakeCache.txt; then
+            echo "Generator mismatch detected (Unix Makefiles -> Ninja). Cleaning build directory..."
+            rm -rf build
+        fi
+    fi
+fi
+
 # Linux Build
 echo "Compiling for Linux..."
 cmake -S . -B build $CMAKE_OPTS
 cmake --build build -j$(nproc)
+
 echo "Running unit tests (Linux)..."
 ./build/unit_tests
 

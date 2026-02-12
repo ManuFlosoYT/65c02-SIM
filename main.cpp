@@ -231,6 +231,8 @@ int main(int argc, char* argv[]) {
                         std::cerr << "Error resetting ROM: " << errorMsg
                                   << std::endl;
                         romLoaded = false;
+                        ImGuiFileDialog::Instance()->OpenDialog(
+                            "ChooseFileDlgKey", "Choose File", ".bin", ".");
                     } else {
                         emulator.SetGPUEnabled(gpuEnabled);
                         emulator.GetGPU().Init();
@@ -359,8 +361,7 @@ int main(int argc, char* argv[]) {
             if (ImGui::BeginPopupModal("CopyConsoleOutput", NULL,
                                        ImGuiWindowFlags_AlwaysAutoResize)) {
                 static std::string fullText;
-                if (fullText.empty() ||
-                    fullText.length() < 10) {
+                if (fullText.empty() || fullText.length() < 10) {
                     fullText.clear();
                     for (const auto& line : consoleLines)
                         fullText += line + "\n";
@@ -400,6 +401,8 @@ int main(int argc, char* argv[]) {
                         "");
                 }
             }
+
+            ImGui::Separator();
 
             GPU& gpu = emulator.GetGPU();
             unsigned char pixels[GPU::VRAM_HEIGHT * GPU::VRAM_WIDTH * 3];

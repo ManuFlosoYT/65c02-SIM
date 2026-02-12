@@ -110,14 +110,20 @@ git clone https://github.com/ManuFlosoYT/65c02-SIM
 
 Build for Linux:
 
+Build for Linux:
+
 ```bash
 ./build-linux.sh
+# Check build errors or force a clean build
+./build-linux.sh --clean
 ```
 
 Build for Windows (using MinGW):
 
 ```bash
 ./build-win.sh
+# Check build errors or force a clean build
+./build-win.sh --clean
 ```
 
 ## :wave: Contributing

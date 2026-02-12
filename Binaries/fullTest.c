@@ -1,5 +1,7 @@
 #include "bios.h"
+#include "gpu.h"
 #include "lcd.h"
+#include "sid.h"
 
 /* --- Helper Variables --- */
 unsigned int failures = 0;
@@ -145,6 +147,72 @@ void test_primes(void) {
     assert_true(is_prime(101), "Prime 101");  // Poco mas costoso
 }
 
+void test_gpu(void) {
+    // 1. Fill screen with a background color
+    print_str("Test 1: Fill Screen (Color 0x03)\n");
+    gpu_fill_screen(0x03);
+    print_str("Done. Waiting...\n");
+    delay(10);
+
+    // 2. Draw some rectangles
+    print_str("Test 2: Draw Rectangles\n");
+    gpu_draw_rect(5, 5, 20, 10, 0xE0);    // Red-ish
+    gpu_draw_rect(30, 10, 15, 15, 0x1C);  // Green-ish
+    gpu_draw_rect(50, 5, 40, 5, 0x3C);    // Blue-ish
+    print_str("Done. Waiting...\n");
+    delay(10);
+
+    // 3. Draw lines
+    print_str("Test 3: Draw Lines\n");
+    gpu_draw_line(0, 0, 99, 63, 0xFF);  // Diagonal White
+    gpu_draw_line(99, 0, 0, 63, 0xFF);  // Diagonal White
+    print_str("Done. Waiting...\n");
+    delay(10);
+
+    // 4. Draw Triangles
+    print_str("Test 4: Draw Triangles\n");
+    // Wireframe
+    gpu_draw_tri(10, 40, 20, 20, 30, 40, 0xE0, 0);
+    // Filled
+    gpu_draw_tri(50, 20, 35, 45, 65, 45, 0x1C, 1);
+    print_str("Done. Waiting...\n");
+    delay(30);
+
+    // 5. Complex Test Pattern
+    print_str("Test 5: Built-in Pattern\n");
+    gpu_fill_screen(0x00);
+    gpu_test_pattern();
+
+    print_str("GPU Test Complete.\n");
+}
+
+void test_sound(void) {
+    int i;
+    // Play C Major Scale
+    uint16_t notes[] = {NOTE_C4, NOTE_D4, NOTE_E4, NOTE_F4,
+                        NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C5};
+
+    lcd_status("Sound Test");
+    print_str("Test Sound: Playing a scale...\n");
+
+    // Init SID
+    sid_set_volume(15);
+
+    // Voice 1 - Pulse
+    sid_voice_adsr(1, 0, 9, 0, 0);
+    sid_voice_pw(1, 0x800);
+
+    for (i = 0; i < 8; ++i) {
+        sid_voice_freq(1, notes[i]);
+        sid_voice_control(1, WAVE_PULSE | WAVE_GATE);
+        sid_delay(3000);
+        sid_voice_control(1, WAVE_PULSE);  // Release
+        sid_delay(500);
+    }
+
+    print_str("Sound Test Complete.\n");
+}
+
 int main(void) {
     INIT_BUFFER();
     lcd_inicializar();
@@ -158,6 +226,8 @@ int main(void) {
     test_pointers();
     test_primes();
     test_lcd_visual();
+    test_gpu();
+    test_sound();
 
     // Final Report
     lcd_instruccion(0x01);

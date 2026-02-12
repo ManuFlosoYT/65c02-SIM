@@ -1,9 +1,10 @@
 .setcpu "65C02"
 .debuginfo
-.export MONRDKEY, MONCOUT, LOAD, SAVE, INIT_BUFFER, IRQ_HANDLER, MONPEEK
-.export _MONRDKEY, _MONCOUT, _LOAD, _SAVE, _INIT_BUFFER
+.export MONRDKEY, MONCOUT, LOAD, SAVE, INIT_BUFFER, IRQ_HANDLER, MONPEEK, MONGETCHAR_NB
+.export _MONRDKEY, _MONCOUT, _LOAD, _SAVE, _INIT_BUFFER, _MONGETCHAR_NB
 
 _MONRDKEY = MONRDKEY
+_MONGETCHAR_NB = MONGETCHAR_NB
 _MONCOUT = MONCOUT
 _LOAD = LOAD
 _SAVE = SAVE
@@ -100,6 +101,16 @@ CHRIN:
                 pla
                 plx
                 sec
+                rts
+
+MONGETCHAR_NB:
+                jsr     BUFFER_SIZE
+                beq     @empty
+                jmp     MONRDKEY
+@empty:
+                lda     #0
+                ldx     #0
+                clc
                 rts
 
 ; Peek a character from input buffer without removing it
