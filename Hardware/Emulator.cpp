@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <iostream>
 
-Emulator::Emulator() : mem(), cpu(), lcd(), acia() {}
+Emulator::Emulator() : mem(), cpu(), lcd(), acia(), via() {}
 
 void Emulator::PrintState() {
     std::cerr << "PC: 0x" << std::hex << std::uppercase << std::setw(4)
@@ -21,6 +21,7 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     cpu.Reset(mem);
     lcd.Inicializar(mem);
     acia.Inicializar(mem);
+    via.Init(mem);
 
     // Set up GPU VRAM write hook for RAM addresses 0x2000-0x3FFF (3 MSB = 001)
     // The hook will write to VRAM when CPU writes to these addresses
@@ -119,7 +120,7 @@ int Emulator::Step() {
     {
         std::lock_guard<std::mutex> lock(bufferMutex);
         if (!inputBuffer.empty() && (mem.memoria[ACIA_STATUS] & 0x80) == 0 &&
-            (mem.memoria[PORTA] & 0x01) == 0 && baudDelay <= 0) {
+            (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
             char c = inputBuffer.front();
             inputBuffer.pop_front();
 

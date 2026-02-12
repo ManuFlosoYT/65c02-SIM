@@ -12,6 +12,7 @@
 #include "LCD.h"
 #include "Mem.h"
 #include "SID.h"
+#include "VIA.h"
 
 class Emulator {
 public:
@@ -35,6 +36,7 @@ public:
     bool IsGPUEnabled() const { return gpuEnabled; }
 
     SID& GetSID() { return sid; }
+    VIA& GetVIA() { return via; }
 
     void PrintState();
 
@@ -60,6 +62,7 @@ private:
     ACIA acia;
     GPU gpu;
     SID sid;
+    VIA via;
 
     // Buffer de entrada
     std::deque<char> inputBuffer;
