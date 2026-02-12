@@ -22,15 +22,13 @@ endif()
 include(FetchContent)
 
 # 1. GoogleTest
-if(NOT WIN32)
-    FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/refs/heads/main.zip
-    )
-    # For Windows: Prevent overriding the parent project's compiler/linker settings
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
-endif()
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/heads/main.zip
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 # 2. SDL2
 # Build SDL2 as a static library
@@ -142,15 +140,21 @@ target_compile_definitions(SIM_65C02 PRIVATE IMGUI_DEFINE_MATH_OPERATORS USE_BOO
 # ------------------------------------------------------------------------------
 # Target 3: Unit Tests
 # ------------------------------------------------------------------------------
-if(NOT WIN32)
-    enable_testing()
-    file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
+enable_testing()
+file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
 
-    if(TEST_SOURCES)
-        add_executable(unit_tests ${TEST_SOURCES})
-        target_link_libraries(unit_tests PRIVATE 65c02_core_test GTest::gtest_main)
+if(TEST_SOURCES)
+    add_executable(unit_tests ${TEST_SOURCES})
+    target_link_libraries(unit_tests PRIVATE 65c02_core_test GTest::gtest_main)
 
-        include(GoogleTest)
+    if(WIN32)
+        target_link_options(unit_tests PRIVATE -static -static-libgcc -static-libstdc++)
+    else()
+        target_link_options(unit_tests PRIVATE -static-libgcc -static-libstdc++)
+    endif()
+
+    include(GoogleTest)
+    if(NOT CMAKE_CROSSCOMPILING)
         gtest_discover_tests(unit_tests)
     endif()
 endif()

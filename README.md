@@ -108,10 +108,16 @@ Clone the project
 git clone https://github.com/ManuFlosoYT/65c02-SIM
 ```
 
-Build the project, all binaries will be placed in the `output` folder:
+Build for Linux:
 
 ```bash
-./build.sh
+./build-linux.sh
+```
+
+Build for Windows (using MinGW):
+
+```bash
+./build-win.sh
 ```
 
 ## :wave: Contributing

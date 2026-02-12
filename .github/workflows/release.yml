@@ -9,32 +9,126 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  build-linux:
     runs-on: ubuntu-latest
-
+    env:
+      CCACHE_DIR: ~/.ccache
     steps:
-      - name: Checkout del código
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev mingw-w64 libasound2-dev libpulse-dev
+          sudo apt-get install -y g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev libasound2-dev libpulse-dev ccache
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 --slave /usr/bin/g++ g++ /usr/bin/g++-14
           pip install cmake --upgrade
 
-      - name: Compilar con build.sh
-        run: |
-          chmod +x build.sh
-          ./build.sh
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-linux-${{ github.sha }}
+          restore-keys: |
+            ccache-linux-
 
-      - name: Crear SDK
+      - name: Cache CMake dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-linux-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Build Linux
+        run: |
+          chmod +x build-linux.sh
+          ./build-linux.sh
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SIM_65C02-linux
+          path: output/linux/SIM_65C02
+
+  build-windows:
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DIR: ~/.ccache
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build mingw-w64 ccache wine
+          pip install cmake --upgrade
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-windows-${{ github.sha }}
+          restore-keys: |
+            ccache-windows-
+
+      - name: Cache CMake dependencies
+        uses: actions/cache@v4
+        with:
+          path: build_win/_deps
+          key: deps-windows-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Build Windows
+        run: |
+          chmod +x build-win.sh
+          ./build-win.sh
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SIM_65C02-windows
+          path: output/windows/SIM_65C02.exe
+
+  sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create SDK
         run: |
           zip -r SDK.zip Binaries/ Linker/ GPU/ SID/ compile-bin.sh image-to-bin.sh midi-to-bin.sh -x "Binaries/build/*"
 
-      - name: Crear Release y subir ejecutables
+      - name: Upload SDK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SDK
+          path: SDK.zip
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-windows, sdk]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SIM_65C02-linux
+          path: output/linux
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SIM_65C02-windows
+          path: output/windows
+
+      - name: Download SDK Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SDK
+          path: .
+
+      - name: Create Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           generate_release_notes: true
           files: |
