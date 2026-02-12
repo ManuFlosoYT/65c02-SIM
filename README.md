@@ -29,7 +29,7 @@ Each release includes an `SDK.zip` file containing everything needed to develop 
 - `image-to-bin.sh`: Script to convert images.
 - `midi-to-bin.sh`: Script to convert MIDI files.
 
-Compile and run assembly or C programs from `./Binaries/` into the `output` folder:
+Compile and run assembly or C programs from `./Binaries/` into the `output/rom` folder:
 
 ```bash
 ./compile-bin.sh <program_name>
@@ -37,13 +37,13 @@ Compile and run assembly or C programs from `./Binaries/` into the `output` fold
 
 _(Note: This tool automatically handles both `.s` and `.c` files, and also the special `eater` ROM target.)_
 
-Convert images to VRAM binary format into the `output` folder:
+Convert images to VRAM binary format into the `output/vram` folder:
 
 ```bash
 ./image-to-bin.sh <image_name>
 ```
 
-Convert MIDI files to SID assembly code into the `output` folder:
+Convert MIDI files to SID assembly code into the `output/midi` folder:
 
 ```bash
 ./midi-to-bin.sh <midi_file>
@@ -125,6 +125,6 @@ The emulator source code (C++) in this repository is licensed under the **MIT Li
 However, this project includes historical software and derivative works that are subject to their own copyrights:
 
 - **Microsoft BASIC (MSBASIC):** The assembly files located in `Linker/msbasic/` are derivative works of the original Microsoft BASIC for the 6502 (Copyright © 1977 Microsoft). These files are based on the restoration work by [mist64/msbasic](https://github.com/mist64/msbasic) and the adaptations by [Ben Eater](https://github.com/beneater/msbasic).
-- **WozMon:** The file `Linker/wozmon.s` contains the source code for the Apple 1 System Monitor (WozMon), originally written by Steve Wozniak (Copyright © 1976 Apple Computer, Inc.).
+- **WozMon:** The file `wozmon.s` contains the source code for the Apple 1 System Monitor (WozMon), originally written by Steve Wozniak (Copyright © 1976 Apple Computer, Inc.).
 
 These files are included for educational and preservation purposes to demonstrate the emulator's capabilities.

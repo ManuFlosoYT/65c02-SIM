@@ -47,4 +47,25 @@ if ! python3 -c "import PIL" &> /dev/null; then
 fi
 
 # --- EJECUTAR ---
-python3 "$PYTHON_SCRIPT" "$TARGET_FILE"
+
+
+if python3 "$PYTHON_SCRIPT" "$TARGET_FILE"; then
+    echo "Python script finished successfully."
+else
+    echo "Error: Python script failed."
+    exit 1
+fi
+
+# Move to output/vram/
+FILENAME=$(basename "$TARGET_FILE")
+NAME="${FILENAME%.*}"
+mkdir -p output/vram
+if [ -f "output/$NAME.bin" ]; then
+    mv "output/$NAME.bin" "output/vram/$NAME.bin"
+    echo "Binary moved to output/vram/$NAME.bin"
+else
+    echo "Error: Output binary not found."
+    exit 1
+fi
+
+exit 0

@@ -69,9 +69,15 @@ for midi_file in "${files[@]}"; do
         # 2. Compile ASM to BIN
         echo "   Compiling..."
         if ./compile-bin.sh "$clean_name" > /dev/null 2>&1; then
-            echo "   [OK] Compilation SUCCESS with mode '$mode'!"
-            success=true
-            break # Exit mode loop, done with this file
+            mkdir -p output/midi
+            if [ -f "output/rom/$clean_name.bin" ]; then
+                mv "output/rom/$clean_name.bin" "output/midi/$clean_name.bin"
+                echo "   [OK] Compilation SUCCESS with mode '$mode'! Moved to output/midi/$clean_name.bin"
+                success=true
+                break # Exit mode loop, done with this file
+            else
+                echo "   [X] Compilation reported success but file not found in output/rom/"
+            fi
         else
             echo "   [X] Compilation FAILED (Output too large?)"
         fi
@@ -83,5 +89,8 @@ for midi_file in "${files[@]}"; do
     fi
 done
 
+
 echo "========================================"
 echo "All Done!"
+exit 0
+
