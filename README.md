@@ -29,7 +29,7 @@ Each release includes an `SDK.zip` file containing everything needed to develop 
 - `image-to-bin.sh`: Script to convert images.
 - `midi-to-bin.sh`: Script to convert MIDI files.
 
-#### :windows: Windows Users (WSL2)
+#### Windows Users (WSL2)
 
 Since all the provided automation scripts (`.sh`) are written for **Bash**, Windows users need to set up **WSL2 (Windows Subsystem for Linux)** to use the SDK or to compile the project from source.
 
