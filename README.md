@@ -29,6 +29,22 @@ Each release includes an `SDK.zip` file containing everything needed to develop 
 - `image-to-bin.sh`: Script to convert images.
 - `midi-to-bin.sh`: Script to convert MIDI files.
 
+#### :windows: Windows Users (WSL2)
+
+Since all the provided automation scripts (`.sh`) are written for **Bash**, Windows users need to set up **WSL2 (Windows Subsystem for Linux)** to use the SDK or to compile the project from source.
+
+To install Ubuntu on Windows 10/11:
+
+1. Open **PowerShell** or **Command Prompt** as Administrator.
+2. Run the following command:
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+3. Restart your computer when finished.
+4. Open the newly installed **Ubuntu** application and configure your user account.
+
+Once set up, you can run all the commands described below (and in the [Build from Source](#hammer_and_wrench-build-from-source) section) directly from the Ubuntu terminal.
+
 Compile and run assembly or C programs from `./Binaries/` into the `output/rom` folder:
 
 ```bash
