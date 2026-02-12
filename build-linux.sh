@@ -12,6 +12,7 @@ CMAKE_OPTS=""
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache found, enabling..."
     CMAKE_OPTS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    ccache -z # Zero stats
 fi
 
 # Detect Ninja
@@ -32,6 +33,11 @@ fi
 echo "Compiling for Linux..."
 cmake -S . -B build $CMAKE_OPTS
 cmake --build build -j$(nproc)
+
+if command -v ccache >/dev/null 2>&1; then
+    echo "ccache statistics:"
+    ccache -s
+fi
 
 echo "Running unit tests (Linux)..."
 ./build/unit_tests

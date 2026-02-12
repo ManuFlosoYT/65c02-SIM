@@ -12,6 +12,7 @@ CMAKE_OPTS=""
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache found, enabling..."
     CMAKE_OPTS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    ccache -z # Zero stats
 fi
 
 # Detect Ninja (optional for Windows cross-compile, but usually preferred if available)
@@ -31,6 +32,11 @@ fi
 echo "Compiling for Windows (MinGW)..."
 cmake -S . -B build_win -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=Release $CMAKE_OPTS
 cmake --build build_win -j$(nproc)
+
+if command -v ccache >/dev/null 2>&1; then
+    echo "ccache statistics:"
+    ccache -s
+fi
 
 echo "Running unit tests (Windows/Wine)..."
 # Check if wine is installed
