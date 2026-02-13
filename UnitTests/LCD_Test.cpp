@@ -21,7 +21,7 @@ protected:
     }
 
     // Helper to simulate VIA 6522 writes to PORTB
-    void simulate_write(Byte val) { mem.Write(PORTB, val); }
+    void simulate_write(Byte val) { lcd.Update(val); }
 };
 
 TEST_F(TestLCD, PrintHello) {

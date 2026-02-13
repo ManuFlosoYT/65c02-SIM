@@ -14,6 +14,10 @@ public:
     void SetPortA(Byte val);
     void SetPortB(Byte val);
 
+    void SetPortBCallback(std::function<void(Byte)> cb) {
+        port_b_callback = cb;
+    }
+
     Byte GetDDRB() const;
     void SetDDRB(Byte val);
 

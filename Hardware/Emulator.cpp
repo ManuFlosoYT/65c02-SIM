@@ -19,9 +19,12 @@ void Emulator::PrintState() {
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     cpu.Reset(mem);
-    lcd.Inicializar(mem);
+    lcd.Inicializar(mem);  // Clears state
     acia.Inicializar(mem);
     via.Init(mem);
+
+    // Connect VIA Port B Output to LCD Input
+    via.SetPortBCallback([this](Byte val) { lcd.Update(val); });
 
     // Set up GPU VRAM write hook for RAM addresses 0x2000-0x3FFF (3 MSB = 001)
     // The hook will write to VRAM when CPU writes to these addresses

@@ -11,6 +11,7 @@ public:
     Byte DATO_DDRB;
 
     void Inicializar(Mem& mem);
+    void Update(Byte portBVal);
 
     void SetOutputCallback(std::function<void(char)> cb) { onChar = cb; }
     const char (&GetScreen() const)[2][16] { return screen; }
