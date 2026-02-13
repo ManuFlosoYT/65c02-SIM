@@ -5,23 +5,6 @@
 
 class VIA {
 public:
-    Byte orb;     // 0x00 Output Register B
-    Byte ora;     // 0x01 Output Register A
-    Byte ddrb;    // 0x02 Data Direction Register B
-    Byte ddra;    // 0x03 Data Direction Register A
-    Byte t1c_l;   // 0x04 Timer 1 Counter Low
-    Byte t1c_h;   // 0x05 Timer 1 Counter High
-    Byte t1l_l;   // 0x06 Timer 1 Latch Low
-    Byte t1l_h;   // 0x07 Timer 1 Latch High
-    Byte t2c_l;   // 0x08 Timer 2 Counter Low
-    Byte t2c_h;   // 0x09 Timer 2 Counter High
-    Byte sr;      // 0x0A Shift Register
-    Byte acr;     // 0x0B Auxiliary Control Register
-    Byte pcr;     // 0x0C Peripheral Control Register
-    Byte ifr;     // 0x0D Interrupt Flag Register
-    Byte ier;     // 0x0E Interrupt Enable Register
-    Byte ora_nh;  // 0x0F Output Register A (No Handshake)
-
     VIA();
     void Init(Mem& mem);
     void Reset();
@@ -73,8 +56,61 @@ public:
     Byte GetORA_NH() const;
     void SetORA_NH(Byte val);
 
+    // External Input Setters (to simulate pins)
+    void SetInputA(Byte val);
+    void SetInputB(Byte val);
+    void SetCB1(bool val);
+    void SetCB2(bool val);
+
+    void Clock();
+    bool isIRQAsserted() const;
+
 private:
-    // Internal state if needed (e.g., latches, timers running status)
+    Byte orb;     // 0x00 Output Register B
+    Byte ora;     // 0x01 Output Register A
+    Byte ddrb;    // 0x02 Data Direction Register B
+    Byte ddra;    // 0x03 Data Direction Register A
+    Byte t1c_l;   // 0x04 Timer 1 Counter Low
+    Byte t1c_h;   // 0x05 Timer 1 Counter High
+    Byte t1l_l;   // 0x06 Timer 1 Latch Low
+    Byte t1l_h;   // 0x07 Timer 1 Latch High
+    Byte t2c_l;   // 0x08 Timer 2 Counter Low
+    Byte t2c_h;   // 0x09 Timer 2 Counter High
+    Byte sr;      // 0x0A Shift Register
+    Byte acr;     // 0x0B Auxiliary Control Register
+    Byte pcr;     // 0x0C Peripheral Control Register
+    Byte ifr;     // 0x0D Interrupt Flag Register
+    Byte ier;     // 0x0E Interrupt Enable Register
+    Byte ora_nh;  // 0x0F Output Register A (No Handshake)
+
+    // Internal state
+    Word t1c;  // Timer 1 Counter (16-bit internal)
+    Word t1l;  // Timer 1 Latch (16-bit internal)
+    Word t2c;  // Timer 2 Counter (16-bit internal)
+    Word t2l;  // Timer 2 Latch (16-bit internal)
+
+    bool t1_active;      // Is Timer 1 currently counting?
+    bool t2_active;      // Is Timer 2 currently counting?
+    bool t1_pb7_output;  // State of PB7 due to specific T1 mode
+
+    Byte ira;  // Input Register A (External Pins)
+    Byte irb;  // Input Register B (External Pins)
+
+    // Pulse Counting & CB state
+    Byte last_irb;
+    bool cb1_in;
+    bool cb2_in;
+
+    // Shift Register state
+    Byte sr_cnt;      // Number of bits shifted so far (for 8-bit cycle)
+    bool sr_active;   // Is SR currently shifting?
+    bool sr_out_cb2;  // State of CB2 output for SR modes
+
+    void UpdateIRQ();
+
+    // Output Callbacks (triggered when Output Pins change)
+    std::function<void(Byte)> port_a_callback;
+    std::function<void(Byte)> port_b_callback;
 };
 
 #endif  // SIM_65C02_VIA_H

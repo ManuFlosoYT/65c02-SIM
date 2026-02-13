@@ -1,40 +1,40 @@
-#include "bios.h"
+#include "Include/bios.h"
 
-/* Variables globales */
+/* Global variables */
 unsigned char* ptr;
 unsigned char color;
 unsigned int counter;
 
 int main(void) {
-    /* Inicializar sistema */
+    /* Initialize system */
     INIT_BUFFER();
 
-    print_str("Iniciando escritura con cambio de color por fila...\n");
+    print_str("Starting write with color change per row...\n");
 
     color = 0x00;
     counter = 0;
 
-    /* Recorrer desde 0x2000 hasta 0x3FFF */
+    /* Iterate from 0x2000 to 0x3FFF */
     for (ptr = (unsigned char*)0x2000; ptr <= (unsigned char*)0x3FFF; ptr++) {
-        /* Escribir el color actual en esa dirección */
+        /* Write current color to address */
         *ptr = color;
 
         counter++;
 
-        /* Cambiar color cada 128 bytes (cada fila en esquema A0-A6=X, A7-A13=Y)
+        /* Change color every 128 bytes (each row in A0-A6=X, A7-A13=Y scheme)
          */
         if (counter >= 128) {
             counter = 0;
             color++;
 
-            /* Imprimir indicador de cambio de fila */
-            print_str("Fila: ");
+            /* Print row change indicator */
+            print_str("Row: ");
             print_hex((unsigned int)color);
             print_str("\n");
         }
     }
 
-    print_str("Fin del proceso.\n");
+    print_str("Process finished.\n");
 
     return 0;
 }

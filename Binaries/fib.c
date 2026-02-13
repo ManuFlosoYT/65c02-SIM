@@ -1,30 +1,30 @@
-#include "lcd.h"
+#include "Include/lcd.h"
 
 unsigned char a;
 unsigned char b;
-unsigned char siguiente;
+unsigned char next;
 
 int main(void) {
-    lcd_inicializar();
-    lcd_imprimir("Fibonacci:\n");
+    lcd_init();
+    lcd_print("Fibonacci:\n");
 
     a = 0;
     b = 1;
 
-    /* Bucle infinito hasta que desborde 8 bits. */
+    /* Infinite loop until 8-bit overflow. */
     while (b >= a) {
-        lcd_imprimir_numero(a);
-        lcd_imprimir(", ");
+        lcd_print_number(a);
+        lcd_print(", ");
 
-        siguiente = a + b;
+        next = a + b;
 
         a = b;
-        b = siguiente;
+        b = next;
     }
 
-    lcd_imprimir("\nUltimo: ");
-    lcd_imprimir_numero(a);
-    lcd_imprimir("\n");
+    lcd_print("\nLast: ");
+    lcd_print_number(a);
+    lcd_print("\n");
 
     return 0;
 }

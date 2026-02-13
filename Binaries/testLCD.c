@@ -1,7 +1,7 @@
-#include "lcd.h"
+#include "Include/lcd.h"
 
 int main(void) {
-    lcd_inicializar();
-    lcd_imprimir("Hola Mundo!\n");
+    lcd_init();
+    lcd_print("Hello World!\n");
     return 0;
 }

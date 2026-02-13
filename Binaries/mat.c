@@ -1,12 +1,12 @@
-#include "bios.h"
+#include "Include/bios.h"
 
-/* Definición de variables globales */
+/* Global variables definition */
 unsigned char i, j, k;
-unsigned int suma_temp;
-unsigned int suma_total;
+unsigned int sum_temp;
+unsigned int sum_total;
 
-/* Matrices diseñadas con valores bajos (0, 1, 2) para controlar el crecimiento.
-   Resultado esperado de la suma total: 31 (0x1F).
+/* Matrices designed with low values (0, 1, 2) to control growth.
+   Expected result of total sum: 31 (0x1F).
 */
 
 unsigned char matA[4][4] = {
@@ -18,39 +18,39 @@ unsigned char matB[4][4] = {
 unsigned char matC[4][4] = {
     {1, 0, 1, 0}, {0, 1, 0, 0}, {1, 0, 0, 1}, {0, 1, 1, 0}};
 
-/* Matrices para resultados intermedios y final */
+/* Matrices for intermediate and final results */
 unsigned int matTemp[4][4];
 unsigned int matFinal[4][4];
 
 int main(void) {
     INIT_BUFFER();
 
-    suma_total = 0;
+    sum_total = 0;
 
-    /* 1. Multiplicar MatA x MatB = MatTemp */
+    /* 1. Multiply MatA x MatB = MatTemp */
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            suma_temp = 0;
+            sum_temp = 0;
             for (k = 0; k < 4; k++) {
-                suma_temp += matA[i][k] * matB[k][j];
+                sum_temp += matA[i][k] * matB[k][j];
             }
-            matTemp[i][j] = suma_temp;
+            matTemp[i][j] = sum_temp;
         }
     }
 
-    /* 2. Multiplicar MatTemp x MatC = MatFinal */
+    /* 2. Multiply MatTemp x MatC = MatFinal */
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            suma_temp = 0;
+            sum_temp = 0;
             for (k = 0; k < 4; k++) {
-                suma_temp += matTemp[i][k] * matC[k][j];
+                sum_temp += matTemp[i][k] * matC[k][j];
             }
-            matFinal[i][j] = suma_temp;
+            matFinal[i][j] = sum_temp;
         }
     }
 
-    /* Imprimir Matriz Final */
-    print_str("Matriz Resultante:\n");
+    /* Print Final Matrix */
+    print_str("Resulting Matrix:\n");
     for (i = 0; i < 4; i++) {
         bios_putchar('[');
         for (j = 0; j < 4; j++) {
@@ -63,15 +63,15 @@ int main(void) {
     }
     print_str("\n");
 
-    /* 3. Sumar todos los elementos de la matriz resultante */
+    /* 3. Sum all elements of the resulting matrix */
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            suma_total += matFinal[i][j];
+            sum_total += matFinal[i][j];
         }
     }
 
-    print_str("Suma Total: ");
-    print_num(suma_total);
+    print_str("Total Sum: ");
+    print_num(sum_total);
     print_str("\n");
 
     return 0;

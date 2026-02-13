@@ -41,7 +41,7 @@ inc_color:
   jmp loop
 
 ; Reset/IRQ/NMI vectors
-  .org $fffa
+  .segment "VECTORS"
   .word reset
   .word reset
   .word reset

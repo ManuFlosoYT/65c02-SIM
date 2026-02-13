@@ -1,28 +1,28 @@
-#include "bios.h"
+#include "Include/bios.h"
 
 #define BUFFER_SIZE 50
 
 int main(void) {
-    char inputBuffer[BUFFER_SIZE]; // Espacio para guardar el texto del usuario
+    char inputBuffer[BUFFER_SIZE];  // Space to store user input
 
     int i = 0;
-    for(i = 0; i < BUFFER_SIZE; i++) {
+    for (i = 0; i < BUFFER_SIZE; i++) {
         inputBuffer[i] = 0;
     }
 
-    /* Inicialización del hardware, igual que en mat.c */
+    /* Hardware initialization, same as in mat.c */
     INIT_BUFFER();
 
-    /* 1. Pedir entrada al usuario */
-    print_str("Escribe tu nombre (y pulsa Enter): ");
+    /* 1. Request user input */
+    print_str("Type your name (and press Enter): ");
 
-    /* 2. Capturar la entrada */
+    /* 2. Capture input */
     read_line(inputBuffer, BUFFER_SIZE);
 
-    /* 3. Imprimir el mensaje con el resultado */
-    print_str("Hola, ");
+    /* 3. Print result message */
+    print_str("Hello, ");
     print_str(inputBuffer);
-    print_str("! Bienvenid@ al sistema.\n");
+    print_str("! Welcome to the system.\n");
 
     return 0;
 }

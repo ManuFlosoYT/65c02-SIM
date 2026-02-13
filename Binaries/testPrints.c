@@ -1,65 +1,64 @@
-#include "bios.h"
-#include "lcd.h"
-
+#include "Include/bios.h"
+#include "Include/lcd.h"
 
 int main(void) {
     unsigned int n;
 
     // ---------------------------------------------------------
-    // 1. INICIALIZACIÓN
+    // 1. INITIALIZATION
     // ---------------------------------------------------------
-    print_str("[BIOS] Inicio.\n");
-    
-    lcd_inicializar();
-    lcd_imprimir("Iniciado...");
-    
-    print_str("[BIOS] LCD listo. Esperando...\n");
-    delay(1000); 
+    print_str("[BIOS] Start.\n");
+
+    lcd_init();
+    lcd_print("Started...");
+
+    print_str("[BIOS] LCD ready. Waiting...\n");
+    delay(1000);
 
     // ---------------------------------------------------------
-    // 2. TEXTO Y SALTO
+    // 2. TEXT AND NEWLINE
     // ---------------------------------------------------------
-    lcd_limpiar(); /* Limpiamos lo anterior */
-    
-    lcd_imprimir("Linea 1");
-    lcd_salto_linea();
-    lcd_imprimir("Linea 2");
-    
-    print_str("[BIOS] Texto escrito (2 lineas).\n");
-    delay(1000); 
+    lcd_clear(); /* Clear previous */
+
+    lcd_print("Line 1");
+    lcd_newline();
+    lcd_print("Line 2");
+
+    print_str("[BIOS] Text written (2 lines).\n");
+    delay(1000);
 
     // ---------------------------------------------------------
-    // 3. PRUEBA DE LIMPIEZA
+    // 3. CLEAR TEST
     // ---------------------------------------------------------
-    lcd_limpiar();
-    
-    print_str("[BIOS] Pantalla Clear.\n");
-    /* Pausa para que veas la pantalla vacia */
-    delay(1000); 
+    lcd_clear();
+
+    print_str("[BIOS] Screen Clear.\n");
+    /* Pause to see empty screen */
+    delay(1000);
 
     // ---------------------------------------------------------
-    // 4. CONTEO DE NUMEROS
+    // 4. NUMBER COUNTING
     // ---------------------------------------------------------
-    lcd_imprimir("Nums: ");
-    
+    lcd_print("Nums: ");
+
     for (n = 0; n <= 9; n++) {
-        lcd_imprimir_numero(n);
-        lcd_imprimir_caracter(' '); 
-        
-        bios_putchar('.'); /* Feedback visual en consola */
-        
-        /* Usamos el delay masivo entre CADA número */
+        lcd_print_number(n);
+        lcd_print_char(' ');
+
+        bios_putchar('.'); /* Visual feedback in console */
+
+        /* Use massive delay between EACH number */
         delay(1000);
     }
-    
-    bios_putchar('\n'); 
+
+    bios_putchar('\n');
 
     // ---------------------------------------------------------
-    // 5. FIN
+    // 5. END
     // ---------------------------------------------------------
-    lcd_limpiar();
-    lcd_imprimir("Fin.");
-    print_str("[BIOS] Fin del programa.\n");
-    
+    lcd_clear();
+    lcd_print("End.");
+    print_str("[BIOS] Program end.\n");
+
     return 0;
 }

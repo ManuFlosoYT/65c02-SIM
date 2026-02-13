@@ -1,6 +1,6 @@
-#include "bios.h"
-#include "gpu.h"
-#include "lcd.h"
+#include "Include/bios.h"
+#include "Include/gpu.h"
+#include "Include/lcd.h"
 
 // --- Constants ---
 #define PLAYER_COLOR 0xE0  // Red
@@ -25,8 +25,8 @@ int p_dy = 0;
 
 void init_game() {
     INIT_BUFFER();
-    lcd_inicializar();
-    lcd_imprimir("Super Game 6502");
+    lcd_init();
+    lcd_print("Super Game 6502");
 
     gpu_fill_screen(BG_COLOR);
 

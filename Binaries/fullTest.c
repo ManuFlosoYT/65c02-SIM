@@ -1,7 +1,7 @@
-#include "bios.h"
-#include "gpu.h"
-#include "lcd.h"
-#include "sid.h"
+#include "Include/bios.h"
+#include "Include/gpu.h"
+#include "Include/lcd.h"
+#include "Include/sid.h"
 
 /* --- Helper Variables --- */
 unsigned int failures = 0;
@@ -20,12 +20,12 @@ void assert_true(int condition, const char* name) {
     }
 }
 
-// Actualizamos el LCD con el nombre del test actual
+// Update LCD with current test name
 void lcd_status(const char* test_name) {
-    lcd_instruccion(0x01);  // Limpiar
-    lcd_imprimir("Ejecutando:");
-    lcd_instruccion(0xC0);  // Segunda linea
-    lcd_imprimir(test_name);
+    lcd_clear();  // Clear
+    lcd_print("Running:");
+    lcd_instruction(0xC0);  // Second line
+    lcd_print(test_name);
 }
 
 /* --- Tests --- */
@@ -120,8 +120,8 @@ void test_pointers(void) {
 /* LCD Visual Test */
 void test_lcd_visual(void) {
     lcd_status("LCD Visual Test");
-    print_str("Mira el LCD... Deberia mostrar 'LCD Visual Test'\n");
-    // Pequeño retardo simulado con loop vacio
+    print_str("Look at the LCD... It should show 'LCD Visual Test'\n");
+    // Small simulated delay with empty loop
     {
         volatile int d;
         for (d = 0; d < 1000; d++);
@@ -144,7 +144,7 @@ void test_primes(void) {
     assert_true(!is_prime(10), "Not Prime 10");
     assert_true(is_prime(13), "Prime 13");
     assert_true(!is_prime(15), "Not Prime 15");
-    assert_true(is_prime(101), "Prime 101");  // Poco mas costoso
+    assert_true(is_prime(101), "Prime 101");  // A bit more costly
 }
 
 void test_gpu(void) {
@@ -215,10 +215,10 @@ void test_sound(void) {
 
 int main(void) {
     INIT_BUFFER();
-    lcd_inicializar();
+    lcd_init();
 
-    print_str("\n=== INICIO FULLTEST ===\n");
-    lcd_imprimir("Iniciando...");
+    print_str("\n=== START FULLTEST ===\n");
+    lcd_print("Starting...");
 
     test_math();
     test_logic();
@@ -230,25 +230,25 @@ int main(void) {
     test_sound();
 
     // Final Report
-    lcd_instruccion(0x01);
-    lcd_imprimir("Tests completados");
+    lcd_clear();
+    lcd_print("Tests completed");
 
-    print_str("\n=== RESULTADOS ===\n");
+    print_str("\n=== RESULTS ===\n");
     print_str("Total Tests: ");
     print_num(tests_run);
     print_str("\n");
-    print_str("Fallos: ");
+    print_str("Failures: ");
     print_num(failures);
     print_str("\n");
 
     if (failures == 0) {
         print_str("STATUS: OK\n");
-        lcd_instruccion(0xC0);
-        lcd_imprimir("Status: OK");
+        lcd_instruction(0xC0);
+        lcd_print("Status: OK");
     } else {
         print_str("STATUS: FAILED\n");
-        lcd_instruccion(0xC0);
-        lcd_imprimir("Status: FAIL");
+        lcd_instruction(0xC0);
+        lcd_print("Status: FAIL");
     }
 
     return 0;

@@ -1,5 +1,5 @@
-#include "bios.h"
-#include "gpu.h"
+#include "Include/bios.h"
+#include "Include/gpu.h"
 
 int main() {
     INIT_BUFFER();

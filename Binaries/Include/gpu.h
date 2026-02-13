@@ -63,9 +63,8 @@ void gpu_swap(unsigned char* a, unsigned char* b) {
 }
 
 // Draws a line using Bresenham's algorithm
-void gpu_draw_line(unsigned char x0, unsigned char y0, 
-                   unsigned char x1, unsigned char y1, 
-                   unsigned char color) {
+void gpu_draw_line(unsigned char x0, unsigned char y0, unsigned char x1,
+                   unsigned char y1, unsigned char color) {
     int dx = gpu_abs((int)x1 - (int)x0);
     int dy = -gpu_abs((int)y1 - (int)y0);
     int sx = (x0 < x1) ? 1 : -1;
@@ -104,9 +103,8 @@ void _gpu_draw_scanline(int y, int x1, int x2, unsigned char color) {
 
 // Draws a triangle (wireframe or filled)
 // Fill logic: Standard scanline rasterization using integer arithmetic
-void gpu_draw_tri(unsigned char x0, unsigned char y0, 
-                  unsigned char x1, unsigned char y1, 
-                  unsigned char x2, unsigned char y2,
+void gpu_draw_tri(unsigned char x0, unsigned char y0, unsigned char x1,
+                  unsigned char y1, unsigned char x2, unsigned char y2,
                   unsigned char color, unsigned char fill) {
     if (!fill) {
         gpu_draw_line(x0, y0, x1, y1, color);
@@ -189,19 +187,19 @@ void gpu_test_pattern() {
     }
 }
 
-/* Función: delay
- * Descripción: Genera un retardo en milisegundos.
- * Parámetros: ms (cantidad de milisegundos a esperar)
+/* Function: delay
+ * Description: Generates a delay in milliseconds.
+ * Parameters: ms (amount of milliseconds to wait)
  */
-#define GPU_ITERACIONES_POR_MS 19
+#define GPU_ITERATIONS_PER_MS 19
 void GPUdelay(unsigned int ms) {
     volatile unsigned int i;
     volatile unsigned int j;
 
     for (i = 0; i < ms; i++) {
-        /* Este bucle interno consume aprox 1 milisegundo */
-        for (j = 0; j < GPU_ITERACIONES_POR_MS; j++) {
-            /* Bucle vacío para gastar ciclos */
+        /* This inner loop consumes approx 1 millisecond */
+        for (j = 0; j < GPU_ITERATIONS_PER_MS; j++) {
+            /* Empty loop to waste cycles */
         }
     }
 }

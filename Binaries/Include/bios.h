@@ -1,27 +1,27 @@
 #ifndef BIOS_H
 #define BIOS_H
 
-// Introduce un caracter desde el puerto serie.
-// Devuelve el caracter en A.
+// Introduces a character from the serial port.
+// Returns the character in A.
 extern char __fastcall__ MONRDKEY(void);
 #define bios_getchar MONRDKEY
 
-// Introduce un caracter desde el puerto serie.
-// Espera un caracter en A.
+// Outputs a character to the serial port.
+// Expects the character in A.
 extern void __fastcall__ MONCOUT(char c);
 #define bios_putchar MONCOUT
 
-// Lee un caracter sin bloquear (retorna 0 si no hay tecla)
+// Reads a character without blocking (returns 0 if no key)
 extern char __fastcall__ MONGETCHAR_NB(void);
 #define bios_getchar_nb MONGETCHAR_NB
 
-// Inicializa el buffer.
+// Initializes the buffer.
 extern void __fastcall__ INIT_BUFFER(void);
 
 void print_str(const char* s) {
     while (*s) {
         if (*s == '\n') {
-            /* Convertimos \n a \r\n para salto de línea correcto en terminal */
+            /* Convert \n to \r\n for correct newline in terminal */
             bios_putchar('\r');
             bios_putchar('\n');
         } else {
@@ -31,29 +31,29 @@ void print_str(const char* s) {
     }
 }
 
-/* Función para leer una cadena de texto desde el teclado */
+/* Function to read a string from the keyboard */
 void read_line(char* buffer, int max_len) {
     char c;
     int i = 0;
 
     while (i < max_len - 1) {
-        /* BUCLE DE ESPERA: */
-        /* Seguimos pidiendo la tecla mientras sea 0 (null) */
+        /* WAIT LOOP: */
+        /* Continue asking for key while it is 0 (null) */
         do {
             c = bios_getchar();
         } while (c == 0);
 
-        /* Detectar Enter (retorno de carro \r o salto de línea \n) */
+        /* Detect Enter (carriage return \r or newline \n) */
         if (c == '\r' || c == '\n') {
             bios_putchar('\r');
             bios_putchar('\n');
-            break;  // Salir del bucle si se pulsa Enter
+            break;  // Exit loop if Enter is pressed
         }
 
-        /* Echo: imprimir lo que se escribe */
+        /* Echo: print what is typed */
         bios_putchar(c);
 
-        /* Guardar en el buffer */
+        /* Save to buffer */
         buffer[i] = c;
         i++;
     }
@@ -95,19 +95,21 @@ void print_num(unsigned int n) {
     }
 }
 
-/* Función: delay
- * Descripción: Genera un retardo en milisegundos.
- * Parámetros: ms (cantidad de milisegundos a esperar)
+/* Function: delay
+ * Description: Generates a delay in milliseconds.
+ * Parameters: ms (amount of milliseconds to wait)
+ * IMPORTANT!!!!: This timing is only valid if the GPU is disabled.
+ * If the GPU is enabled refer to GPU.h for the delay function.
  */
-#define ITERACIONES_POR_MS 4000
+#define ITERATIONS_PER_MS 4000
 void delay(unsigned int ms) {
     volatile unsigned int i;
     volatile unsigned int j;
 
     for (i = 0; i < ms; i++) {
-        /* Este bucle interno consume aprox 1 milisegundo */
-        for (j = 0; j < ITERACIONES_POR_MS; j++) {
-            /* Bucle vacío para gastar ciclos */
+        /* This inner loop consumes approx 1 millisecond */
+        for (j = 0; j < ITERATIONS_PER_MS; j++) {
+            /* Empty loop to waste cycles */
         }
     }
 }

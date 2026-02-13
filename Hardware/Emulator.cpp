@@ -107,13 +107,32 @@ int Emulator::Step() {
         }
     } else {
         // If GPU is disabled, CPU runs normally
+        // PrintState(); // Debugging
         res = cpu.Step(mem);
+        // PrintState();
+        // if (cpu.PC > 0x8000) PrintState();  // Log only ROM execution
     }
 
     if (baudDelay > 0) baudDelay--;
 
-    if ((mem.memoria[ACIA_STATUS] & 0x80) != 0) {
+    // Check ACIA IRQ
+    if ((mem.Read(ACIA_STATUS) & 0x80) != 0) {
         cpu.IRQ(mem);
+    }
+
+    // Clock VIA and check IRQ
+    via.Clock();
+    if (via.isIRQAsserted()) {
+        cpu.IRQ(mem);
+    }
+
+    // Si estamos en espera (WAI), revisamos si hay interrupción pendiente
+    if (cpu.waiting) {
+        if ((mem.Read(ACIA_STATUS) & 0x80) != 0 || via.isIRQAsserted()) {
+            cpu.waiting = false;
+        } else {
+            return 0;
+        }
     }
 
     // Procesar input buffer si ACIA está listo
