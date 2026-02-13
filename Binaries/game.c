@@ -1,6 +1,32 @@
 #include "Include/bios.h"
 #include "Include/gpu.h"
 #include "Include/lcd.h"
+#include "Include/VIA.h"
+
+// --- VIA Configuration ---
+#define CLOCK_HZ 1000000UL
+#define TARGET_FPS 60
+#define VIA_T1_COUNT ((unsigned int)(CLOCK_HZ / TARGET_FPS))
+
+void via_init() {
+    // 1. Disable all VIA Interrupts (IER) so we don't trigger BIOS IRQ
+    //    0x7F = 0111 1111 (Bit 7=0 clears the bits)
+    via_disable_interrupt(0x7F);
+
+    // 2. Configure ACR for Continuous Mode on T1 (Bit 6 = 1)
+    //    0x40 = 0100 0000
+    VIA_ACR = 0x40;
+
+    // 3. Set Timer 1 Latch
+    via_set_timer1(VIA_T1_COUNT);
+
+    // 4. Enable CPU Interrupts (CLI) to allow ACIA (Keyboard) to work
+    asm("cli");
+
+    // Note: We do NOT enable VIA interrupt in IER.
+    // We will poll VIA_IFR & 0x40 in the main loop.
+    // The flag gets set regardless of IER.
+}
 
 // --- Constants ---
 #define PLAYER_COLOR 0xE0  // Red
@@ -67,6 +93,7 @@ int main(void) {
     int i, j;
 
     init_game();
+    via_init();
 
     while (1) {
         // --- Input ---
@@ -223,7 +250,11 @@ int main(void) {
         }
 
         // Delay for frame rate control
-        GPUdelay(10);
+        // Wait for T1 Interrupt Flag (Bit 6)
+        while (!(VIA_IFR & 0x40));
+        
+        // Clear the interrupt flag
+        VIA_IFR = 0x40;
     }
 
     return 0;
