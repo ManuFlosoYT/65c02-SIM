@@ -173,7 +173,7 @@ class MidiProcessor:
     def __init__(self, midi_path, mode=MODE_LEVEL_1):
         self.midi_path = midi_path
         self.mode = mode
-        self.mid = mido.MidiFile(midi_path)
+        self.mid = mido.MidiFile(midi_path, clip=True)
         self.events = []
         self.voices = [Voice(i) for i in range(1, 4)]
         self.bass_channel = -1

@@ -37,6 +37,7 @@ struct Oscillator {
 
 class SID {
 public:
+    #define MAX_SID_VOICES 3
     SID();
     ~SID();
 
@@ -48,10 +49,11 @@ public:
     void EnableSound(bool enable);
     void SetEmulationPaused(bool paused);
     bool IsSoundEnabled() const { return soundEnabled; }
+    const Oscillator& GetVoice(int index) const { return voices[index % MAX_SID_VOICES]; }
 
 private:
     uint8_t registers[0x20];
-    Oscillator voices[3];
+    Oscillator voices[MAX_SID_VOICES];
     uint8_t volumeRegister;
     bool soundEnabled = false;
     bool emulationPaused = false;
