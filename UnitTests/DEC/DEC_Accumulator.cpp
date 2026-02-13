@@ -2,7 +2,7 @@
 
 #include "../../Hardware/CPU.h"
 #include "../../Hardware/Mem.h"
-#include "../../Hardware/CPU/ListaInstrucciones.h"
+#include "../../Hardware/CPU/InstructionSet.h"
 
 class DEC_Accumulator_Test : public ::testing::Test {
 protected:

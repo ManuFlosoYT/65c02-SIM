@@ -2,7 +2,7 @@
 
 #include "../../Hardware/CPU.h"
 #include "../../Hardware/Mem.h"
-#include "../../Hardware/CPU/ListaInstrucciones.h"
+#include "../../Hardware/CPU/InstructionSet.h"
 
 class AND_IndirectX_Test : public ::testing::Test {
 protected:

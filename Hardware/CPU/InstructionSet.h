@@ -1,5 +1,5 @@
-#ifndef SIM_65C02_LISTAINSTRUCCIONES_H
-#define SIM_65C02_LISTAINSTRUCCIONES_H
+#ifndef SIM_65C02_INSTRUCTIONSET_H
+#define SIM_65C02_INSTRUCTIONSET_H
 
 #include <cstdint>
 
@@ -263,4 +263,4 @@ constexpr static Byte INS_TRB_ZP = 0x14;   // TRB ZP
 constexpr static Byte INS_TSB_ABS = 0x0C;  // TSB ABS
 constexpr static Byte INS_TSB_ZP = 0x04;   // TSB ZP
 
-#endif  // SIM_65C02_LISTAINSTRUCCIONES_H
+#endif  // SIM_65C02_INSTRUCTIONSET_H

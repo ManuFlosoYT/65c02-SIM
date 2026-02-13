@@ -2,7 +2,7 @@
 #define SIM_65C02_CPU_H
 #include <cstdint>
 
-#include "CPU/ListaInstrucciones.h"
+#include "CPU/InstructionSet.h"
 #include "Mem.h"
 
 using Byte = uint8_t;
