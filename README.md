@@ -74,19 +74,21 @@ To compile the simulator from source or use the SDK, you need the following depe
 **Ubuntu / Debian / Mint (`apt`)**
 
 ```bash
+sudo apt update
 sudo apt install g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev mingw-w64 libasound2-dev libpulse-dev cmake cc65
 ```
 
 **Fedora (`dnf`)**
 
 ```bash
+sudo dnf update
 sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65
 ```
 
 **Arch Linux (`pacman`)**
 
 ```bash
-sudo pacman -S base-devel gcc ninja mesa glu libx11 libxrandr libxinerama libxcursor libxi wayland libxkbcommon mingw-w64-gcc alsa-lib libpulse cmake
+sudo pacman -Sy base-devel gcc ninja mesa glu libx11 libxrandr libxinerama libxcursor libxi wayland libxkbcommon mingw-w64-gcc alsa-lib libpulse cmake
 
 # Install yay
 sudo pacman -S --needed base-devel git
