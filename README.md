@@ -40,8 +40,8 @@ To install Ubuntu on Windows 10/11:
    ```powershell
    wsl --install -d Ubuntu
    ```
-3. Restart your computer when finished.
-4. Open the newly installed **Ubuntu** application and configure your user account.
+3. Open the newly installed **Ubuntu** application and configure your user account.
+4. Install the requiered dependencies from the prerequisites section bellow.
 
 Once set up, you can run all the commands described below (and in the [Build from Source](#hammer_and_wrench-build-from-source) section) directly from the Ubuntu terminal.
 
@@ -69,7 +69,7 @@ Convert MIDI files to SID assembly code into the `output/midi` folder:
 
 #### Prerequisites
 
-To compile the simulator from source, you need the following dependencies:
+To compile the simulator from source or use the SDK, you need the following dependencies:
 
 **Ubuntu / Debian / Mint (`apt`)**
 
