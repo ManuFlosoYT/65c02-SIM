@@ -20,7 +20,7 @@ TEST_F(SEI_Test, SEI_SetsInterruptDisable) {
     mem.Write(0x4000, INS_SEI);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.I);
 }

@@ -14,7 +14,7 @@ constexpr static Byte INS_BRK = 0x00;  // BRK
 constexpr static Byte INS_RTI = 0x40;  // RTI
 constexpr static Byte INS_JAM = 0x02;  // JAM
 
-constexpr static Byte INS_LDA_IM = 0xA9;      // LDA Inmediato
+constexpr static Byte INS_LDA_IM = 0xA9;      // LDA Immediate
 constexpr static Byte INS_LDA_ZP = 0xA5;      // LDA ZP
 constexpr static Byte INS_LDA_ZPX = 0xB5;     // LDA ZPX
 constexpr static Byte INS_LDA_ABS = 0xAD;     // LDA ABS
@@ -24,13 +24,13 @@ constexpr static Byte INS_LDA_INDX = 0xA1;    // LDA INDX
 constexpr static Byte INS_LDA_INDY = 0xB1;    // LDA INDY
 constexpr static Byte INS_LDA_IND_ZP = 0xB2;  // LDA IND ZP
 
-constexpr static Byte INS_LDX_IM = 0xA2;    // LDX Inmediato
+constexpr static Byte INS_LDX_IM = 0xA2;    // LDX Immediate
 constexpr static Byte INS_LDX_ZP = 0xA6;    // LDX ZP
 constexpr static Byte INS_LDX_ZPY = 0xB6;   // LDX ZPY
 constexpr static Byte INS_LDX_ABS = 0xAE;   // LDX ABS
 constexpr static Byte INS_LDX_ABSY = 0xBE;  // LDX ABSY
 
-constexpr static Byte INS_LDY_IM = 0xA0;    // LDY Inmediato
+constexpr static Byte INS_LDY_IM = 0xA0;    // LDY Immediate
 constexpr static Byte INS_LDY_ZP = 0xA4;    // LDY ZP
 constexpr static Byte INS_LDY_ZPX = 0xB4;   // LDY ZPX
 constexpr static Byte INS_LDY_ABS = 0xAC;   // LDY ABS
@@ -81,7 +81,7 @@ constexpr static Byte INS_TAX = 0xAA;  // TAX
 constexpr static Byte INS_TYA = 0x98;  // TYA
 constexpr static Byte INS_TAY = 0xA8;  // TAY
 
-constexpr static Byte INS_AND_IM = 0x29;      // AND Inmediato
+constexpr static Byte INS_AND_IM = 0x29;      // AND Immediate
 constexpr static Byte INS_AND_ZP = 0x25;      // AND ZP
 constexpr static Byte INS_AND_ZPX = 0x35;     // AND ZPX
 constexpr static Byte INS_AND_ABS = 0x2D;     // AND ABS
@@ -91,7 +91,7 @@ constexpr static Byte INS_AND_INDX = 0x21;    // AND INDX
 constexpr static Byte INS_AND_INDY = 0x31;    // AND INDY
 constexpr static Byte INS_AND_IND_ZP = 0x32;  // AND IND ZP
 
-constexpr static Byte INS_ORA_IM = 0x09;      // ORA Inmediato
+constexpr static Byte INS_ORA_IM = 0x09;      // ORA Immediate
 constexpr static Byte INS_ORA_ZP = 0x05;      // ORA ZP
 constexpr static Byte INS_ORA_ZPX = 0x15;     // ORA ZPX
 constexpr static Byte INS_ORA_ABS = 0x0D;     // ORA ABS
@@ -101,7 +101,7 @@ constexpr static Byte INS_ORA_INDX = 0x01;    // ORA INDX
 constexpr static Byte INS_ORA_INDY = 0x11;    // ORA INDY
 constexpr static Byte INS_ORA_IND_ZP = 0x12;  // ORA IND ZP
 
-constexpr static Byte INS_EOR_IM = 0x49;      // EOR Inmediato
+constexpr static Byte INS_EOR_IM = 0x49;      // EOR Immediate
 constexpr static Byte INS_EOR_ZP = 0x45;      // EOR ZP
 constexpr static Byte INS_EOR_ZPX = 0x55;     // EOR ZPX
 constexpr static Byte INS_EOR_ABS = 0x4D;     // EOR ABS
@@ -135,7 +135,7 @@ constexpr static Byte INS_DEX = 0xCA;  // DEX A
 constexpr static Byte INS_INY = 0xC8;  // INY A
 constexpr static Byte INS_DEY = 0x88;  // DEY A
 
-constexpr static Byte INS_ADC_IM = 0x69;    // ADC Inmediato
+constexpr static Byte INS_ADC_IM = 0x69;    // ADC Immediate
 constexpr static Byte INS_ADC_ZP = 0x65;    // ADC ZP
 constexpr static Byte INS_ADC_ZPX = 0x75;   // ADC ZPX
 constexpr static Byte INS_ADC_ABS = 0x6D;   // ADC ABS
@@ -145,7 +145,7 @@ constexpr static Byte INS_ADC_INDX = 0x61;  // ADC INDX
 constexpr static Byte INS_ADC_INDY = 0x71;  // ADC INDY
 constexpr static Byte INS_ADC_IND_ZP = 0x72;  // ADC IND ZP
 
-constexpr static Byte INS_SBC_IM = 0xE9;    // SBC Inmediato
+constexpr static Byte INS_SBC_IM = 0xE9;    // SBC Immediate
 constexpr static Byte INS_SBC_ZP = 0xE5;    // SBC ZP
 constexpr static Byte INS_SBC_ZPX = 0xF5;   // SBC ZPX
 constexpr static Byte INS_SBC_ABS = 0xED;   // SBC ABS
@@ -155,7 +155,7 @@ constexpr static Byte INS_SBC_INDX = 0xE1;  // SBC INDX
 constexpr static Byte INS_SBC_INDY = 0xF1;  // SBC INDY
 constexpr static Byte INS_SBC_IND_ZP = 0xF2;  // SBC IND ZP
 
-constexpr static Byte INS_CMP_IM = 0xC9;    // CMP Inmediato
+constexpr static Byte INS_CMP_IM = 0xC9;    // CMP Immediate
 constexpr static Byte INS_CMP_ZP = 0xC5;    // CMP ZP
 constexpr static Byte INS_CMP_ZPX = 0xD5;   // CMP ZPX
 constexpr static Byte INS_CMP_ABS = 0xCD;   // CMP ABS
@@ -165,11 +165,11 @@ constexpr static Byte INS_CMP_INDX = 0xC1;  // CMP INDX
 constexpr static Byte INS_CMP_INDY = 0xD1;  // CMP INDY
 constexpr static Byte INS_CMP_IND_ZP = 0xD2;  // CMP IND ZP
 
-constexpr static Byte INS_CPX_IM = 0xE0;   // CPX Inmediato
+constexpr static Byte INS_CPX_IM = 0xE0;   // CPX Immediate
 constexpr static Byte INS_CPX_ZP = 0xE4;   // CPX ZP
 constexpr static Byte INS_CPX_ABS = 0xEC;  // CPX ABS
 
-constexpr static Byte INS_CPY_IM = 0xC0;   // CPY Inmediato
+constexpr static Byte INS_CPY_IM = 0xC0;   // CPY Immediate
 constexpr static Byte INS_CPY_ZP = 0xC4;   // CPY ZP
 constexpr static Byte INS_CPY_ABS = 0xCC;  // CPY ABS
 

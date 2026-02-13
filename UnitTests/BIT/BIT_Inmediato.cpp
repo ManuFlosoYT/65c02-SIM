@@ -4,7 +4,7 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/ListaInstrucciones.h"
 
-class BIT_Inmediato_Test : public ::testing::Test {
+class BIT_Immediate_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }
 
@@ -12,7 +12,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(BIT_Inmediato_Test, BIT_Inmediato_SetsZeroFlag) {
+TEST_F(BIT_Immediate_Test, BIT_Immediate_SetsZeroFlag) {
     // A = 0x0F, Val = 0xF0 -> A & Val = 0x00 -> Z=1
     cpu.A = 0x0F;
     cpu.Z = 0;
@@ -25,7 +25,7 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_SetsZeroFlag) {
     mem.Write(0x4001, 0xF0);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x0F);  // A Not modified
     EXPECT_TRUE(cpu.Z);
@@ -33,7 +33,7 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_SetsZeroFlag) {
     EXPECT_FALSE(cpu.V);
 }
 
-TEST_F(BIT_Inmediato_Test, BIT_Inmediato_ClearsZeroFlag) {
+TEST_F(BIT_Immediate_Test, BIT_Immediate_ClearsZeroFlag) {
     // A = 0xFF, Val = 0x0F -> A & Val = 0x0F != 0 -> Z=0
     cpu.A = 0xFF;
     cpu.Z = 1;
@@ -44,13 +44,13 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_ClearsZeroFlag) {
     mem.Write(0x4001, 0x0F);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xFF);
     EXPECT_FALSE(cpu.Z);
 }
 
-TEST_F(BIT_Inmediato_Test, BIT_Inmediato_DoesNotAffectNV) {
+TEST_F(BIT_Immediate_Test, BIT_Immediate_DoesNotAffectNV) {
     // Immediate mode BIT does not copy bits 7 and 6 to N and V.
     // Operand = 0xC0 (Bits 7 and 6 set)
     cpu.A = 0xFF;
@@ -63,7 +63,7 @@ TEST_F(BIT_Inmediato_Test, BIT_Inmediato_DoesNotAffectNV) {
     mem.Write(0x4001, 0xC0);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.N);
     EXPECT_FALSE(cpu.V);

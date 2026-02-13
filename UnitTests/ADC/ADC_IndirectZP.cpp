@@ -25,7 +25,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Basic) {
     mem.Write(0x0006, 0x80);  // Pointer -> 0x8000
     mem.Write(0x8000, 0x10);  // Value
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x20);  // 0x10 + 0x10 + 0 = 0x20
     EXPECT_FALSE(cpu.Z);
@@ -47,7 +47,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Carry) {
     mem.Write(0x0006, 0x80);  // Pointer -> 0x8000
     mem.Write(0x8000, 0x10);  // Value
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x21);  // 0x10 + 0x10 + 1 = 0x21
     EXPECT_FALSE(cpu.Z);
@@ -68,7 +68,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Overflow) {
     mem.Write(0x9000, 0x50);  // Positive (+80)
 
     // 0x50 + 0x50 = 0xA0 (-96) -> Overflow
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xA0);
     EXPECT_TRUE(cpu.N);
@@ -89,7 +89,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_PointerWrap) {  // ZP = 0xFF
     mem.Write(0x0000, 0xC0);     // High (wrapped) -> 0xC010
     mem.Write(0xC010, 0xFE);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xFF);  // 0x01 + 0xFE = 0xFF
     EXPECT_FALSE(cpu.Z);

@@ -28,7 +28,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP) {
     mem.Write(0x8000, 0x37);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);
@@ -47,7 +47,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_ZeroFlag) {
     mem.Write(0x8000, 0x00);  // Load 0x00
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -66,7 +66,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_NegativeFlag) {
     mem.Write(0x8000, 0x80);  // Load 0x80 (Negative)
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x80);
     EXPECT_FALSE(cpu.Z);
@@ -88,7 +88,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_WrapAround) {
     mem.Write(0x9000, 0x42);  // Value to load
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x42);
     EXPECT_FALSE(cpu.Z);

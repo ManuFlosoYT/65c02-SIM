@@ -23,7 +23,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage) {
     mem.Write(0x0042, 0x37);  // Value to AND with
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);  // 0xFF & 0x37 = 0x37
     EXPECT_FALSE(cpu.Z);
@@ -41,7 +41,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_ZeroFlag) {
     mem.Write(0x0042, 0x0F);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -59,7 +59,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_NegativeFlag) {
     mem.Write(0x0042, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x80);
     EXPECT_FALSE(cpu.Z);

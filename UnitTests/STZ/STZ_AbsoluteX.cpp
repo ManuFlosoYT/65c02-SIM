@@ -25,7 +25,7 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_ExecutesCorrectly) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x2005], 0x00);
     EXPECT_EQ(cpu.PC, 0x1004);
@@ -45,7 +45,7 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_PageCrossing) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x20FF], 0x00);
     EXPECT_EQ(cpu.PC, 0x1004);

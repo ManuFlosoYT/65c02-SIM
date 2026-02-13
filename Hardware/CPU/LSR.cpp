@@ -6,7 +6,7 @@ static void SetFlags(CPU& cpu, Byte val, Byte A) {
     cpu.C = (A & 0b00000001) > 0;
 }
 
-void LSR::EjecutarAcumulador(CPU& cpu, Mem& mem) {
+void LSR::ExecuteAccumulator(CPU& cpu, Mem& mem) {
     
     Byte A = cpu.A;
     cpu.A >>= 1;
@@ -14,38 +14,38 @@ void LSR::EjecutarAcumulador(CPU& cpu, Mem& mem) {
     SetFlags(cpu, cpu.A, A);
 }
 
-void LSR::EjecutarZP(CPU& cpu, Mem& mem) {
+void LSR::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
-    Byte dato = cpu.LeerByte(ZP_Dir, mem);
+    Byte dato = cpu.ReadByte(ZP_Dir, mem);
     Byte A = dato;
     dato >>= 1;
     mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
-void LSR::EjecutarZPX(CPU& cpu, Mem& mem) {
+void LSR::ExecuteZPX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
-    Byte dato = cpu.LeerByte(ZP_Dir, mem);
+    Byte dato = cpu.ReadByte(ZP_Dir, mem);
     Byte A = dato;
     dato >>= 1;
     mem.Write(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
-void LSR::EjecutarABS(CPU& cpu, Mem& mem) {
+void LSR::ExecuteABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
-    Byte dato = cpu.LeerByte(Dir, mem);
+    Byte dato = cpu.ReadByte(Dir, mem);
     Byte A = dato;
     dato >>= 1;
     mem.Write(Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
-void LSR::EjecutarABSX(CPU& cpu, Mem& mem) {
+void LSR::ExecuteABSX(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.X;
-    Byte dato = cpu.LeerByte(Dir, mem);
+    Byte dato = cpu.ReadByte(Dir, mem);
     Byte A = dato;
     dato >>= 1;
     mem.Write(Dir, dato);

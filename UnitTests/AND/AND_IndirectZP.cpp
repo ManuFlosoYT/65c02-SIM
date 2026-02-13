@@ -27,7 +27,7 @@ TEST_F(AND_IndirectZP_Test, AND_IndirectZP) {
     mem.Write(0x8000, 0x37);  // Target Value
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);

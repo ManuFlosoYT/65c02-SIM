@@ -24,7 +24,7 @@ TEST_F(STX_ZeroPage_Test, STX_ZeroPage) {
 
     mem.Write(0x0042, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x37);
     EXPECT_EQ(cpu.X, 0x37);

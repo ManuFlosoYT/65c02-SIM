@@ -30,7 +30,7 @@ TEST_F(ADC_IndirectY_Test, ADC_IndirectY) {
     mem.Write(0x8001, 0x37);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);
 }

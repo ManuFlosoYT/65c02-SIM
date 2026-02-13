@@ -4,7 +4,7 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/ListaInstrucciones.h"
 
-class AND_Inmediato_Test : public ::testing::Test {
+class AND_Immediate_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }
 
@@ -12,7 +12,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(AND_Inmediato_Test, AND_Inmediato) {
+TEST_F(AND_Immediate_Test, AND_Immediate) {
     // Programa en memoria:
     // 0xFFFC: AND #0x0F
     // 0xFFFD: 0x67
@@ -26,14 +26,14 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato) {
 
     // Ciclo 1: Lee AND #0x0F
     // Ciclo 2: Lee 0x0F, ejecuta AND
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x0F);  // 0xFF & 0x0F = 0x0F
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(AND_Inmediato_Test, AND_Inmediato_ZeroFlag) {
+TEST_F(AND_Immediate_Test, AND_Immediate_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xF0;
 
@@ -43,14 +43,14 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato_ZeroFlag) {
     mem.Write(0x4001, 0x0F);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);  // 0xF0 & 0x0F = 0x00
     EXPECT_TRUE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(AND_Inmediato_Test, AND_Inmediato_NegativeFlag) {
+TEST_F(AND_Immediate_Test, AND_Immediate_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
@@ -60,7 +60,7 @@ TEST_F(AND_Inmediato_Test, AND_Inmediato_NegativeFlag) {
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x80);  // 0xFF & 0x80 = 0x80
     EXPECT_FALSE(cpu.Z);

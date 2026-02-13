@@ -40,18 +40,18 @@ public:
     bool IsInBlankingInterval() const { return !IsInDrawingInterval(); }
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
-    Byte operator[](Word dir) const {
-        Byte x = dir & 0x7F;         // bits 0-6
-        Byte y = (dir >> 7) & 0x7F;  // bits 7-13
+    Byte operator[](Word addr) const {
+        Byte x = addr & 0x7F;         // bits 0-6
+        Byte y = (addr >> 7) & 0x7F;  // bits 7-13
         if (x >= VRAM_WIDTH || y >= VRAM_HEIGHT) return 0;
         return vram[y][x];
     }
 
     void SetWriteHook(Word address, WriteHook hook);
-    void Write(Word dir, Byte val);
+    void Write(Word addr, Byte val);
 
     void SetReadHook(Word address, ReadHook hook);
-    Byte Read(Word dir);
+    Byte Read(Word addr);
 
 private:
     std::map<Word, WriteHook> writeHooks;

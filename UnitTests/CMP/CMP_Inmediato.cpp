@@ -4,7 +4,7 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/ListaInstrucciones.h"
 
-class CMP_Inmediato_Test : public ::testing::Test {
+class CMP_Immediate_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }
 
@@ -12,7 +12,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Equal) {
+TEST_F(CMP_Immediate_Test, CMP_Immediate_Equal) {
     // A = 0x05, M = 0x05. Result = 0. Z=1, C=1.
     cpu.A = 0x05;
 
@@ -22,7 +22,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Equal) {
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x05);
     EXPECT_TRUE(cpu.Z);
@@ -30,7 +30,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Equal) {
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Less) {
+TEST_F(CMP_Immediate_Test, CMP_Immediate_Less) {
     // A = 0x04, M = 0x05. Result = -1 (0xFF). Z=0, C=0. N=1.
     cpu.A = 0x04;
 
@@ -40,7 +40,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Less) {
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x04);
     EXPECT_FALSE(cpu.Z);
@@ -48,7 +48,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Less) {
     EXPECT_TRUE(cpu.N);
 }
 
-TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Greater) {
+TEST_F(CMP_Immediate_Test, CMP_Immediate_Greater) {
     // A = 0x06, M = 0x05. Result = 1. Z=0, C=1. N=0.
     cpu.A = 0x06;
 
@@ -58,7 +58,7 @@ TEST_F(CMP_Inmediato_Test, CMP_Inmediato_Greater) {
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x06);
     EXPECT_FALSE(cpu.Z);

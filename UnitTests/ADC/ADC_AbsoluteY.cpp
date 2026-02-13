@@ -27,7 +27,7 @@ TEST_F(ADC_AbsoluteY_Test, ADC_AbsoluteY) {
     mem.Write(0x4481, 0x05);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x05);
 }

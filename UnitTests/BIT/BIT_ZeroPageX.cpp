@@ -25,7 +25,7 @@ TEST_F(BIT_ZeroPageX_Test, BIT_ZeroPageX) {
     mem.Write(0x0047, 0xC0);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xFF);
     EXPECT_FALSE(cpu.Z);

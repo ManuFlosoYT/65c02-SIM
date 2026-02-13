@@ -27,7 +27,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsFlagsFromMemory) {
     mem.Write(0x0042, 0xC0);  // 1100 0000 -> N=1, V=1
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xFF);
     EXPECT_TRUE(cpu.N);
@@ -48,7 +48,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsZeroFlag) {
     // Mem also has N=1 (bit 7) and V=1 (bit 6)
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_TRUE(cpu.N);

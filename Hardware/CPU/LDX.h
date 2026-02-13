@@ -6,11 +6,11 @@
 
 class LDX {
 public:
-    static void EjecutarInmediato(CPU& cpu, Mem& mem);
-    static void EjecutarZP(CPU& cpu, Mem& mem);
-    static void EjecutarZPY(CPU& cpu, Mem& mem);
-    static void EjecutarABS(CPU& cpu, Mem& mem);
-    static void EjecutarABSY(CPU& cpu, Mem& mem);
+    static void ExecuteImmediate(CPU& cpu, Mem& mem);
+    static void ExecuteZP(CPU& cpu, Mem& mem);
+    static void ExecuteZPY(CPU& cpu, Mem& mem);
+    static void ExecuteABS(CPU& cpu, Mem& mem);
+    static void ExecuteABSY(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_LDX_H

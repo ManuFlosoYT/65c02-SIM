@@ -22,7 +22,7 @@ TEST_F(TAY_Test, TAY) {
     cpu.A = 0x42;
     cpu.Y = 0x00;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x42);
     EXPECT_FALSE(cpu.Z);
@@ -39,7 +39,7 @@ TEST_F(TAY_Test, TAY_ZeroFlag) {
     cpu.A = 0x00;
     cpu.Y = 0x42;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -56,7 +56,7 @@ TEST_F(TAY_Test, TAY_NegativeFlag) {
     cpu.A = 0x80;
     cpu.Y = 0x00;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x80);
     EXPECT_FALSE(cpu.Z);

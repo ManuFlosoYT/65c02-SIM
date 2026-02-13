@@ -29,7 +29,7 @@ TEST_F(RTI_Test, RTI_Operations) {
     mem.Write(0x4001, INS_JAM);
     mem.Write(0x1002, INS_JAM);  // Return Address
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x1003);
     EXPECT_TRUE(cpu.N);

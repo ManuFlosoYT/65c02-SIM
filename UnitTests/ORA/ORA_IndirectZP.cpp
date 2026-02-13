@@ -23,7 +23,7 @@ TEST_F(ORA_IndirectZP_Test, ORA_IndirectZP) {
     mem.Write(0x8000, 0x0F);  // Target Value.
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x0F);
     EXPECT_FALSE(cpu.Z);

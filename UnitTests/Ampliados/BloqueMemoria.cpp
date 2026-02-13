@@ -19,7 +19,7 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
     Word DST_PAGE = 0x9000;
     Word CODE_START = 0x1000;
 
-    // Inicializar memoria origen con valores
+    // Init memoria origen con valores
     for (int i = 0; i < 256; i++) {
         mem.Write(SRC_PAGE + i, (Byte)i);
         mem.Write(DST_PAGE + i, 0);  // Limpiar destino
@@ -60,10 +60,10 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
     // Stop
     mem.Write(PC++, INS_JAM);
 
-    // Ejecutar
+    // Execute
     cpu.PC = CODE_START;
     cpu.isInit = true;  // Previene ejecutar de resetear PC a vector 0xFFFC (que es 0)
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     // Verificacion
     for (int i = 0; i < 256; i++) {

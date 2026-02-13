@@ -26,16 +26,16 @@ void GPU::SetWriteHook(Word address, WriteHook hook) {
     writeHooks[address] = hook;
 }
 
-void GPU::Write(Word dir, Byte val) {
+void GPU::Write(Word addr, Byte val) {
     // Check hooks first
-    auto it = writeHooks.find(dir);
+    auto it = writeHooks.find(addr);
     if (it != writeHooks.end()) {
-        it->second(dir, val);
+        it->second(addr, val);
     }
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
-    Byte x = dir & 0x7F;
-    Byte y = (dir >> 7) & 0x7F;
+    Byte x = addr & 0x7F;
+    Byte y = (addr >> 7) & 0x7F;
 
     if (x < VRAM_WIDTH && y < VRAM_HEIGHT) {
         vram[y][x] = val;
@@ -46,15 +46,15 @@ void GPU::SetReadHook(Word address, ReadHook hook) {
     readHooks[address] = hook;
 }
 
-Byte GPU::Read(Word dir) {
-    auto it = readHooks.find(dir);
+Byte GPU::Read(Word addr) {
+    auto it = readHooks.find(addr);
     if (it != readHooks.end()) {
-        return it->second(dir);
+        return it->second(addr);
     }
 
     // Addressing: A0-A6 = X, A7-A13 = Y
-    Byte x = dir & 0x7F;
-    Byte y = (dir >> 7) & 0x7F;
+    Byte x = addr & 0x7F;
+    Byte y = (addr >> 7) & 0x7F;
     if (x < VRAM_WIDTH && y < VRAM_HEIGHT) {
         return vram[y][x];
     }

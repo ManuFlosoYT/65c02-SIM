@@ -25,7 +25,7 @@ TEST_F(ROL_ZeroPageX_Test, ROL_ZeroPageX) {
     mem.Write(0x0046, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0046], 0x00);
     EXPECT_TRUE(cpu.C);

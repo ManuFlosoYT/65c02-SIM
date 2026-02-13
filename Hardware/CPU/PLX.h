@@ -5,7 +5,7 @@
 #include "../Mem.h"
 class PLX {
 public:
-    static void Ejecutar(CPU& cpu, Mem& mem);
+    static void Execute(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_PLX_H

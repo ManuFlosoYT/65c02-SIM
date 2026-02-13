@@ -24,7 +24,7 @@ TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
     Word PC_RetornoEsperado = PC_Inicial + 2;
     Word SP_Inicial = cpu.SP;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x8001);
     EXPECT_EQ(cpu.SP, SP_Inicial - 2);
@@ -51,7 +51,7 @@ TEST_F(PruebaJSR, JSRAnidado) {
 
     Word SP_Inicial = cpu.SP;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x9001);
     EXPECT_EQ(cpu.SP, SP_Inicial - 4);

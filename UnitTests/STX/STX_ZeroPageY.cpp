@@ -26,7 +26,7 @@ TEST_F(STX_ZeroPageY_Test, STX_ZeroPageY) {
     // Target Zero Page Address = 0x80 + 0x0F = 0x8F
     mem.Write(0x008F, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x008F], 0x37);
     EXPECT_EQ(cpu.X, 0x37);

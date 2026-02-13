@@ -7,20 +7,20 @@
 
 class LCD {
 public:
-    Byte DATO_PORTB;
-    Byte DATO_DDRB;
+    Byte PORTB_DATA;
+    Byte DDRB_DATA;
 
-    void Inicializar(Mem& mem);
+    void Init(Mem& mem);
     void Update(Byte portBVal);
 
     void SetOutputCallback(std::function<void(char)> cb) { onChar = cb; }
     const char (&GetScreen() const)[2][16] { return screen; }
 
 private:
-    bool modo_cuatro_bits = false;
-    bool esperando_nibble_bajo = false;
-    Byte nibble_alto_actual = 0;
-    Byte ultimo_portb = 0;
+    bool four_bit_mode = false;
+    bool waiting_low_nibble = false;
+    Byte current_high_nibble = 0;
+    Byte last_portb = 0;
 
     // Display State
     char screen[2][16];

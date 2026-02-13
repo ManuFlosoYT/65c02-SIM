@@ -22,7 +22,7 @@ TEST_F(ORA_Absolute_Test, ORA_Absolute) {
     mem.Write(0x4480, 0x0F);  // 0x00 | 0x0F = 0x0F
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x0F);
     EXPECT_FALSE(cpu.Z);

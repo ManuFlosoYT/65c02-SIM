@@ -26,7 +26,7 @@ TEST_F(BIT_AbsoluteX_Test, BIT_AbsoluteX) {
     mem.Write(0x4481, 0x80);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xFF);
     EXPECT_FALSE(cpu.Z);

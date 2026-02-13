@@ -25,7 +25,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Equal) {
     mem.Write(0x0006, 0x80);  // Pointer -> 0x8000
     mem.Write(0x8000, 0x10);  // Match A
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x10);
     EXPECT_TRUE(cpu.Z);  // Equal
@@ -45,7 +45,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Greater) {
     mem.Write(0x0011, 0x90);  // Pointer -> 0x9000
     mem.Write(0x9000, 0x10);  // A > M (0x20 > 0x10)
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x20);
     EXPECT_FALSE(cpu.Z);
@@ -65,7 +65,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Less) {
     mem.Write(0x0021, 0xA0);  // Pointer -> 0xA000
     mem.Write(0xA000, 0x20);  // A < M (0x10 < 0x20)
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x10);
     EXPECT_FALSE(cpu.Z);
@@ -85,7 +85,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_PointerWrap) {  // ZP = 0xFF
     mem.Write(0x0000, 0xB0);     // High (wrapped) -> 0xB010
     mem.Write(0xB010, 0x50);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x50);
     EXPECT_TRUE(cpu.Z);  // Equal

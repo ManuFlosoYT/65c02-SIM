@@ -1,36 +1,36 @@
 #include "Mem.h"
 
 void Mem::Init() {
-    for (Byte& byte : memoria) {
+    for (Byte& byte : memory) {
         byte = 0;
     }
 }
 
-void Mem::WriteWord(Word dato, Word dir) {
-    Write(dir, dato & 0xFF);    // Escribir el byte menos significativo
-    Write(dir + 1, dato >> 8);  // Escribir el byte más significativo
+void Mem::WriteWord(Word data, Word addr) {
+    Write(addr, data & 0xFF);    // Write the least significant byte
+    Write(addr + 1, data >> 8);  // Write the most significant byte
 }
 
-void Mem::Write(Word dir, Byte val) {
-    auto iterador = writeHooks.find(dir);  // Buscar el hook
-    if (iterador != writeHooks.end()) {
-        iterador->second(dir, val);  // Ejecutar el hook
+void Mem::Write(Word addr, Byte val) {
+    auto it = writeHooks.find(addr);  // Find the hook
+    if (it != writeHooks.end()) {
+        it->second(addr, val);  // Execute the hook
     }
-    memoria[dir] = val;
+    memory[addr] = val;
 }
 
 void Mem::SetWriteHook(Word address, WriteHook hook) {
-    writeHooks[address] = hook;  // Asignar el hook
+    writeHooks[address] = hook;  // Assign the hook
 }
 
 void Mem::SetReadHook(Word address, ReadHook hook) {
-    readHooks[address] = hook;  // Asignar el hook
+    readHooks[address] = hook;  // Assign the hook
 }
 
-Byte Mem::Read(Word dir) {
-    auto iterador = readHooks.find(dir);  // Buscar el hook
-    if (iterador != readHooks.end()) {
-        return iterador->second(dir);  // Ejecutar el hook
+Byte Mem::Read(Word addr) {
+    auto it = readHooks.find(addr);  // Find the hook
+    if (it != readHooks.end()) {
+        return it->second(addr);  // Execute the hook
     }
-    return memoria[dir];
+    return memory[addr];
 }

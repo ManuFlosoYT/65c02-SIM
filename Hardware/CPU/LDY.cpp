@@ -5,39 +5,39 @@ static void SetFlags(CPU& cpu) {
     cpu.N = (cpu.Y & 0b10000000) > 0;
 }
 
-void LDY::EjecutarInmediato(CPU& cpu, Mem& mem) {
+void LDY::ExecuteImmediate(CPU& cpu, Mem& mem) {
     Byte dato = cpu.FetchByte(mem);
     cpu.Y = dato;
 
     SetFlags(cpu);
 }
 
-void LDY::EjecutarZP(CPU& cpu, Mem& mem) {
+void LDY::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
-    cpu.Y = cpu.LeerByte(ZP_Dir, mem);
+    cpu.Y = cpu.ReadByte(ZP_Dir, mem);
     SetFlags(cpu);
 }
 
-void LDY::EjecutarZPX(CPU& cpu, Mem& mem) {
+void LDY::ExecuteZPX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
 
-    cpu.Y = cpu.LeerByte(ZP_Dir, mem);
+    cpu.Y = cpu.ReadByte(ZP_Dir, mem);
     SetFlags(cpu);
 }
 
-void LDY::EjecutarABS(CPU& cpu, Mem& mem) {
+void LDY::ExecuteABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
 
-    cpu.Y = cpu.LeerByte(Dir, mem);
+    cpu.Y = cpu.ReadByte(Dir, mem);
     SetFlags(cpu);
 }
 
-void LDY::EjecutarABSX(CPU& cpu, Mem& mem) {
+void LDY::ExecuteABSX(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.X;
 
-    cpu.Y = cpu.LeerByte(Dir, mem);
+    cpu.Y = cpu.ReadByte(Dir, mem);
     SetFlags(cpu);
 }

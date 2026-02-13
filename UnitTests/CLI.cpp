@@ -20,7 +20,7 @@ TEST_F(CLI_Test, CLI_ClearsInterruptDisable) {
     mem.Write(0x4000, INS_CLI);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.I);
 }

@@ -24,7 +24,7 @@ TEST_F(ASL_ZeroPageX_Test, ASL_ZeroPageX) {
     mem.Write(0x0047, 0x01);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0047], 0x02);
 }

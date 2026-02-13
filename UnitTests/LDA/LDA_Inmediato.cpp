@@ -4,7 +4,7 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/ListaInstrucciones.h"
 
-class LDA_Inmediato_Test : public ::testing::Test {
+class LDA_Immediate_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }
 
@@ -12,7 +12,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(LDA_Inmediato_Test, LDA_Inmediato) {
+TEST_F(LDA_Immediate_Test, LDA_Immediate) {
     // Programa en memoria:
     // 0xFFFC: LDA #0xA9
     // 0xFFFD: 0x67
@@ -31,7 +31,7 @@ TEST_F(LDA_Inmediato_Test, LDA_Inmediato) {
     //    Lee 0x67 en 0xFFFE
     //    PC avanza a 0xFFFF
     //    Opcode desconocido -> Retorna
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(cpu.A, 0x67);
@@ -39,7 +39,7 @@ TEST_F(LDA_Inmediato_Test, LDA_Inmediato) {
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(LDA_Inmediato_Test, LDA_Inmediato_ZeroFlag) {
+TEST_F(LDA_Immediate_Test, LDA_Immediate_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xFF;
 
@@ -49,14 +49,14 @@ TEST_F(LDA_Inmediato_Test, LDA_Inmediato_ZeroFlag) {
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(LDA_Inmediato_Test, LDA_Inmediato_NegativeFlag) {
+TEST_F(LDA_Immediate_Test, LDA_Immediate_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
@@ -66,7 +66,7 @@ TEST_F(LDA_Inmediato_Test, LDA_Inmediato_NegativeFlag) {
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x80);
     EXPECT_FALSE(cpu.Z);

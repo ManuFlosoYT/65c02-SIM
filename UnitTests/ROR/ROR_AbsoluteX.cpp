@@ -26,7 +26,7 @@ TEST_F(ROR_AbsoluteX_Test, ROR_AbsoluteX) {
     mem.Write(0x2084, 0x01);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x2084], 0x00);
     EXPECT_TRUE(cpu.C);

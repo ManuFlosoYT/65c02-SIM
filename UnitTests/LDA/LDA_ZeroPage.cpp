@@ -36,7 +36,7 @@ TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage) {
     //    Lee el valor (0x37) en 0x0042
     //    Carga 0x37 en A
     //    Opcode desconocido -> Retorna
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(cpu.A, 0x37);
@@ -55,7 +55,7 @@ TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage_ZeroFlag) {
     mem.Write(0x0042, 0x00);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -73,7 +73,7 @@ TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage_NegativeFlag) {
     mem.Write(0x0042, 0xFF);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xFF);
     EXPECT_FALSE(cpu.Z);

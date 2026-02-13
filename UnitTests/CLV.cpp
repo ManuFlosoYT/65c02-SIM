@@ -20,7 +20,7 @@ TEST_F(CLV_Test, CLV_ClearsOverflow) {
     mem.Write(0x4000, INS_CLV);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.V);
 }

@@ -32,7 +32,7 @@ TEST_F(STA_Absolute_Test, STA_Absolute) {
 
     mem.Write(0x8000, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4004);  // 0xFFFF + 1 causes wrap to 0x0000 if not
                                 // handled, but FetchByte increments PC.

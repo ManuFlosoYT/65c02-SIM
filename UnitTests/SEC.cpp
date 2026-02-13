@@ -20,7 +20,7 @@ TEST_F(SEC_Test, SEC_SetsCarry) {
     mem.Write(0x4000, INS_SEC);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.C);
 }

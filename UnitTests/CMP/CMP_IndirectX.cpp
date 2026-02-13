@@ -25,7 +25,7 @@ TEST_F(CMP_IndirectX_Test, CMP_IndirectX) {
     mem.Write(0x8000, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_TRUE(cpu.C);

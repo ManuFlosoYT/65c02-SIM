@@ -22,7 +22,7 @@ TEST_F(SMB_Test, SMB0_SetsBit0) {
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0010, 0x00);  // 0000 0000
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x01);  // 0000 0001
 }
@@ -35,7 +35,7 @@ TEST_F(SMB_Test, SMB0_AlreadySet) {
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0010, 0x01);  // 0000 0001
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010],
               0x01);  // Should stay 0000 0001. If XOR, it would become 0x00.
@@ -49,7 +49,7 @@ TEST_F(SMB_Test, SMB1_SetsBit1) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x02);  // 0000 0010
 }
@@ -62,7 +62,7 @@ TEST_F(SMB_Test, SMB2_SetsBit2) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x04);  // 0000 0100
 }
@@ -75,7 +75,7 @@ TEST_F(SMB_Test, SMB3_SetsBit3) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x08);  // 0000 1000
 }
@@ -88,7 +88,7 @@ TEST_F(SMB_Test, SMB4_SetsBit4) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x10);  // 0001 0000
 }
@@ -101,7 +101,7 @@ TEST_F(SMB_Test, SMB5_SetsBit5) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x20);  // 0010 0000
 }
@@ -114,7 +114,7 @@ TEST_F(SMB_Test, SMB6_SetsBit6) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x40);  // 0100 0000
 }
@@ -127,7 +127,7 @@ TEST_F(SMB_Test, SMB7_SetsBit7) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x80);  // 1000 0000
 }

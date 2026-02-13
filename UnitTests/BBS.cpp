@@ -30,7 +30,7 @@ TEST_F(BBS_Test, BBS0_BranchTaken) {
     // Target: PC (after fetch offset at 0xFFFD -> 0xFFFE) + 4 = 0x0002
     mem.Write(0x4006, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4007);  // 0x0002 + 1 (Stop fetch) = 0x0003
 }
@@ -46,7 +46,7 @@ TEST_F(BBS_Test, BBS0_BranchNotTaken) {
     // Accumulator Value: Bit 0 is 0
     cpu.A = 0xFE;  // 1111 1110
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);  // 0xFFFE + 1 (Stop fetch) = 0xFFFF
 }
@@ -65,7 +65,7 @@ TEST_F(BBS_Test, BBS7_BranchTaken) {
     // Target: PC (0xFFFE) + 5 = 0x0003
     mem.Write(0x4007, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4008);  // 0x0003 + 1 (Stop fetch) = 0x0004
 }
@@ -81,7 +81,7 @@ TEST_F(BBS_Test, BBS7_BranchNotTaken) {
     // Accumulator Value: Bit 7 is 0
     cpu.A = 0x7F;  // 0111 1111
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);  // 0xFFFE + 1 (Stop fetch) = 0xFFFF
 }

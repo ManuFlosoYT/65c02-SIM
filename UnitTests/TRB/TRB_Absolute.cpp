@@ -26,7 +26,7 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_SetsZeroFlag) {
     mem.Write(0x8000, 0x55);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_EQ(mem[0x8000], 0x55);
@@ -51,7 +51,7 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_ClearsZeroFlag_And_ResetsBits) {
     // 0xFFFE: Hi
     // 0xFFFF: Next Opcode
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.Z);
     EXPECT_EQ(mem[0x8000], 0x00);
@@ -71,7 +71,7 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_PartialReset) {
     mem.Write(0x8000, 0xAA);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.Z);
     EXPECT_EQ(mem[0x8000], 0x0A);

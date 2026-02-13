@@ -21,7 +21,7 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator) {
     mem.Write(0x4000, INS_DEC_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x04);
     EXPECT_FALSE(cpu.Z);
@@ -37,7 +37,7 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator_ZeroFlag) {
     mem.Write(0x4000, INS_DEC_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -53,7 +53,7 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator_NegativeFlag) {
     mem.Write(0x4000, INS_DEC_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xFF);
     EXPECT_FALSE(cpu.Z);

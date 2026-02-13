@@ -21,7 +21,7 @@ TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage) {
     mem.Write(0x0042, 0x01);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x02);
     EXPECT_FALSE(cpu.C);
@@ -38,7 +38,7 @@ TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage_Carry) {
     mem.Write(0x0042, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x00);
     EXPECT_TRUE(cpu.C);

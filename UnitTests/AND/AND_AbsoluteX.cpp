@@ -23,7 +23,7 @@ TEST_F(AND_AbsoluteX_Test, AND_AbsoluteX) {
     mem.Write(0x4481, 0x37);  // 0x4480 + 0x01 = 0x4481
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);

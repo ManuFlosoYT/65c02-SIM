@@ -25,7 +25,7 @@ TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_SetsZeroFlag) {
     mem.Write(0x0020, 0x55);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_EQ(mem[0x0020], 0xFF);
@@ -44,7 +44,7 @@ TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_ClearsZeroFlag) {
     mem.Write(0x0020, 0x01);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.Z);
     EXPECT_EQ(mem[0x0020], 0x01);
@@ -63,7 +63,7 @@ TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_SetsBits) {
     mem.Write(0x0020, 0x0F);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_EQ(mem[0x0020], 0xFF);

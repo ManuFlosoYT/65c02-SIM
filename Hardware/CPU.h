@@ -28,24 +28,30 @@ public:
     Byte V : 1;  // Overflow Flag
     Byte N : 1;  // Negative Flag
 
-    bool isInit{false};
-    bool waiting{false};
+    bool isInit = false;
+    bool waiting = false;
 
     CPU() = default;
     void Reset(Mem& mem);
-    int Ejecutar(Mem& mem);
-    int Ejecutar(Mem& mem, bool ejecutar);
+    int Execute(Mem& mem);
     int Step(Mem& mem);
     void IRQ(Mem& mem);
+
+    int Dispatch(Mem& mem);
 
     const Byte GetStatus() const;
     void SetStatus(Byte status);
 
-    const Byte FetchByte(const Mem& mem);  // Lee un byte de memoria y avanza el PC
-    const Byte LeerByte(const Word dir, Mem& mem);  // Lee un byte de memoria sin avanzar el PC
-    const Word FetchWord(const Mem& mem);  // Lee un word de memoria y avanza el PC + 2
-    const Word LeerWord(const Word dir, Mem& mem);  // Lee un word de memoria sin avanzar el PC
-
+    const Byte FetchByte(
+        const Mem& mem);  // Reads a byte from memory and advances PC
+    const Byte ReadByte(
+        const Word addr,
+        Mem& mem);  // Reads a byte from memory without advancing PC
+    const Word FetchWord(
+        const Mem& mem);  // Reads a word from memory and advances PC + 2
+    const Word ReadWord(
+        const Word addr,
+        Mem& mem);  // Reads a word from memory without advancing PC
 
     Byte PopByte(Mem& mem);
     Word PopWord(Mem& mem);

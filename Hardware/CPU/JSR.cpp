@@ -1,6 +1,6 @@
 #include "JSR.h"
 
-void JSR::Ejecutar(CPU& cpu, Mem& mem) {
+void JSR::Execute(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Word RetDir = cpu.PC - 1;
 

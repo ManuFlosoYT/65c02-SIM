@@ -24,7 +24,7 @@ TEST_F(ORA_IndirectY_Test, ORA_IndirectY) {
     mem.Write(0x8004, 0x0F);  // 0x8000 + 0x04. 0x00 | 0x0F = 0x0F
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x0F);
     EXPECT_FALSE(cpu.Z);

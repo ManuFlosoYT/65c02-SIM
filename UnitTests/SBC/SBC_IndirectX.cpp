@@ -26,7 +26,7 @@ TEST_F(SBC_IndirectX_Test, SBC_IndirectX) {
     mem.Write(0x8000, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x05);
 }

@@ -30,7 +30,7 @@ TEST_F(STA_IndirectY_Test, STA_IndirectY) {
     // Effective Address = 0x2070 + 0x10 = 0x2080
     mem.Write(0x2080, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x2080], 0x37);
     EXPECT_EQ(cpu.A, 0x37);

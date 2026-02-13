@@ -27,7 +27,7 @@ TEST_F(STA_AbsoluteX_Test, STA_AbsoluteX) {
     // Target = 0x2000 + 0x10 = 0x2010
     mem.Write(0x2010, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x2010], 0x37);
     EXPECT_EQ(cpu.A, 0x37);

@@ -5,93 +5,93 @@ static void SetFlags(CPU& cpu) {
     cpu.N = (cpu.A & 0b10000000) > 0;
 }
 
-void ORA::EjecutarInmediato(CPU& cpu, Mem& mem) {
+void ORA::ExecuteImmediate(CPU& cpu, Mem& mem) {
     Byte dato = cpu.FetchByte(mem);
     cpu.A = dato | cpu.A;
 
     SetFlags(cpu);
 }
 
-void ORA::EjecutarZP(CPU& cpu, Mem& mem) {
+void ORA::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
-    cpu.A = cpu.LeerByte(ZP_Dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(ZP_Dir, mem) | cpu.A;
     SetFlags(cpu);
 }
 
-void ORA::EjecutarZPX(CPU& cpu, Mem& mem) {
+void ORA::ExecuteZPX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
 
-    cpu.A = cpu.LeerByte(ZP_Dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(ZP_Dir, mem) | cpu.A;
     SetFlags(cpu);
 }
 
-void ORA::EjecutarABS(CPU& cpu, Mem& mem) {
+void ORA::ExecuteABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
 
-    cpu.A = cpu.LeerByte(Dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) | cpu.A;
     SetFlags(cpu);
 }
 
-void ORA::EjecutarABSX(CPU& cpu, Mem& mem) {
+void ORA::ExecuteABSX(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.X;
 
-    cpu.A = cpu.LeerByte(Dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) | cpu.A;
     SetFlags(cpu);
 }
 
-void ORA::EjecutarABSY(CPU& cpu, Mem& mem) {
+void ORA::ExecuteABSY(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.Y;
 
-    cpu.A = cpu.LeerByte(Dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) | cpu.A;
     SetFlags(cpu);
 }
 
-void ORA::EjecutarINDX(CPU& cpu, Mem& mem) {
+void ORA::ExecuteINDX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
 
-    Word Dir = cpu.LeerWord(ZP_Dir, mem);
+    Word Dir = cpu.ReadWord(ZP_Dir, mem);
 
-    cpu.A = cpu.LeerByte(Dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) | cpu.A;
     SetFlags(cpu);
 }
 
-void ORA::EjecutarINDY(CPU& cpu, Mem& mem) {
+void ORA::ExecuteINDY(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
     Word dir;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.LeerWord(ZP_Dir, mem);
+        dir = cpu.ReadWord(ZP_Dir, mem);
     } else {
-        Byte low = cpu.LeerByte(0xFF, mem);
-        Byte high = cpu.LeerByte(0x00, mem);
+        Byte low = cpu.ReadByte(0xFF, mem);
+        Byte high = cpu.ReadByte(0x00, mem);
         dir = (high << 8) | low;
     }
 
     dir += cpu.Y;
 
-    cpu.A = cpu.LeerByte(dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(dir, mem) | cpu.A;
     SetFlags(cpu);
 }
 
-void ORA::EjecutarIND_ZP(CPU& cpu, Mem& mem) {
+void ORA::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
     Word dir;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.LeerWord(ZP_Dir, mem);
+        dir = cpu.ReadWord(ZP_Dir, mem);
     } else {
-        Byte low = cpu.LeerByte(0xFF, mem);
-        Byte high = cpu.LeerByte(0x00, mem);
+        Byte low = cpu.ReadByte(0xFF, mem);
+        Byte high = cpu.ReadByte(0x00, mem);
         dir = (high << 8) | low;
     }
 
-    cpu.A = cpu.LeerByte(dir, mem) | cpu.A;
+    cpu.A = cpu.ReadByte(dir, mem) | cpu.A;
     SetFlags(cpu);
 }

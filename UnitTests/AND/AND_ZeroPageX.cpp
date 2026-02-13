@@ -22,7 +22,7 @@ TEST_F(AND_ZeroPageX_Test, AND_ZeroPageX) {
     mem.Write(0x0047, 0x37);  // 0x42 + 0x05 = 0x47
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);
@@ -39,7 +39,7 @@ TEST_F(AND_ZeroPageX_Test, AND_ZeroPageX_WrapAround) {
     mem.Write(0x007F, 0x37);  // 0x80 + 0xFF = 0x17F -> 0x7F (Zero Page Wrap)
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);

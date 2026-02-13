@@ -24,7 +24,7 @@ TEST_F(LSR_AbsoluteX_Test, LSR_AbsoluteX) {
     mem.Write(0x4481, 0x02);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x4481], 0x01);
 }

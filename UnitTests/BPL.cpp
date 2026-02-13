@@ -24,7 +24,7 @@ TEST_F(BPL_Test, BPL_NoBranch_NegativeSet) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x1003);
 }
@@ -39,7 +39,7 @@ TEST_F(BPL_Test, BPL_Branch_NegativeClear) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x1008);
 }

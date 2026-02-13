@@ -44,7 +44,7 @@ TEST_F(RTS_Test, RTS_Implied) {
     mem.Write(0x01FF, 0x7F);
     mem.Write(0x8000, INS_JAM);  // Stop opcode at return address
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     // Expected PC:
     // RTS sets PC = 0x8000.

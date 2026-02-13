@@ -26,7 +26,7 @@ TEST_F(BCC_Test, BCC_NoBranch_CarrySet) {
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);  // Stop instruction
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
 }
@@ -51,7 +51,7 @@ TEST_F(BCC_Test, BCC_Branch_CarryClear) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x1008);
 }
@@ -67,7 +67,7 @@ TEST_F(BCC_Test, BCC_Branch_Backward) {
 
     mem.Write(0xFFFC, 0x10);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x100E);
 }

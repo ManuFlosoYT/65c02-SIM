@@ -20,7 +20,7 @@ TEST_F(CLC_Test, CLC_ClearsCarry) {
     mem.Write(0x4000, INS_CLC);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.C);
 }

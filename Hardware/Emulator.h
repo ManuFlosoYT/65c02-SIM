@@ -55,7 +55,7 @@ public:
 private:
     void ThreadLoop();
 
-    // Componentes
+    // Components
     Mem mem;
     CPU cpu;
     LCD lcd;
@@ -64,7 +64,7 @@ private:
     SID sid;
     VIA via;
 
-    // Buffer de entrada
+    // Input buffer
     std::deque<char> inputBuffer;
     std::mutex bufferMutex;
     int baudDelay = 0;

@@ -25,7 +25,7 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_NoCarry) {
     mem.Write(0x4000, INS_LSR_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x01);
     EXPECT_FALSE(cpu.C);
@@ -42,7 +42,7 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_CarryOut) {
     mem.Write(0x4000, INS_LSR_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.C);

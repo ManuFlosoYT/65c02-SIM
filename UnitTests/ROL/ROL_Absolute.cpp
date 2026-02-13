@@ -25,7 +25,7 @@ TEST_F(ROL_Absolute_Test, ROL_Absolute) {
     mem.Write(0x2080, 0x80);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x2080], 0x00);
     EXPECT_TRUE(cpu.C);

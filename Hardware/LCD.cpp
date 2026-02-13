@@ -4,63 +4,63 @@
 
 #include "Mem.h"
 
-void LCD::Inicializar(Mem& mem) {
-    // Reiniciar estado
-    modo_cuatro_bits = false;
-    esperando_nibble_bajo = false;
-    ultimo_portb = 0;
-    DATO_PORTB = 0;
-    DATO_DDRB = 0;
+void LCD::Init(Mem& mem) {
+    // Reset state
+    four_bit_mode = false;
+    waiting_low_nibble = false;
+    last_portb = 0;
+    PORTB_DATA = 0;
+    DDRB_DATA = 0;
 
     // Clear screen buffer
     std::memset(screen, ' ', sizeof(screen));
     cursorX = 0;
     cursorY = 0;
 
-    mem.SetWriteHook(DDRB, [this](Word addr, Byte val) { DATO_DDRB = val; });
+    mem.SetWriteHook(DDRB, [this](Word addr, Byte val) { DDRB_DATA = val; });
 }
 
 void LCD::Update(Byte val) {
-    Byte old_val = ultimo_portb;
-    ultimo_portb = val;
-    DATO_PORTB = val;
+    Byte old_val = last_portb;
+    last_portb = val;
+    PORTB_DATA = val;
 
-    // Detectar Flanco de Bajada de E (Bit 6, 0x40)
+    // Detect Falling Edge of E (Bit 6, 0x40)
     bool old_E = (old_val & 0x40) != 0;
     bool new_E = (val & 0x40) != 0;
 
     if (old_E && !new_E) {
-        // E pasó de Alto -> Bajo. Latchear Datos.
+        // E went High -> Low. Latch Data.
         Byte data_nibble = val & 0x0F;  // PB0-3 -> D4-D7
         bool rs = (val & 0x10) != 0;    // PB4 = RS
         bool rw = (val & 0x20) != 0;    // PB5 = RW
 
-        // Solo nos importan las Escrituras (RW=0)
+        // We only care about Writes (RW=0)
         if (rw) return;
 
-        if (!modo_cuatro_bits) {
-            // Detección de modo 8-bits
+        if (!four_bit_mode) {
+            // 8-bit mode detection
             if (!rs && data_nibble == 0x02) {
-                modo_cuatro_bits = true;
-                esperando_nibble_bajo = false;
+                four_bit_mode = true;
+                waiting_low_nibble = false;
             }
         } else {
-            // Modo 4-bits
-            if (!esperando_nibble_bajo) {
-                // Capturar Nibble Alto
-                nibble_alto_actual = data_nibble;
-                esperando_nibble_bajo = true;
+            // 4-bit mode
+            if (!waiting_low_nibble) {
+                // Capture High Nibble
+                current_high_nibble = data_nibble;
+                waiting_low_nibble = true;
             } else {
-                // Capturar Nibble Bajo y Ejecutar
+                // Capture Low Nibble and Execute
                 Byte low_nibble = data_nibble;
-                Byte full_byte = (nibble_alto_actual << 4) | low_nibble;
-                esperando_nibble_bajo = false;
+                Byte full_byte = (current_high_nibble << 4) | low_nibble;
+                waiting_low_nibble = false;
 
                 if (rs) {
-                    // Dato (Caracter)
+                    // Data (Character)
                     WriteCharToScreen((char)full_byte);
                 } else {
-                    // Comando
+                    // Command
                     HandleCommand(full_byte);
                 }
             }

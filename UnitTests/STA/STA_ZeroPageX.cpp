@@ -26,7 +26,7 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX) {
     // Target Zero Page Address = 0x80 + 0x0F = 0x8F
     mem.Write(0x008F, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(mem[0x008F], 0x37);
@@ -49,7 +49,7 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX_WrapAround) {
     // Target Address = (0x80 + 0xFF) & 0xFF = 0x7F
     mem.Write(0x007F, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(mem[0x007F], 0x22);

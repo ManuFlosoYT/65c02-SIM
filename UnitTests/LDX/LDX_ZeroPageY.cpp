@@ -25,7 +25,7 @@ TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY) {
     mem.Write(0x0046, 0x37);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(cpu.X, 0x37);
@@ -46,7 +46,7 @@ TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY_WrapAround) {
     mem.Write(0x007F, 0x37);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x37);
     EXPECT_EQ(cpu.PC, 0x4003);
@@ -64,7 +64,7 @@ TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY_ZeroFlag) {
     mem.Write(0x004C, 0x00);  // 0x42 + 0x0A
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -83,7 +83,7 @@ TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY_NegativeFlag) {
     mem.Write(0x004C, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x80);
     EXPECT_FALSE(cpu.Z);

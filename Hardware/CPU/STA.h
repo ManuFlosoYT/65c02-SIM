@@ -6,14 +6,14 @@
 
 class STA {
 public:
-    static void EjecutarZP(CPU& cpu, Mem& mem);
-    static void EjecutarZPX(CPU& cpu, Mem& mem);
-    static void EjecutarABS(CPU& cpu, Mem& mem);
-    static void EjecutarABSX(CPU& cpu, Mem& mem);
-    static void EjecutarABSY(CPU& cpu, Mem& mem);
-    static void EjecutarINDX(CPU& cpu, Mem& mem);
-    static void EjecutarINDY(CPU& cpu, Mem& mem);
-    static void EjecutarINDZP(CPU& cpu, Mem& mem);
+    static void ExecuteZP(CPU& cpu, Mem& mem);
+    static void ExecuteZPX(CPU& cpu, Mem& mem);
+    static void ExecuteABS(CPU& cpu, Mem& mem);
+    static void ExecuteABSX(CPU& cpu, Mem& mem);
+    static void ExecuteABSY(CPU& cpu, Mem& mem);
+    static void ExecuteINDX(CPU& cpu, Mem& mem);
+    static void ExecuteINDY(CPU& cpu, Mem& mem);
+    static void ExecuteINDZP(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_STA_H

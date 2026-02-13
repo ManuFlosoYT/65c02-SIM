@@ -21,7 +21,7 @@ TEST_F(INY_Test, INY) {
     mem.Write(0x4000, INS_INY);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x06);
     EXPECT_FALSE(cpu.Z);
@@ -37,7 +37,7 @@ TEST_F(INY_Test, INY_ZeroFlag) {
     mem.Write(0x4000, INS_INY);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -53,7 +53,7 @@ TEST_F(INY_Test, INY_NegativeFlag) {
     mem.Write(0x4000, INS_INY);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x80);
     EXPECT_FALSE(cpu.Z);

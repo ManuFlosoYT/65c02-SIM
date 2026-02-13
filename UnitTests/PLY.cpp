@@ -22,7 +22,7 @@ TEST_F(PLY_Test, PLY) {
     cpu.SP = 0x01FE;
     mem.Write(0x01FF, 0x42);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x42);
     EXPECT_EQ(cpu.SP, 0x01FF);
@@ -40,7 +40,7 @@ TEST_F(PLY_Test, PLY_ZeroFlag) {
     cpu.SP = 0x01FE;
     mem.Write(0x01FF, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -57,7 +57,7 @@ TEST_F(PLY_Test, PLY_NegativeFlag) {
     cpu.SP = 0x01FE;
     mem.Write(0x01FF, 0x80);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x80);
     EXPECT_FALSE(cpu.Z);

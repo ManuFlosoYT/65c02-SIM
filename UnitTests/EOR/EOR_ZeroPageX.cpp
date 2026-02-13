@@ -22,7 +22,7 @@ TEST_F(EOR_ZeroPageX_Test, EOR_ZeroPageX) {
     mem.Write(0x0047, 0x0F);  // 0x42 + 0x05 = 0x47. 0xFF ^ 0x0F = 0xF0
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xF0);
     EXPECT_FALSE(cpu.Z);

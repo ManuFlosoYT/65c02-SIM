@@ -23,7 +23,7 @@ TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_ExecutesCorrectly) {
     // Target: 0x20 + 0x04 = 0x24
     mem.Write(0x0024, 0xBB);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0024], 0x00);
     EXPECT_EQ(cpu.PC, 0x4003);
@@ -41,7 +41,7 @@ TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_Wrapping) {
     // Target: 0x80 + 0xFF = 0x17F -> 0x7F (Zero page wrap)
     mem.Write(0x007F, 0xCC);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x007F], 0x00);
     EXPECT_EQ(cpu.PC, 0x4003);

@@ -19,7 +19,7 @@ TEST_F(BRA_Test, BRA_PositiveOffset) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x1008);
 }
@@ -33,7 +33,7 @@ TEST_F(BRA_Test, BRA_NegativeOffset) {
 
     mem.Write(0xFFFC, 0x10);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x100E);
 }
@@ -48,7 +48,7 @@ TEST_F(BRA_Test, BRA_MaxPositiveOffset) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x20);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x2082);
 }
@@ -63,7 +63,7 @@ TEST_F(BRA_Test, BRA_MaxNegativeOffset) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x30);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x2F83);
 }

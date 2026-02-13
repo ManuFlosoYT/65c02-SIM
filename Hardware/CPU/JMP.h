@@ -6,9 +6,9 @@
 
 class JMP {
 public:
-    static void EjecutarABS(CPU& cpu, Mem& mem);
-    static void EjecutarIND(CPU& cpu, Mem& mem);
-    static void EjecutarABSX(CPU& cpu, Mem& mem);
+    static void ExecuteABS(CPU& cpu, Mem& mem);
+    static void ExecuteIND(CPU& cpu, Mem& mem);
+    static void ExecuteABSX(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_JMP_H

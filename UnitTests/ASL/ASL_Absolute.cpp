@@ -22,7 +22,7 @@ TEST_F(ASL_Absolute_Test, ASL_Absolute) {
     mem.Write(0x4480, 0x01);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x4480], 0x02);
 }

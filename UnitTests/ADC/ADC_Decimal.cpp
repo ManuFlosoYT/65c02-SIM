@@ -24,7 +24,7 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Simple) {
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x10);
     EXPECT_FALSE(cpu.C);
@@ -43,7 +43,7 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Carry) {
     mem.Write(0x4001, 0x51);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x01);
     EXPECT_TRUE(cpu.C);
@@ -62,7 +62,7 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_CarryIn) {
     mem.Write(0x4001, 0x01);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x11);  // 9 + 1 + 1 = 11 (BCD 11 is 0x11)
     EXPECT_FALSE(cpu.C);

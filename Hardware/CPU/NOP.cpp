@@ -1,5 +1,5 @@
 #include "NOP.h"
 
-void NOP::Ejecutar(CPU& cpu, Mem& mem) {
-    // NOP no hace nada
+void NOP::Execute(CPU& cpu, Mem& mem) {
+    // Bruh, you really thought NOP would do something lmao 😂😂😂😂
 }

@@ -28,7 +28,7 @@ TEST_F(TXS_Test, TXS) {
     // In this emu, SP is Word.
     // If the implementation follows standard 6502, SP should become 0x0180.
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.SP, 0x0180);
     // Flags not affected

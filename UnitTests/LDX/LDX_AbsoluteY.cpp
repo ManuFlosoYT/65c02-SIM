@@ -27,7 +27,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY) {
     mem.Write(0x8001, 0x37);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4004);
     EXPECT_EQ(cpu.X, 0x37);
@@ -50,7 +50,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_PageCrossing) {
     mem.Write(0x80FF, 0x37);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x37);
     EXPECT_FALSE(cpu.Z);
@@ -70,7 +70,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_ZeroFlag) {
     mem.Write(0x8001, 0x00);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -90,7 +90,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_NegativeFlag) {
     mem.Write(0x8001, 0x80);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x80);
     EXPECT_FALSE(cpu.Z);

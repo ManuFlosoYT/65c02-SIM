@@ -25,7 +25,7 @@ TEST_F(STX_Absolute_Test, STX_Absolute) {
 
     mem.Write(0x8000, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x8000], 0x37);
     EXPECT_EQ(cpu.X, 0x37);

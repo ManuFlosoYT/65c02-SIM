@@ -6,9 +6,9 @@
 
 class STY {
 public:
-    static void EjecutarZP(CPU& cpu, Mem& mem);
-    static void EjecutarZPX(CPU& cpu, Mem& mem);
-    static void EjecutarABS(CPU& cpu, Mem& mem);
+    static void ExecuteZP(CPU& cpu, Mem& mem);
+    static void ExecuteZPX(CPU& cpu, Mem& mem);
+    static void ExecuteABS(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_STY_H

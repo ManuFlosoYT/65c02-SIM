@@ -20,7 +20,7 @@ TEST_F(CLD_Test, CLD_ClearsDecimal) {
     mem.Write(0x4000, INS_CLD);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.D);
 }

@@ -71,18 +71,11 @@
 #include "CPU/TXS.h"
 #include "CPU/TYA.h"
 
-int CPU::Ejecutar(Mem& mem) { return Ejecutar(mem, true); }
-
-int CPU::Ejecutar(Mem& mem, bool ejecutar) {
-    if (!isInit) {
-        PC = LeerWord(0xFFFC, mem);  // Cargar PC del vector reset
-        isInit = true;
-    }
-    do {
+int CPU::Execute(Mem& mem) {
+    while (true) {
         int res = Step(mem);
-        if (res == 1) return 1;    // Stop/Jam
-        if (res == -1) return -1;  // Opcode no válido
-    } while (ejecutar);
+        if (res != 0) return res;
+    }
     return 0;
 }
 
@@ -93,23 +86,18 @@ void CPU::IRQ(Mem& mem) {
         B = 0;
         PushByte(GetStatus(), mem);
         I = 1;
-        D = 0;  // 65C02 limpia el flag Decimal en IRQ
-        PC = LeerWord(0xFFFE, mem);
+        D = 0;  // 65C02 clears Decimal flag in IRQ
+        PC = ReadWord(0xFFFE, mem);
     }
 }
 
 int CPU::Step(Mem& mem) {
     if (!isInit) {
-        PC = LeerWord(0xFFFC, mem);
+        PC = ReadWord(0xFFFC, mem);
         isInit = true;
     }
 
-    // Comprobar si hay IRQ pendiente de ACIA (si los interrupciones están
-    // habilitadas en CPU, Step lo analizaría si tuviéramos una línea, pero aquí
-    // lo inyectamos manualmente) Como no tenemos simulación de línea de
-    // hardware, volvemos a disparar si el estado está establecido
-
-    // Si estamos en espera (WAI), revisamos si hay interrupción pendiente
+    // Check interrupts
     if (waiting) {
         if ((mem.Read(ACIA_STATUS) & 0x80) != 0) {
             waiting = false;
@@ -118,6 +106,10 @@ int CPU::Step(Mem& mem) {
         }
     }
 
+    return Dispatch(mem);
+}
+
+int CPU::Dispatch(Mem& mem) {
     Byte opcode = FetchByte(mem);
     switch (opcode) {
         case INS_WAI: {
@@ -131,843 +123,843 @@ int CPU::Step(Mem& mem) {
             return 1;
         }
         case INS_BRA: {
-            BRA::Ejecutar(*this, mem);
+            BRA::Execute(*this, mem);
             break;
         }
         case INS_NOP: {
-            NOP::Ejecutar(*this, mem);
+            NOP::Execute(*this, mem);
             break;
         }
         case INS_LDA_IM: {
-            LDA::EjecutarInmediato(*this, mem);
+            LDA::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_LDA_ZP: {
-            LDA::EjecutarZP(*this, mem);
+            LDA::ExecuteZP(*this, mem);
             break;
         }
         case INS_LDA_ZPX: {
-            LDA::EjecutarZPX(*this, mem);
+            LDA::ExecuteZPX(*this, mem);
             break;
         }
         case INS_LDA_ABS: {
-            LDA::EjecutarABS(*this, mem);
+            LDA::ExecuteABS(*this, mem);
             break;
         }
         case INS_LDA_ABSX: {
-            LDA::EjecutarABSX(*this, mem);
+            LDA::ExecuteABSX(*this, mem);
             break;
         }
         case INS_LDA_ABSY: {
-            LDA::EjecutarABSY(*this, mem);
+            LDA::ExecuteABSY(*this, mem);
             break;
         }
         case INS_LDA_INDX: {
-            LDA::EjecutarINDX(*this, mem);
+            LDA::ExecuteINDX(*this, mem);
             break;
         }
         case INS_LDA_INDY: {
-            LDA::EjecutarINDY(*this, mem);
+            LDA::ExecuteINDY(*this, mem);
             break;
         }
         case INS_LDA_IND_ZP: {
-            LDA::EjecutarIND_ZP(*this, mem);
+            LDA::ExecuteIND_ZP(*this, mem);
             break;
         }
         case INS_JSR: {
-            JSR::Ejecutar(*this, mem);
+            JSR::Execute(*this, mem);
             break;
         }
         case INS_RTS: {
-            RTS::Ejecutar(*this, mem);
+            RTS::Execute(*this, mem);
             break;
         }
         case INS_LDX_IM: {
-            LDX::EjecutarInmediato(*this, mem);
+            LDX::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_LDX_ZP: {
-            LDX::EjecutarZP(*this, mem);
+            LDX::ExecuteZP(*this, mem);
             break;
         }
         case INS_LDX_ZPY: {
-            LDX::EjecutarZPY(*this, mem);
+            LDX::ExecuteZPY(*this, mem);
             break;
         }
         case INS_LDX_ABS: {
-            LDX::EjecutarABS(*this, mem);
+            LDX::ExecuteABS(*this, mem);
             break;
         }
         case INS_LDX_ABSY: {
-            LDX::EjecutarABSY(*this, mem);
+            LDX::ExecuteABSY(*this, mem);
             break;
         }
         case INS_LDY_IM: {
-            LDY::EjecutarInmediato(*this, mem);
+            LDY::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_LDY_ZP: {
-            LDY::EjecutarZP(*this, mem);
+            LDY::ExecuteZP(*this, mem);
             break;
         }
         case INS_LDY_ZPX: {
-            LDY::EjecutarZPX(*this, mem);
+            LDY::ExecuteZPX(*this, mem);
             break;
         }
         case INS_LDY_ABS: {
-            LDY::EjecutarABS(*this, mem);
+            LDY::ExecuteABS(*this, mem);
             break;
         }
         case INS_LDY_ABSX: {
-            LDY::EjecutarABSX(*this, mem);
+            LDY::ExecuteABSX(*this, mem);
             break;
         }
         case INS_JMP_ABS: {
-            JMP::EjecutarABS(*this, mem);
+            JMP::ExecuteABS(*this, mem);
             break;
         }
         case INS_JMP_IND: {
-            JMP::EjecutarIND(*this, mem);
+            JMP::ExecuteIND(*this, mem);
             break;
         }
         case INS_JMP_ABSX: {
-            JMP::EjecutarABSX(*this, mem);
+            JMP::ExecuteABSX(*this, mem);
             break;
         }
         case INS_STA_ZP: {
-            STA::EjecutarZP(*this, mem);
+            STA::ExecuteZP(*this, mem);
             break;
         }
         case INS_STA_ZPX: {
-            STA::EjecutarZPX(*this, mem);
+            STA::ExecuteZPX(*this, mem);
             break;
         }
         case INS_STA_ABS: {
-            STA::EjecutarABS(*this, mem);
+            STA::ExecuteABS(*this, mem);
             break;
         }
         case INS_STA_ABSX: {
-            STA::EjecutarABSX(*this, mem);
+            STA::ExecuteABSX(*this, mem);
             break;
         }
         case INS_STA_ABSY: {
-            STA::EjecutarABSY(*this, mem);
+            STA::ExecuteABSY(*this, mem);
             break;
         }
         case INS_STA_INDX: {
-            STA::EjecutarINDX(*this, mem);
+            STA::ExecuteINDX(*this, mem);
             break;
         }
         case INS_STA_INDY: {
-            STA::EjecutarINDY(*this, mem);
+            STA::ExecuteINDY(*this, mem);
             break;
         }
         case INS_STA_IND_ZP: {
-            STA::EjecutarINDZP(*this, mem);
+            STA::ExecuteINDZP(*this, mem);
             break;
         }
         case INS_STX_ZP: {
-            STX::EjecutarZP(*this, mem);
+            STX::ExecuteZP(*this, mem);
             break;
         }
         case INS_STX_ZPY: {
-            STX::EjecutarZPY(*this, mem);
+            STX::ExecuteZPY(*this, mem);
             break;
         }
         case INS_STX_ABS: {
-            STX::EjecutarABS(*this, mem);
+            STX::ExecuteABS(*this, mem);
             break;
         }
         case INS_STY_ZP: {
-            STY::EjecutarZP(*this, mem);
+            STY::ExecuteZP(*this, mem);
             break;
         }
         case INS_STY_ZPX: {
-            STY::EjecutarZPX(*this, mem);
+            STY::ExecuteZPX(*this, mem);
             break;
         }
         case INS_STY_ABS: {
-            STY::EjecutarABS(*this, mem);
+            STY::ExecuteABS(*this, mem);
             break;
         }
         case INS_STZ_ZP: {
-            STZ::EjecutarZP(*this, mem);
+            STZ::ExecuteZP(*this, mem);
             break;
         }
         case INS_STZ_ZPX: {
-            STZ::EjecutarZPX(*this, mem);
+            STZ::ExecuteZPX(*this, mem);
             break;
         }
         case INS_STZ_ABS: {
-            STZ::EjecutarABS(*this, mem);
+            STZ::ExecuteABS(*this, mem);
             break;
         }
         case INS_STZ_ABSX: {
-            STZ::EjecutarABSX(*this, mem);
+            STZ::ExecuteABSX(*this, mem);
             break;
         }
         case INS_TSX: {
-            TSX::Ejecutar(*this, mem);
+            TSX::Execute(*this, mem);
             break;
         }
         case INS_TXS: {
-            TXS::Ejecutar(*this, mem);
+            TXS::Execute(*this, mem);
             break;
         }
         case INS_PHA: {
-            PHA::Ejecutar(*this, mem);
+            PHA::Execute(*this, mem);
             break;
         }
         case INS_PHP: {
-            PHP::Ejecutar(*this, mem);
+            PHP::Execute(*this, mem);
             break;
         }
         case INS_PHX: {
-            PHX::Ejecutar(*this, mem);
+            PHX::Execute(*this, mem);
             break;
         }
         case INS_PHY: {
-            PHY::Ejecutar(*this, mem);
+            PHY::Execute(*this, mem);
             break;
         }
         case INS_PLA: {
-            PLA::Ejecutar(*this, mem);
+            PLA::Execute(*this, mem);
             break;
         }
         case INS_PLP: {
-            PLP::Ejecutar(*this, mem);
+            PLP::Execute(*this, mem);
             break;
         }
         case INS_PLX: {
-            PLX::Ejecutar(*this, mem);
+            PLX::Execute(*this, mem);
             break;
         }
         case INS_PLY: {
-            PLY::Ejecutar(*this, mem);
+            PLY::Execute(*this, mem);
             break;
         }
         case INS_TAX: {
-            TAX::Ejecutar(*this, mem);
+            TAX::Execute(*this, mem);
             break;
         }
         case INS_TXA: {
-            TXA::Ejecutar(*this, mem);
+            TXA::Execute(*this, mem);
             break;
         }
         case INS_TAY: {
-            TAY::Ejecutar(*this, mem);
+            TAY::Execute(*this, mem);
             break;
         }
         case INS_TYA: {
-            TYA::Ejecutar(*this, mem);
+            TYA::Execute(*this, mem);
             break;
         }
         case INS_AND_IM: {
-            AND::EjecutarInmediato(*this, mem);
+            AND::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_AND_ZP: {
-            AND::EjecutarZP(*this, mem);
+            AND::ExecuteZP(*this, mem);
             break;
         }
         case INS_AND_ZPX: {
-            AND::EjecutarZPX(*this, mem);
+            AND::ExecuteZPX(*this, mem);
             break;
         }
         case INS_AND_ABS: {
-            AND::EjecutarABS(*this, mem);
+            AND::ExecuteABS(*this, mem);
             break;
         }
         case INS_AND_ABSX: {
-            AND::EjecutarABSX(*this, mem);
+            AND::ExecuteABSX(*this, mem);
             break;
         }
         case INS_AND_ABSY: {
-            AND::EjecutarABSY(*this, mem);
+            AND::ExecuteABSY(*this, mem);
             break;
         }
         case INS_AND_INDX: {
-            AND::EjecutarINDX(*this, mem);
+            AND::ExecuteINDX(*this, mem);
             break;
         }
         case INS_AND_INDY: {
-            AND::EjecutarINDY(*this, mem);
+            AND::ExecuteINDY(*this, mem);
             break;
         }
         case INS_AND_IND_ZP: {
-            AND::EjecutarIND_ZP(*this, mem);
+            AND::ExecuteIND_ZP(*this, mem);
             break;
         }
         case INS_EOR_IM: {
-            EOR::EjecutarInmediato(*this, mem);
+            EOR::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_EOR_ZP: {
-            EOR::EjecutarZP(*this, mem);
+            EOR::ExecuteZP(*this, mem);
             break;
         }
         case INS_EOR_ZPX: {
-            EOR::EjecutarZPX(*this, mem);
+            EOR::ExecuteZPX(*this, mem);
             break;
         }
         case INS_EOR_ABS: {
-            EOR::EjecutarABS(*this, mem);
+            EOR::ExecuteABS(*this, mem);
             break;
         }
         case INS_EOR_ABSX: {
-            EOR::EjecutarABSX(*this, mem);
+            EOR::ExecuteABSX(*this, mem);
             break;
         }
         case INS_EOR_ABSY: {
-            EOR::EjecutarABSY(*this, mem);
+            EOR::ExecuteABSY(*this, mem);
             break;
         }
         case INS_EOR_INDX: {
-            EOR::EjecutarINDX(*this, mem);
+            EOR::ExecuteINDX(*this, mem);
             break;
         }
         case INS_EOR_INDY: {
-            EOR::EjecutarINDY(*this, mem);
+            EOR::ExecuteINDY(*this, mem);
             break;
         }
         case INS_EOR_IND_ZP: {
-            EOR::EjecutarIND_ZP(*this, mem);
+            EOR::ExecuteIND_ZP(*this, mem);
             break;
         }
         case INS_ORA_IM: {
-            ORA::EjecutarInmediato(*this, mem);
+            ORA::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_ORA_ZP: {
-            ORA::EjecutarZP(*this, mem);
+            ORA::ExecuteZP(*this, mem);
             break;
         }
         case INS_ORA_ZPX: {
-            ORA::EjecutarZPX(*this, mem);
+            ORA::ExecuteZPX(*this, mem);
             break;
         }
         case INS_ORA_ABS: {
-            ORA::EjecutarABS(*this, mem);
+            ORA::ExecuteABS(*this, mem);
             break;
         }
         case INS_ORA_ABSX: {
-            ORA::EjecutarABSX(*this, mem);
+            ORA::ExecuteABSX(*this, mem);
             break;
         }
         case INS_ORA_ABSY: {
-            ORA::EjecutarABSY(*this, mem);
+            ORA::ExecuteABSY(*this, mem);
             break;
         }
         case INS_ORA_INDX: {
-            ORA::EjecutarINDX(*this, mem);
+            ORA::ExecuteINDX(*this, mem);
             break;
         }
         case INS_ORA_INDY: {
-            ORA::EjecutarINDY(*this, mem);
+            ORA::ExecuteINDY(*this, mem);
             break;
         }
         case INS_ORA_IND_ZP: {
-            ORA::EjecutarIND_ZP(*this, mem);
+            ORA::ExecuteIND_ZP(*this, mem);
             break;
         }
         case INS_BIT_IM: {
-            BIT::EjecutarInmediato(*this, mem);
+            BIT::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_BIT_ZP: {
-            BIT::EjecutarZP(*this, mem);
+            BIT::ExecuteZP(*this, mem);
             break;
         }
         case INS_BIT_ZPX: {
-            BIT::EjecutarZPX(*this, mem);
+            BIT::ExecuteZPX(*this, mem);
             break;
         }
         case INS_BIT_ABS: {
-            BIT::EjecutarABS(*this, mem);
+            BIT::ExecuteABS(*this, mem);
             break;
         }
         case INS_BIT_ABSX: {
-            BIT::EjecutarABSX(*this, mem);
+            BIT::ExecuteABSX(*this, mem);
             break;
         }
         case INS_DEX: {
-            DEX::Ejecutar(*this, mem);
+            DEX::Execute(*this, mem);
             break;
         }
         case INS_DEY: {
-            DEY::Ejecutar(*this, mem);
+            DEY::Execute(*this, mem);
             break;
         }
         case INS_INX: {
-            INX::Ejecutar(*this, mem);
+            INX::Execute(*this, mem);
             break;
         }
         case INS_INY: {
-            INY::Ejecutar(*this, mem);
+            INY::Execute(*this, mem);
             break;
         }
         case INS_INC_A: {
-            INC::EjecutarAcumulador(*this, mem);
+            INC::ExecuteAccumulator(*this, mem);
             break;
         }
         case INS_INC_ZP: {
-            INC::EjecutarZP(*this, mem);
+            INC::ExecuteZP(*this, mem);
             break;
         }
         case INS_INC_ZPX: {
-            INC::EjecutarZPX(*this, mem);
+            INC::ExecuteZPX(*this, mem);
             break;
         }
         case INS_INC_ABS: {
-            INC::EjecutarABS(*this, mem);
+            INC::ExecuteABS(*this, mem);
             break;
         }
         case INS_INC_ABSX: {
-            INC::EjecutarABSX(*this, mem);
+            INC::ExecuteABSX(*this, mem);
             break;
         }
         case INS_DEC_A: {
-            DEC::EjecutarAcumulador(*this, mem);
+            DEC::ExecuteAccumulator(*this, mem);
             break;
         }
         case INS_DEC_ZP: {
-            DEC::EjecutarZP(*this, mem);
+            DEC::ExecuteZP(*this, mem);
             break;
         }
         case INS_DEC_ZPX: {
-            DEC::EjecutarZPX(*this, mem);
+            DEC::ExecuteZPX(*this, mem);
             break;
         }
         case INS_DEC_ABS: {
-            DEC::EjecutarABS(*this, mem);
+            DEC::ExecuteABS(*this, mem);
             break;
         }
         case INS_DEC_ABSX: {
-            DEC::EjecutarABSX(*this, mem);
+            DEC::ExecuteABSX(*this, mem);
             break;
         }
         case INS_ADC_IM: {
-            ADC::EjecutarInmediato(*this, mem);
+            ADC::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_ADC_ZP: {
-            ADC::EjecutarZP(*this, mem);
+            ADC::ExecuteZP(*this, mem);
             break;
         }
         case INS_ADC_ZPX: {
-            ADC::EjecutarZPX(*this, mem);
+            ADC::ExecuteZPX(*this, mem);
             break;
         }
         case INS_ADC_ABS: {
-            ADC::EjecutarABS(*this, mem);
+            ADC::ExecuteABS(*this, mem);
             break;
         }
         case INS_ADC_ABSX: {
-            ADC::EjecutarABSX(*this, mem);
+            ADC::ExecuteABSX(*this, mem);
             break;
         }
         case INS_ADC_ABSY: {
-            ADC::EjecutarABSY(*this, mem);
+            ADC::ExecuteABSY(*this, mem);
             break;
         }
         case INS_ADC_INDX: {
-            ADC::EjecutarINDX(*this, mem);
+            ADC::ExecuteINDX(*this, mem);
             break;
         }
         case INS_ADC_INDY: {
-            ADC::EjecutarINDY(*this, mem);
+            ADC::ExecuteINDY(*this, mem);
             break;
         }
         case INS_ADC_IND_ZP: {
-            ADC::EjecutarIND_ZP(*this, mem);
+            ADC::ExecuteIND_ZP(*this, mem);
             break;
         }
         case INS_SBC_IM: {
-            SBC::EjecutarInmediato(*this, mem);
+            SBC::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_SBC_ZP: {
-            SBC::EjecutarZP(*this, mem);
+            SBC::ExecuteZP(*this, mem);
             break;
         }
         case INS_SBC_ZPX: {
-            SBC::EjecutarZPX(*this, mem);
+            SBC::ExecuteZPX(*this, mem);
             break;
         }
         case INS_SBC_ABS: {
-            SBC::EjecutarABS(*this, mem);
+            SBC::ExecuteABS(*this, mem);
             break;
         }
         case INS_SBC_ABSX: {
-            SBC::EjecutarABSX(*this, mem);
+            SBC::ExecuteABSX(*this, mem);
             break;
         }
         case INS_SBC_ABSY: {
-            SBC::EjecutarABSY(*this, mem);
+            SBC::ExecuteABSY(*this, mem);
             break;
         }
         case INS_SBC_INDX: {
-            SBC::EjecutarINDX(*this, mem);
+            SBC::ExecuteINDX(*this, mem);
             break;
         }
         case INS_SBC_INDY: {
-            SBC::EjecutarINDY(*this, mem);
+            SBC::ExecuteINDY(*this, mem);
             break;
         }
         case INS_SBC_IND_ZP: {
-            SBC::EjecutarIND_ZP(*this, mem);
+            SBC::ExecuteIND_ZP(*this, mem);
             break;
         }
         case INS_CMP_IM: {
-            CMP::EjecutarInmediato(*this, mem);
+            CMP::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_CMP_ZP: {
-            CMP::EjecutarZP(*this, mem);
+            CMP::ExecuteZP(*this, mem);
             break;
         }
         case INS_CMP_ZPX: {
-            CMP::EjecutarZPX(*this, mem);
+            CMP::ExecuteZPX(*this, mem);
             break;
         }
         case INS_CMP_ABS: {
-            CMP::EjecutarABS(*this, mem);
+            CMP::ExecuteABS(*this, mem);
             break;
         }
         case INS_CMP_ABSX: {
-            CMP::EjecutarABSX(*this, mem);
+            CMP::ExecuteABSX(*this, mem);
             break;
         }
         case INS_CMP_ABSY: {
-            CMP::EjecutarABSY(*this, mem);
+            CMP::ExecuteABSY(*this, mem);
             break;
         }
         case INS_CMP_INDX: {
-            CMP::EjecutarINDX(*this, mem);
+            CMP::ExecuteINDX(*this, mem);
             break;
         }
         case INS_CMP_INDY: {
-            CMP::EjecutarINDY(*this, mem);
+            CMP::ExecuteINDY(*this, mem);
             break;
         }
         case INS_CMP_IND_ZP: {
-            CMP::EjecutarIND_ZP(*this, mem);
+            CMP::ExecuteIND_ZP(*this, mem);
             break;
         }
         case INS_CPX_IM: {
-            CPX::EjecutarInmediato(*this, mem);
+            CPX::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_CPX_ZP: {
-            CPX::EjecutarZP(*this, mem);
+            CPX::ExecuteZP(*this, mem);
             break;
         }
         case INS_CPX_ABS: {
-            CPX::EjecutarABS(*this, mem);
+            CPX::ExecuteABS(*this, mem);
             break;
         }
         case INS_CPY_IM: {
-            CPY::EjecutarInmediato(*this, mem);
+            CPY::ExecuteImmediate(*this, mem);
             break;
         }
         case INS_CPY_ZP: {
-            CPY::EjecutarZP(*this, mem);
+            CPY::ExecuteZP(*this, mem);
             break;
         }
         case INS_CPY_ABS: {
-            CPY::EjecutarABS(*this, mem);
+            CPY::ExecuteABS(*this, mem);
             break;
         }
         case INS_ASL_A: {
-            ASL::EjecutarAcumulador(*this, mem);
+            ASL::ExecuteAccumulator(*this, mem);
             break;
         }
         case INS_ASL_ZP: {
-            ASL::EjecutarZP(*this, mem);
+            ASL::ExecuteZP(*this, mem);
             break;
         }
         case INS_ASL_ZPX: {
-            ASL::EjecutarZPX(*this, mem);
+            ASL::ExecuteZPX(*this, mem);
             break;
         }
         case INS_ASL_ABS: {
-            ASL::EjecutarABS(*this, mem);
+            ASL::ExecuteABS(*this, mem);
             break;
         }
         case INS_ASL_ABSX: {
-            ASL::EjecutarABSX(*this, mem);
+            ASL::ExecuteABSX(*this, mem);
             break;
         }
         case INS_LSR_A: {
-            LSR::EjecutarAcumulador(*this, mem);
+            LSR::ExecuteAccumulator(*this, mem);
             break;
         }
         case INS_LSR_ZP: {
-            LSR::EjecutarZP(*this, mem);
+            LSR::ExecuteZP(*this, mem);
             break;
         }
         case INS_LSR_ZPX: {
-            LSR::EjecutarZPX(*this, mem);
+            LSR::ExecuteZPX(*this, mem);
             break;
         }
         case INS_LSR_ABS: {
-            LSR::EjecutarABS(*this, mem);
+            LSR::ExecuteABS(*this, mem);
             break;
         }
         case INS_LSR_ABSX: {
-            LSR::EjecutarABSX(*this, mem);
+            LSR::ExecuteABSX(*this, mem);
             break;
         }
         case INS_ROL_A: {
-            ROL::EjecutarAcumulador(*this, mem);
+            ROL::ExecuteAccumulator(*this, mem);
             break;
         }
         case INS_ROL_ZP: {
-            ROL::EjecutarZP(*this, mem);
+            ROL::ExecuteZP(*this, mem);
             break;
         }
         case INS_ROL_ZPX: {
-            ROL::EjecutarZPX(*this, mem);
+            ROL::ExecuteZPX(*this, mem);
             break;
         }
         case INS_ROL_ABS: {
-            ROL::EjecutarABS(*this, mem);
+            ROL::ExecuteABS(*this, mem);
             break;
         }
         case INS_ROL_ABSX: {
-            ROL::EjecutarABSX(*this, mem);
+            ROL::ExecuteABSX(*this, mem);
             break;
         }
         case INS_ROR_A: {
-            ROR::EjecutarAcumulador(*this, mem);
+            ROR::ExecuteAccumulator(*this, mem);
             break;
         }
         case INS_ROR_ZP: {
-            ROR::EjecutarZP(*this, mem);
+            ROR::ExecuteZP(*this, mem);
             break;
         }
         case INS_ROR_ZPX: {
-            ROR::EjecutarZPX(*this, mem);
+            ROR::ExecuteZPX(*this, mem);
             break;
         }
         case INS_ROR_ABS: {
-            ROR::EjecutarABS(*this, mem);
+            ROR::ExecuteABS(*this, mem);
             break;
         }
         case INS_ROR_ABSX: {
-            ROR::EjecutarABSX(*this, mem);
+            ROR::ExecuteABSX(*this, mem);
             break;
         }
         case INS_BCC: {
-            BCC::Ejecutar(*this, mem);
+            BCC::Execute(*this, mem);
             break;
         }
         case INS_BRK: {
-            BRK::Ejecutar(*this, mem);
+            BRK::Execute(*this, mem);
             break;
         }
         case INS_BCS: {
-            BCS::Ejecutar(*this, mem);
+            BCS::Execute(*this, mem);
             break;
         }
         case INS_BNE: {
-            BNE::Ejecutar(*this, mem);
+            BNE::Execute(*this, mem);
             break;
         }
         case INS_BEQ: {
-            BEQ::Ejecutar(*this, mem);
+            BEQ::Execute(*this, mem);
             break;
         }
         case INS_BMI: {
-            BMI::Ejecutar(*this, mem);
+            BMI::Execute(*this, mem);
             break;
         }
         case INS_BPL: {
-            BPL::Ejecutar(*this, mem);
+            BPL::Execute(*this, mem);
             break;
         }
         case INS_BVS: {
-            BVS::Ejecutar(*this, mem);
+            BVS::Execute(*this, mem);
             break;
         }
         case INS_BVC: {
-            BVC::Ejecutar(*this, mem);
+            BVC::Execute(*this, mem);
             break;
         }
         case INS_CLC: {
-            CLC::Ejecutar(*this, mem);
+            CLC::Execute(*this, mem);
             break;
         }
         case INS_CLI: {
-            CLI::Ejecutar(*this, mem);
+            CLI::Execute(*this, mem);
             break;
         }
         case INS_CLD: {
-            CLD::Ejecutar(*this, mem);
+            CLD::Execute(*this, mem);
             break;
         }
         case INS_SEC: {
-            SEC::Ejecutar(*this, mem);
+            SEC::Execute(*this, mem);
             break;
         }
         case INS_SEI: {
-            SEI::Ejecutar(*this, mem);
+            SEI::Execute(*this, mem);
             break;
         }
         case INS_SED: {
-            SED::Ejecutar(*this, mem);
+            SED::Execute(*this, mem);
             break;
         }
         case INS_CLV: {
-            CLV::Ejecutar(*this, mem);
+            CLV::Execute(*this, mem);
             break;
         }
         case INS_RTI: {
-            RTI::Ejecutar(*this, mem);
+            RTI::Execute(*this, mem);
             break;
         }
         case INS_RMB0: {
-            RMB::Ejecutar0(*this, mem);
+            RMB::Execute0(*this, mem);
             break;
         }
         case INS_RMB1: {
-            RMB::Ejecutar1(*this, mem);
+            RMB::Execute1(*this, mem);
             break;
         }
         case INS_RMB2: {
-            RMB::Ejecutar2(*this, mem);
+            RMB::Execute2(*this, mem);
             break;
         }
         case INS_RMB3: {
-            RMB::Ejecutar3(*this, mem);
+            RMB::Execute3(*this, mem);
             break;
         }
         case INS_RMB4: {
-            RMB::Ejecutar4(*this, mem);
+            RMB::Execute4(*this, mem);
             break;
         }
         case INS_RMB5: {
-            RMB::Ejecutar5(*this, mem);
+            RMB::Execute5(*this, mem);
             break;
         }
         case INS_RMB6: {
-            RMB::Ejecutar6(*this, mem);
+            RMB::Execute6(*this, mem);
             break;
         }
         case INS_RMB7: {
-            RMB::Ejecutar7(*this, mem);
+            RMB::Execute7(*this, mem);
             break;
         }
         case INS_SMB0: {
-            SMB::Ejecutar0(*this, mem);
+            SMB::Execute0(*this, mem);
             break;
         }
         case INS_SMB1: {
-            SMB::Ejecutar1(*this, mem);
+            SMB::Execute1(*this, mem);
             break;
         }
         case INS_SMB2: {
-            SMB::Ejecutar2(*this, mem);
+            SMB::Execute2(*this, mem);
             break;
         }
         case INS_SMB3: {
-            SMB::Ejecutar3(*this, mem);
+            SMB::Execute3(*this, mem);
             break;
         }
         case INS_SMB4: {
-            SMB::Ejecutar4(*this, mem);
+            SMB::Execute4(*this, mem);
             break;
         }
         case INS_SMB5: {
-            SMB::Ejecutar5(*this, mem);
+            SMB::Execute5(*this, mem);
             break;
         }
         case INS_SMB6: {
-            SMB::Ejecutar6(*this, mem);
+            SMB::Execute6(*this, mem);
             break;
         }
         case INS_SMB7: {
-            SMB::Ejecutar7(*this, mem);
+            SMB::Execute7(*this, mem);
             break;
         }
         case INS_BBR0: {
-            BBR::Ejecutar0(*this, mem);
+            BBR::Execute0(*this, mem);
             break;
         }
         case INS_BBR1: {
-            BBR::Ejecutar1(*this, mem);
+            BBR::Execute1(*this, mem);
             break;
         }
         case INS_BBR2: {
-            BBR::Ejecutar2(*this, mem);
+            BBR::Execute2(*this, mem);
             break;
         }
         case INS_BBR3: {
-            BBR::Ejecutar3(*this, mem);
+            BBR::Execute3(*this, mem);
             break;
         }
         case INS_BBR4: {
-            BBR::Ejecutar4(*this, mem);
+            BBR::Execute4(*this, mem);
             break;
         }
         case INS_BBR5: {
-            BBR::Ejecutar5(*this, mem);
+            BBR::Execute5(*this, mem);
             break;
         }
         case INS_BBR6: {
-            BBR::Ejecutar6(*this, mem);
+            BBR::Execute6(*this, mem);
             break;
         }
         case INS_BBR7: {
-            BBR::Ejecutar7(*this, mem);
+            BBR::Execute7(*this, mem);
             break;
         }
         case INS_BBS0: {
-            BBS::Ejecutar0(*this, mem);
+            BBS::Execute0(*this, mem);
             break;
         }
         case INS_BBS1: {
-            BBS::Ejecutar1(*this, mem);
+            BBS::Execute1(*this, mem);
             break;
         }
         case INS_BBS2: {
-            BBS::Ejecutar2(*this, mem);
+            BBS::Execute2(*this, mem);
             break;
         }
         case INS_BBS3: {
-            BBS::Ejecutar3(*this, mem);
+            BBS::Execute3(*this, mem);
             break;
         }
         case INS_BBS4: {
-            BBS::Ejecutar4(*this, mem);
+            BBS::Execute4(*this, mem);
             break;
         }
         case INS_BBS5: {
-            BBS::Ejecutar5(*this, mem);
+            BBS::Execute5(*this, mem);
             break;
         }
         case INS_BBS6: {
-            BBS::Ejecutar6(*this, mem);
+            BBS::Execute6(*this, mem);
             break;
         }
         case INS_BBS7: {
-            BBS::Ejecutar7(*this, mem);
+            BBS::Execute7(*this, mem);
             break;
         }
         case INS_TRB_ZP: {
-            TRB::EjecutarZP(*this, mem);
+            TRB::ExecuteZP(*this, mem);
             break;
         }
         case INS_TRB_ABS: {
-            TRB::EjecutarABS(*this, mem);
+            TRB::ExecuteABS(*this, mem);
             break;
         }
         case INS_TSB_ZP: {
-            TSB::EjecutarZP(*this, mem);
+            TSB::ExecuteZP(*this, mem);
             break;
         }
         case INS_TSB_ABS: {
-            TSB::EjecutarABS(*this, mem);
+            TSB::ExecuteABS(*this, mem);
             break;
         }
         default:
@@ -1011,7 +1003,7 @@ void CPU::Reset(Mem& mem) {
     X = 0;
     Y = 0;
 
-    // Reset de flags
+    // Reset flags
     C = 0;
     Z = 0;
     I = 0;
@@ -1035,11 +1027,11 @@ const Word CPU::FetchWord(const Mem& mem) {
     return dato;
 }
 
-const Byte CPU::LeerByte(const Word dir, Mem& mem) { return mem.Read(dir); }
+const Byte CPU::ReadByte(const Word addr, Mem& mem) { return mem.Read(addr); }
 
-const Word CPU::LeerWord(const Word dir, Mem& mem) {
-    Word dato = mem.Read(dir);
-    dato |= (mem.Read(dir + 1) << 8);
+const Word CPU::ReadWord(const Word addr, Mem& mem) {
+    Word dato = mem.Read(addr);
+    dato |= (mem.Read(addr + 1) << 8);
     return dato;
 }
 

@@ -41,7 +41,7 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY) {
     //    Lee valor (0x37) en 0x4482
     //    Carga 0x37 en A
     //    Opcode desconocido -> Retorna
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4004);
     EXPECT_EQ(cpu.A, 0x37);
@@ -61,7 +61,7 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY_ZeroFlag) {
     mem.Write(0x4482, 0x00);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -80,7 +80,7 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY_NegativeFlag) {
     mem.Write(0x4482, 0x90);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x90);
     EXPECT_FALSE(cpu.Z);

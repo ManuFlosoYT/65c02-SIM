@@ -24,7 +24,7 @@ TEST_F(LSR_ZeroPageX_Test, LSR_ZeroPageX) {
     mem.Write(0x0044, 0x02);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0044], 0x01);
 }

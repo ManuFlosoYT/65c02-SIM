@@ -29,7 +29,7 @@ TEST_F(ROR_Accumulator_Test, ROR_Accumulator_Rotate) {
     mem.Write(0x4000, INS_ROR_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.C);
@@ -49,7 +49,7 @@ TEST_F(ROR_Accumulator_Test, ROR_Accumulator_NoCarryOut) {
     mem.Write(0x4000, INS_ROR_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x81);
     EXPECT_FALSE(cpu.C);

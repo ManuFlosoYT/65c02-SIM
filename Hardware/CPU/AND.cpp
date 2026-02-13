@@ -5,93 +5,93 @@ static void SetFlags(CPU& cpu) {
     cpu.N = (cpu.A & 0b10000000) > 0;
 }
 
-void AND::EjecutarInmediato(CPU& cpu, Mem& mem) {
+void AND::ExecuteImmediate(CPU& cpu, Mem& mem) {
     Byte dato = cpu.FetchByte(mem);
     cpu.A = dato & cpu.A;
 
     SetFlags(cpu);
 }
 
-void AND::EjecutarZP(CPU& cpu, Mem& mem) {
+void AND::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
-    cpu.A = cpu.LeerByte(ZP_Dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(ZP_Dir, mem) & cpu.A;
     SetFlags(cpu);
 }
 
-void AND::EjecutarZPX(CPU& cpu, Mem& mem) {
+void AND::ExecuteZPX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
 
-    cpu.A = cpu.LeerByte(ZP_Dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(ZP_Dir, mem) & cpu.A;
     SetFlags(cpu);
 }
 
-void AND::EjecutarABS(CPU& cpu, Mem& mem) {
+void AND::ExecuteABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
 
-    cpu.A = cpu.LeerByte(Dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) & cpu.A;
     SetFlags(cpu);
 }
 
-void AND::EjecutarABSX(CPU& cpu, Mem& mem) {
+void AND::ExecuteABSX(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.X;
 
-    cpu.A = cpu.LeerByte(Dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) & cpu.A;
     SetFlags(cpu);
 }
 
-void AND::EjecutarABSY(CPU& cpu, Mem& mem) {
+void AND::ExecuteABSY(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.Y;
 
-    cpu.A = cpu.LeerByte(Dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) & cpu.A;
     SetFlags(cpu);
 }
 
-void AND::EjecutarINDX(CPU& cpu, Mem& mem) {
+void AND::ExecuteINDX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
 
-    Word Dir = cpu.LeerWord(ZP_Dir, mem);
+    Word Dir = cpu.ReadWord(ZP_Dir, mem);
 
-    cpu.A = cpu.LeerByte(Dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(Dir, mem) & cpu.A;
     SetFlags(cpu);
 }
 
-void AND::EjecutarINDY(CPU& cpu, Mem& mem) {
+void AND::ExecuteINDY(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
     Word dir;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.LeerWord(ZP_Dir, mem);
+        dir = cpu.ReadWord(ZP_Dir, mem);
     } else {
-        Byte low = cpu.LeerByte(0xFF, mem);
-        Byte high = cpu.LeerByte(0x00, mem);
+        Byte low = cpu.ReadByte(0xFF, mem);
+        Byte high = cpu.ReadByte(0x00, mem);
         dir = (high << 8) | low;
     }
 
     dir += cpu.Y;
 
-    cpu.A = cpu.LeerByte(dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(dir, mem) & cpu.A;
     SetFlags(cpu);
 }
 
-void AND::EjecutarIND_ZP(CPU& cpu, Mem& mem) {
+void AND::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
     Word dir;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.LeerWord(ZP_Dir, mem);
+        dir = cpu.ReadWord(ZP_Dir, mem);
     } else {
-        Byte low = cpu.LeerByte(0xFF, mem);
-        Byte high = cpu.LeerByte(0x00, mem);
+        Byte low = cpu.ReadByte(0xFF, mem);
+        Byte high = cpu.ReadByte(0x00, mem);
         dir = (high << 8) | low;
     }
 
-    cpu.A = cpu.LeerByte(dir, mem) & cpu.A;
+    cpu.A = cpu.ReadByte(dir, mem) & cpu.A;
     SetFlags(cpu);
 }

@@ -23,7 +23,7 @@ TEST_F(EOR_AbsoluteY_Test, EOR_AbsoluteY) {
     mem.Write(0x4481, 0x0F);  // 0x4480 + 0x01. 0xFF ^ 0x0F = 0xF0
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xF0);
     EXPECT_FALSE(cpu.Z);

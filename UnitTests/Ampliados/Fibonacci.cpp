@@ -76,13 +76,13 @@ TEST_F(Ampliados_Fibonacci, Serie_Fibonacci) {
     // Stop
     mem.Write(PC++, INS_JAM);
 
-    // Ejecutar
+    // Execute
     cpu.PC = CODE_START;
     cpu.isInit = true;  // Prevenir Reset
     // Para evitar loops infinitos si falla BNE, ponemos limite de ciclos
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     // Verificaciones
     Byte expected[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};

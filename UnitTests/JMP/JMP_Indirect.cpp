@@ -31,7 +31,7 @@ TEST_F(JMP_Indirect_Test, JMP_Indirect) {
 
     mem.Write(0x9000, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x9001);
 }

@@ -24,7 +24,7 @@ TEST_F(CMP_AbsoluteX_Test, CMP_AbsoluteX) {
     mem.Write(0x4481, 0x05);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_TRUE(cpu.C);

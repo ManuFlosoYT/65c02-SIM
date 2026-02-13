@@ -22,7 +22,7 @@ TEST_F(STZ_Absolute_Test, STZ_Absolute_ExecutesCorrectly) {
 
     mem.Write(0x2000, 0xDD);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x2000], 0x00);
     EXPECT_EQ(cpu.PC, 0x4004);  // 16-bit wrap from FFFF

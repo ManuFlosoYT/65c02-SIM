@@ -6,11 +6,11 @@
 
 class BIT {
 public:
-    static void EjecutarInmediato(CPU& cpu, Mem& mem);
-    static void EjecutarZP(CPU& cpu, Mem& mem);
-    static void EjecutarZPX(CPU& cpu, Mem& mem);
-    static void EjecutarABS(CPU& cpu, Mem& mem);
-    static void EjecutarABSX(CPU& cpu, Mem& mem);
+    static void ExecuteImmediate(CPU& cpu, Mem& mem);
+    static void ExecuteZP(CPU& cpu, Mem& mem);
+    static void ExecuteZPX(CPU& cpu, Mem& mem);
+    static void ExecuteABS(CPU& cpu, Mem& mem);
+    static void ExecuteABSX(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_BIT_H

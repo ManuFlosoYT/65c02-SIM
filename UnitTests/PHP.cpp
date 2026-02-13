@@ -28,7 +28,7 @@ TEST_F(PHP_Test, PHP) {
     cpu.I = 1;
     cpu.B = 1; 
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x01FF], 0xDF);
     EXPECT_EQ(cpu.SP, 0x01FE);

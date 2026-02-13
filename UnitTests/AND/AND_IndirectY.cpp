@@ -28,7 +28,7 @@ TEST_F(AND_IndirectY_Test, AND_IndirectY) {
     mem.Write(0x8004, 0x37);  // 0x8000 + 0x04 = 0x8004
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);

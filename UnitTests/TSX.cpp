@@ -31,7 +31,7 @@ TEST_F(TSX_Test, TSX) {
     // "Transfer Stack Pointer to X". X is 8-bit.
     // So it should transfer the low byte of SP (0x50).
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x50);
     EXPECT_FALSE(cpu.Z);
@@ -49,7 +49,7 @@ TEST_F(TSX_Test, TSX_ZeroFlag) {
     cpu.X = 0xFF;
     cpu.Z = 0;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -67,7 +67,7 @@ TEST_F(TSX_Test, TSX_NegativeFlag) {
     cpu.X = 0x00;
     cpu.N = 0;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x80);
     EXPECT_FALSE(cpu.Z);

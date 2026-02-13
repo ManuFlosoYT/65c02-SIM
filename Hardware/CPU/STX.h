@@ -6,9 +6,9 @@
 
 class STX {
 public:
-    static void EjecutarZP(CPU& cpu, Mem& mem);
-    static void EjecutarZPY(CPU& cpu, Mem& mem);
-    static void EjecutarABS(CPU& cpu, Mem& mem);
+    static void ExecuteZP(CPU& cpu, Mem& mem);
+    static void ExecuteZPY(CPU& cpu, Mem& mem);
+    static void ExecuteABS(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_STX_H

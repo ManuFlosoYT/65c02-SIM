@@ -29,7 +29,7 @@ static Word ADC_Decimal(CPU& cpu, Byte dato) {
     return (sumaNibbleAlto << 4) | sumaNibbleBajo;
 }
 
-void ADC::EjecutarInmediato(CPU& cpu, Mem& mem) {
+void ADC::ExecuteImmediate(CPU& cpu, Mem& mem) {
     Byte dato = cpu.FetchByte(mem);
     Byte oldA = cpu.A;
 
@@ -47,11 +47,11 @@ void ADC::EjecutarInmediato(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarZP(CPU& cpu, Mem& mem) {
+void ADC::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.LeerByte(ZP_Dir, mem);
+    Byte dato = cpu.ReadByte(ZP_Dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -66,12 +66,12 @@ void ADC::EjecutarZP(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarZPX(CPU& cpu, Mem& mem) {
+void ADC::ExecuteZPX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.LeerByte(ZP_Dir, mem);
+    Byte dato = cpu.ReadByte(ZP_Dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -86,11 +86,11 @@ void ADC::EjecutarZPX(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarABS(CPU& cpu, Mem& mem) {
+void ADC::ExecuteABS(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.LeerByte(Dir, mem);
+    Byte dato = cpu.ReadByte(Dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -105,12 +105,12 @@ void ADC::EjecutarABS(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarABSX(CPU& cpu, Mem& mem) {
+void ADC::ExecuteABSX(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.X;
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.LeerByte(Dir, mem);
+    Byte dato = cpu.ReadByte(Dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -125,12 +125,12 @@ void ADC::EjecutarABSX(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarABSY(CPU& cpu, Mem& mem) {
+void ADC::ExecuteABSY(CPU& cpu, Mem& mem) {
     Word Dir = cpu.FetchWord(mem);
     Dir += cpu.Y;
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.LeerByte(Dir, mem);
+    Byte dato = cpu.ReadByte(Dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -145,14 +145,14 @@ void ADC::EjecutarABSY(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarINDX(CPU& cpu, Mem& mem) {
+void ADC::ExecuteINDX(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     ZP_Dir += cpu.X;
     Byte oldA = cpu.A;
 
-    Word Dir = cpu.LeerWord(ZP_Dir, mem);
+    Word Dir = cpu.ReadWord(ZP_Dir, mem);
 
-    Byte dato = cpu.LeerByte(Dir, mem);
+    Byte dato = cpu.ReadByte(Dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -167,23 +167,23 @@ void ADC::EjecutarINDX(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarINDY(CPU& cpu, Mem& mem) {
+void ADC::ExecuteINDY(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte oldA = cpu.A;
 
     Word dir;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.LeerWord(ZP_Dir, mem);
+        dir = cpu.ReadWord(ZP_Dir, mem);
     } else {
-        Byte low = cpu.LeerByte(0xFF, mem);
-        Byte high = cpu.LeerByte(0x00, mem);
+        Byte low = cpu.ReadByte(0xFF, mem);
+        Byte high = cpu.ReadByte(0x00, mem);
         dir = (high << 8) | low;
     }
 
     dir += cpu.Y;
 
-    Byte dato = cpu.LeerByte(dir, mem);
+    Byte dato = cpu.ReadByte(dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -198,21 +198,21 @@ void ADC::EjecutarINDY(CPU& cpu, Mem& mem) {
     }
 }
 
-void ADC::EjecutarIND_ZP(CPU& cpu, Mem& mem) {
+void ADC::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte oldA = cpu.A;
 
     Word dir;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.LeerWord(ZP_Dir, mem);
+        dir = cpu.ReadWord(ZP_Dir, mem);
     } else {
-        Byte low = cpu.LeerByte(0xFF, mem);
-        Byte high = cpu.LeerByte(0x00, mem);
+        Byte low = cpu.ReadByte(0xFF, mem);
+        Byte high = cpu.ReadByte(0x00, mem);
         dir = (high << 8) | low;
     }
 
-    Byte dato = cpu.LeerByte(dir, mem);
+    Byte dato = cpu.ReadByte(dir, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;

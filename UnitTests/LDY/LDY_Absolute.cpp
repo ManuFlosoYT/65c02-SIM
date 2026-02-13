@@ -25,7 +25,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute) {
     mem.Write(0x8000, 0x37);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4004);
     EXPECT_EQ(cpu.Y, 0x37);
@@ -45,7 +45,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute_ZeroFlag) {
     mem.Write(0x8000, 0x00);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -64,7 +64,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute_NegativeFlag) {
     mem.Write(0x8000, 0x80);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x80);
     EXPECT_FALSE(cpu.Z);

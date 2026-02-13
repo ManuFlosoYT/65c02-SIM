@@ -21,7 +21,7 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage) {
     mem.Write(0x0042, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x06);
     EXPECT_FALSE(cpu.Z);
@@ -37,7 +37,7 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage_ZeroFlag) {
     mem.Write(0x0042, 0xFF);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -53,7 +53,7 @@ TEST_F(INC_ZeroPage_Test, INC_ZeroPage_NegativeFlag) {
     mem.Write(0x0042, 0x7F);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x80);
     EXPECT_FALSE(cpu.Z);

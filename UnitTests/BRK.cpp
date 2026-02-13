@@ -31,7 +31,7 @@ TEST_F(BRK_Test, BRK_Operations) {
 
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x10);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     // PC pushed is Address of BRK + 2 = 1002 (Standard 6502)
     // Stack:

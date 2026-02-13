@@ -4,7 +4,7 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/ListaInstrucciones.h"
 
-class LDX_Inmediato_Test : public ::testing::Test {
+class LDX_Immediate_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }
 
@@ -12,7 +12,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(LDX_Inmediato_Test, LDX_Inmediato) {
+TEST_F(LDX_Immediate_Test, LDX_Immediate) {
     // Programa en memoria:
     // 0xFFFC: LDX #0x42
     // 0xFFFD: 0x42
@@ -23,7 +23,7 @@ TEST_F(LDX_Inmediato_Test, LDX_Inmediato) {
     mem.Write(0x4001, 0x42);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(cpu.X, 0x42);
@@ -31,7 +31,7 @@ TEST_F(LDX_Inmediato_Test, LDX_Inmediato) {
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(LDX_Inmediato_Test, LDX_Inmediato_ZeroFlag) {
+TEST_F(LDX_Immediate_Test, LDX_Immediate_ZeroFlag) {
     cpu.Z = 0;
     cpu.X = 0xFF;
 
@@ -41,14 +41,14 @@ TEST_F(LDX_Inmediato_Test, LDX_Inmediato_ZeroFlag) {
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x00);
     EXPECT_TRUE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(LDX_Inmediato_Test, LDX_Inmediato_NegativeFlag) {
+TEST_F(LDX_Immediate_Test, LDX_Immediate_NegativeFlag) {
     cpu.N = 0;
     cpu.X = 0x00;
 
@@ -58,7 +58,7 @@ TEST_F(LDX_Inmediato_Test, LDX_Inmediato_NegativeFlag) {
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x80);
     EXPECT_FALSE(cpu.Z);

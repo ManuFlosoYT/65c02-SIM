@@ -29,7 +29,7 @@ TEST_F(PLP_Test, PLP) {
 
     mem.Write(0x01FF, 0xEF);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.C);
     EXPECT_TRUE(cpu.Z);

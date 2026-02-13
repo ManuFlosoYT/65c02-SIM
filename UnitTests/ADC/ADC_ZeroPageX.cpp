@@ -26,7 +26,7 @@ TEST_F(ADC_ZeroPageX_Test, ADC_ZeroPageX) {
     mem.Write(0x0043, 0x05);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x05);
 }

@@ -10,7 +10,7 @@ Emulator::Emulator() : mem(), cpu(), lcd(), acia(), via() {}
 void Emulator::PrintState() {
     std::cerr << "PC: 0x" << std::hex << std::uppercase << std::setw(4)
               << std::setfill('0') << (int)cpu.PC << " OP: 0x" << std::setw(2)
-              << (int)mem.memoria[cpu.PC] << " SP: 0x" << std::setw(4)
+              << (int)mem.memory[cpu.PC] << " SP: 0x" << std::setw(4)
               << (int)cpu.SP << " A: 0x" << std::setw(2) << (int)cpu.A
               << " X: 0x" << std::setw(2) << (int)cpu.X << " Y: 0x"
               << std::setw(2) << (int)cpu.Y << " Flags: 0x" << std::setw(2)
@@ -20,8 +20,8 @@ void Emulator::PrintState() {
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::lock_guard<std::mutex> lock(emulationMutex);
     cpu.Reset(mem);
-    lcd.Inicializar(mem);  // Clears state
-    acia.Inicializar(mem);
+    lcd.Init(mem);  // Clears state
+    acia.Init(mem);
     via.Init(mem);
 
     // Connect VIA Port B Output to LCD Input
@@ -31,7 +31,7 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     // The hook will write to VRAM when CPU writes to these addresses
     for (Word addr = 0x2000; addr < 0x4000; addr++) {
         mem.SetWriteHook(addr, [this, addr](Word, Byte val) {
-            this->mem.memoria[addr] = val;
+            this->mem.memory[addr] = val;
 
             // Only write to VRAM if GPU is enabled
             if (gpuEnabled) {
@@ -49,51 +49,51 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     for (Word addr = 0x4800; addr <= 0x481F; addr++) {
         mem.SetWriteHook(addr, [this](Word addr, Byte val) {
             this->sid.Write(addr - 0x4800, val);
-            this->mem.memoria[addr] = val;
+            this->mem.memory[addr] = val;
         });
         mem.SetReadHook(addr, [this](Word addr) -> Byte {
             return this->sid.Read(addr - 0x4800);
         });
     }
 
-    std::string ruta = bin;
+    std::string path = bin;
 
     // Try opening as is
-    FILE* fichero = fopen(ruta.c_str(), "rb");
+    FILE* file = fopen(path.c_str(), "rb");
 
     // If fail, try appending .bin
-    if (fichero == nullptr && ruta.find(".bin") == std::string::npos) {
-        std::string tryBin = ruta + ".bin";
-        fichero = fopen(tryBin.c_str(), "rb");
-        if (fichero != nullptr) {
-            ruta = tryBin;
+    if (file == nullptr && path.find(".bin") == std::string::npos) {
+        std::string tryBin = path + ".bin";
+        file = fopen(tryBin.c_str(), "rb");
+        if (file != nullptr) {
+            path = tryBin;
         }
     }
-    if (fichero == nullptr) {
-        errorMsg = "Error opening file " + ruta;
+    if (file == nullptr) {
+        errorMsg = "Error opening file " + path;
         return false;
     }
 
-    // asegurar que el bin tiene tamaño correcto
-    fseek(fichero, 0, SEEK_END);
-    long fileSize = ftell(fichero);
+    // ensure bin has correct size
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
     if (fileSize != mem.ROM_SIZE) {
-        errorMsg = "Error: The file " + ruta + " does not have size " +
+        errorMsg = "Error: The file " + path + " does not have size " +
                    std::to_string(mem.ROM_SIZE);
-        fclose(fichero);
+        fclose(file);
         return false;
     }
-    fseek(fichero, 0, SEEK_SET);
+    fseek(file, 0, SEEK_SET);
 
-    // leer el bin en la memoria (0x8000-0xFFFF)
-    size_t bytesRead = fread(mem.memoria + 0x8000, 1, mem.ROM_SIZE, fichero);
+    // read bin into memory (0x8000-0xFFFF)
+    size_t bytesRead = fread(mem.memory + 0x8000, 1, mem.ROM_SIZE, file);
     if (bytesRead == 0) {
-        errorMsg = "Error reading file " + ruta;
-        fclose(fichero);
+        errorMsg = "Error reading file " + path;
+        fclose(file);
         return false;
     }
 
-    fclose(fichero);
+    fclose(file);
     return true;
 }
 
@@ -130,7 +130,7 @@ int Emulator::Step() {
         cpu.IRQ(mem);
     }
 
-    // Si estamos en espera (WAI), revisamos si hay interrupción pendiente
+    // If waiting (WAI), check if there is a pending interrupt
     if (cpu.waiting) {
         if ((mem.Read(ACIA_STATUS) & 0x80) != 0 || via.isIRQAsserted()) {
             cpu.waiting = false;
@@ -139,21 +139,20 @@ int Emulator::Step() {
         }
     }
 
-    // Procesar input buffer si ACIA está listo
+    // Process input buffer if ACIA is ready
     {
         std::lock_guard<std::mutex> lock(bufferMutex);
-        if (!inputBuffer.empty() && (mem.memoria[ACIA_STATUS] & 0x80) == 0 &&
+        if (!inputBuffer.empty() && (mem.memory[ACIA_STATUS] & 0x80) == 0 &&
             (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
             char c = inputBuffer.front();
             inputBuffer.pop_front();
 
-            // Simular ACIA: Escribir dato y activar IRQ
-            mem.memoria[ACIA_DATA] = c;
-            mem.memoria[ACIA_STATUS] |=
-                0x80;  // Bit 7: Data Register Full / IRQ
+            // Simulate ACIA: Write data and trigger IRQ
+            mem.memory[ACIA_DATA] = c;
+            mem.memory[ACIA_STATUS] |= 0x80;  // Bit 7: Data Register Full / IRQ
             cpu.IRQ(mem);
 
-            // Set delay (2000 ciclos de reloj)
+            // Set delay (2000 clock cycles)
             baudDelay = 2000;
         }
     }

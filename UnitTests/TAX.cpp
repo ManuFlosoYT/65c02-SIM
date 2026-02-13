@@ -22,7 +22,7 @@ TEST_F(TAX_Test, TAX) {
     cpu.A = 0x42;
     cpu.X = 0x00;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x42);
     EXPECT_FALSE(cpu.Z);
@@ -39,7 +39,7 @@ TEST_F(TAX_Test, TAX_ZeroFlag) {
     cpu.A = 0x00;
     cpu.X = 0x42;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -56,7 +56,7 @@ TEST_F(TAX_Test, TAX_NegativeFlag) {
     cpu.A = 0x80;
     cpu.X = 0x00;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x80);
     EXPECT_FALSE(cpu.Z);

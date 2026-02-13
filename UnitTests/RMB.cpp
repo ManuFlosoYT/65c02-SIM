@@ -20,7 +20,7 @@ TEST_F(RMB_Test, RMB0_ClearsBit0) {
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0010, 0xFF);  // Initial value: 1111 1111
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0xFE);  // Expected: 1111 1110 (Bit 0 cleared)
 }
@@ -33,7 +33,7 @@ TEST_F(RMB_Test, RMB1_ClearsBit1) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0xFF);  // 1111 1111
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0xFD);  // 1111 1101 (Bit 1 cleared)
 }
@@ -46,7 +46,7 @@ TEST_F(RMB_Test, RMB2_ClearsBit2) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0xFF);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0xFB);  // 1111 1011
 }
@@ -59,7 +59,7 @@ TEST_F(RMB_Test, RMB3_ClearsBit3) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0xFF);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0xF7);  // 1111 0111
 }
@@ -72,7 +72,7 @@ TEST_F(RMB_Test, RMB4_ClearsBit4) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0xFF);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0xEF);  // 1110 1111
 }
@@ -85,7 +85,7 @@ TEST_F(RMB_Test, RMB5_ClearsBit5) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0xFF);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0xDF);  // 1101 1111
 }
@@ -98,7 +98,7 @@ TEST_F(RMB_Test, RMB6_ClearsBit6) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0xFF);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0xBF);  // 1011 1111
 }
@@ -111,7 +111,7 @@ TEST_F(RMB_Test, RMB7_ClearsBit7) {
     mem.Write(0x4002, INS_JAM);
     mem.Write(0x0010, 0xFF);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0010], 0x7F);  // 0111 1111
 }

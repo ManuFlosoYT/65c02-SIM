@@ -13,7 +13,7 @@ protected:
 
     void SetUp() override {
         cpu.Reset(mem);
-        acia.Inicializar(mem);
+        acia.Init(mem);
         // Load MSBASIC binary manually or assume BIOS is present
         // Since we can't easily link basic.bin here, we will simulate the BIOS
         // read/echo loop logic or try to run the actual BIOS code if possible.
@@ -26,7 +26,7 @@ TEST_F(FreezeRepro, InterruptClearsWaiting) {
     cpu.waiting = true;
 
     // Set IRQ pending in ACIA Status
-    mem.memoria[ACIA_STATUS] |= 0x80;
+    mem.memory[ACIA_STATUS] |= 0x80;
 
     // IRQ logic should clear waiting
     cpu.IRQ(mem);  // Manual trigger
@@ -39,7 +39,7 @@ TEST_F(FreezeRepro, InstructionStepClearsWaiting) {
     cpu.waiting = true;
 
     // Set IRQ pending in ACIA Status
-    mem.memoria[ACIA_STATUS] |= 0x80;
+    mem.memory[ACIA_STATUS] |= 0x80;
 
     // Step should detect IRQ and clear waiting
     cpu.Step(mem);

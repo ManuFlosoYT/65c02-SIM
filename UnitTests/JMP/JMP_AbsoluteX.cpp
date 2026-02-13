@@ -30,7 +30,7 @@ TEST_F(JMP_AbsoluteX_Test, JMP_AbsoluteX) {
 
     mem.Write(0x8004, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x8005);
 }

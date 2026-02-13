@@ -22,7 +22,7 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
     Byte ADDR_MUL1 = 0x01;
     Byte ADDR_MUL2 = 0x02;
 
-    // Inicializar valores en memoria
+    // Init valores en memoria
     mem.Write(ADDR_RES, 0x00);
     mem.Write(ADDR_MUL1, 10);
     mem.Write(ADDR_MUL2, 5);
@@ -31,7 +31,7 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
     Word CODE_START = 0x1000;
     Word PC = CODE_START;
 
-    // LDA 0x00 (Inicializar Acumulador con 0 para el resultado)
+    // LDA 0x00 (Init Accumulator con 0 para el resultado)
     mem.Write(PC++, INS_LDA_IM);
     mem.Write(PC++, 0x00);
 
@@ -67,12 +67,12 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
     // Fin (Stop)
     mem.Write(PC++, INS_JAM);  // Instruccion de parada custom en los tests
 
-    // Ejecutar
+    // Execute
     cpu.PC = CODE_START;
     cpu.isInit = true;  // Previen3 Reset
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     // Verificaciones
     EXPECT_EQ(mem[ADDR_RES], 50);  // 10 * 5 = 50

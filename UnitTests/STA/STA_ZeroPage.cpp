@@ -38,7 +38,7 @@ TEST_F(STA_ZeroPage_Test, STA_ZeroPage) {
     // Ciclo 3:
     //    Escribe el valor de A (0x37) en 0x0042
     //    Opcode desconocido -> Retorna
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(mem[0x0042], 0x37);

@@ -30,7 +30,7 @@ TEST_F(PruebaNOP, NoHaceNada) {
     //     PC avanza a 0xFFFE
     //     Opcode desconocido
     //     Retorna
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4002);
 
@@ -56,7 +56,7 @@ TEST_F(PruebaNOP, NoModificaEstado) {
     mem.Write(0x4000, INS_NOP);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4002);
     EXPECT_EQ(cpu.A, 0x42);

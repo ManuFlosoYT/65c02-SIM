@@ -28,7 +28,7 @@ TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_ExecutesCorrectly) {
     // Set initial value to non-zero
     mem.Write(0x0042, 0xAA);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x00);
     EXPECT_EQ(cpu.PC, 0x4003);
@@ -51,7 +51,7 @@ TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_DoesNotAffectFlags) {
     cpu.C = 1;
     cpu.V = 1;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x0042], 0x00);
     EXPECT_EQ(cpu.Z, 0);  // Should remain 0

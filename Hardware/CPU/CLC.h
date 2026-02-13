@@ -5,7 +5,7 @@
 #include "../Mem.h"
 class CLC {
 public:
-    static void Ejecutar(CPU& cpu, Mem& mem);
+    static void Execute(CPU& cpu, Mem& mem);
 };
 
 #endif  // SIM_65C02_CLC_H

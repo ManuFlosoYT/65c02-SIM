@@ -29,7 +29,7 @@ TEST_F(STA_ZeroPageIndirect_Test, STA_ZeroPageIndirect) {
 
     mem.Write(0x3000, 0x00);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x3000], 0x37);
     EXPECT_EQ(cpu.A, 0x37);

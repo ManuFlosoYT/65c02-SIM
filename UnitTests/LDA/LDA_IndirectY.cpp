@@ -55,7 +55,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY) {
     //    Lee valor (0x37) en 0x8001
     //    Carga 0x37 en A
     //    Opcode desconocido -> Retorna
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(cpu.A, 0x37);
@@ -77,7 +77,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_ZeroFlag) {
     mem.Write(0x8001, 0x00);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -97,7 +97,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_NegativeFlag) {
     mem.Write(0x8001, 0xAA);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xAA);
     EXPECT_FALSE(cpu.Z);
@@ -117,7 +117,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PageCrossing) {
     mem.Write(0x1100, 0x55);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x55);
 }
@@ -135,7 +135,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PointerWrapping) {
     mem.Write(0x1234, 0x88);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x88);
 }

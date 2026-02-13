@@ -26,7 +26,7 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_SetsZeroFlag) {
     mem.Write(0x8000, 0x55);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_EQ(mem[0x8000], 0xFF);
@@ -46,7 +46,7 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_ClearsZeroFlag) {
     mem.Write(0x8000, 0x80);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.Z);
     EXPECT_EQ(mem[0x8000], 0x80);
@@ -66,7 +66,7 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_SetsBits) {
     mem.Write(0x8000, 0xF0);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
     EXPECT_EQ(mem[0x8000], 0xFF);

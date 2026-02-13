@@ -21,7 +21,7 @@ TEST_F(STP_Test, STP_HaltsExecution) {
     mem.Write(0x4001, INS_NOP);
 
     // Run execution
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     // PC should point to the instruction AFTER STP (it fetches STP, increments,
     // executes). Wait, STP stops the clock. In a simulator loop, it should just

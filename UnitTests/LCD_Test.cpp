@@ -13,7 +13,7 @@ protected:
 
     void SetUp() override {
         mem.Init();
-        lcd.Inicializar(mem);
+        lcd.Init(mem);
         lcd.SetOutputCallback([](char c) {
             std::cout << c;
             std::cout.flush();

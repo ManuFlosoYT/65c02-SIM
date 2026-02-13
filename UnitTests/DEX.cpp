@@ -21,7 +21,7 @@ TEST_F(DEX_Test, DEX) {
     mem.Write(0x4000, INS_DEX);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x04);
     EXPECT_FALSE(cpu.Z);
@@ -37,7 +37,7 @@ TEST_F(DEX_Test, DEX_ZeroFlag) {
     mem.Write(0x4000, INS_DEX);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -53,7 +53,7 @@ TEST_F(DEX_Test, DEX_NegativeFlag) {
     mem.Write(0x4000, INS_DEX);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0xFF);
     EXPECT_FALSE(cpu.Z);

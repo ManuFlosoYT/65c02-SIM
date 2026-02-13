@@ -4,7 +4,7 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/ListaInstrucciones.h"
 
-class LDY_Inmediato_Test : public ::testing::Test {
+class LDY_Immediate_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }
 
@@ -12,7 +12,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(LDY_Inmediato_Test, LDY_Inmediato) {
+TEST_F(LDY_Immediate_Test, LDY_Immediate) {
     // 0xFFFC: LDY #0x42
     // 0xFFFD: 0x42
     mem.Write(0xFFFC, 0x00);
@@ -21,7 +21,7 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato) {
     mem.Write(0x4001, 0x42);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(cpu.Y, 0x42);
@@ -29,7 +29,7 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato) {
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(LDY_Inmediato_Test, LDY_Inmediato_ZeroFlag) {
+TEST_F(LDY_Immediate_Test, LDY_Immediate_ZeroFlag) {
     cpu.Z = 0;
     cpu.Y = 0xFF;
 
@@ -39,14 +39,14 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato_ZeroFlag) {
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x00);
     EXPECT_TRUE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
 
-TEST_F(LDY_Inmediato_Test, LDY_Inmediato_NegativeFlag) {
+TEST_F(LDY_Immediate_Test, LDY_Immediate_NegativeFlag) {
     cpu.N = 0;
     cpu.Y = 0x00;
 
@@ -56,7 +56,7 @@ TEST_F(LDY_Inmediato_Test, LDY_Inmediato_NegativeFlag) {
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.Y, 0x80);
     EXPECT_FALSE(cpu.Z);

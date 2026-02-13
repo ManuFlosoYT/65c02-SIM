@@ -30,7 +30,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute) {
     // is 3 bytes long: FFFC (Op), FFFD (AL), FFFE (AH) Next Opcode at FFFF.
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x4004);  // FFFF + 1 = 0 (wrap) or just Stop.
     // Wait, let's check LDA_ZeroPage again. It was at FFFC, FFFD (arg), FFFE
@@ -62,7 +62,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_ZeroFlag) {
     mem.Write(0x8000, 0x00);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -81,7 +81,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_NegativeFlag) {
     mem.Write(0x8000, 0x80);
     mem.Write(0x4003, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.X, 0x80);
     EXPECT_FALSE(cpu.Z);

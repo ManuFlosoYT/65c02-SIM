@@ -7,13 +7,13 @@
 
 class ACIA {
 public:
-    Byte DATO;
+    Byte DATA;
     Byte STATUS;
     Byte CMD;
     Byte CTRL;
 
-    void Inicializar(Mem& mem);
-    
+    void Init(Mem& mem);
+
     void SetOutputCallback(std::function<void(char)> cb) {
         outputCallback = cb;
     }

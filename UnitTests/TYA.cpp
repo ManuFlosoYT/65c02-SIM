@@ -22,7 +22,7 @@ TEST_F(TYA_Test, TYA) {
     cpu.Y = 0x42;
     cpu.A = 0x00;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x42);
     EXPECT_FALSE(cpu.Z);
@@ -39,7 +39,7 @@ TEST_F(TYA_Test, TYA_ZeroFlag) {
     cpu.Y = 0x00;
     cpu.A = 0x42;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -56,7 +56,7 @@ TEST_F(TYA_Test, TYA_NegativeFlag) {
     cpu.Y = 0x80;
     cpu.A = 0x00;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x80);
     EXPECT_FALSE(cpu.Z);

@@ -22,7 +22,7 @@ TEST_F(PHX_Test, PHX) {
     cpu.X = 0x42;
     cpu.SP = 0x01FF;
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x01FF], 0x42);
     EXPECT_EQ(cpu.SP, 0x01FE);

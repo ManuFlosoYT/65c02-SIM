@@ -23,7 +23,7 @@ TEST_F(EOR_IndirectZP_Test, EOR_IndirectZP) {
     mem.Write(0x8000, 0x0F);  // Target Value. 0xFF ^ 0x0F = 0xF0
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0xF0);
     EXPECT_FALSE(cpu.Z);

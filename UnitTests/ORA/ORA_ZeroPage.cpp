@@ -21,7 +21,7 @@ TEST_F(ORA_ZeroPage_Test, ORA_ZeroPage) {
     mem.Write(0x0042, 0x0F);  // 0x00 | 0x0F = 0x0F
     mem.Write(0x4002, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x0F);
     EXPECT_FALSE(cpu.Z);

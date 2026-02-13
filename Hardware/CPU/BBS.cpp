@@ -1,6 +1,6 @@
 #include "BBS.h"    
 
-void BBS::Ejecutar0(CPU& cpu, Mem& mem) {
+void BBS::Execute0(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 
@@ -9,7 +9,7 @@ void BBS::Ejecutar0(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Ejecutar1(CPU& cpu, Mem& mem) {
+void BBS::Execute1(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 
@@ -18,7 +18,7 @@ void BBS::Ejecutar1(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Ejecutar2(CPU& cpu, Mem& mem) {
+void BBS::Execute2(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 
@@ -27,7 +27,7 @@ void BBS::Ejecutar2(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Ejecutar3(CPU& cpu, Mem& mem) {
+void BBS::Execute3(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 
@@ -36,7 +36,7 @@ void BBS::Ejecutar3(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Ejecutar4(CPU& cpu, Mem& mem) {
+void BBS::Execute4(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 
@@ -45,7 +45,7 @@ void BBS::Ejecutar4(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Ejecutar5(CPU& cpu, Mem& mem) {
+void BBS::Execute5(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 
@@ -54,7 +54,7 @@ void BBS::Ejecutar5(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Ejecutar6(CPU& cpu, Mem& mem) {
+void BBS::Execute6(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 
@@ -63,7 +63,7 @@ void BBS::Ejecutar6(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Ejecutar7(CPU& cpu, Mem& mem) {
+void BBS::Execute7(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
 

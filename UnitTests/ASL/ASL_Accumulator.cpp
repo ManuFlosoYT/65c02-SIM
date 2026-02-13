@@ -25,7 +25,7 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_NoCarry) {
     mem.Write(0x4000, INS_ASL_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x02);
     EXPECT_FALSE(cpu.C);
@@ -43,7 +43,7 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_CarryOut) {
     mem.Write(0x4000, INS_ASL_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.C);
@@ -60,7 +60,7 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_Negative) {
     mem.Write(0x4000, INS_ASL_A);
     mem.Write(0x4001, INS_JAM);
 
-    cpu.Ejecutar(mem);
+    cpu.Execute(mem);
 
     EXPECT_EQ(cpu.A, 0x80);
     EXPECT_FALSE(cpu.C);
