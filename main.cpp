@@ -229,6 +229,11 @@ int main(int argc, char* argv[]) {
             ImGui::SameLine();
             if (ImGui::Button("Reset")) {
                 if (romLoaded) {
+                    // 1. Pause execution to stop the thread loop safely
+                    bool wasRunning = !emulator.IsPaused();
+                    if (wasRunning) emulator.Pause();
+
+                    // 2. Reset the emulator state
                     ClearConsole();
                     std::string errorMsg;
                     if (!emulator.Init(bin, errorMsg)) {
@@ -240,6 +245,12 @@ int main(int argc, char* argv[]) {
                     } else {
                         emulator.SetGPUEnabled(gpuEnabled);
                         emulator.GetGPU().Init();
+                    }
+
+                    // 3. Resume if it was running before
+                    if (wasRunning) {
+                        emulator.Resume();
+                        emulator.GetSID().SetEmulationPaused(false);
                     }
                 }
             }
@@ -321,7 +332,8 @@ int main(int argc, char* argv[]) {
 
                 for (int n = 0; n < 50; n++) {
                     float t = (float)n / 49.0f;
-                    float phase = (t * freqScale) - (float)(time * speed * freqScale);
+                    float phase =
+                        (t * freqScale) - (float)(time * speed * freqScale);
                     phase -= floor(phase);
 
                     float val = 0.0f;

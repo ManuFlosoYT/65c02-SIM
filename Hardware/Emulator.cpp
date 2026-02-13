@@ -18,6 +18,7 @@ void Emulator::PrintState() {
 }
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
+    std::lock_guard<std::mutex> lock(emulationMutex);
     cpu.Reset(mem);
     lcd.Inicializar(mem);  // Clears state
     acia.Inicializar(mem);
@@ -216,15 +217,21 @@ void Emulator::ThreadLoop() {
 
         auto sliceStartTime = high_resolution_clock::now();
 
-        for (int i = 0; i < instructionsPerSlice; ++i) {
-            int res = Step();
-            if (res != 0) {
-                paused = true;
-                std::cerr << "Emulator stopped with code: " << res << std::endl;
-                break;
+        // Lock emulation mutex for the entire slice to prevent race with
+        // Reset/Init
+        {
+            std::lock_guard<std::mutex> lock(emulationMutex);
+            for (int i = 0; i < instructionsPerSlice; ++i) {
+                int res = Step();
+                if (res != 0) {
+                    paused = true;
+                    std::cerr << "Emulator stopped with code: " << res
+                              << std::endl;
+                    break;
+                }
+                // Check if paused during execution loop for faster response
+                if (paused) break;
             }
-            // Check if paused during execution loop for faster response
-            if (paused) break;
         }
 
         instructionsThisSecond += instructionsPerSlice;

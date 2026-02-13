@@ -78,4 +78,5 @@ private:
     std::thread emulatorThread;
     std::mutex threadMutex;
     std::condition_variable pauseCV;
+    std::mutex emulationMutex;  // mutex for thread safety during reset/step
 };
