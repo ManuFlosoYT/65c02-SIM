@@ -69,6 +69,35 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ImGuiFileDialog)
 
+# 6. nlohmann_json
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+)
+FetchContent_MakeAvailable(json)
+
+# Get version from Git
+find_package(Git)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} describe --tags --always --dirty
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+else()
+    set(GIT_VERSION "v0.0.0")
+endif()
+
+# Fallback if git describe failed or returned empty
+if("${GIT_VERSION}" STREQUAL "")
+    set(GIT_VERSION "v0.0.0")
+endif()
+
+#set(GIT_VERSION "v1.0.0") # FORCED FOR TESTING
+
+add_compile_definitions(PROJECT_VERSION="${GIT_VERSION}")
+
 find_package(OpenGL REQUIRED)
 
 # ------------------------------------------------------------------------------
@@ -118,20 +147,22 @@ target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 libglew_static OpenGL::GL)
 # ------------------------------------------------------------------------------
 if(WIN32)
     add_executable(SIM_65C02 WIN32
-        main.cpp
+        Frontend/main.cpp
+        Frontend/UpdateChecker.cpp
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
     # Static linking for Windows to avoid missing DLLs
     target_link_options(SIM_65C02 PRIVATE -static -static-libgcc -static-libstdc++)
-    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib mingw32 SDL2::SDL2main SDL2::SDL2 libglew_static OpenGL::GL)
+    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib mingw32 SDL2::SDL2main SDL2::SDL2 libglew_static OpenGL::GL nlohmann_json::nlohmann_json)
 else()
     add_executable(SIM_65C02 
-        main.cpp
+        Frontend/main.cpp
+        Frontend/UpdateChecker.cpp
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
     # Static runtime linking for Linux (optional but good for portability)
     target_link_options(SIM_65C02 PRIVATE -static-libgcc -static-libstdc++)
-    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib SDL2::SDL2 libglew_static OpenGL::GL)
+    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib SDL2::SDL2 libglew_static OpenGL::GL nlohmann_json::nlohmann_json)
 endif()
 
 target_include_directories(SIM_65C02 PRIVATE ${glew_SOURCE_DIR}/include ${imguifiledialog_SOURCE_DIR})

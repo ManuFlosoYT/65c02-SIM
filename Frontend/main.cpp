@@ -11,11 +11,16 @@
 #include <vector>
 
 #include "Hardware/Emulator.h"
+#include "UpdateChecker.h"
 
 Emulator emulator;
 int instructionsPerFrame = 1000000;
 float ipsLogScale = 6.0f;
 bool gpuEnabled = false;
+
+// Update Status
+std::atomic<bool> updateAvailable{false};
+std::string latestVersionTag;
 
 std::vector<std::string> consoleLines;
 std::string currentLine;
@@ -74,9 +79,18 @@ int main(int argc, char* argv[]) {
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
                           SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window =
-        SDL_CreateWindow("65C02 Simulator", SDL_WINDOWPOS_CENTERED,
-                         SDL_WINDOWPOS_CENTERED, 1920, 1080, window_flags);
+    SDL_Window* window = SDL_CreateWindow(
+        "65C02 Simulator " PROJECT_VERSION, SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED, 1920, 1080, window_flags);
+
+    // Check for updates
+    UpdateChecker::CheckForUpdates(
+        PROJECT_VERSION, [](bool available, const std::string& version) {
+            if (available) {
+                latestVersionTag = version;
+                updateAvailable = true;
+            }
+        });
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
@@ -159,6 +173,46 @@ int main(int argc, char* argv[]) {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos;
         ImVec2 work_size = viewport->WorkSize;
+
+        // Update Notification Logic
+        static bool updatePopupOpen = false;
+        if (updateAvailable && !updatePopupOpen) {
+            ImGui::OpenPopup("Update Available");
+            updatePopupOpen = true;
+        }
+
+        // Always center the modal
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing,
+                                ImVec2(0.5f, 0.5f));
+
+        if (ImGui::BeginPopupModal("Update Available", NULL,
+                                   ImGuiWindowFlags_AlwaysAutoResize |
+                                       ImGuiWindowFlags_NoMove |
+                                       ImGuiWindowFlags_NoResize)) {
+            ImGui::Text("A new version of SIM_65C02 is available!");
+            ImGui::Text("Latest Version: %s", latestVersionTag.c_str());
+            ImGui::Text("Current Version: %s", PROJECT_VERSION);
+            ImGui::Separator();
+
+            ImGui::NewLine();
+
+            float availWidth = ImGui::GetContentRegionAvail().x;
+            float btnWidth =
+                (availWidth - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+
+            if (ImGui::Button("Download", ImVec2(btnWidth, 0))) {
+                std::string url =
+                    "https://github.com/ManuFlosoYT/65c02-SIM/releases/latest";
+                SDL_OpenURL(url.c_str());
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Ignore", ImVec2(btnWidth, 0))) {
+                updateAvailable = false;  // Stop showing it this session
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
 
         float left_width = work_size.x * 0.5f;
         float right_width = work_size.x - left_width;
