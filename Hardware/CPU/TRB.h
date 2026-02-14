@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_TRB_H
-#define SIM_65C02_TRB_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class TRB {
 public:
@@ -10,4 +11,4 @@ public:
     static void ExecuteABS(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_TRB_H
+}  // namespace Hardware::Instructions

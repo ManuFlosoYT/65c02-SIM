@@ -7,6 +7,11 @@
 
 #include "Hardware/Emulator.h"
 
+namespace Control {
+
+using namespace Core;
+using namespace Hardware;
+
 struct AppState {
     Emulator emulator;
 
@@ -26,3 +31,5 @@ struct AppState {
     // VRAM texture (OpenGL)
     GLuint vramTexture = 0;
 };
+
+}  // namespace Control

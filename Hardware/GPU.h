@@ -1,5 +1,4 @@
-#ifndef SIM_65C02_GPU_H
-#define SIM_65C02_GPU_H
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -10,6 +9,8 @@ using Word = uint16_t;
 
 using WriteHook = std::function<void(Word, Byte)>;
 using ReadHook = std::function<Byte(Word)>;
+
+namespace Hardware {
 
 class GPU {
 public:
@@ -62,4 +63,4 @@ private:
     Word pixelY = 0;  // 0-77 (78 total)
 };
 
-#endif  // SIM_65C02_GPU_H
+}  // namespace Hardware

@@ -1,5 +1,7 @@
 #include "AND.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu) {
     cpu.Z = (cpu.A == 0);
     cpu.N = (cpu.A & 0b10000000) > 0;
@@ -95,3 +97,5 @@ void AND::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
     cpu.A = cpu.ReadByte(dir, mem) & cpu.A;
     SetFlags(cpu);
 }
+
+}  // namespace Hardware::Instructions

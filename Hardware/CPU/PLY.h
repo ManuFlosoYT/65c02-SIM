@@ -1,11 +1,13 @@
-#ifndef SIM_65C02_PLY_H
-#define SIM_65C02_PLY_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
+
 class PLY {
 public:
     static void Execute(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_PLY_H
+}  // namespace Hardware::Instructions

@@ -1,5 +1,7 @@
 #include "STZ.h"
 
+namespace Hardware::Instructions {
+
 void STZ::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     mem.Write(ZP_Dir, 0);
@@ -21,3 +23,5 @@ void STZ::ExecuteABSX(CPU& cpu, Mem& mem) {
     Dir += cpu.X;
     mem.Write(Dir, 0);
 }
+
+}  // namespace Hardware::Instructions

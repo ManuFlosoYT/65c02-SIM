@@ -4,6 +4,8 @@
 #include "../Hardware/Mem.h"
 #include "../Hardware/CPU/InstructionSet.h"
 
+using namespace Hardware;
+
 class PruebaJSR : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }

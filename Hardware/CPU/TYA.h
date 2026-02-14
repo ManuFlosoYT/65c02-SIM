@@ -1,11 +1,13 @@
-#ifndef SIM_65C02_TYA_H
-#define SIM_65C02_TYA_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
+
 class TYA {
 public:
     static void Execute(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_TYA_H
+}  // namespace Hardware::Instructions

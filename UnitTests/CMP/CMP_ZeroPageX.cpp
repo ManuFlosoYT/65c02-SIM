@@ -4,6 +4,8 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/InstructionSet.h"
 
+using namespace Hardware;
+
 class CMP_ZeroPageX_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }

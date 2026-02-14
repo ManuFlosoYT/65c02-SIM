@@ -1,5 +1,4 @@
-#ifndef SIM_65C02_MEM_H
-#define SIM_65C02_MEM_H
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -34,6 +33,8 @@ using ReadHook = std::function<Byte(Word)>;
 #define IER 0x600E
 #define ORA_NH 0x600F
 
+namespace Hardware {
+
 class Mem {
 public:
     constexpr static Word MAX_MEM = 0xFFFF;              // 64KB memory
@@ -57,4 +58,4 @@ private:
     std::map<Word, ReadHook> readHooks;
 };
 
-#endif  // SIM_65C02_MEM_H
+}  // namespace Hardware

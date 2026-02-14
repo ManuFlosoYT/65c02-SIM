@@ -4,6 +4,8 @@
 
 #include "../Hardware/Mem.h"
 
+using namespace Hardware;
+
 class VIA_Test : public ::testing::Test {
 protected:
     Mem mem;

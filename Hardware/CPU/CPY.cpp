@@ -1,5 +1,7 @@
 #include "CPY.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Byte dato) {
     cpu.C = (cpu.Y >= dato);
     cpu.Z = (cpu.Y == dato);
@@ -25,3 +27,5 @@ void CPY::ExecuteABS(CPU& cpu, Mem& mem) {
     Byte dato = cpu.ReadByte(Dir, mem);
     SetFlags(cpu, dato);
 }
+
+}  // namespace Hardware::Instructions

@@ -1,5 +1,7 @@
 #include "CPX.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Byte dato) {
     cpu.C = (cpu.X >= dato);
     cpu.Z = (cpu.X == dato);
@@ -25,3 +27,5 @@ void CPX::ExecuteABS(CPU& cpu, Mem& mem) {
     Byte dato = cpu.ReadByte(Dir, mem);
     SetFlags(cpu, dato);
 }
+
+}  // namespace Hardware::Instructions

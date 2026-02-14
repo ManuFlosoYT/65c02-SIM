@@ -4,6 +4,8 @@
 
 #include "Mem.h"
 
+namespace Hardware {
+
 void LCD::Init(Mem& mem) {
     // Reset state
     four_bit_mode = false;
@@ -104,3 +106,5 @@ void LCD::HandleCommand(Byte cmd) {
     }
     // Other commands could be implemented here
 }
+
+}  // namespace Hardware

@@ -3,6 +3,8 @@
 #include <string>
 #include <functional>
 
+namespace Frontend {
+
 struct Version {
     int major = 0;
     int minor = 0;
@@ -22,3 +24,5 @@ public:
 private:
     static std::string FetchLatestReleaseTag();
 };
+
+}  // namespace Frontend

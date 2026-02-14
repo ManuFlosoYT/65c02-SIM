@@ -1,10 +1,11 @@
-#ifndef SIM_65C02_INSTRUCTIONSET_H
-#define SIM_65C02_INSTRUCTIONSET_H
+#pragma once
 
 #include <cstdint>
 
 using Byte = uint8_t;
 using Word = uint16_t;
+
+namespace Hardware {
 
 constexpr static Byte INS_WAI = 0xCB;  // WAI
 constexpr static Byte INS_STP = 0xDB;  // STP
@@ -263,4 +264,4 @@ constexpr static Byte INS_TRB_ZP = 0x14;   // TRB ZP
 constexpr static Byte INS_TSB_ABS = 0x0C;  // TSB ABS
 constexpr static Byte INS_TSB_ZP = 0x04;   // TSB ZP
 
-#endif  // SIM_65C02_INSTRUCTIONSET_H
+}  // namespace Hardware

@@ -1,5 +1,7 @@
 #include "BBS.h"    
 
+namespace Hardware::Instructions {
+
 void BBS::Execute0(CPU& cpu, Mem& mem) {
     int8_t offset = cpu.FetchByte(mem);
     Word dir = cpu.PC + offset;
@@ -71,3 +73,5 @@ void BBS::Execute7(CPU& cpu, Mem& mem) {
         cpu.PC = dir;
     }
 }
+
+}  // namespace Hardware::Instructions

@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_ORA_H
-#define SIM_65C02_ORA_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class ORA {
 public:
@@ -17,4 +18,4 @@ public:
     static void ExecuteIND_ZP(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_ORA_H
+}  // namespace Hardware::Instructions

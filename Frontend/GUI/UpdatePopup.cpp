@@ -4,6 +4,10 @@
 
 #include <string>
 
+using namespace Control;
+using namespace Core;
+using namespace Hardware;
+
 namespace GUI {
 
 void DrawUpdatePopup(AppState& state) {

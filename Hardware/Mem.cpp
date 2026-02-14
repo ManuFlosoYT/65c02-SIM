@@ -1,5 +1,7 @@
 #include "Mem.h"
 
+namespace Hardware {
+
 void Mem::Init() {
     for (Byte& byte : memory) {
         byte = 0;
@@ -34,3 +36,5 @@ Byte Mem::Read(Word addr) {
     }
     return memory[addr];
 }
+
+}  // namespace Hardware

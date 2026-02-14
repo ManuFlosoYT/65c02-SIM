@@ -1,5 +1,7 @@
 #include "CMP.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Byte dato) {
     cpu.C = (cpu.A >= dato);
     cpu.Z = (cpu.A == dato);
@@ -95,3 +97,5 @@ void CMP::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
     Byte dato = cpu.ReadByte(dir, mem);
     SetFlags(cpu, dato);
 }   
+
+}  // namespace Hardware::Instructions

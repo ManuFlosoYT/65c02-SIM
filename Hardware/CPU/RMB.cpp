@@ -1,5 +1,7 @@
 #include "RMB.h"
 
+namespace Hardware::Instructions {
+
 void RMB::Execute0(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte data = cpu.ReadByte(ZP_Dir, mem);
@@ -55,3 +57,5 @@ void RMB::Execute7(CPU& cpu, Mem& mem) {
     data &= 0b01111111;
     mem.Write(ZP_Dir, data);
 }
+
+}  // namespace Hardware::Instructions

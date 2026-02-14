@@ -4,6 +4,8 @@
 #include "../Hardware/Mem.h"
 #include "../Hardware/CPU/InstructionSet.h"
 
+using namespace Hardware;
+
 class PLP_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }

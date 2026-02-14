@@ -3,6 +3,8 @@
 #include <nlohmann/json.hpp>
 #include <thread>
 
+namespace Frontend {
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -158,3 +160,5 @@ std::string UpdateChecker::FetchLatestReleaseTag() {
     return "";
 }
 #endif
+
+}  // namespace Frontend

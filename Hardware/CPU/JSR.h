@@ -1,11 +1,13 @@
-#ifndef SIM_65C02_JSR_H
-#define SIM_65C02_JSR_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
+
 class JSR {
 public:
     static void Execute(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_JSR_H
+}  // namespace Hardware::Instructions

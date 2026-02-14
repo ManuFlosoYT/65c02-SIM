@@ -6,6 +6,8 @@
 
 namespace GUI {
 
+using namespace Control;
+
 void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                        float top_section_height, ImGuiWindowFlags window_flags);
 

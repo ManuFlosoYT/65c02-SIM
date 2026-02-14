@@ -1,10 +1,11 @@
-#ifndef SIM_65C02_SID_H
-#define SIM_65C02_SID_H
+#pragma once
 
 #include <SDL.h>
 
 #include <cstdint>
 #include <mutex>
+
+namespace Hardware {
 
 struct ADSREnvelope {
     enum State { IDLE, ATTACK, DECAY, SUSTAIN, RELEASE };
@@ -68,4 +69,4 @@ private:
     void UpdateAudioState();
 };
 
-#endif  // SIM_65C02_SID_H
+}  // namespace Hardware

@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+namespace Hardware {
+
 void GPU::Init() {
     std::memset(vram, 0, sizeof(vram));
     writeHooks.clear();
@@ -60,3 +62,5 @@ Byte GPU::Read(Word addr) {
     }
     return 0;
 }
+
+}  // namespace Hardware

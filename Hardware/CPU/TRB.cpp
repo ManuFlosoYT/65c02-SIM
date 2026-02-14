@@ -1,5 +1,7 @@
 #include "TRB.h"
 
+namespace Hardware::Instructions {
+
 void TRB::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte dato = cpu.ReadByte(ZP_Dir, mem);
@@ -21,3 +23,5 @@ void TRB::ExecuteABS(CPU& cpu, Mem& mem) {
     Byte res2 = (~cpu.A) & dato;
     mem.Write(Dir, res2);
 }
+
+}  // namespace Hardware::Instructions

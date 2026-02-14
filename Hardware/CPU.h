@@ -1,5 +1,4 @@
-#ifndef SIM_65C02_CPU_H
-#define SIM_65C02_CPU_H
+#pragma once
 #include <cstdint>
 
 #include "CPU/InstructionSet.h"
@@ -7,6 +6,8 @@
 
 using Byte = uint8_t;
 using Word = uint16_t;
+
+namespace Hardware {
 
 class CPU {
 public:
@@ -59,4 +60,4 @@ public:
     void PushWord(Word val, Mem& mem);
 };
 
-#endif  // SIM_65C02_CPU_H
+}  // namespace Hardware

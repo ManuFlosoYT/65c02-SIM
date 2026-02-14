@@ -2,6 +2,8 @@
 
 #include "Mem.h"
 
+namespace Hardware {
+
 void ACIA::Init(Mem& mem) {
     mem.SetWriteHook(ACIA_DATA, [this](Word dir, Byte val) {
         this->DATA = val;
@@ -26,3 +28,5 @@ void ACIA::Init(Mem& mem) {
     mem.SetReadHook(ACIA_STATUS,
                     [this, &mem](Word dir) { return mem.memory[ACIA_STATUS]; });
 }
+
+}  // namespace Hardware

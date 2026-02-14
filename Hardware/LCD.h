@@ -1,9 +1,10 @@
-#ifndef SIM_65C02_LCD_H
-#define SIM_65C02_LCD_H
+#pragma once
 
 #include <functional>
 
 #include "Mem.h"
+
+namespace Hardware {
 
 class LCD {
 public:
@@ -32,4 +33,4 @@ private:
     void HandleCommand(Byte cmd);
 };
 
-#endif  // SIM_65C02_LCD_H
+}  // namespace Hardware

@@ -1,5 +1,7 @@
 #include "ADC.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Word res, Byte dato, Byte oldA) {
     cpu.Z = (cpu.A == 0);
     cpu.N = (cpu.A & 0b10000000) > 0;
@@ -226,3 +228,5 @@ void ADC::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
         cpu.C = (res > 0x99);
     }
 }
+
+}  // namespace Hardware::Instructions

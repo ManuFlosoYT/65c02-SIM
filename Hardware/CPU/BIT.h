@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_BIT_H
-#define SIM_65C02_BIT_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class BIT {
 public:
@@ -13,4 +14,4 @@ public:
     static void ExecuteABSX(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_BIT_H
+}  // namespace Hardware::Instructions

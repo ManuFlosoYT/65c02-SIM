@@ -1,11 +1,13 @@
-#ifndef SIM_65C02_BRK_H
-#define SIM_65C02_BRK_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
+
 class BRK {
 public:
     static void Execute(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_BRK_H
+}  // namespace Hardware::Instructions

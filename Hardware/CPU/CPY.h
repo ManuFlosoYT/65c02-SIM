@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_CPY_H
-#define SIM_65C02_CPY_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class CPY {
 public:
@@ -11,4 +12,4 @@ public:
     static void ExecuteABS(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_CPY_H
+}  // namespace Hardware::Instructions

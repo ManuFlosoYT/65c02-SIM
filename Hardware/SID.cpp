@@ -6,6 +6,9 @@
 #include <iostream>
 
 // SID clock frequency ~1.0 MHz
+
+namespace Hardware {
+
 constexpr double SID_CLOCK = 985248.0;
 
 // Simple LCG for fast noise
@@ -259,3 +262,5 @@ double Oscillator::Next(int sampleRate) {
 
     return output * env.level;
 }
+
+}  // namespace Hardware

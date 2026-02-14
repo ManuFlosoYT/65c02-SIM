@@ -1,5 +1,7 @@
 #include "DEC.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Byte val) {
     cpu.Z = (val == 0);
     cpu.N = (val & 0b10000000) > 0;
@@ -43,3 +45,5 @@ void DEC::ExecuteABSX(CPU& cpu, Mem& mem) {
     mem.Write(Dir, dato);
     SetFlags(cpu, dato);
 }
+
+}  // namespace Hardware::Instructions

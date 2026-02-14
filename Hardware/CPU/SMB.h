@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_SMB_H
-#define SIM_65C02_SMB_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class SMB {
 public:
@@ -16,4 +17,4 @@ public:
     static void Execute7(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_SMB_H
+}  // namespace Hardware::Instructions

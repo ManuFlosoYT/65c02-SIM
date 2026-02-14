@@ -5,6 +5,10 @@
 #include <iomanip>
 #include <iostream>
 
+using namespace Hardware;
+
+namespace Core {
+
 Emulator::Emulator() : mem(), cpu(), lcd(), acia(), via() {}
 
 void Emulator::PrintState() {
@@ -254,3 +258,5 @@ void Emulator::ThreadLoop() {
         }
     }
 }
+
+}  // namespace Core

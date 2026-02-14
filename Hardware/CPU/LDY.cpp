@@ -1,5 +1,7 @@
 #include "LDY.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu) {
     cpu.Z = (cpu.Y == 0);
     cpu.N = (cpu.Y & 0b10000000) > 0;
@@ -41,3 +43,5 @@ void LDY::ExecuteABSX(CPU& cpu, Mem& mem) {
     cpu.Y = cpu.ReadByte(Dir, mem);
     SetFlags(cpu);
 }
+
+}  // namespace Hardware::Instructions

@@ -19,6 +19,11 @@
 #include "Frontend/GUI/VRAMViewerWindow.h"
 #include "UpdateChecker.h"
 
+using namespace Control;
+using namespace Core;
+using namespace Frontend;
+using namespace Hardware;
+
 int main(int argc, char* argv[]) {
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER |

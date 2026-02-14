@@ -4,6 +4,8 @@
 #include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/InstructionSet.h"
 
+using namespace Hardware;
+
 class ORA_AbsoluteX_Test : public ::testing::Test {
 protected:
     void SetUp() override { cpu.Reset(mem); }

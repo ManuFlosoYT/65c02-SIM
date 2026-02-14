@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_SBC_H
-#define SIM_65C02_SBC_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class SBC {
 public:
@@ -17,4 +18,4 @@ public:
     static void ExecuteIND_ZP(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_SBC_H
+}  // namespace Hardware::Instructions

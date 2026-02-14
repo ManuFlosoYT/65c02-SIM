@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_AND_H
-#define SIM_65C02_AND_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class AND {
 public:
@@ -17,4 +18,4 @@ public:
     static void ExecuteIND_ZP(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_AND_H
+}  // namespace Hardware::Instructions

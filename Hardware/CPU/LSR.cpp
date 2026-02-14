@@ -1,5 +1,7 @@
 #include "LSR.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Byte val, Byte A) {
     cpu.Z = (val == 0);
     cpu.N = (val & 0b10000000) > 0;
@@ -51,3 +53,5 @@ void LSR::ExecuteABSX(CPU& cpu, Mem& mem) {
     mem.Write(Dir, dato);
     SetFlags(cpu, dato, A);
 }
+
+}  // namespace Hardware::Instructions

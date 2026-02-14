@@ -1,7 +1,8 @@
-#ifndef SIM_65C02_VIA_H
-#define SIM_65C02_VIA_H
+#pragma once
 
 #include "Mem.h"
+
+namespace Hardware {
 
 class VIA {
 public:
@@ -117,4 +118,4 @@ private:
     std::function<void(Byte)> port_b_callback;
 };
 
-#endif  // SIM_65C02_VIA_H
+}  // namespace Hardware

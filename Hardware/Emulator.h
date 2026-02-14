@@ -1,3 +1,4 @@
+#pragma once
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -13,6 +14,10 @@
 #include "Mem.h"
 #include "SID.h"
 #include "VIA.h"
+
+namespace Core {
+
+using namespace Hardware;
 
 class Emulator {
 public:
@@ -80,3 +85,5 @@ private:
     std::condition_variable pauseCV;
     std::mutex emulationMutex;  // mutex for thread safety during reset/step
 };
+
+}  // namespace Core

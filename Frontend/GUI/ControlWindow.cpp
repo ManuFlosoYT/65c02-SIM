@@ -6,6 +6,10 @@
 
 #include "Frontend/Control/Console.h"
 
+using namespace Control;
+using namespace Core;
+using namespace Hardware;
+
 namespace GUI {
 
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,

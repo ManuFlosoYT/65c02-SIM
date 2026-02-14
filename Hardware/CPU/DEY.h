@@ -1,11 +1,13 @@
-#ifndef SIM_65C02_DEY_H
-#define SIM_65C02_DEY_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
+
 class DEY {
 public:
     static void Execute(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_DEY_H
+}  // namespace Hardware::Instructions

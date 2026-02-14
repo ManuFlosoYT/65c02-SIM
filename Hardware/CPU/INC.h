@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_INC_H
-#define SIM_65C02_INC_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class INC {
 public:
@@ -13,4 +14,4 @@ public:
     static void ExecuteABSX(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_INC_H
+}  // namespace Hardware::Instructions

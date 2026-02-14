@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_STZ_H
-#define SIM_65C02_STZ_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class STZ {
 public:
@@ -12,4 +13,4 @@ public:
     static void ExecuteABSX(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_STZ_H
+}  // namespace Hardware::Instructions

@@ -1,5 +1,7 @@
 #include "STA.h"
 
+namespace Hardware::Instructions {
+
 void STA::ExecuteZP(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     mem.Write(ZP_Dir, cpu.A);
@@ -67,3 +69,5 @@ Byte ZP_Dir = cpu.FetchByte(mem);
 
     mem.Write(dir, cpu.A);
 }
+
+}  // namespace Hardware::Instructions

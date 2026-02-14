@@ -1,5 +1,7 @@
 #include "BIT.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Byte val) {
     cpu.N = (val & 0b10000000) > 0;
     cpu.V = (val & 0b01000000) > 0;
@@ -44,3 +46,5 @@ void BIT::ExecuteABSX(CPU& cpu, Mem& mem) {
     cpu.Z = (val == 0);
     SetFlags(cpu, dato);
 }
+
+}  // namespace Hardware::Instructions

@@ -1,5 +1,7 @@
 #include "SBC.h"
 
+namespace Hardware::Instructions {
+
 static void SetFlags(CPU& cpu, Word res, Byte dato, Byte oldA) {
     cpu.Z = (cpu.A == 0);
     cpu.N = (cpu.A & 0b10000000) > 0;
@@ -227,3 +229,5 @@ void SBC::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
         SetFlagsBCD(cpu, res, dato, oldA);
     }
 }
+
+}  // namespace Hardware::Instructions

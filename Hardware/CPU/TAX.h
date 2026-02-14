@@ -1,11 +1,13 @@
-#ifndef SIM_65C02_TAX_H
-#define SIM_65C02_TAX_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
+
 class TAX {
 public:
     static void Execute(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_TAX_H
+}  // namespace Hardware::Instructions

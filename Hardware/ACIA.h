@@ -1,9 +1,10 @@
-#ifndef SIM_65C02_ACIA_H
-#define SIM_65C02_ACIA_H
+#pragma once
 
 #include <functional>
 
 #include "Mem.h"
+
+namespace Hardware {
 
 class ACIA {
 public:
@@ -22,4 +23,4 @@ private:
     std::function<void(char)> outputCallback;
 };
 
-#endif  // SIM_65C02_ACIA_H
+}  // namespace Hardware

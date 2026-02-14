@@ -1,5 +1,7 @@
 #include "BRK.h"
 
+namespace Hardware::Instructions {
+
 void BRK::Execute(CPU& cpu, Mem& mem) {
     cpu.B = true;
     cpu.PushWord(cpu.PC + 1, mem);
@@ -7,3 +9,5 @@ void BRK::Execute(CPU& cpu, Mem& mem) {
     cpu.PushByte(PS, mem);
     cpu.PC = cpu.ReadWord(0xFFFE, mem);
 }
+
+}  // namespace Hardware::Instructions

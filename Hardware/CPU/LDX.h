@@ -1,8 +1,9 @@
-#ifndef SIM_65C02_LDX_H
-#define SIM_65C02_LDX_H
+#pragma once
 
 #include "../CPU.h"
 #include "../Mem.h"
+
+namespace Hardware::Instructions {
 
 class LDX {
 public:
@@ -13,4 +14,4 @@ public:
     static void ExecuteABSY(CPU& cpu, Mem& mem);
 };
 
-#endif  // SIM_65C02_LDX_H
+}  // namespace Hardware::Instructions

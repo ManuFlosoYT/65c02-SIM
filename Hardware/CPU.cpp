@@ -71,6 +71,10 @@
 #include "CPU/TXS.h"
 #include "CPU/TYA.h"
 
+using namespace Hardware::Instructions;
+
+namespace Hardware {
+
 int CPU::Execute(Mem& mem) {
     while (true) {
         int res = Step(mem);
@@ -1056,3 +1060,5 @@ void CPU::SetStatus(Byte status) {
     V = (status >> 6) & 0x01;
     N = (status >> 7) & 0x01;
 }
+
+}  // namespace Hardware

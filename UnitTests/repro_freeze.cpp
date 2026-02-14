@@ -5,6 +5,8 @@
 #include "../Hardware/Mem.h"
 #include "gtest/gtest.h"
 
+using namespace Hardware;
+
 class FreezeRepro : public ::testing::Test {
 protected:
     Mem mem;

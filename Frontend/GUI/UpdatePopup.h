@@ -6,6 +6,8 @@
 
 namespace GUI {
 
+using namespace Control;
+
 void DrawUpdatePopup(AppState& state);
 
 }  // namespace GUI

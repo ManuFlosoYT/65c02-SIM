@@ -1,5 +1,7 @@
 #include "VIA.h"
 
+namespace Hardware {
+
 VIA::VIA() { Reset(); }
 
 void VIA::Reset() {
@@ -423,3 +425,5 @@ void VIA::SetIER(Byte val) { ier = val; }
 
 Byte VIA::GetORA_NH() const { return ora_nh; }
 void VIA::SetORA_NH(Byte val) { ora_nh = val; }
+
+}  // namespace Hardware

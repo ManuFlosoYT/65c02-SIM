@@ -6,6 +6,8 @@
 
 #include "../Hardware/Mem.h"
 
+using namespace Hardware;
+
 class TestLCD : public ::testing::Test {
 protected:
     Mem mem;
