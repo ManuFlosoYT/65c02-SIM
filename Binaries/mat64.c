@@ -1,4 +1,4 @@
-#include "Include/bios.h"
+#include "Include/BIOS.h"
 
 /* 64-bit Structure */
 typedef struct {

@@ -1,4 +1,4 @@
-#include "Include/bios.h"
+#include "Include/BIOS.h"
 
 /* Global variables definition */
 unsigned char i, j, k;

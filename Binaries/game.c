@@ -1,6 +1,6 @@
-#include "Include/bios.h"
-#include "Include/gpu.h"
-#include "Include/lcd.h"
+#include "Include/BIOS.h"
+#include "Include/GPU.h"
+#include "Include/LCD.h"
 #include "Include/VIA.h"
 
 // --- VIA Configuration ---
@@ -250,11 +250,7 @@ int main(void) {
         }
 
         // Delay for frame rate control
-        // Wait for T1 Interrupt Flag (Bit 6)
-        while (!(VIA_IFR & 0x40));
-        
-        // Clear the interrupt flag
-        VIA_IFR = 0x40;
+        via_wait_frame();
     }
 
     return 0;

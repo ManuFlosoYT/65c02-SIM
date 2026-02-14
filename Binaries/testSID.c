@@ -1,8 +1,5 @@
 
-#include "Include/sid.h"
-
-// Note Frequencies (Approx)
-// Using defines from sid.h
+#include "Include/SID.h"
 
 int main() {
     uint16_t melody[] = {NOTE_C4, NOTE_E4, NOTE_G4, NOTE_C5,
@@ -38,13 +35,7 @@ int main() {
         sid_voice_control(2, WAVE_SAW | WAVE_GATE);
 
         // --- 3. DRUMS ---
-        // Simple beat: Kick (Tri) on 0,4. Snare (Noise) on 2,6
         if (step % 2 == 0) {
-            // Kick-ish (Low Pulse/Tri)
-            // Actually, let's use Noise for everything for simplicity in
-            // "Bateria" context, or switch waveforms. Switching waveforms might
-            // be glitchy if not careful. Let's use Voice 3 for Hi-Hat/Snare
-            // (Noise)
 
             if (step % 4 == 0) {
                 // Strong beat

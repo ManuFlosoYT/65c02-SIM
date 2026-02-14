@@ -37,4 +37,10 @@ static void via_disable_interrupt(uint8_t mask) {
 
 static void via_ack_interrupt(uint8_t mask) { VIA_IFR = mask; }
 
+// Wait for Timer 1 interrupt flag (Bit 6) and clear it
+static void via_wait_frame() {
+    while (!(VIA_IFR & 0x40));
+    VIA_IFR = 0x40;
+}
+
 #endif

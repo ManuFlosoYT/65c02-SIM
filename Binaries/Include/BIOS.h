@@ -50,9 +50,6 @@ void read_line(char* buffer, int max_len) {
             break;  // Exit loop if Enter is pressed
         }
 
-        /* Echo: print what is typed */
-        bios_putchar(c);
-
         /* Save to buffer */
         buffer[i] = c;
         i++;

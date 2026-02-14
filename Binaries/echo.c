@@ -1,4 +1,4 @@
-#include "Include/bios.h"
+#include "Include/BIOS.h"
 
 #define BUFFER_SIZE 50
 
@@ -10,7 +10,6 @@ int main(void) {
         inputBuffer[i] = 0;
     }
 
-    /* Hardware initialization, same as in mat.c */
     INIT_BUFFER();
 
     /* 1. Request user input */
