@@ -145,10 +145,14 @@ target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 libglew_static OpenGL::GL)
 # ------------------------------------------------------------------------------
 # Target: Simulator Application
 # ------------------------------------------------------------------------------
+file(GLOB_RECURSE FRONTEND_SOURCES
+    "Frontend/*.cpp"
+    "Frontend/*.h"
+)
+
 if(WIN32)
     add_executable(SIM_65C02 WIN32
-        Frontend/main.cpp
-        Frontend/UpdateChecker.cpp
+        ${FRONTEND_SOURCES}
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
     # Static linking for Windows to avoid missing DLLs
@@ -156,8 +160,7 @@ if(WIN32)
     target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib mingw32 SDL2::SDL2main SDL2::SDL2 libglew_static OpenGL::GL nlohmann_json::nlohmann_json)
 else()
     add_executable(SIM_65C02 
-        Frontend/main.cpp
-        Frontend/UpdateChecker.cpp
+        ${FRONTEND_SOURCES}
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
     # Static runtime linking for Linux (optional but good for portability)
