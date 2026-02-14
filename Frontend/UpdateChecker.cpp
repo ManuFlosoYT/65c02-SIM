@@ -4,11 +4,11 @@
 #include <thread>
 
 #ifdef _WIN32
-    #include <windows.h>
+#include <windows.h>
 #else
-    #include <array>
-    #include <cstdio>
-    #include <memory>
+#include <array>
+#include <cstdio>
+#include <memory>
 #endif
 
 using json = nlohmann::json;
@@ -134,8 +134,12 @@ std::string UpdateChecker::FetchLatestReleaseTag() {
         "https://api.github.com/repos/ManuFlosoYT/65c02-SIM/releases/latest";
     std::array<char, 128> buffer;
     std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"),
-                                                  pclose);
+    struct PipeCloser {
+        void operator()(FILE* f) const {
+            if (f) pclose(f);
+        }
+    };
+    std::unique_ptr<FILE, PipeCloser> pipe(popen(cmd.c_str(), "r"));
 
     if (!pipe) return "";  // Silent fail
 
