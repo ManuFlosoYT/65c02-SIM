@@ -9,7 +9,7 @@
 
 namespace Hardware {
 
-constexpr double SID_CLOCK = 985248.0;
+constexpr double SID_CLOCK = 1000000.0;
 
 // Simple LCG for fast noise
 static uint32_t fast_rand() {
