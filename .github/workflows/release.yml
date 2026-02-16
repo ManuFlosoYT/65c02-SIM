@@ -11,18 +11,23 @@ permissions:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    # Aquí definimos que todo corra dentro de Fedora
+    container: fedora:latest
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
     steps:
+      - name: Install dependencies
+        # Actualizamos e instalamos las dependencias exactas que pediste para Fedora
+        run: |
+          dnf -y update
+          dnf -y install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel ccache git tar which wget curl
+
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev libasound2-dev libpulse-dev ccache
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 --slave /usr/bin/g++ g++ /usr/bin/g++-14
-          pip install cmake --upgrade
+      # Solución necesaria cuando se usa git dentro de un contenedor en GHA
+      - name: Fix Git Trust
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -51,17 +56,22 @@ jobs:
 
   build-windows:
     runs-on: ubuntu-latest
+    # Fedora tiene excelente soporte para MinGW, ideal para cross-compile
+    container: fedora:latest
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
     steps:
+      - name: Install dependencies
+        # Instalamos dependencias de MinGW (GCC, OpenSSL, Zlib) y Wine
+        run: |
+          dnf -y update
+          dnf -y install ninja-build mingw64-gcc mingw32-gcc cmake mingw64-openssl mingw64-openssl-static mingw64-zlib-static wine ccache git tar which
+
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build mingw-w64 ccache wine
-          pip install cmake --upgrade
+      - name: Fix Git Trust
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -88,6 +98,7 @@ jobs:
           name: SIM_65C02-windows
           path: output/windows/SIM_65C02.exe
 
+  # El SDK solo necesita comprimir archivos, ubuntu-latest es suficiente y más rápido
   sdk:
     runs-on: ubuntu-latest
     steps:
@@ -104,6 +115,7 @@ jobs:
           name: SDK
           path: SDK.zip
 
+  # La release solo mueve archivos, ubuntu-latest es suficiente
   release:
     runs-on: ubuntu-latest
     needs: [build-linux, build-windows, sdk]
