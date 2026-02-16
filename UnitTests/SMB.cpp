@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../Hardware/CPU.h"
+#include "../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../Hardware/Mem.h"
-#include "../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -22,7 +22,7 @@ TEST_F(SMB_Test, SMB0_SetsBit0) {
     mem.Write(0x4000, INS_SMB0);
     mem.Write(0x4001, 0x10);
     mem.Write(0x4002, INS_JAM);  // Stop
-    mem.Write(0x0010, 0x00);  // 0000 0000
+    mem.Write(0x0010, 0x00);     // 0000 0000
 
     cpu.Execute(mem);
 
@@ -35,7 +35,7 @@ TEST_F(SMB_Test, SMB0_AlreadySet) {
     mem.Write(0x4000, INS_SMB0);
     mem.Write(0x4001, 0x10);
     mem.Write(0x4002, INS_JAM);  // Stop
-    mem.Write(0x0010, 0x01);  // 0000 0001
+    mem.Write(0x0010, 0x01);     // 0000 0001
 
     cpu.Execute(mem);
 

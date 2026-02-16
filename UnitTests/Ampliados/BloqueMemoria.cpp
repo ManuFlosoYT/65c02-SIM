@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../../Hardware/CPU.h"
+#include "../../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../../Hardware/Mem.h"
-#include "../../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -64,7 +64,8 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
 
     // Execute
     cpu.PC = CODE_START;
-    cpu.isInit = true;  // Previene ejecutar de resetear PC a vector 0xFFFC (que es 0)
+    cpu.isInit =
+        true;  // Previene ejecutar de resetear PC a vector 0xFFFC (que es 0)
     cpu.Execute(mem);
 
     // Verificacion

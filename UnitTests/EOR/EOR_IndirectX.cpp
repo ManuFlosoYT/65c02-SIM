@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../../Hardware/CPU.h"
+#include "../../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../../Hardware/Mem.h"
-#include "../../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -20,7 +20,8 @@ TEST_F(EOR_IndirectX_Test, EOR_IndirectX) {
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
     mem.Write(0x4000, INS_EOR_INDX);
-    mem.Write(0x4001, 0x02);  // ZP Addr = 0x02. Actual Lookup: 0x02 + 0x04 = 0x06
+    mem.Write(0x4001,
+              0x02);  // ZP Addr = 0x02. Actual Lookup: 0x02 + 0x04 = 0x06
     mem.Write(0x0006, 0x00);  // Low Byte
     mem.Write(0x0007, 0x80);  // High Byte -> Eff Address: 0x8000
     mem.Write(0x8000, 0x0F);  // 0xFF ^ 0x0F = 0xF0

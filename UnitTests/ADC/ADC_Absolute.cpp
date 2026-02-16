@@ -2,7 +2,7 @@
 
 #include "../../Hardware/CPU.h"
 #include "../../Hardware/Mem.h"
-#include "../../Hardware/CPU/InstructionSet.h"
+#include "../../Hardware/CPU/Instructions/InstructionSet.h"
 
 using namespace Hardware;
 

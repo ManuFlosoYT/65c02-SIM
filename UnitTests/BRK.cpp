@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../Hardware/CPU.h"
+#include "../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../Hardware/Mem.h"
-#include "../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -26,7 +26,7 @@ TEST_F(BRK_Test, BRK_Operations) {
 
     // Interrupt Vector
     mem.Write(0xFFFE, 0x00);
-    mem.Write(0xFFFF, 0x20);  // 0x2000
+    mem.Write(0xFFFF, 0x20);     // 0x2000
     mem.Write(0x2000, INS_JAM);  // STOP
 
     mem.Write(0x1000, INS_BRK);

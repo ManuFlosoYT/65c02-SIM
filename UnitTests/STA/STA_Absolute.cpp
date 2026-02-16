@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../../Hardware/CPU.h"
+#include "../../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../../Hardware/Mem.h"
-#include "../../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -23,7 +23,8 @@ TEST_F(STA_Absolute_Test, STA_Absolute) {
     mem.Write(0x4000, INS_STA_ABS);
     mem.Write(0x4001, 0x00);  // Low Byte
     mem.Write(0x4002, 0x80);  // High Byte
-    mem.Write(0x4003, INS_JAM);  // Stop? No, PC is at 0xFFFF, need to be careful.
+    mem.Write(0x4003,
+              INS_JAM);  // Stop? No, PC is at 0xFFFF, need to be careful.
     // STA ABS is 3 bytes.
     // 0xFFFC: Opcode
     // 0xFFFD: Low

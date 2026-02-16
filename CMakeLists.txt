@@ -5,10 +5,10 @@ include(CheckIPOSupported)
 check_ipo_supported(RESULT lto_supported OUTPUT error)
 
 if(lto_supported)
-    message(STATUS "LTO (IPO) es compatible y ha sido activado")
+    message(STATUS "LTO (IPO) is compatible and has been enabled")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 else()
-    message(STATUS "LTO no es compatible: ${error}")
+    message(STATUS "LTO (IPO) is not compatible: ${error}")
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
@@ -133,9 +133,7 @@ if(TARGET httplib)
     target_link_libraries(httplib INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
-file(GLOB CORE_SOURCES
-    "Hardware/CPU/*.cpp"
-    "Hardware/CPU/*.h"
+file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
     "Hardware/*.cpp"
     "Hardware/*.h"
 )

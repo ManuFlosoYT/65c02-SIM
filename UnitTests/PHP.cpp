@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../Hardware/CPU.h"
+#include "../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../Hardware/Mem.h"
-#include "../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -28,7 +28,7 @@ TEST_F(PHP_Test, PHP) {
     cpu.V = 1;
     cpu.D = 1;
     cpu.I = 1;
-    cpu.B = 1; 
+    cpu.B = 1;
 
     cpu.Execute(mem);
 

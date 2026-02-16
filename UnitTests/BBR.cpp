@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../Hardware/CPU.h"
+#include "../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../Hardware/Mem.h"
-#include "../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -23,7 +23,7 @@ TEST_F(BBR_Test, BBR0_BranchTaken) {
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BBR0);
-    mem.Write(0x4001, 0x05);  // Offset +5
+    mem.Write(0x4001, 0x05);     // Offset +5
     mem.Write(0x4002, INS_JAM);  // Stop if not taken (or part of skip)
 
     // Accumulator Value: Bit 0 is 0
@@ -44,7 +44,7 @@ TEST_F(BBR_Test, BBR0_BranchNotTaken) {
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BBR0);
-    mem.Write(0x4001, 0x05);  // Offset
+    mem.Write(0x4001, 0x05);     // Offset
     mem.Write(0x4002, INS_JAM);  // Stop if not taken
 
     // Accumulator Value: Bit 0 is 1
@@ -60,7 +60,7 @@ TEST_F(BBR_Test, BBR7_BranchTaken) {
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BBR7);
-    mem.Write(0x4001, 0x04);  // Offset +4
+    mem.Write(0x4001, 0x04);     // Offset +4
     mem.Write(0x4002, INS_JAM);  // Stop if not taken
 
     // Accumulator Value: Bit 7 is 0

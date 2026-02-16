@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-#include "CPU/InstructionSet.h"
+#include "CPU/Instructions/InstructionSet.h"
 #include "Mem.h"
 
 using Byte = uint8_t;

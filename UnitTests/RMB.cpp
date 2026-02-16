@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "../Hardware/CPU.h"
+#include "../Hardware/CPU/Instructions/InstructionSet.h"
 #include "../Hardware/Mem.h"
-#include "../Hardware/CPU/InstructionSet.h"
 
 using namespace Hardware;
 
@@ -18,9 +18,9 @@ TEST_F(RMB_Test, RMB0_ClearsBit0) {
     mem.Write(0xFFFC, 0x00);
     mem.Write(0xFFFD, 0x40);
     mem.Write(0x4000, INS_RMB0);
-    mem.Write(0x4001, 0x10);  // Zero Page Address
+    mem.Write(0x4001, 0x10);     // Zero Page Address
     mem.Write(0x4002, INS_JAM);  // Stop
-    mem.Write(0x0010, 0xFF);  // Initial value: 1111 1111
+    mem.Write(0x0010, 0xFF);     // Initial value: 1111 1111
 
     cpu.Execute(mem);
 
