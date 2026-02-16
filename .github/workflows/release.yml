@@ -20,7 +20,7 @@ jobs:
         # Actualizamos e instalamos las dependencias exactas que pediste para Fedora
         run: |
           dnf -y update
-          dnf -y install gcc-c++ ninja-build mingw64-gcc mingw64-gcc-c++ mingw32-gcc mingw32-gcc-c++ mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel ccache git tar which wget curl
+          dnf -y install libstdc++-static gcc-c++ ninja-build mingw64-gcc mingw64-gcc-c++ mingw32-gcc mingw32-gcc-c++ mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel ccache git tar which wget curl
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -65,7 +65,7 @@ jobs:
         # Instalamos dependencias de MinGW (GCC, OpenSSL, Zlib) y Wine
         run: |
           dnf -y update
-          dnf -y install ninja-build mingw64-gcc mingw32-gcc cmake mingw64-openssl mingw64-openssl-static mingw64-zlib-static wine ccache git tar which
+          dnf -y install libstdc++-static ninja-build mingw64-gcc mingw64-gcc-c++ mingw32-gcc mingw32-gcc-c++ cmake mingw64-openssl mingw64-openssl-static mingw64-zlib-static wine ccache git tar which
 
       - name: Checkout code
         uses: actions/checkout@v4
