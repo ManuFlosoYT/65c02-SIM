@@ -49,8 +49,14 @@ public:
 
     void EnableSound(bool enable);
     void SetEmulationPaused(bool paused);
-    bool IsSoundEnabled() const { return soundEnabled; }
-    const Oscillator& GetVoice(int index) const { return voices[index % MAX_SID_VOICES]; }
+    
+    bool IsSoundEnabled() const { 
+        return soundEnabled; 
+    }
+    
+    const Oscillator& GetVoice(int index) const { 
+        return voices[index % MAX_SID_VOICES]; 
+    }
 
 private:
     uint8_t registers[0x20];

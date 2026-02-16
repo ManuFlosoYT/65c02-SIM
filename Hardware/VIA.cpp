@@ -29,10 +29,10 @@ void VIA::Reset() {
     t1_active = false;
     t2_active = false;
 
-    ira = 0x00;  // Default low (fixes ACIA flow control check on startup)
-    irb = 0x00;  // Default low
+    ira = 0x00;
+    irb = 0x00;
     last_irb = 0x00;
-    t1_pb7_output = true;  // Default high
+    t1_pb7_output = true;
     cb1_in = true;
     cb2_in = true;
     sr_cnt = 0;

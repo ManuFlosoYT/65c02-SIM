@@ -14,8 +14,13 @@ public:
     void Init(Mem& mem);
     void Update(Byte portBVal);
 
-    void SetOutputCallback(std::function<void(char)> cb) { onChar = cb; }
-    const char (&GetScreen() const)[2][16] { return screen; }
+    void SetOutputCallback(std::function<void(char)> cb) { 
+        onChar = cb; 
+    }
+    
+    const char (&GetScreen() const)[2][16] { 
+        return screen; 
+    }
 
 private:
     bool four_bit_mode = false;

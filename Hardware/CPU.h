@@ -43,16 +43,10 @@ public:
     const Byte GetStatus() const;
     void SetStatus(Byte status);
 
-    const Byte FetchByte(
-        const Mem& mem);  // Reads a byte from memory and advances PC
-    const Byte ReadByte(
-        const Word addr,
-        Mem& mem);  // Reads a byte from memory without advancing PC
-    const Word FetchWord(
-        const Mem& mem);  // Reads a word from memory and advances PC + 2
-    const Word ReadWord(
-        const Word addr,
-        Mem& mem);  // Reads a word from memory without advancing PC
+    const Byte FetchByte(const Mem& mem);  // Reads a byte from memory and advances PC
+    const Byte ReadByte(const Word addr, Mem& mem);  // Reads a byte from memory without advancing PC
+    const Word FetchWord(const Mem& mem);  // Reads a word from memory and advances PC + 2
+    const Word ReadWord(const Word addr, Mem& mem);  // Reads a word from memory without advancing PC
 
     Byte PopByte(Mem& mem);
     Word PopWord(Mem& mem);

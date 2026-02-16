@@ -22,7 +22,10 @@ public:
     const static Byte DISPLAY_WIDTH = 132;
     const static Byte DISPLAY_HEIGHT = 78;
 
-    GPU() { Init(); }
+    GPU() { 
+        Init(); 
+    }
+    
     Byte vram[VRAM_HEIGHT][VRAM_WIDTH]{};
 
     void Init();
@@ -31,14 +34,22 @@ public:
     void Clock();
 
     // Get current pixel position (14-bit values)
-    Word GetPixelX() const { return pixelX; }
-    Word GetPixelY() const { return pixelY; }
+    Word GetPixelX() const { 
+        return pixelX; 
+    }
+
+    Word GetPixelY() const { 
+        return pixelY; 
+    }
 
     // Bus control status
     bool IsInDrawingInterval() const {
         return pixelX < VRAM_WIDTH && pixelY < VRAM_HEIGHT;
     }
-    bool IsInBlankingInterval() const { return !IsInDrawingInterval(); }
+
+    bool IsInBlankingInterval() const { 
+        return !IsInDrawingInterval(); 
+    }
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
     Byte operator[](Word addr) const {

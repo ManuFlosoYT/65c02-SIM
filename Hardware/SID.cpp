@@ -5,8 +5,6 @@
 #include <cstring>
 #include <iostream>
 
-// SID clock frequency ~1.0 MHz
-
 namespace Hardware {
 
 constexpr double SID_CLOCK = 1000000.0;
@@ -21,12 +19,15 @@ static uint32_t fast_rand() {
 }
 
 // Lookup tables for ADSR roughly based on SID specs
-const double ATTACK_RATES[16] = {0.002, 0.008, 0.016, 0.024, 0.038, 0.056,
-                                 0.068, 0.080, 0.100, 0.250, 0.500, 0.800,
-                                 1.000, 3.000, 5.000, 8.000};
+const double ATTACK_RATES[16] = {
+    0.002, 0.008, 0.016, 0.024, 0.038, 0.056, 0.068, 0.080,
+    0.100, 0.250, 0.500, 0.800, 1.000, 3.000, 5.000, 8.000
+};
+
 const double DECAY_RELEASE_RATES[16] = {
     0.006, 0.024, 0.048, 0.072, 0.114, 0.168, 0.204,  0.240,
-    0.300, 0.750, 1.500, 2.400, 3.000, 9.000, 15.000, 24.000};
+    0.300, 0.750, 1.500, 2.400, 3.000, 9.000, 15.000, 24.000
+};
 
 SID::SID() { Reset(); }
 
@@ -57,8 +58,6 @@ void SID::Init(int sampleRate) {
     if (devId == 0) {
         std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
     } else {
-        /* std::cout << "SID Initialized. Audio Device ID: " << devId
-                  << " Sample Rate: " << have.freq << std::endl; */
         this->sampleRate = have.freq;
     }
 }
@@ -92,8 +91,6 @@ void SID::SetEmulationPaused(bool paused) {
 
 void SID::UpdateAudioState() {
     if (devId != 0) {
-        // Paused if sound disabled OR emulation paused
-        // SDL_PauseAudioDevice: 1 = pause, 0 = unpause
         int pause = (!soundEnabled || emulationPaused) ? 1 : 0;
         SDL_PauseAudioDevice(devId, pause);
     }
@@ -121,8 +118,7 @@ void SID::AudioCallback(void* userdata, uint8_t* stream, int len) {
 void SID::GenerateAudio(int16_t* buffer, int length) {
     uint8_t currentVolume = 0;
 
-    // 1. Synchronization Phase: Copy parameters from registers to voices (under
-    // lock)
+    // Synchronization Phase: Copy parameters from registers to voices (under lock)
     {
         std::lock_guard<std::mutex> lock(sidMutex);
 
@@ -161,7 +157,7 @@ void SID::GenerateAudio(int16_t* buffer, int length) {
                 v.accumulator = 0;
             }
         }
-    }  // Unlock mutex immediately
+    }  // Unlock mutex
 
     // 2. Generation Phase (No Lock)
     for (int i = 0; i < length; ++i) {
@@ -182,7 +178,6 @@ void SID::GenerateAudio(int16_t* buffer, int length) {
     }
 }
 
-// ADSREnvelope Implementation
 void ADSREnvelope::Update(bool gate, int sampleRate) {
     if (gate) {
         if (state == IDLE || state == RELEASE) {
@@ -234,7 +229,6 @@ void ADSREnvelope::Update(bool gate, int sampleRate) {
     }
 }
 
-// Oscillator Implementation
 double Oscillator::Next(int sampleRate) {
     if (frequency == 0) return 0.0;
 
