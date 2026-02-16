@@ -90,6 +90,7 @@ jobs:
       - name: Build Windows
         run: |
           chmod +x build-win.sh
+          export WINEPREFIX="$(pwd)/.wine"
           ./build-win.sh
 
       - name: Upload Windows Artifact
