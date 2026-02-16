@@ -1,17 +1,11 @@
 #include "UpdateChecker.h"
 
+#include <httplib.h>
 #include <nlohmann/json.hpp>
 #include <thread>
+#include <cstdio>
 
 namespace Frontend {
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <array>
-#include <cstdio>
-#include <memory>
-#endif
 
 using json = nlohmann::json;
 
@@ -19,11 +13,11 @@ Version Version::Parse(const std::string& versionStr) {
     Version v;
     v.tag = versionStr;
     std::string cleanVer = versionStr;
+    
     if (!cleanVer.empty() && cleanVer[0] == 'v') {
         cleanVer = cleanVer.substr(1);
     }
 
-    // Handle "dirty" or commit hash suffixes if present (e.g. 1.2.0-dirty)
     size_t dashPos = cleanVer.find('-');
     if (dashPos != std::string::npos) {
         cleanVer = cleanVer.substr(0, dashPos);
@@ -43,8 +37,8 @@ void UpdateChecker::CheckForUpdates(const std::string& currentVersion,
                                     UpdateCallback callback) {
     std::thread([currentVersion, callback]() {
         std::string latestTag = FetchLatestReleaseTag();
+        
         if (latestTag.empty()) {
-            // Silent failure
             return;
         }
 
@@ -56,109 +50,29 @@ void UpdateChecker::CheckForUpdates(const std::string& currentVersion,
     }).detach();
 }
 
-#ifdef _WIN32
-// Windows implementation using CreateProcess to avoid console window
 std::string UpdateChecker::FetchLatestReleaseTag() {
-    std::string cmd =
-        "curl -s "
-        "https://api.github.com/repos/ManuFlosoYT/65c02-SIM/releases/latest";
+    httplib::Client cli("https://api.github.com");
+    
+    cli.set_connection_timeout(5);
+    cli.set_read_timeout(5);
 
-    SECURITY_ATTRIBUTES saAttr;
-    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-    saAttr.bInheritHandle = TRUE;
-    saAttr.lpSecurityDescriptor = NULL;
-
-    HANDLE hChildStd_OUT_Rd = NULL;
-    HANDLE hChildStd_OUT_Wr = NULL;
-
-    if (!CreatePipe(&hChildStd_OUT_Rd, &hChildStd_OUT_Wr, &saAttr, 0))
-        return "";
-    SetHandleInformation(hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0);
-
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hChildStd_OUT_Wr;
-    si.hStdError = NULL;       // We don't care about errors, silent fail
-    si.wShowWindow = SW_HIDE;  // Ensure hidden
-
-    ZeroMemory(&pi, sizeof(pi));
-
-    // Create the child process.
-    // CreateProcess requires mutable string
-    std::vector<char> cmdVec(cmd.begin(), cmd.end());
-    cmdVec.push_back(0);
-
-    if (!CreateProcessA(NULL, cmdVec.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW,
-                        NULL, NULL, &si, &pi)) {
-        CloseHandle(hChildStd_OUT_Wr);
-        CloseHandle(hChildStd_OUT_Rd);
-        return "";
-    }
-
-    CloseHandle(hChildStd_OUT_Wr);  // Close write end in parent
-
-    std::string output;
-    DWORD dwRead;
-    CHAR chBuf[4096];
-    bool bSuccess = FALSE;
-
-    while (true) {
-        bSuccess =
-            ReadFile(hChildStd_OUT_Rd, chBuf, sizeof(chBuf) - 1, &dwRead, NULL);
-        if (!bSuccess || dwRead == 0) break;
-        chBuf[dwRead] = 0;
-        output += chBuf;
-    }
-
-    CloseHandle(hChildStd_OUT_Rd);
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-
-    try {
-        auto j = json::parse(output);
-        if (j.contains("tag_name")) {
-            return j["tag_name"];
-        }
-    } catch (...) {
-    }
-
-    return "";
-}
-#else
-// Linux/Unix implementation using popen
-std::string UpdateChecker::FetchLatestReleaseTag() {
-    std::string cmd =
-        "curl -s "
-        "https://api.github.com/repos/ManuFlosoYT/65c02-SIM/releases/latest";
-    std::array<char, 128> buffer;
-    std::string result;
-    struct PipeCloser {
-        void operator()(FILE* f) const {
-            if (f) pclose(f);
-        }
+    httplib::Headers headers = {
+        {"User-Agent", "65c02-SIM-UpdateChecker"},
+        {"Accept", "application/vnd.github.v3+json"}
     };
-    std::unique_ptr<FILE, PipeCloser> pipe(popen(cmd.c_str(), "r"));
+    auto res = cli.Get("/repos/ManuFlosoYT/65c02-SIM/releases/latest", headers);
 
-    if (!pipe) return "";  // Silent fail
-
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-
-    try {
-        auto j = json::parse(result);
-        if (j.contains("tag_name")) {
-            return j["tag_name"];
+    if (res && res->status == 200) {
+        try {
+            auto j = json::parse(res->body);
+            if (j.contains("tag_name")) {
+                return j["tag_name"];
+            }
+        } catch (...) {
         }
-    } catch (...) {
     }
 
     return "";
 }
-#endif
 
 }  // namespace Frontend

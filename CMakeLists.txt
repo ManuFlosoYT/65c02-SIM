@@ -1,37 +1,39 @@
 cmake_minimum_required(VERSION 3.24)
 project(SIM_65C02)
 
+include(CheckIPOSupported)
+check_ipo_supported(RESULT lto_supported OUTPUT error)
+
+if(lto_supported)
+    message(STATUS "LTO (IPO) es compatible y ha sido activado")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+else()
+    message(STATUS "LTO no es compatible: ${error}")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Default to Release build type if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Force -O3 optimization for Release builds
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+        set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -ffunction-sections -fdata-sections")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -flto -Wl,--gc-sections -s")
     endif()
 endif()
 
-# ------------------------------------------------------------------------------
-# Dependencies
-# ------------------------------------------------------------------------------
 include(FetchContent)
 
-# 1. GoogleTest
 FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/refs/heads/main.zip
 )
-# For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-# 2. SDL2
-# Build SDL2 as a static library
 set(SDL_SHARED OFF CACHE BOOL "Build shared SDL2" FORCE)
 set(SDL_STATIC ON CACHE BOOL "Build static SDL2" FORCE)
 set(SDL_TEST OFF CACHE BOOL "Build SDL2 test" FORCE)
@@ -45,7 +47,6 @@ set(CMAKE_WARN_DEPRECATED OFF)
 FetchContent_MakeAvailable(SDL2)
 set(CMAKE_WARN_DEPRECATED ON)
 
-# 3. Dear ImGui
 FetchContent_Declare(
   imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
@@ -53,7 +54,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-# 4. GLEW (FetchContent)
 FetchContent_Declare(
     glew
     GIT_REPOSITORY https://github.com/Perlmint/glew-cmake.git
@@ -61,7 +61,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glew)
 
-# 5. ImGuiFileDialog
 FetchContent_Declare(
     ImGuiFileDialog
     GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
@@ -69,14 +68,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ImGuiFileDialog)
 
-# 6. nlohmann_json
 FetchContent_Declare(
     json
     URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
 )
 FetchContent_MakeAvailable(json)
 
-# Get version from Git
 find_package(Git)
 if(GIT_FOUND)
     execute_process(
@@ -89,43 +86,71 @@ else()
     set(GIT_VERSION "v0.0.0")
 endif()
 
-# Fallback if git describe failed or returned empty
 if("${GIT_VERSION}" STREQUAL "")
     set(GIT_VERSION "v0.0.0")
 endif()
 
-#set(GIT_VERSION "v1.0.0") # FORCED FOR TESTING
+#set(GIT_VERSION "v0.6.7") # FORCED FOR TESTING
 
 add_compile_definitions(PROJECT_VERSION="${GIT_VERSION}")
 
 find_package(OpenGL REQUIRED)
 
-# ------------------------------------------------------------------------------
-# Core Library
-# ------------------------------------------------------------------------------
+if(WIN32)
+    if(NOT MINGW_ROOT)
+        set(MINGW_ROOT "/usr/x86_64-w64-mingw32/sys-root/mingw")
+    endif()
+    set(OPENSSL_ROOT_DIR "${MINGW_ROOT}")
+    set(OPENSSL_USE_STATIC_LIBS ON)
+    set(ZLIB_ROOT "${MINGW_ROOT}")
+    set(ZLIB_USE_STATIC_LIBS ON)
+endif()
+
+find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
+
+if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+    set_target_properties(ZLIB::ZLIB PROPERTIES
+        IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+    )
+endif()
+
+message(STATUS "ZLib Found: ${ZLIB_LIBRARIES}")
+message(STATUS "OpenSSL Found: ${OPENSSL_LIBRARIES}")
+
+FetchContent_Declare(
+    httplib
+    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+    GIT_TAG v0.15.3
+)
+set(HTTPLIB_REQUIRE_OPENSSL OFF CACHE BOOL "" FORCE) 
+set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(httplib)
+if(TARGET httplib)
+    target_compile_definitions(httplib INTERFACE CPPHTTPLIB_OPENSSL_SUPPORT)
+    target_link_libraries(httplib INTERFACE OpenSSL::SSL OpenSSL::Crypto)
+endif()
+
 file(GLOB CORE_SOURCES
     "Hardware/CPU/*.cpp"
     "Hardware/CPU/*.h"
     "Hardware/*.cpp"
     "Hardware/*.h"
 )
-# Exclude main.cpp if it gets globbed (it is not in subdirs so likely fine, GLOB above is restrictive)
-# But just in case
+
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(65c02_core STATIC ${CORE_SOURCES})
 target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(65c02_core PUBLIC SDL2::SDL2)
 
-# Test version of core (for unit tests if needed, though usually same lib works)
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV)
 target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(65c02_core_test PUBLIC SDL2::SDL2)
 
-# ------------------------------------------------------------------------------
-# ImGui Library (Static helper)
-# ------------------------------------------------------------------------------
 add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -142,9 +167,6 @@ target_include_directories(imgui_lib PUBLIC
 )
 target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 libglew_static OpenGL::GL)
 
-# ------------------------------------------------------------------------------
-# Target: Simulator Application
-# ------------------------------------------------------------------------------
 file(GLOB_RECURSE FRONTEND_SOURCES
     "Frontend/*.cpp"
     "Frontend/*.h"
@@ -155,25 +177,65 @@ if(WIN32)
         ${FRONTEND_SOURCES}
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
-    # Static linking for Windows to avoid missing DLLs
-    target_link_options(SIM_65C02 PRIVATE -static -static-libgcc -static-libstdc++)
-    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib mingw32 SDL2::SDL2main SDL2::SDL2 libglew_static OpenGL::GL nlohmann_json::nlohmann_json)
+    target_link_options(SIM_65C02 PRIVATE 
+        -static 
+        -static-libgcc 
+        -static-libstdc++ 
+        -Wl,--gc-sections 
+        -s
+    )
+    
+    target_link_libraries(SIM_65C02 PRIVATE 
+        65c02_core 
+        imgui_lib 
+        mingw32 
+        SDL2::SDL2main 
+        SDL2::SDL2 
+        libglew_static 
+        OpenGL::GL 
+        nlohmann_json::nlohmann_json
+        httplib::httplib
+        OpenSSL::SSL 
+        OpenSSL::Crypto
+        ZLIB::ZLIB
+        ws2_32  
+        crypt32 
+        pathcch
+    )
 else()
     add_executable(SIM_65C02 
         ${FRONTEND_SOURCES}
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
-    # Static runtime linking for Linux (optional but good for portability)
-    target_link_options(SIM_65C02 PRIVATE -static-libgcc -static-libstdc++)
-    target_link_libraries(SIM_65C02 PRIVATE 65c02_core imgui_lib SDL2::SDL2 libglew_static OpenGL::GL nlohmann_json::nlohmann_json)
+    target_link_options(SIM_65C02 PRIVATE 
+        -static-libgcc 
+        -static-libstdc++ 
+        -Wl,--gc-sections 
+        -s
+    )
+    
+    target_link_libraries(SIM_65C02 PRIVATE 
+        65c02_core 
+        imgui_lib 
+        SDL2::SDL2 
+        libglew_static 
+        OpenGL::GL 
+        nlohmann_json::nlohmann_json
+        httplib::httplib
+        OpenSSL::SSL 
+        OpenSSL::Crypto
+        ZLIB::ZLIB
+    )
 endif()
 
 target_include_directories(SIM_65C02 PRIVATE ${glew_SOURCE_DIR}/include ${imguifiledialog_SOURCE_DIR})
-target_compile_definitions(SIM_65C02 PRIVATE IMGUI_DEFINE_MATH_OPERATORS USE_BOOKMARK)
 
-# ------------------------------------------------------------------------------
-# Target 3: Unit Tests
-# ------------------------------------------------------------------------------
+target_compile_definitions(SIM_65C02 PRIVATE 
+    IMGUI_DEFINE_MATH_OPERATORS 
+    USE_BOOKMARK 
+    CPPHTTPLIB_OPENSSL_SUPPORT
+)
+
 enable_testing()
 file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
 

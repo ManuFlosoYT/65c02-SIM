@@ -33,17 +33,17 @@ Each release includes an `SDK.zip` file containing everything needed to develop 
 
 Since all the provided automation scripts (`.sh`) are written for **Bash**, Windows users need to set up **WSL2 (Windows Subsystem for Linux)** to use the SDK or to compile the project from source.
 
-To install Ubuntu on Windows 10/11:
+To install Fedora on Windows 10/11:
 
 1. Open **PowerShell** or **Command Prompt** as Administrator.
 2. Run the following command:
    ```powershell
-   wsl --install -d Ubuntu
+    wsl --install FedoraLinux-43
    ```
-3. Open the newly installed **Ubuntu** application and configure your user account.
+3. Open the newly installed **Fedora** application and configure your user account.
 4. Install the requiered dependencies from the prerequisites section bellow.
 
-Once set up, you can run all the commands described below (and in the [Build from Source](#hammer_and_wrench-build-from-source) section) directly from the Ubuntu terminal.
+Once set up, you can run all the commands described below (and in the [Build from Source](#hammer_and_wrench-build-from-source) section) directly from the Fedora terminal.
 
 Compile and run assembly or C programs from `./Binaries/` into the `output/rom` folder:
 
@@ -71,35 +71,11 @@ Convert MIDI files to SID assembly code into the `output/midi` folder:
 
 To compile the simulator from source or use the SDK, you need the following dependencies:
 
-**Ubuntu / Debian / Mint (`apt`)**
-
-```bash
-sudo apt update
-sudo apt install g++-14 gcc-14 ninja-build libgl1-mesa-dev libglu1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev mingw-w64 libasound2-dev libpulse-dev cmake cc65
-```
-
 **Fedora (`dnf`)**
 
 ```bash
 sudo dnf update
-sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65
-```
-
-**Arch Linux (`pacman`)**
-
-```bash
-sudo pacman -Sy base-devel gcc ninja mesa glu libx11 libxrandr libxinerama libxcursor libxi wayland libxkbcommon mingw-w64-gcc alsa-lib libpulse cmake
-
-# Install yay
-sudo pacman -S --needed base-devel git
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si
-cd ..
-rm -rf yay
-
-# Install cc65 from AUR (e.g. using yay)
-yay -S cc65
+sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel mingw64-openssl mingw64-openssl-static mingw64-zlib-static wget curl git tar
 ```
 
 #### Compile and Run Locally
