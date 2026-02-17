@@ -44,6 +44,12 @@ int Step(CPU& cpu, Mem& mem) {
         }
     }
 
+    // In cycle-accurate mode, consume remaining cycles
+    if (cpu.cycleAccurate && cpu.remainingCycles > 0) {
+        cpu.remainingCycles--;
+        return 0;
+    }
+
     return CPUDispatch::Dispatch(cpu, mem);
 }
 

@@ -23,6 +23,7 @@ struct AppState {
     int instructionsPerFrame = 1000000;
     float ipsLogScale = 6.0f;
     bool gpuEnabled = false;
+    bool cycleAccurate = true;  // Enabled by default
 
     // Update
     std::atomic<bool> updateAvailable{false};

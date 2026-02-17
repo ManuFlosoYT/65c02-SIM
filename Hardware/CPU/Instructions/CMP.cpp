@@ -37,16 +37,24 @@ void CMP::ExecuteABS(CPU& cpu, Mem& mem) {
 }
 
 void CMP::ExecuteABSX(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    Dir += cpu.X;
+    Word baseAddr = cpu.FetchWord(mem);
+    Word effectiveAddr = baseAddr + cpu.X;
+
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
+    Word Dir = effectiveAddr;
 
     Byte dato = cpu.ReadByte(Dir, mem);
     SetFlags(cpu, dato);
 }
 
 void CMP::ExecuteABSY(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    Dir += cpu.Y;
+    Word baseAddr = cpu.FetchWord(mem);
+    Word effectiveAddr = baseAddr + cpu.Y;
+
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
+    Word Dir = effectiveAddr;
 
     Byte dato = cpu.ReadByte(Dir, mem);
     SetFlags(cpu, dato);
@@ -65,19 +73,21 @@ void CMP::ExecuteINDX(CPU& cpu, Mem& mem) {
 void CMP::ExecuteINDY(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
 
-    Word dir;
+    Word baseAddr;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.ReadWord(ZP_Dir, mem);
+        baseAddr = cpu.ReadWord(ZP_Dir, mem);
     } else {
         Byte low = cpu.ReadByte(0xFF, mem);
         Byte high = cpu.ReadByte(0x00, mem);
-        dir = (high << 8) | low;
+        baseAddr = (high << 8) | low;
     }
 
-    dir += cpu.Y;
+    Word effectiveAddr = baseAddr + cpu.Y;
 
-    Byte dato = cpu.ReadByte(dir, mem);
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
+    Byte dato = cpu.ReadByte(effectiveAddr, mem);
     SetFlags(cpu, dato);
 }
 
@@ -96,6 +106,6 @@ void CMP::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
 
     Byte dato = cpu.ReadByte(dir, mem);
     SetFlags(cpu, dato);
-}   
+}
 
 }  // namespace Hardware::Instructions

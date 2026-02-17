@@ -43,6 +43,9 @@ public:
     SID& GetSID() { return sid; }
     VIA& GetVIA() { return via; }
 
+    void SetCycleAccurate(bool enabled) { cpu.SetCycleAccurate(enabled); }
+    bool IsCycleAccurate() const { return cpu.IsCycleAccurate(); }
+
     void PrintState();
 
     // Threading

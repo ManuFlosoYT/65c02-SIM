@@ -108,8 +108,12 @@ void ADC::ExecuteABS(CPU& cpu, Mem& mem) {
 }
 
 void ADC::ExecuteABSX(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    Dir += cpu.X;
+    Word baseAddr = cpu.FetchWord(mem);
+    Word effectiveAddr = baseAddr + cpu.X;
+
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
+    Word Dir = effectiveAddr;
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte(Dir, mem);
@@ -128,11 +132,14 @@ void ADC::ExecuteABSX(CPU& cpu, Mem& mem) {
 }
 
 void ADC::ExecuteABSY(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    Dir += cpu.Y;
+    Word baseAddr = cpu.FetchWord(mem);
+    Word effectiveAddr = baseAddr + cpu.Y;
+
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.ReadByte(Dir, mem);
+    Byte dato = cpu.ReadByte(effectiveAddr, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
@@ -173,19 +180,21 @@ void ADC::ExecuteINDY(CPU& cpu, Mem& mem) {
     Byte ZP_Dir = cpu.FetchByte(mem);
     Byte oldA = cpu.A;
 
-    Word dir;
+    Word baseAddr;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.ReadWord(ZP_Dir, mem);
+        baseAddr = cpu.ReadWord(ZP_Dir, mem);
     } else {
         Byte low = cpu.ReadByte(0xFF, mem);
         Byte high = cpu.ReadByte(0x00, mem);
-        dir = (high << 8) | low;
+        baseAddr = (high << 8) | low;
     }
 
-    dir += cpu.Y;
+    Word effectiveAddr = baseAddr + cpu.Y;
 
-    Byte dato = cpu.ReadByte(dir, mem);
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
+    Byte dato = cpu.ReadByte(effectiveAddr, mem);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;

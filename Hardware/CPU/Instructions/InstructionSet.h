@@ -136,34 +136,34 @@ constexpr static Byte INS_DEX = 0xCA;  // DEX A
 constexpr static Byte INS_INY = 0xC8;  // INY A
 constexpr static Byte INS_DEY = 0x88;  // DEY A
 
-constexpr static Byte INS_ADC_IM = 0x69;    // ADC Immediate
-constexpr static Byte INS_ADC_ZP = 0x65;    // ADC ZP
-constexpr static Byte INS_ADC_ZPX = 0x75;   // ADC ZPX
-constexpr static Byte INS_ADC_ABS = 0x6D;   // ADC ABS
-constexpr static Byte INS_ADC_ABSX = 0x7D;  // ADC ABSX
-constexpr static Byte INS_ADC_ABSY = 0x79;  // ADC ABSY
-constexpr static Byte INS_ADC_INDX = 0x61;  // ADC INDX
-constexpr static Byte INS_ADC_INDY = 0x71;  // ADC INDY
+constexpr static Byte INS_ADC_IM = 0x69;      // ADC Immediate
+constexpr static Byte INS_ADC_ZP = 0x65;      // ADC ZP
+constexpr static Byte INS_ADC_ZPX = 0x75;     // ADC ZPX
+constexpr static Byte INS_ADC_ABS = 0x6D;     // ADC ABS
+constexpr static Byte INS_ADC_ABSX = 0x7D;    // ADC ABSX
+constexpr static Byte INS_ADC_ABSY = 0x79;    // ADC ABSY
+constexpr static Byte INS_ADC_INDX = 0x61;    // ADC INDX
+constexpr static Byte INS_ADC_INDY = 0x71;    // ADC INDY
 constexpr static Byte INS_ADC_IND_ZP = 0x72;  // ADC IND ZP
 
-constexpr static Byte INS_SBC_IM = 0xE9;    // SBC Immediate
-constexpr static Byte INS_SBC_ZP = 0xE5;    // SBC ZP
-constexpr static Byte INS_SBC_ZPX = 0xF5;   // SBC ZPX
-constexpr static Byte INS_SBC_ABS = 0xED;   // SBC ABS
-constexpr static Byte INS_SBC_ABSX = 0xFD;  // SBC ABSX
-constexpr static Byte INS_SBC_ABSY = 0xF9;  // SBC ABSY
-constexpr static Byte INS_SBC_INDX = 0xE1;  // SBC INDX
-constexpr static Byte INS_SBC_INDY = 0xF1;  // SBC INDY
+constexpr static Byte INS_SBC_IM = 0xE9;      // SBC Immediate
+constexpr static Byte INS_SBC_ZP = 0xE5;      // SBC ZP
+constexpr static Byte INS_SBC_ZPX = 0xF5;     // SBC ZPX
+constexpr static Byte INS_SBC_ABS = 0xED;     // SBC ABS
+constexpr static Byte INS_SBC_ABSX = 0xFD;    // SBC ABSX
+constexpr static Byte INS_SBC_ABSY = 0xF9;    // SBC ABSY
+constexpr static Byte INS_SBC_INDX = 0xE1;    // SBC INDX
+constexpr static Byte INS_SBC_INDY = 0xF1;    // SBC INDY
 constexpr static Byte INS_SBC_IND_ZP = 0xF2;  // SBC IND ZP
 
-constexpr static Byte INS_CMP_IM = 0xC9;    // CMP Immediate
-constexpr static Byte INS_CMP_ZP = 0xC5;    // CMP ZP
-constexpr static Byte INS_CMP_ZPX = 0xD5;   // CMP ZPX
-constexpr static Byte INS_CMP_ABS = 0xCD;   // CMP ABS
-constexpr static Byte INS_CMP_ABSX = 0xDD;  // CMP ABSX
-constexpr static Byte INS_CMP_ABSY = 0xD9;  // CMP ABSY
-constexpr static Byte INS_CMP_INDX = 0xC1;  // CMP INDX
-constexpr static Byte INS_CMP_INDY = 0xD1;  // CMP INDY
+constexpr static Byte INS_CMP_IM = 0xC9;      // CMP Immediate
+constexpr static Byte INS_CMP_ZP = 0xC5;      // CMP ZP
+constexpr static Byte INS_CMP_ZPX = 0xD5;     // CMP ZPX
+constexpr static Byte INS_CMP_ABS = 0xCD;     // CMP ABS
+constexpr static Byte INS_CMP_ABSX = 0xDD;    // CMP ABSX
+constexpr static Byte INS_CMP_ABSY = 0xD9;    // CMP ABSY
+constexpr static Byte INS_CMP_INDX = 0xC1;    // CMP INDX
+constexpr static Byte INS_CMP_INDY = 0xD1;    // CMP INDY
 constexpr static Byte INS_CMP_IND_ZP = 0xD2;  // CMP IND ZP
 
 constexpr static Byte INS_CPX_IM = 0xE0;   // CPX Immediate
@@ -263,5 +263,257 @@ constexpr static Byte INS_TRB_ZP = 0x14;   // TRB ZP
 
 constexpr static Byte INS_TSB_ABS = 0x0C;  // TSB ABS
 constexpr static Byte INS_TSB_ZP = 0x04;   // TSB ZP
+
+// Cycle counts for each instruction
+constexpr static Byte CYC_INS_WAI = 3;
+constexpr static Byte CYC_INS_STP = 3;
+constexpr static Byte CYC_INS_NOP = 2;
+constexpr static Byte CYC_INS_BRK = 7;
+constexpr static Byte CYC_INS_RTI = 6;
+constexpr static Byte CYC_INS_JAM = 2;
+
+constexpr static Byte CYC_INS_LDA_IM = 2;
+constexpr static Byte CYC_INS_LDA_ZP = 3;
+constexpr static Byte CYC_INS_LDA_ZPX = 4;
+constexpr static Byte CYC_INS_LDA_ABS = 4;
+constexpr static Byte CYC_INS_LDA_ABSX = 4;
+constexpr static Byte CYC_INS_LDA_ABSY = 4;
+constexpr static Byte CYC_INS_LDA_INDX = 6;
+constexpr static Byte CYC_INS_LDA_INDY = 5;
+constexpr static Byte CYC_INS_LDA_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_LDX_IM = 2;
+constexpr static Byte CYC_INS_LDX_ZP = 3;
+constexpr static Byte CYC_INS_LDX_ZPY = 4;
+constexpr static Byte CYC_INS_LDX_ABS = 4;
+constexpr static Byte CYC_INS_LDX_ABSY = 4;
+
+constexpr static Byte CYC_INS_LDY_IM = 2;
+constexpr static Byte CYC_INS_LDY_ZP = 3;
+constexpr static Byte CYC_INS_LDY_ZPX = 4;
+constexpr static Byte CYC_INS_LDY_ABS = 4;
+constexpr static Byte CYC_INS_LDY_ABSX = 4;
+
+constexpr static Byte CYC_INS_STA_ZP = 3;
+constexpr static Byte CYC_INS_STA_ZPX = 4;
+constexpr static Byte CYC_INS_STA_ABS = 4;
+constexpr static Byte CYC_INS_STA_ABSX = 5;
+constexpr static Byte CYC_INS_STA_ABSY = 5;
+constexpr static Byte CYC_INS_STA_INDX = 6;
+constexpr static Byte CYC_INS_STA_INDY = 6;
+constexpr static Byte CYC_INS_STA_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_STX_ZP = 3;
+constexpr static Byte CYC_INS_STX_ZPY = 4;
+constexpr static Byte CYC_INS_STX_ABS = 4;
+
+constexpr static Byte CYC_INS_STY_ZP = 3;
+constexpr static Byte CYC_INS_STY_ZPX = 4;
+constexpr static Byte CYC_INS_STY_ABS = 4;
+
+constexpr static Byte CYC_INS_JSR = 6;
+constexpr static Byte CYC_INS_RTS = 6;
+
+constexpr static Byte CYC_INS_JMP_ABS = 3;
+constexpr static Byte CYC_INS_JMP_IND = 5;
+constexpr static Byte CYC_INS_JMP_ABSX = 6;
+
+constexpr static Byte CYC_INS_TSX = 2;
+constexpr static Byte CYC_INS_TXS = 2;
+
+constexpr static Byte CYC_INS_PHA = 3;
+constexpr static Byte CYC_INS_PLA = 4;
+constexpr static Byte CYC_INS_PHP = 3;
+constexpr static Byte CYC_INS_PLP = 4;
+constexpr static Byte CYC_INS_PHX = 3;
+constexpr static Byte CYC_INS_PLX = 4;
+constexpr static Byte CYC_INS_PHY = 3;
+constexpr static Byte CYC_INS_PLY = 4;
+
+constexpr static Byte CYC_INS_TXA = 2;
+constexpr static Byte CYC_INS_TAX = 2;
+constexpr static Byte CYC_INS_TYA = 2;
+constexpr static Byte CYC_INS_TAY = 2;
+
+constexpr static Byte CYC_INS_AND_IM = 2;
+constexpr static Byte CYC_INS_AND_ZP = 3;
+constexpr static Byte CYC_INS_AND_ZPX = 4;
+constexpr static Byte CYC_INS_AND_ABS = 4;
+constexpr static Byte CYC_INS_AND_ABSX = 4;
+constexpr static Byte CYC_INS_AND_ABSY = 4;
+constexpr static Byte CYC_INS_AND_INDX = 6;
+constexpr static Byte CYC_INS_AND_INDY = 5;
+constexpr static Byte CYC_INS_AND_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_ORA_IM = 2;
+constexpr static Byte CYC_INS_ORA_ZP = 3;
+constexpr static Byte CYC_INS_ORA_ZPX = 4;
+constexpr static Byte CYC_INS_ORA_ABS = 4;
+constexpr static Byte CYC_INS_ORA_ABSX = 4;
+constexpr static Byte CYC_INS_ORA_ABSY = 4;
+constexpr static Byte CYC_INS_ORA_INDX = 6;
+constexpr static Byte CYC_INS_ORA_INDY = 5;
+constexpr static Byte CYC_INS_ORA_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_EOR_IM = 2;
+constexpr static Byte CYC_INS_EOR_ZP = 3;
+constexpr static Byte CYC_INS_EOR_ZPX = 4;
+constexpr static Byte CYC_INS_EOR_ABS = 4;
+constexpr static Byte CYC_INS_EOR_ABSX = 4;
+constexpr static Byte CYC_INS_EOR_ABSY = 4;
+constexpr static Byte CYC_INS_EOR_INDX = 6;
+constexpr static Byte CYC_INS_EOR_INDY = 5;
+constexpr static Byte CYC_INS_EOR_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_BIT_IM = 2;
+constexpr static Byte CYC_INS_BIT_ZP = 3;
+constexpr static Byte CYC_INS_BIT_ZPX = 4;
+constexpr static Byte CYC_INS_BIT_ABS = 4;
+constexpr static Byte CYC_INS_BIT_ABSX = 4;
+
+constexpr static Byte CYC_INS_INC_A = 2;
+constexpr static Byte CYC_INS_INC_ZP = 5;
+constexpr static Byte CYC_INS_INC_ZPX = 6;
+constexpr static Byte CYC_INS_INC_ABS = 6;
+constexpr static Byte CYC_INS_INC_ABSX = 7;
+
+constexpr static Byte CYC_INS_DEC_A = 2;
+constexpr static Byte CYC_INS_DEC_ZP = 5;
+constexpr static Byte CYC_INS_DEC_ZPX = 6;
+constexpr static Byte CYC_INS_DEC_ABS = 6;
+constexpr static Byte CYC_INS_DEC_ABSX = 7;
+
+constexpr static Byte CYC_INS_INX = 2;
+constexpr static Byte CYC_INS_DEX = 2;
+constexpr static Byte CYC_INS_INY = 2;
+constexpr static Byte CYC_INS_DEY = 2;
+
+constexpr static Byte CYC_INS_ADC_IM = 2;
+constexpr static Byte CYC_INS_ADC_ZP = 3;
+constexpr static Byte CYC_INS_ADC_ZPX = 4;
+constexpr static Byte CYC_INS_ADC_ABS = 4;
+constexpr static Byte CYC_INS_ADC_ABSX = 4;
+constexpr static Byte CYC_INS_ADC_ABSY = 4;
+constexpr static Byte CYC_INS_ADC_INDX = 6;
+constexpr static Byte CYC_INS_ADC_INDY = 5;
+constexpr static Byte CYC_INS_ADC_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_SBC_IM = 2;
+constexpr static Byte CYC_INS_SBC_ZP = 3;
+constexpr static Byte CYC_INS_SBC_ZPX = 4;
+constexpr static Byte CYC_INS_SBC_ABS = 4;
+constexpr static Byte CYC_INS_SBC_ABSX = 4;
+constexpr static Byte CYC_INS_SBC_ABSY = 4;
+constexpr static Byte CYC_INS_SBC_INDX = 6;
+constexpr static Byte CYC_INS_SBC_INDY = 5;
+constexpr static Byte CYC_INS_SBC_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_CMP_IM = 2;
+constexpr static Byte CYC_INS_CMP_ZP = 3;
+constexpr static Byte CYC_INS_CMP_ZPX = 4;
+constexpr static Byte CYC_INS_CMP_ABS = 4;
+constexpr static Byte CYC_INS_CMP_ABSX = 4;
+constexpr static Byte CYC_INS_CMP_ABSY = 4;
+constexpr static Byte CYC_INS_CMP_INDX = 6;
+constexpr static Byte CYC_INS_CMP_INDY = 5;
+constexpr static Byte CYC_INS_CMP_IND_ZP = 5;
+
+constexpr static Byte CYC_INS_CPX_IM = 2;
+constexpr static Byte CYC_INS_CPX_ZP = 3;
+constexpr static Byte CYC_INS_CPX_ABS = 4;
+
+constexpr static Byte CYC_INS_CPY_IM = 2;
+constexpr static Byte CYC_INS_CPY_ZP = 3;
+constexpr static Byte CYC_INS_CPY_ABS = 4;
+
+constexpr static Byte CYC_INS_ASL_A = 2;
+constexpr static Byte CYC_INS_ASL_ZP = 5;
+constexpr static Byte CYC_INS_ASL_ZPX = 6;
+constexpr static Byte CYC_INS_ASL_ABS = 6;
+constexpr static Byte CYC_INS_ASL_ABSX = 7;
+
+constexpr static Byte CYC_INS_LSR_A = 2;
+constexpr static Byte CYC_INS_LSR_ZP = 5;
+constexpr static Byte CYC_INS_LSR_ZPX = 6;
+constexpr static Byte CYC_INS_LSR_ABS = 6;
+constexpr static Byte CYC_INS_LSR_ABSX = 7;
+
+constexpr static Byte CYC_INS_ROL_A = 2;
+constexpr static Byte CYC_INS_ROL_ZP = 5;
+constexpr static Byte CYC_INS_ROL_ZPX = 6;
+constexpr static Byte CYC_INS_ROL_ABS = 6;
+constexpr static Byte CYC_INS_ROL_ABSX = 7;
+
+constexpr static Byte CYC_INS_ROR_A = 2;
+constexpr static Byte CYC_INS_ROR_ZP = 5;
+constexpr static Byte CYC_INS_ROR_ZPX = 6;
+constexpr static Byte CYC_INS_ROR_ABS = 6;
+constexpr static Byte CYC_INS_ROR_ABSX = 7;
+
+constexpr static Byte CYC_INS_BCC = 2;
+constexpr static Byte CYC_INS_BCS = 2;
+constexpr static Byte CYC_INS_BEQ = 2;
+constexpr static Byte CYC_INS_BMI = 2;
+constexpr static Byte CYC_INS_BNE = 2;
+constexpr static Byte CYC_INS_BPL = 2;
+constexpr static Byte CYC_INS_BVC = 2;
+constexpr static Byte CYC_INS_BVS = 2;
+
+constexpr static Byte CYC_INS_CLC = 2;
+constexpr static Byte CYC_INS_SEC = 2;
+constexpr static Byte CYC_INS_CLI = 2;
+constexpr static Byte CYC_INS_SEI = 2;
+constexpr static Byte CYC_INS_CLD = 2;
+constexpr static Byte CYC_INS_SED = 2;
+constexpr static Byte CYC_INS_CLV = 2;
+
+constexpr static Byte CYC_INS_STZ_ZP = 3;
+constexpr static Byte CYC_INS_STZ_ZPX = 4;
+constexpr static Byte CYC_INS_STZ_ABS = 4;
+constexpr static Byte CYC_INS_STZ_ABSX = 5;
+
+constexpr static Byte CYC_INS_BRA = 3;
+
+constexpr static Byte CYC_INS_RMB0 = 5;
+constexpr static Byte CYC_INS_RMB1 = 5;
+constexpr static Byte CYC_INS_RMB2 = 5;
+constexpr static Byte CYC_INS_RMB3 = 5;
+constexpr static Byte CYC_INS_RMB4 = 5;
+constexpr static Byte CYC_INS_RMB5 = 5;
+constexpr static Byte CYC_INS_RMB6 = 5;
+constexpr static Byte CYC_INS_RMB7 = 5;
+
+constexpr static Byte CYC_INS_SMB0 = 5;
+constexpr static Byte CYC_INS_SMB1 = 5;
+constexpr static Byte CYC_INS_SMB2 = 5;
+constexpr static Byte CYC_INS_SMB3 = 5;
+constexpr static Byte CYC_INS_SMB4 = 5;
+constexpr static Byte CYC_INS_SMB5 = 5;
+constexpr static Byte CYC_INS_SMB6 = 5;
+constexpr static Byte CYC_INS_SMB7 = 5;
+
+constexpr static Byte CYC_INS_BBR0 = 5;
+constexpr static Byte CYC_INS_BBR1 = 5;
+constexpr static Byte CYC_INS_BBR2 = 5;
+constexpr static Byte CYC_INS_BBR3 = 5;
+constexpr static Byte CYC_INS_BBR4 = 5;
+constexpr static Byte CYC_INS_BBR5 = 5;
+constexpr static Byte CYC_INS_BBR6 = 5;
+constexpr static Byte CYC_INS_BBR7 = 5;
+
+constexpr static Byte CYC_INS_BBS0 = 5;
+constexpr static Byte CYC_INS_BBS1 = 5;
+constexpr static Byte CYC_INS_BBS2 = 5;
+constexpr static Byte CYC_INS_BBS3 = 5;
+constexpr static Byte CYC_INS_BBS4 = 5;
+constexpr static Byte CYC_INS_BBS5 = 5;
+constexpr static Byte CYC_INS_BBS6 = 5;
+constexpr static Byte CYC_INS_BBS7 = 5;
+
+constexpr static Byte CYC_INS_TRB_ABS = 6;
+constexpr static Byte CYC_INS_TRB_ZP = 5;
+
+constexpr static Byte CYC_INS_TSB_ABS = 6;
+constexpr static Byte CYC_INS_TSB_ZP = 5;
 
 }  // namespace Hardware

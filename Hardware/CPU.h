@@ -32,6 +32,9 @@ public:
     bool isInit = false;
     bool waiting = false;
 
+    int remainingCycles = 0;
+    bool cycleAccurate = true;
+
     CPU() = default;
     void Reset(Mem& mem);
     int Execute(Mem& mem);
@@ -43,10 +46,25 @@ public:
     const Byte GetStatus() const;
     void SetStatus(Byte status);
 
-    const Byte FetchByte(const Mem& mem);  // Reads a byte from memory and advances PC
-    const Byte ReadByte(const Word addr, Mem& mem);  // Reads a byte from memory without advancing PC
-    const Word FetchWord(const Mem& mem);  // Reads a word from memory and advances PC + 2
-    const Word ReadWord(const Word addr, Mem& mem);  // Reads a word from memory without advancing PC
+    bool IsCycleAccurate() const { return cycleAccurate; }
+    void SetCycleAccurate(bool enabled) { cycleAccurate = enabled; }
+    int GetRemainingCycles() const { return remainingCycles; }
+
+    // Helper to add penalty cycle for page boundary crossing
+    inline void AddPageCrossPenalty(Word baseAddr, Word effectiveAddr) {
+        if (cycleAccurate &&
+            ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))) {
+            remainingCycles++;
+        }
+    }
+
+    // Reads and advances PC
+    const Byte FetchByte(const Mem& mem);  
+    const Word FetchWord(const Mem& mem);  
+    
+    // Reads without advancing PC
+    const Byte ReadByte(const Word addr, Mem& mem);  
+    const Word ReadWord(const Word addr, Mem& mem);  
 
     Byte PopByte(Mem& mem);
     Word PopWord(Mem& mem);

@@ -37,8 +37,12 @@ void LDX::ExecuteABS(CPU& cpu, Mem& mem) {
 }
 
 void LDX::ExecuteABSY(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    Dir += cpu.Y;
+    Word baseAddr = cpu.FetchWord(mem);
+    Word effectiveAddr = baseAddr + cpu.Y;
+
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
+    Word Dir = effectiveAddr;
 
     cpu.X = cpu.ReadByte(Dir, mem);
     SetFlags(cpu);

@@ -39,8 +39,12 @@ void BIT::ExecuteABS(CPU& cpu, Mem& mem) {
 }
 
 void BIT::ExecuteABSX(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    Dir += cpu.X;
+    Word baseAddr = cpu.FetchWord(mem);
+    Word effectiveAddr = baseAddr + cpu.X;
+
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+
+    Word Dir = effectiveAddr;
     Byte dato = cpu.ReadByte(Dir, mem);
     Byte val = dato & cpu.A;
     cpu.Z = (val == 0);

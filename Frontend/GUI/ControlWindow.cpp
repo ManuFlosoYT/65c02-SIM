@@ -76,10 +76,20 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         state.emulator.GetSID().EnableSound(!soundEnabled);
     }
     ImGui::SameLine();
-    ImGui::Text("Actual: %d IPS", state.emulator.GetActualIPS());
+    if (ImGui::Button(state.cycleAccurate ? "Cycle-Accurate (On)"
+                                          : "Cycle-Accurate (Off)")) {
+        state.cycleAccurate = !state.cycleAccurate;
+        state.emulator.SetCycleAccurate(state.cycleAccurate);
+    }
+    ImGui::SameLine();
+    ImGui::Text("Actual: %d %s", state.emulator.GetActualIPS(),
+                state.cycleAccurate ? "Hz" : "IPS");
 
     int tempIPS = state.instructionsPerFrame;
-    if (ImGui::InputInt("Target IPS", &tempIPS, 100000, 100000)) {
+    char targetLabel[32];
+    snprintf(targetLabel, sizeof(targetLabel), "Target %s",
+             state.cycleAccurate ? "Hz" : "IPS");
+    if (ImGui::InputInt(targetLabel, &tempIPS, 100000, 100000)) {
         if (state.instructionsPerFrame == 1 && tempIPS == 100001)
             tempIPS = 100000;
 
