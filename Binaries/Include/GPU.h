@@ -163,4 +163,16 @@ void GPUdelay(unsigned int ms) {
     }
 }
 
+void gpu_test_pattern() {
+    unsigned char r, c;
+    unsigned char row_color;
+    for (r = 0; r < GPU_HEIGHT; r++) {
+        // Create a gradient or pattern
+        row_color = r * 4;
+        for (c = 0; c < GPU_WIDTH; c++) {
+            gpu_put_pixel(c, r, row_color + c);
+        }
+    }
+}
+
 #endif
