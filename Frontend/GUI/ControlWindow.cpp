@@ -16,7 +16,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                        float top_section_height,
                        ImGuiWindowFlags window_flags) {
     float mainColWidth = state.emulator.GetSID().IsSoundEnabled()
-                             ? work_size.x * 0.375f
+                             ? work_size.x * 0.4425f
                              : work_size.x * 0.75f;
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
@@ -72,7 +72,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     }
     ImGui::SameLine();
     bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
-    if (ImGui::Button(soundEnabled ? "Sound (On)" : "Sound (Off)")) {
+    if (ImGui::Button(soundEnabled ? "SID (On)" : "SID (Off)")) {
         state.emulator.GetSID().EnableSound(!soundEnabled);
     }
     ImGui::SameLine();
@@ -82,7 +82,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         state.emulator.SetCycleAccurate(state.cycleAccurate);
     }
     ImGui::SameLine();
-    ImGui::Text("Actual: %d %s", state.emulator.GetActualIPS(),
+    ImGui::Text("Sim: %d %s", state.emulator.GetActualIPS(),
                 state.cycleAccurate ? "Hz" : "IPS");
 
     int tempIPS = state.instructionsPerFrame;
