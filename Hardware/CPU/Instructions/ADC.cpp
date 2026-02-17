@@ -41,6 +41,10 @@ void ADC::ExecuteImmediate(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -60,6 +64,10 @@ void ADC::ExecuteZP(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -80,6 +88,10 @@ void ADC::ExecuteZPX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -99,6 +111,10 @@ void ADC::ExecuteABS(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -123,6 +139,10 @@ void ADC::ExecuteABSX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -146,6 +166,10 @@ void ADC::ExecuteABSY(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -168,6 +192,10 @@ void ADC::ExecuteINDX(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -201,6 +229,10 @@ void ADC::ExecuteINDY(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
@@ -230,6 +262,10 @@ void ADC::ExecuteIND_ZP(CPU& cpu, Mem& mem) {
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
+        // BCD mode: add 1 cycle penalty
+        if (cpu.cycleAccurate) {
+            cpu.remainingCycles++;
+        }
         Word binaryRes = cpu.A + dato + cpu.C;
         res = ADC_Decimal(cpu, dato);
         cpu.A = res;
