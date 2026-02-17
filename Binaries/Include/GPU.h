@@ -66,7 +66,7 @@ void gpu_draw_line(int x0, int y0, int x1, int y1, unsigned char color) {
     }
 }
 
-// Draws a triangle (Wireframe OR Filled)
+// Draws a triangle (Wireframe OR Filled) with sub-pixel rounding
 void gpu_draw_tri(int x0, int y0, int x1, int y1, int x2, int y2,
                   unsigned char color, unsigned char fill) {
     int total_height;
@@ -78,6 +78,7 @@ void gpu_draw_tri(int x0, int y0, int x1, int y1, int x2, int y2,
     int i_segment;
     int temp;
     int x;
+    long num;
 
     if (!fill) {
         gpu_draw_line(x0, y0, x1, y1, color);
@@ -95,7 +96,7 @@ void gpu_draw_tri(int x0, int y0, int x1, int y1, int x2, int y2,
     if (y2 < 0 || y0 >= GPU_HEIGHT) return;
 
     total_height = y2 - y0;
-    if (total_height == 0) return; 
+    if (total_height == 0) return;
 
     // Rasterization Loop
     for (i = 0; i < total_height; i++) {
@@ -106,22 +107,25 @@ void gpu_draw_tri(int x0, int y0, int x1, int y1, int x2, int y2,
 
         second_half = (i > (y1 - y0) || y1 == y0);
         segment_height = second_half ? (y2 - y1) : (y1 - y0);
+        
         if (segment_height == 0) segment_height = 1;
-
-        A = x0 + (int)(((long)(x2 - x0) * (long)i) / total_height);
+        num = (long)(x2 - x0) * (long)i;
+        A = x0 + (int)((num + (total_height / 2)) / total_height);
 
         if (second_half) {
             i_segment = i - (y1 - y0);
-            B = x1 + (int)(((long)(x2 - x1) * (long)i_segment) / segment_height);
+            num = (long)(x2 - x1) * (long)i_segment;
+            B = x1 + (int)((num + (segment_height / 2)) / segment_height);
         } else {
-            B = x0 + (int)(((long)(x1 - x0) * (long)i) / segment_height);
+            num = (long)(x1 - x0) * (long)i;
+            B = x0 + (int)((num + (segment_height / 2)) / segment_height);
         }
 
         if (A > B) { temp = A; A = B; B = temp; }
 
         if (A < 0) A = 0;
         if (B >= GPU_WIDTH) B = GPU_WIDTH - 1;
-
+        
         for (x = A; x <= B; x++) {
              gpu_put_pixel(x, y, color);
         }
