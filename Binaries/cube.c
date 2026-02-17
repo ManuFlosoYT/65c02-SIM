@@ -198,7 +198,7 @@ int main(void) {
             cross = (long)v1x * v2y - (long)v1y * v2x;
 
             if (cross >= 0) { 
-                 gpu_draw_tri(
+                gpu_draw_tri(
                     (int)px[p1], (int)py[p1],
                     (int)px[p2], (int)py[p2],
                     (int)px[p3], (int)py[p3],
