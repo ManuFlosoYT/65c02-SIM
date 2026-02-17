@@ -26,6 +26,28 @@ void gpu_put_pixel(int x, int y, unsigned char color) {
     vram[offset] = color;
 }
 
+void gpu_draw_rect(int x, int y, int w, int h, unsigned char color) {
+    int i, j;
+    int max_x, max_y;
+    if (x >= GPU_WIDTH || y >= GPU_HEIGHT) return;
+    if (x + w < 0 || y + h < 0) return;
+
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+
+    max_x = x + w;
+    max_y = y + h;
+
+    if (max_x > GPU_WIDTH) max_x = GPU_WIDTH;
+    if (max_y > GPU_HEIGHT) max_y = GPU_HEIGHT;
+
+    for (j = y; j < max_y; j++) {
+        for (i = x; i < max_x; i++) {
+            gpu_put_pixel(i, j, color);
+        }
+    }
+}
+
 // Fills the entire VRAM
 void gpu_fill_screen(unsigned char color) {
     unsigned char* vram = (unsigned char*)GPU_VRAM_START;
