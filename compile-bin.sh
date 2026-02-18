@@ -45,11 +45,13 @@ elif [ -f "Binaries/$NAME.s" ]; then
 
 elif [ -f "Binaries/$NAME.c" ]; then
     echo "--- Compiling $NAME.c (C) ---"
-    cl65 -O -Oi -Or --static-locals --cpu 65C02 -t none -C Linker/C-Runtime.cfg \
+    cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+        -o "Binaries/build/$NAME.s" "Binaries/$NAME.c"
+    cl65 --cpu 65C02 -t none -C Linker/C-Runtime.cfg \
         -o "Binaries/build/$NAME.bin" \
         -m "Binaries/build/$NAME.map" \
         -l "Binaries/build/$NAME.lst" \
-        Linker/bios.s Linker/C-Runtime.s "Binaries/$NAME.c"
+        Linker/bios.s Linker/C-Runtime.s "Binaries/build/$NAME.s"
     mv "Binaries/$NAME.o" "Binaries/build/$NAME.o" 2>/dev/null || true
     mkdir -p output/rom
     cp "Binaries/build/$NAME.bin" "output/rom/$NAME.bin"
