@@ -22,8 +22,8 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_NoCarry) {
     cpu.A = 0x02;
     cpu.C = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LSR_A);
     mem.Write(0x4001, INS_JAM);
 
@@ -39,8 +39,8 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_CarryOut) {
     // 0000 0001 (1) -> 0000 0000 (0). C=1
     cpu.A = 0x01;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LSR_A);
     mem.Write(0x4001, INS_JAM);
 

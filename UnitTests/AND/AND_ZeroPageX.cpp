@@ -17,8 +17,8 @@ protected:
 TEST_F(AND_ZeroPageX_Test, AND_ZeroPageX) {
     cpu.X = 0x05;
     cpu.A = 0xFF;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_AND_ZPX);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0047, 0x37);  // 0x42 + 0x05 = 0x47
@@ -34,8 +34,8 @@ TEST_F(AND_ZeroPageX_Test, AND_ZeroPageX) {
 TEST_F(AND_ZeroPageX_Test, AND_ZeroPageX_WrapAround) {
     cpu.X = 0xFF;
     cpu.A = 0xFF;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_AND_ZPX);
     mem.Write(0x4001, 0x80);
     mem.Write(0x007F, 0x37);  // 0x80 + 0xFF = 0x17F -> 0x7F (Zero Page Wrap)

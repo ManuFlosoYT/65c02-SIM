@@ -21,8 +21,8 @@ TEST_F(ADC_AbsoluteX_Test, ADC_AbsoluteX) {
     cpu.X = 0x01;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ADC_ABSX);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);

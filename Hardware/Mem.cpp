@@ -18,12 +18,17 @@ void Mem::Write(Word addr, Byte val) {
     if (it != writeHooks.end()) {
         it->second(addr, val);  // Execute the hook
     }
-    memory[addr] = val;
+    // Don't write to ROM
+    if (addr < 0x8000) {
+        memory[addr] = val;
+    }
 }
 
 void Mem::SetWriteHook(Word address, WriteHook hook) {
     writeHooks[address] = hook;  // Assign the hook
 }
+
+void Mem::WriteROM(Word addr, Byte val) { memory[addr] = val; }
 
 void Mem::SetReadHook(Word address, ReadHook hook) {
     readHooks[address] = hook;  // Assign the hook

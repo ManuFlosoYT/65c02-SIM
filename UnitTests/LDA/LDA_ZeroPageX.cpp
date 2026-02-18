@@ -23,8 +23,8 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX) {
     // Dirección objetivo: 0x42 + 0x05 = 0x47
     // 0x0047: 0x37 (Valor a cargar)
     cpu.X = 0x05;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ZPX);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0047, 0x37);
@@ -57,8 +57,8 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ZPX);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0047, 0x00);
@@ -76,8 +76,8 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ZPX);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0047, 0x88);
@@ -92,8 +92,8 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_NegativeFlag) {
 
 TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX_Wrapping) {
     cpu.X = 0xFF;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ZPX);
     mem.Write(0x4001, 0x80);
     mem.Write(0x007F, 0x42);

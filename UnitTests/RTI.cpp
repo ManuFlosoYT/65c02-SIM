@@ -25,8 +25,8 @@ TEST_F(RTI_Test, RTI_Operations) {
     mem.Write(0x0100 + 0xFE, 0x02);        // PC Low
     mem.Write(0x0100 + 0xFF, 0x10);        // PC High
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_RTI);
     mem.Write(0x4001, INS_JAM);
     mem.Write(0x1002, INS_JAM);  // Return Address

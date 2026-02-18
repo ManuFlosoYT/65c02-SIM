@@ -16,8 +16,8 @@ protected:
 
 TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage) {
     // Mem[0x42] = 0x04 -> 0x02
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LSR_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0x04);
@@ -33,8 +33,8 @@ TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage) {
 
 TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage_Carry) {
     // Mem[0x42] = 0x01 -> 0x00. C=1
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LSR_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0x01);

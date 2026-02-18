@@ -16,8 +16,8 @@ protected:
 
 TEST_F(TXA_Test, TXA) {
     // 0xFFFC: TXA
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TXA);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -33,8 +33,8 @@ TEST_F(TXA_Test, TXA) {
 
 TEST_F(TXA_Test, TXA_ZeroFlag) {
     // 0xFFFC: TXA
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TXA);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -50,8 +50,8 @@ TEST_F(TXA_Test, TXA_ZeroFlag) {
 
 TEST_F(TXA_Test, TXA_NegativeFlag) {
     // 0xFFFC: TXA
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TXA);
     mem.Write(0x4001, INS_JAM);  // Stop
 

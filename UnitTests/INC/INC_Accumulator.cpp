@@ -18,8 +18,8 @@ TEST_F(INC_Accumulator_Test, INC_Accumulator) {
     // A = 0x05 -> A + 1 = 0x06
     cpu.A = 0x05;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_INC_A);
     mem.Write(0x4001, INS_JAM);
 
@@ -34,8 +34,8 @@ TEST_F(INC_Accumulator_Test, INC_Accumulator_ZeroFlag) {
     // A = 0xFF -> A + 1 = 0x00
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_INC_A);
     mem.Write(0x4001, INS_JAM);
 
@@ -50,8 +50,8 @@ TEST_F(INC_Accumulator_Test, INC_Accumulator_NegativeFlag) {
     // A = 0x7F -> A + 1 = 0x80 (-128)
     cpu.A = 0x7F;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_INC_A);
     mem.Write(0x4001, INS_JAM);
 

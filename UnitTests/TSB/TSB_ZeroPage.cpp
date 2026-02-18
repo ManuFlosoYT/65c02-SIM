@@ -20,8 +20,8 @@ TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_SetsZeroFlag) {
     // A & M = 0 -> Z = 1
     // M = A | M = 0xAA | 0x55 = 0xFF
     cpu.A = 0xAA;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSB_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0x55);
@@ -39,8 +39,8 @@ TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_ClearsZeroFlag) {
     // A & M = 1 != 0 -> Z = 0
     // M = A | M = 0x01 | 0x01 = 0x01
     cpu.A = 0x01;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSB_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0x01);
@@ -58,8 +58,8 @@ TEST_F(TSB_ZeroPage_Test, TSB_ZeroPage_SetsBits) {
     // A & M = 0 -> Z = 1
     // M = A | M = 0xF0 | 0x0F = 0xFF
     cpu.A = 0xF0;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSB_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0x0F);

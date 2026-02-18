@@ -18,8 +18,8 @@ TEST_F(INX_Test, INX) {
     // X = 0x05 -> 0x06
     cpu.X = 0x05;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_INX);
     mem.Write(0x4001, INS_JAM);
 
@@ -34,8 +34,8 @@ TEST_F(INX_Test, INX_ZeroFlag) {
     // X = 0xFF -> 0x00
     cpu.X = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_INX);
     mem.Write(0x4001, INS_JAM);
 
@@ -50,8 +50,8 @@ TEST_F(INX_Test, INX_NegativeFlag) {
     // X = 0x7F -> 0x80
     cpu.X = 0x7F;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_INX);
     mem.Write(0x4001, INS_JAM);
 

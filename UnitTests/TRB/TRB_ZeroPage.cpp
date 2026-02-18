@@ -20,8 +20,8 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_SetsZeroFlag) {
     // A & M = 0 -> Z = 1
     // M = M & ~A = 0x55 & 0x55 = 0x55
     cpu.A = 0xAA;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TRB_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0x55);
@@ -39,8 +39,8 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_ClearsZeroFlag_And_ResetsBits) {
     // A & M = 0xFF != 0 -> Z = 0
     // M = M & ~A = 0xFF & 0x00 = 0x00
     cpu.A = 0xFF;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TRB_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0xFF);
@@ -58,8 +58,8 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_PartialReset) {
     // A & M = 0xA0 (1010 0000) != 0 -> Z = 0
     // M = M & ~A = 0xAA & 0x0F = 0x0A (0000 1010)
     cpu.A = 0xF0;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TRB_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0xAA);

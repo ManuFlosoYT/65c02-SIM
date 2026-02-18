@@ -16,8 +16,8 @@ protected:
 
 TEST_F(TSX_Test, TSX) {
     // 0xFFFC: TSX
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSX);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -42,8 +42,8 @@ TEST_F(TSX_Test, TSX) {
 
 TEST_F(TSX_Test, TSX_ZeroFlag) {
     // 0xFFFC: TSX
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSX);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -60,8 +60,8 @@ TEST_F(TSX_Test, TSX_ZeroFlag) {
 
 TEST_F(TSX_Test, TSX_NegativeFlag) {
     // 0xFFFC: TSX
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSX);
     mem.Write(0x4001, INS_JAM);  // Stop
 

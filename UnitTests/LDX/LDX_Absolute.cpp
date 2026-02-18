@@ -19,12 +19,12 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute) {
     // 0xFFFD: 0x00 (Low Byte)
     // 0xFFFE: 0x80 (High Byte)
     // 0x8000: 0x37
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDX_ABS);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, 0x80);
-    mem.Write(0x8000, 0x37);
+    mem.WriteROM(0x8000, 0x37);
 
     // We assume Instruction takes 3 bytes (1 opcode + 2 address)
     // Next instruction at 0xFFFF (but we are at FFFC+3 = FFFF)
@@ -56,12 +56,12 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_ZeroFlag) {
     cpu.Z = 0;
     cpu.X = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDX_ABS);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, 0x80);
-    mem.Write(0x8000, 0x00);
+    mem.WriteROM(0x8000, 0x00);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
@@ -75,12 +75,12 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_NegativeFlag) {
     cpu.N = 0;
     cpu.X = 0x00;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDX_ABS);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, 0x80);
-    mem.Write(0x8000, 0x80);
+    mem.WriteROM(0x8000, 0x80);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);

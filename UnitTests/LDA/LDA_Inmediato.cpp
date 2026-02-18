@@ -19,8 +19,8 @@ TEST_F(LDA_Immediate_Test, LDA_Immediate) {
     // 0xFFFC: LDA #0xA9
     // 0xFFFD: 0x67
     // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_IM);
     mem.Write(0x4001, 0x67);
     mem.Write(0x4002, INS_JAM);
@@ -45,8 +45,8 @@ TEST_F(LDA_Immediate_Test, LDA_Immediate_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_IM);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, INS_JAM);
@@ -62,8 +62,8 @@ TEST_F(LDA_Immediate_Test, LDA_Immediate_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_IM);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);

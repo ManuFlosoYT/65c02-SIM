@@ -24,8 +24,8 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY) {
     // Y register: 0x02
     // Dirección: 0x4480 + 0x02 = 0x4482
     // 0x4482: 0x37 (Valor a cargar)
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ABSY);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);
@@ -55,8 +55,8 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY_ZeroFlag) {
     cpu.Y = 0x02;
     cpu.Z = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ABSY);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);
@@ -74,8 +74,8 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY_NegativeFlag) {
     cpu.Y = 0x02;
     cpu.N = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ABSY);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);

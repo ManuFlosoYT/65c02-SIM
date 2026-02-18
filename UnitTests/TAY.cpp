@@ -16,8 +16,8 @@ protected:
 
 TEST_F(TAY_Test, TAY) {
     // 0xFFFC: TAY
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TAY);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -33,8 +33,8 @@ TEST_F(TAY_Test, TAY) {
 
 TEST_F(TAY_Test, TAY_ZeroFlag) {
     // 0xFFFC: TAY
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TAY);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -50,8 +50,8 @@ TEST_F(TAY_Test, TAY_ZeroFlag) {
 
 TEST_F(TAY_Test, TAY_NegativeFlag) {
     // 0xFFFC: TAY
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TAY);
     mem.Write(0x4001, INS_JAM);  // Stop
 

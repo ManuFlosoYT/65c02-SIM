@@ -16,8 +16,8 @@ protected:
 
 TEST_F(ORA_Absolute_Test, ORA_Absolute) {
     cpu.A = 0x00;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ORA_ABS);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);  // 0x4480

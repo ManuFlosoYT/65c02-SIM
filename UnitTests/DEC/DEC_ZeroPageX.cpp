@@ -19,8 +19,8 @@ TEST_F(DEC_ZeroPageX_Test, DEC_ZeroPageX) {
     // Mem[0x47] = 0x05 -> 0x04
     cpu.X = 0x05;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_DEC_ZPX);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0047, 0x05);
@@ -38,8 +38,8 @@ TEST_F(DEC_ZeroPageX_Test, DEC_ZeroPageX_WrapAround) {
     // Mem[0x7F] = 0x05 -> 0x04
     cpu.X = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_DEC_ZPX);
     mem.Write(0x4001, 0x80);
     mem.Write(0x007F, 0x05);

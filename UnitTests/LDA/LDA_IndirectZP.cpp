@@ -21,13 +21,13 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP) {
     // 0x0021: 0x80 (High byte of target) -> Target Address: 0x8000
     // 0x8000: 0x37 (Value to load)
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_IND_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0x00);
     mem.Write(0x0021, 0x80);
-    mem.Write(0x8000, 0x37);
+    mem.WriteROM(0x8000, 0x37);
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);
@@ -40,13 +40,13 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP) {
 TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_ZeroFlag) {
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_IND_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0x00);
     mem.Write(0x0021, 0x80);
-    mem.Write(0x8000, 0x00);  // Load 0x00
+    mem.WriteROM(0x8000, 0x00);  // Load 0x00
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);
@@ -59,13 +59,13 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_ZeroFlag) {
 TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_NegativeFlag) {
     cpu.A = 0x00;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_IND_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x0020, 0x00);
     mem.Write(0x0021, 0x80);
-    mem.Write(0x8000, 0x80);  // Load 0x80 (Negative)
+    mem.WriteROM(0x8000, 0x80);  // Load 0x80 (Negative)
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);
@@ -81,13 +81,13 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_WrapAround) {
     // Low byte at 0xFF.
     // High byte at 0x00 (Wrap around).
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_IND_ZP);
     mem.Write(0x4001, 0xFF);
     mem.Write(0x00FF, 0x00);  // Low byte of target address
     mem.Write(0x0000, 0x90);  // High byte of target address -> Target: 0x9000
-    mem.Write(0x9000, 0x42);  // Value to load
+    mem.WriteROM(0x9000, 0x42);  // Value to load
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);

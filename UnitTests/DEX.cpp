@@ -18,8 +18,8 @@ TEST_F(DEX_Test, DEX) {
     // X = 0x05 -> 0x04
     cpu.X = 0x05;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_DEX);
     mem.Write(0x4001, INS_JAM);
 
@@ -34,8 +34,8 @@ TEST_F(DEX_Test, DEX_ZeroFlag) {
     // X = 0x01 -> 0x00
     cpu.X = 0x01;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_DEX);
     mem.Write(0x4001, INS_JAM);
 
@@ -50,8 +50,8 @@ TEST_F(DEX_Test, DEX_NegativeFlag) {
     // X = 0x00 -> 0xFF
     cpu.X = 0x00;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_DEX);
     mem.Write(0x4001, INS_JAM);
 

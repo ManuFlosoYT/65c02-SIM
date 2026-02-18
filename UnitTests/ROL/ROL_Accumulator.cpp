@@ -25,8 +25,8 @@ TEST_F(ROL_Accumulator_Test, ROL_Accumulator_Rotate) {
     cpu.A = 0x80;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ROL_A);
     mem.Write(0x4001, INS_JAM);
 
@@ -44,8 +44,8 @@ TEST_F(ROL_Accumulator_Test, ROL_Accumulator_NoCarryOut) {
     cpu.A = 0x40;
     cpu.C = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ROL_A);
     mem.Write(0x4001, INS_JAM);
 

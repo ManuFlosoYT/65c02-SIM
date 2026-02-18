@@ -16,8 +16,8 @@ protected:
 
 TEST_F(TAX_Test, TAX) {
     // 0xFFFC: TAX
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TAX);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -33,8 +33,8 @@ TEST_F(TAX_Test, TAX) {
 
 TEST_F(TAX_Test, TAX_ZeroFlag) {
     // 0xFFFC: TAX
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TAX);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -50,8 +50,8 @@ TEST_F(TAX_Test, TAX_ZeroFlag) {
 
 TEST_F(TAX_Test, TAX_NegativeFlag) {
     // 0xFFFC: TAX
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TAX);
     mem.Write(0x4001, INS_JAM);  // Stop
 

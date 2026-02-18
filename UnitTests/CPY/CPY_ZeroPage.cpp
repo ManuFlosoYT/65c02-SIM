@@ -18,8 +18,8 @@ TEST_F(CPY_ZeroPage_Test, CPY_ZeroPage) {
     // Y = 5, Mem = 5
     cpu.Y = 0x05;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_CPY_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0x05);

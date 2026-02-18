@@ -26,13 +26,13 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX) {
     // 0x0007: 0x80 (High Byte Address)
     // Dirección final: 0x8000
     // 0x8000: 0x37 (Valor a cargar)
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_INDX);
     mem.Write(0x4001, 0x02);
     mem.Write(0x0006, 0x00);
     mem.Write(0x0007, 0x80);
-    mem.Write(0x8000, 0x37);
+    mem.WriteROM(0x8000, 0x37);
     mem.Write(0x4002, INS_JAM);
 
     // Ciclo 1:
@@ -65,13 +65,13 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_ZeroFlag) {
     cpu.A = 0xFF;
     cpu.Z = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_INDX);
     mem.Write(0x4001, 0x02);
     mem.Write(0x0006, 0x00);
     mem.Write(0x0007, 0x80);
-    mem.Write(0x8000, 0x00);
+    mem.WriteROM(0x8000, 0x00);
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);
@@ -85,13 +85,13 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
     cpu.X = 0x04;
     cpu.N = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_INDX);
     mem.Write(0x4001, 0x02);
     mem.Write(0x0006, 0x00);
     mem.Write(0x0007, 0x80);
-    mem.Write(0x8000, 0x88);
+    mem.WriteROM(0x8000, 0x88);
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);
@@ -103,8 +103,8 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
 
 TEST_F(LDA_IndirectX_Test, LDA_IndirectX_Wrapping) {
     cpu.X = 0x02;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_INDX);
     mem.Write(0x4001, 0xFF);
 

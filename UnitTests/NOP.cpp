@@ -18,8 +18,8 @@ TEST_F(PruebaNOP, NoHaceNada) {
     // Programa en memoria:
     // 0xFFFC: NOP (0xEA)
     // 0xFFFD: Opcode desconocido (0xFF) para detener la ejecución
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_NOP);
     mem.Write(0x4001, INS_JAM);
 
@@ -53,8 +53,8 @@ TEST_F(PruebaNOP, NoModificaEstado) {
     cpu.V = 1;
     cpu.N = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_NOP);
     mem.Write(0x4001, INS_JAM);
 

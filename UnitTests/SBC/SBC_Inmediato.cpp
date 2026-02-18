@@ -23,8 +23,8 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate) {
     cpu.A = 0x05;
     cpu.C = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_SBC_IM);
     mem.Write(0x4001, 0x03);
     mem.Write(0x4002, INS_JAM);
@@ -43,8 +43,8 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate_Borrow) {
     cpu.A = 0x05;
     cpu.C = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_SBC_IM);
     mem.Write(0x4001, 0x06);
     mem.Write(0x4002, INS_JAM);
@@ -63,8 +63,8 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate_BorrowIn) {
     cpu.A = 0x05;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_SBC_IM);
     mem.Write(0x4001, 0x03);
     mem.Write(0x4002, INS_JAM);

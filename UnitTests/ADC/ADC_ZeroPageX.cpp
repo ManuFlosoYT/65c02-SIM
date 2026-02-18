@@ -21,8 +21,8 @@ TEST_F(ADC_ZeroPageX_Test, ADC_ZeroPageX) {
     cpu.X = 0x01;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ADC_ZPX);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0043, 0x05);

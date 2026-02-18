@@ -19,8 +19,8 @@ TEST_F(ROR_Absolute_Test, ROR_Absolute) {
     // Carry Out = Old Bit 0 (1).
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ROR_ABS);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x20);  // 0x2080

@@ -19,8 +19,8 @@ TEST_F(ROL_ZeroPage_Test, ROL_ZeroPage) {
     // Carry Out = Old Bit 7 (1).
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ROL_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0x80);

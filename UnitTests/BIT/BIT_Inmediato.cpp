@@ -21,8 +21,8 @@ TEST_F(BIT_Immediate_Test, BIT_Immediate_SetsZeroFlag) {
     cpu.N = 0;  // Should remain 0
     cpu.V = 0;  // Should remain 0
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BIT_IM);
     mem.Write(0x4001, 0xF0);
     mem.Write(0x4002, INS_JAM);
@@ -40,8 +40,8 @@ TEST_F(BIT_Immediate_Test, BIT_Immediate_ClearsZeroFlag) {
     cpu.A = 0xFF;
     cpu.Z = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BIT_IM);
     mem.Write(0x4001, 0x0F);
     mem.Write(0x4002, INS_JAM);
@@ -59,8 +59,8 @@ TEST_F(BIT_Immediate_Test, BIT_Immediate_DoesNotAffectNV) {
     cpu.N = 0;
     cpu.V = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BIT_IM);
     mem.Write(0x4001, 0xC0);
     mem.Write(0x4002, INS_JAM);

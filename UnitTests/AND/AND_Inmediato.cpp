@@ -20,8 +20,8 @@ TEST_F(AND_Immediate_Test, AND_Immediate) {
     // 0xFFFD: 0x67
     // 0xFFFE: Opcode desconocido (0xFF)
     cpu.A = 0xFF;  // Start with A = 0xFF
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_AND_IM);
     mem.Write(0x4001, 0x0F);
     mem.Write(0x4002, INS_JAM);
@@ -39,8 +39,8 @@ TEST_F(AND_Immediate_Test, AND_Immediate_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xF0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_AND_IM);
     mem.Write(0x4001, 0x0F);
     mem.Write(0x4002, INS_JAM);
@@ -56,8 +56,8 @@ TEST_F(AND_Immediate_Test, AND_Immediate_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_AND_IM);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);

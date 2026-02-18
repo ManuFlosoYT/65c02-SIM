@@ -22,8 +22,8 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsFlagsFromMemory) {
     cpu.V = 0;
     cpu.Z = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BIT_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0xC0);  // 1100 0000 -> N=1, V=1
@@ -42,8 +42,8 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsZeroFlag) {
     cpu.A = 0x01;
     cpu.Z = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BIT_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0xFE);  // 1111 1110. A & Mem = 0.

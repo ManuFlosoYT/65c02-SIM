@@ -15,8 +15,8 @@ protected:
 
 TEST_F(STZ_Absolute_Test, STZ_Absolute_ExecutesCorrectly) {
     cpu.PC = 0xFFFC;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STZ_ABS);
     mem.Write(0x4001, 0x00);     // Low
     mem.Write(0x4002, 0x20);     // High -> 0x2000

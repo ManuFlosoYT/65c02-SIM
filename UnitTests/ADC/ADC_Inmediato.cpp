@@ -19,8 +19,8 @@ TEST_F(ADC_Immediate_Test, ADC_Immediate) {
     cpu.A = 0x00;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ADC_IM);
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);
@@ -39,8 +39,8 @@ TEST_F(ADC_Immediate_Test, ADC_Immediate_CarryIn) {
     cpu.A = 0x00;
     cpu.C = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ADC_IM);
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);
@@ -56,8 +56,8 @@ TEST_F(ADC_Immediate_Test, ADC_Immediate_CarryOut) {
     cpu.A = 0xFF;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ADC_IM);
     mem.Write(0x4001, 0x01);
     mem.Write(0x4002, INS_JAM);
@@ -74,8 +74,8 @@ TEST_F(ADC_Immediate_Test, ADC_Immediate_Overflow) {
     cpu.A = 0x7F;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ADC_IM);
     mem.Write(0x4001, 0x01);
     mem.Write(0x4002, INS_JAM);

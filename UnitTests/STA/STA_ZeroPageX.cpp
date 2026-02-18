@@ -19,8 +19,8 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX) {
     cpu.X = 0x0F;
 
     // 0xFFFC: STA (ZeroPageX) 0x80
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STA_ZPX);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);  // Stop
@@ -42,8 +42,8 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX_WrapAround) {
     cpu.X = 0xFF;
 
     // 0xFFFC: STA (ZeroPageX) 0x80
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STA_ZPX);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);  // Stop

@@ -18,13 +18,13 @@ TEST_F(CMP_IndirectY_Test, CMP_IndirectY) {
     cpu.Y = 0x01;
     cpu.A = 0x05;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_CMP_INDY);
     mem.Write(0x4001, 0x02);
     mem.Write(0x0002, 0x00);
     mem.Write(0x0003, 0x80);
-    mem.Write(0x8001, 0x05);
+    mem.WriteROM(0x8001, 0x05);
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);

@@ -17,8 +17,8 @@ protected:
 TEST_F(DEC_Absolute_Test, DEC_Absolute) {
     // Addr = 0x4480
     // Mem[0x4480] = 0x05 -> 0x04
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_DEC_ABS);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);

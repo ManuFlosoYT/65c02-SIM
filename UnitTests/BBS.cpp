@@ -20,8 +20,8 @@ protected:
 
 TEST_F(BBS_Test, BBS0_BranchTaken) {
     cpu.PC = 0xFFFC;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BBS0);
     mem.Write(0x4001, 0x04);     // Offset +4
     mem.Write(0x4002, INS_JAM);  // Stop if not taken
@@ -39,8 +39,8 @@ TEST_F(BBS_Test, BBS0_BranchTaken) {
 
 TEST_F(BBS_Test, BBS0_BranchNotTaken) {
     cpu.PC = 0xFFFC;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BBS0);
     mem.Write(0x4001, 0x04);
     mem.Write(0x4002, INS_JAM);  // Stop
@@ -55,8 +55,8 @@ TEST_F(BBS_Test, BBS0_BranchNotTaken) {
 
 TEST_F(BBS_Test, BBS7_BranchTaken) {
     cpu.PC = 0xFFFC;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BBS7);
     mem.Write(0x4001, 0x05);     // Offset +5
     mem.Write(0x4002, INS_JAM);  // Stop if not taken
@@ -74,8 +74,8 @@ TEST_F(BBS_Test, BBS7_BranchTaken) {
 
 TEST_F(BBS_Test, BBS7_BranchNotTaken) {
     cpu.PC = 0xFFFC;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BBS7);
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);  // Stop

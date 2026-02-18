@@ -19,8 +19,8 @@ TEST_F(BIT_Absolute_Test, BIT_Absolute) {
     // Val = 0x40 (Bit 6 set -> V=1, N=0)
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_BIT_ABS);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);

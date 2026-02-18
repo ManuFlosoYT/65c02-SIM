@@ -82,8 +82,8 @@ TEST_F(Ampliados_Fibonacci, Serie_Fibonacci) {
     cpu.PC = CODE_START;
     cpu.isInit = true;  // Prevenir Reset
     // Para evitar loops infinitos si falla BNE, ponemos limite de ciclos
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     cpu.Execute(mem);
 
     // Verificaciones

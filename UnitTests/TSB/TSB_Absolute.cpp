@@ -20,18 +20,18 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_SetsZeroFlag) {
     // A & M = 0 -> Z = 1
     // M = A | M = 0xFF
     cpu.A = 0xAA;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSB_ABS);
     mem.Write(0x4001, 0x00);
-    mem.Write(0x4002, 0x80);
-    mem.Write(0x8000, 0x55);
+    mem.Write(0x4002, 0x20);
+    mem.WriteROM(0x2000, 0x55);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
-    EXPECT_EQ(mem[0x8000], 0xFF);
+    EXPECT_EQ(mem[0x2000], 0xFF);
 }
 
 TEST_F(TSB_Absolute_Test, TSB_Absolute_ClearsZeroFlag) {
@@ -40,18 +40,18 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_ClearsZeroFlag) {
     // A & M != 0 -> Z = 0
     // M = M | A = 0x80
     cpu.A = 0x80;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSB_ABS);
     mem.Write(0x4001, 0x00);
-    mem.Write(0x4002, 0x80);
-    mem.Write(0x8000, 0x80);
+    mem.Write(0x4002, 0x20);
+    mem.WriteROM(0x2000, 0x80);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
 
     EXPECT_FALSE(cpu.Z);
-    EXPECT_EQ(mem[0x8000], 0x80);
+    EXPECT_EQ(mem[0x2000], 0x80);
 }
 
 TEST_F(TSB_Absolute_Test, TSB_Absolute_SetsBits) {
@@ -60,16 +60,16 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_SetsBits) {
     // Z = 1
     // M = 0xFF
     cpu.A = 0x0F;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_TSB_ABS);
     mem.Write(0x4001, 0x00);
-    mem.Write(0x4002, 0x80);
-    mem.Write(0x8000, 0xF0);
+    mem.Write(0x4002, 0x20);
+    mem.WriteROM(0x2000, 0xF0);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
 
     EXPECT_TRUE(cpu.Z);
-    EXPECT_EQ(mem[0x8000], 0xFF);
+    EXPECT_EQ(mem[0x2000], 0xFF);
 }

@@ -19,8 +19,8 @@ TEST_F(SBC_AbsoluteY_Test, SBC_AbsoluteY) {
     cpu.Y = 0x01;
     cpu.C = 1;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_SBC_ABSY);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);

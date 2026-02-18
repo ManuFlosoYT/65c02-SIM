@@ -16,8 +16,8 @@ protected:
 TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_ExecutesCorrectly) {
     cpu.PC = 0xFFFC;
     cpu.X = 0x04;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STZ_ZPX);
     mem.Write(0x4001, 0x20);  // Base 0x20
     mem.Write(0x4002, INS_JAM);
@@ -34,8 +34,8 @@ TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_ExecutesCorrectly) {
 TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_Wrapping) {
     cpu.PC = 0xFFFC;
     cpu.X = 0xFF;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STZ_ZPX);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, INS_JAM);

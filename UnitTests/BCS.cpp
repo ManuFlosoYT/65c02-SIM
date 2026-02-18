@@ -24,8 +24,8 @@ TEST_F(BCS_Test, BCS_NoBranch_CarryClear) {
     mem.Write(0x1001, 0x05);
     mem.Write(0x1002, INS_JAM);
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x10);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x10);
     cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x1003);
@@ -39,8 +39,8 @@ TEST_F(BCS_Test, BCS_Branch_CarrySet) {
     mem.Write(0x1001, 0x05);
     mem.Write(0x1007, INS_JAM);
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x10);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x10);
     cpu.Execute(mem);
 
     EXPECT_EQ(cpu.PC, 0x1008);

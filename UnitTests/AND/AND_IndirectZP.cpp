@@ -20,13 +20,13 @@ TEST_F(AND_IndirectZP_Test, AND_IndirectZP) {
     // Effective Address = Mem[ZP] | (Mem[ZP + 1] << 8)
     // No indexing
     cpu.A = 0xFF;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_AND_IND_ZP);
     mem.Write(0x4001, 0x20);  // ZP Pointer
     mem.Write(0x0020, 0x00);  // Low Byte
     mem.Write(0x0021, 0x80);  // High Byte -> Target Base: 0x8000
-    mem.Write(0x8000, 0x37);  // Target Value
+    mem.WriteROM(0x8000, 0x37);  // Target Value
     mem.Write(0x4002, INS_JAM);
 
     cpu.Execute(mem);

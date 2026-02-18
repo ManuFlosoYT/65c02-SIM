@@ -20,8 +20,8 @@ TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage) {
     // 0xFFFD: 0x42
     // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
     // 0x0042: 0x37 (Valor a cargar)
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0x37);
@@ -50,8 +50,8 @@ TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage_ZeroFlag) {
     cpu.Z = 0;
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0x00);
@@ -68,8 +68,8 @@ TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage_NegativeFlag) {
     cpu.N = 0;
     cpu.A = 0xFF;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x0042, 0xFF);

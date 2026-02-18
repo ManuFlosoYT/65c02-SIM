@@ -22,8 +22,8 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_NoCarry) {
     cpu.A = 0x01;
     cpu.C = 1;  // Should be cleared
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ASL_A);
     mem.Write(0x4001, INS_JAM);
 
@@ -40,8 +40,8 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_CarryOut) {
     cpu.A = 0x80;
     cpu.C = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ASL_A);
     mem.Write(0x4001, INS_JAM);
 
@@ -57,8 +57,8 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_Negative) {
     // 0100 0000 (0x40) -> 1000 0000 (0x80). N=1
     cpu.A = 0x40;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_ASL_A);
     mem.Write(0x4001, INS_JAM);
 

@@ -20,8 +20,8 @@ TEST_F(SBC_Decimal_Test, SBC_Decimal_Simple) {
     cpu.D = 1;
     cpu.C = 1;  // No borrow
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_SBC_IM);
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);
@@ -38,8 +38,8 @@ TEST_F(SBC_Decimal_Test, SBC_Decimal_Borrow) {
     cpu.D = 1;
     cpu.C = 1;  // No borrow start
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_SBC_IM);
     mem.Write(0x4001, 0x06);
     mem.Write(0x4002, INS_JAM);

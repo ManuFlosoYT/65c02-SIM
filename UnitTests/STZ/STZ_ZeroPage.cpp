@@ -21,8 +21,8 @@ TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_ExecutesCorrectly) {
     // 0x0042: 0xAA (Valor inicial)
 
     cpu.PC = 0xFFFC;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STZ_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x4002, INS_JAM);  // Stop
@@ -39,8 +39,8 @@ TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_ExecutesCorrectly) {
 TEST_F(STZ_ZeroPage_Test, STZ_ZeroPage_DoesNotAffectFlags) {
     // STZ no afecta flags
     cpu.PC = 0xFFFC;
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STZ_ZP);
     mem.Write(0x4001, 0x42);
     mem.Write(0x4002, INS_JAM);

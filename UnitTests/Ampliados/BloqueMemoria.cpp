@@ -17,8 +17,8 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
     // Programa: Copiar bloque de memoria de Page 0x80 a Page 0x90
     // Longitud: 0xFF (255 bytes)
 
-    Word SRC_PAGE = 0x8000;
-    Word DST_PAGE = 0x9000;
+    Word SRC_PAGE = 0x4000;
+    Word DST_PAGE = 0x2000;
     Word CODE_START = 0x1000;
 
     // Init memoria origen con valores

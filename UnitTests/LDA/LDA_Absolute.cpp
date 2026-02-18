@@ -21,8 +21,8 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute) {
     // 0xFFFE: 0x44 (High Byte)
     // 0xFFFF: Opcode desconocido (0xFF)
     // 0x4480: 0x37 (Valor a cargar)
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ABS);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);
@@ -55,8 +55,8 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute_ZeroFlag) {
     cpu.A = 0xFF;
     cpu.Z = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ABS);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);
@@ -73,8 +73,8 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute_ZeroFlag) {
 TEST_F(LDA_Absolute_Test, LDA_Absolute_NegativeFlag) {
     cpu.N = 0;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDA_ABS);
     mem.Write(0x4001, 0x80);
     mem.Write(0x4002, 0x44);

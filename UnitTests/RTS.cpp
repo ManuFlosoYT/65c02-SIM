@@ -16,8 +16,8 @@ protected:
 
 TEST_F(RTS_Test, RTS_Implied) {
     // 0xFFFC: RTS
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_RTS);
     mem.Write(0x4001, INS_JAM);  // Stop
 
@@ -44,7 +44,7 @@ TEST_F(RTS_Test, RTS_Implied) {
     cpu.SP = 0x01FD;
     mem.Write(0x01FE, 0xFF);
     mem.Write(0x01FF, 0x7F);
-    mem.Write(0x8000, INS_JAM);  // Stop opcode at return address
+    mem.WriteROM(0x8000, INS_JAM);  // Stop opcode at return address
 
     cpu.Execute(mem);
 

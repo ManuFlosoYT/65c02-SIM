@@ -25,8 +25,8 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_ExecutesCorrectly) {
     // Target: 0x2000 + 0x05 = 0x2005
     mem.Write(0x2005, 0xEE);
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x10);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x10);
     cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x2005], 0x00);
@@ -45,8 +45,8 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_PageCrossing) {
     // Target: 0x2000 + 0xFF = 0x20FF
     mem.Write(0x20FF, 0xEE);
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x10);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x10);
     cpu.Execute(mem);
 
     EXPECT_EQ(mem[0x20FF], 0x00);

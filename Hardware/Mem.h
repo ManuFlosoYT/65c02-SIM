@@ -47,7 +47,8 @@ public:
     Byte operator[](Word addr) const { return memory[addr]; }
 
     void SetWriteHook(Word address, WriteHook hook);
-    void Write(Word addr, Byte val);
+    void Write(Word addr, Byte val);    // Protects against writing to ROM
+    void WriteROM(Word addr, Byte val); // Used by Unit Tests to force writes
     void WriteWord(Word data, Word addr);
 
     void SetReadHook(Word address, ReadHook hook);

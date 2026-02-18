@@ -18,8 +18,8 @@ TEST_F(STA_ZeroPageIndirect_Test, STA_ZeroPageIndirect) {
     cpu.A = 0x37;
 
     // 0xFFFC: STA (ZeroPage Indirect) 0x20
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_STA_IND_ZP);
     mem.Write(0x4001, 0x20);
     mem.Write(0x4002, INS_JAM);  // Stop

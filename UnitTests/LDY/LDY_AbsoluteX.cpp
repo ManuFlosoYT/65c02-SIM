@@ -21,12 +21,12 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX) {
     // 0xFFFE: 0x80
     // Address: 0x8000 + 0x01 = 0x8001
     // 0x8001: 0x37
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDY_ABSX);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, 0x80);
-    mem.Write(0x8001, 0x37);
+    mem.WriteROM(0x8001, 0x37);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
@@ -44,12 +44,12 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX_PageCrossing) {
     // 0xFFFE: 0x80
     // Address: 0x8000 + 0xFF = 0x80FF
     // 0x80FF: 0x37
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDY_ABSX);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, 0x80);
-    mem.Write(0x80FF, 0x37);
+    mem.WriteROM(0x80FF, 0x37);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
@@ -64,12 +64,12 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX_ZeroFlag) {
     cpu.Y = 0xFF;
     cpu.X = 0x01;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDY_ABSX);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, 0x80);
-    mem.Write(0x8001, 0x00);
+    mem.WriteROM(0x8001, 0x00);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
@@ -84,12 +84,12 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX_NegativeFlag) {
     cpu.Y = 0x00;
     cpu.X = 0x01;
 
-    mem.Write(0xFFFC, 0x00);
-    mem.Write(0xFFFD, 0x40);
+    mem.WriteROM(0xFFFC, 0x00);
+    mem.WriteROM(0xFFFD, 0x40);
     mem.Write(0x4000, INS_LDY_ABSX);
     mem.Write(0x4001, 0x00);
     mem.Write(0x4002, 0x80);
-    mem.Write(0x8001, 0x80);
+    mem.WriteROM(0x8001, 0x80);
     mem.Write(0x4003, INS_JAM);
 
     cpu.Execute(mem);
