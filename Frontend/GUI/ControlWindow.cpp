@@ -82,8 +82,24 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         state.emulator.SetCycleAccurate(state.cycleAccurate);
     }
     ImGui::SameLine();
-    ImGui::Text("Sim: %d %s", state.emulator.GetActualIPS(),
-                state.cycleAccurate ? "Hz" : "IPS");
+    {
+        int actualIPS = state.emulator.GetActualIPS();
+        if (state.cycleAccurate) {
+            if (actualIPS >= 1000000)
+                ImGui::Text("Sim: %.2f MHz", actualIPS / 1000000.0f);
+            else if (actualIPS >= 1000)
+                ImGui::Text("Sim: %.2f KHz", actualIPS / 1000.0f);
+            else
+                ImGui::Text("Sim: %d Hz", actualIPS);
+        } else {
+            if (actualIPS >= 1000000)
+                ImGui::Text("Sim: %.2f MIPS", actualIPS / 1000000.0f);
+            else if (actualIPS >= 1000)
+                ImGui::Text("Sim: %.2f KIPS", actualIPS / 1000.0f);
+            else
+                ImGui::Text("Sim: %d IPS", actualIPS);
+        }
+    }
 
     int tempIPS = state.instructionsPerFrame;
     char targetLabel[32];
@@ -94,7 +110,6 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
             tempIPS = 100000;
 
         if (tempIPS < 1) tempIPS = 1;
-        if (tempIPS > 1000000) tempIPS = 1000000;
         state.instructionsPerFrame = tempIPS;
         state.emulator.SetTargetIPS(state.instructionsPerFrame);
     }
