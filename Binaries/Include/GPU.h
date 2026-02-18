@@ -12,7 +12,7 @@
 
 // Writes a pixel to VRAM if coordinates are within bounds
 void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
-    unsigned int offset;
+    unsigned short offset;
     unsigned char* vram;
 
     if (x < 0 || x >= GPU_WIDTH || y < 0 || y >= GPU_HEIGHT) {
@@ -20,14 +20,14 @@ void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
     }
 
     // Y * 128 + X
-    offset = ((unsigned int)y << 7) + (unsigned char)x;
-    vram = (unsigned char*)GPU_VRAM_START;
+    offset = ((unsigned short)y << 7) + (unsigned char)x;
+    vram = (unsigned char*)(unsigned long)GPU_VRAM_START;
     vram[offset] = color;
 }
 
 void gpu_draw_rect( signed char x, signed char y,
                     signed char w, signed char h,
-                    unsigned char color) {
+                   unsigned char color) {
     signed char i, j;
     signed char max_x, max_y;
     if (x >= GPU_WIDTH || y >= GPU_HEIGHT) return;
@@ -49,7 +49,9 @@ void gpu_draw_rect( signed char x, signed char y,
     if (max_y > GPU_HEIGHT) max_y = GPU_HEIGHT;
 
     for (j = y; j < max_y; j++) {
-        unsigned char* vram_row = (unsigned char*)(GPU_VRAM_START + ((unsigned int)j << 7));
+        unsigned char* vram_row =
+            (unsigned char*)(unsigned long)(GPU_VRAM_START +
+                                            ((unsigned short)j << 7));
         for (i = x; i < max_x; i++) {
             vram_row[i] = color;
         }
@@ -79,8 +81,8 @@ void gpu_draw_line( signed char x0, signed char y0,
     signed char dy = (signed char)-gpu_abs(y1 - y0);
     signed char sx = (x0 < x1) ? 1 : -1;
     signed char sy = (y0 < y1) ? 1 : -1;
-    int err = dx + dy;
-    int e2;
+    short err = dx + dy;
+    short e2;
 
     while (1) {
         gpu_put_pixel(x0, y0, color);
@@ -99,9 +101,7 @@ void gpu_draw_line( signed char x0, signed char y0,
     }
 }
 
-// Fixed point 8.8 math for edge walking
-// value = (integer part << 8) | fractional part
-typedef int fixed_t;
+typedef short fixed_t;
 #define TO_FIXED(x) ((x) << 8)
 #define FROM_FIXED(x) ((x) >> 8)
 
@@ -109,12 +109,11 @@ typedef int fixed_t;
 void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
                   signed char y1, signed char x2, signed char y2,
                   unsigned char color, unsigned char fill) {
-    fixed_t x_left, x_right, x_long, x_short;
-    fixed_t dx_left, dx_right, dx_long, dx_short;
+    fixed_t x_long, x_short;
+    fixed_t dx_long, dx_short;
     signed char y, start_y, end_y;
-    unsigned char* vram_row;
-    int span_len, xl, xr, t;
-    unsigned int offset;
+    short xl, xr, t;
+    unsigned short offset;
 
     if (!fill) {
         gpu_draw_line(x0, y0, x1, y1, color);
@@ -172,8 +171,9 @@ void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
             if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
 
             if (xl <= xr) {
-                offset = ((unsigned int)y << 7) + xl;
-                memset((void*)(GPU_VRAM_START + offset), color, xr - xl + 1);
+                offset = ((unsigned short)y << 7) + xl;
+                memset((void*)(unsigned long)(GPU_VRAM_START + offset), color,
+                       xr - xl + 1);
             }
 
             x_long += dx_long;
@@ -216,8 +216,9 @@ void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
             if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
 
             if (xl <= xr) {
-                offset = ((unsigned int)y << 7) + xl;
-                memset((void*)(GPU_VRAM_START + offset), color, xr - xl + 1);
+                offset = ((unsigned short)y << 7) + xl;
+                memset((void*)(unsigned long)(GPU_VRAM_START + offset), color,
+                       xr - xl + 1);
             }
 
             x_long += dx_long;
@@ -228,8 +229,8 @@ void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
 
 #define GPU_ITERATIONS_PER_MS 19
 void GPUdelay(unsigned int ms) {
-    volatile unsigned int i;
-    volatile unsigned int j;
+    volatile unsigned short i;
+    volatile unsigned short j;
     for (i = 0; i < ms; i++) {
         for (j = 0; j < GPU_ITERATIONS_PER_MS; j++) {
         }
