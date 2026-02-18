@@ -9,29 +9,31 @@
 #define TARGET_FPS 30
 #define VIA_T1_COUNT ((unsigned int)(CLOCK_HZ / TARGET_FPS))
 
-#define FP_SHIFT 8
-#define FP_SCALE (1 << FP_SHIFT)
+#define FP_SCALE 1
 
 const signed char SIN_TABLE[256] = {
-    0,    3,    6,    9,    12,   15,   18,   21,   24,   28,   31,   34,
-    37,   40,   43,   46,   48,   51,   54,   57,   60,   62,   65,   68,
-    70,   73,   75,   77,   79,   82,   84,   86,   88,   90,   91,   93,
-    95,   96,   98,   99,   100,  101,  103,  104,  105,  106,  106,  107,
-    108,  108,  109,  109,  109,  110,  110,  110,  110,  109,  109,  109,
-    108,  108,  107,  106,  106,  105,  104,  103,  101,  100,  99,   98,
-    96,   95,   93,   91,   90,   88,   86,   84,   82,   79,   77,   75,
-    73,   70,   68,   65,   62,   60,   57,   54,   51,   48,   46,   43,
-    40,   37,   34,   31,   28,   24,   21,   18,   15,   12,   9,    6,
-    3,    0,    -3,   -6,   -9,   -12,  -15,  -18,  -21,  -24,  -28,  -31,
-    -34,  -37,  -40,  -43,  -46,  -48,  -51,  -54,  -57,  -60,  -62,  -65,
-    -68,  -70,  -73,  -75,  -77,  -79,  -82,  -84,  -86,  -88,  -90,  -91,
-    -93,  -95,  -96,  -98,  -99,  -100, -101, -103, -104, -105, -106, -106,
-    -107, -108, -108, -109, -109, -109, -110, -110, -110, -110, -109, -109,
-    -109, -108, -108, -107, -106, -106, -105, -104, -103, -101, -100, -99,
-    -98,  -96,  -95,  -93,  -91,  -90,  -88,  -86,  -84,  -82,  -79,  -77,
-    -75,  -73,  -70,  -68,  -65,  -62,  -60,  -57,  -54,  -51,  -48,  -46,
-    -43,  -40,  -37,  -34,  -31,  -28,  -24,  -21,  -18,  -15,  -12,  -9,
-    -6,   -3};
+    0,    2,    5,    8,    10,   13,   16,   18,   21,   24,   26,   29,
+    31,   34,   37,   39,   42,   44,   47,   49,   51,   54,   56,   58,
+    61,   63,   65,   67,   69,   71,   73,   75,   77,   79,   81,   83,
+    85,   86,   88,   89,   91,   92,   94,   95,   97,   98,   99,   100,
+    101,  102,  103,  104,  105,  106,  106,  107,  107,  108,  108,  109,
+    109,  109,  109,  109,  110,  109,  109,  109,  109,  109,  108,  108,
+    107,  107,  106,  106,  105,  104,  103,  102,  101,  100,  99,   98,
+    97,   95,   94,   92,   91,   89,   88,   86,   85,   83,   81,   79,
+    77,   75,   73,   71,   69,   67,   65,   63,   61,   58,   56,   54,
+    51,   49,   47,   44,   42,   39,   37,   34,   31,   29,   26,   24,
+    21,   18,   16,   13,   10,   8,    5,    2,    0,    -2,   -5,   -8,
+    -10,  -13,  -16,  -18,  -21,  -24,  -26,  -29,  -31,  -34,  -37,  -39,
+    -42,  -44,  -47,  -49,  -51,  -54,  -56,  -58,  -61,  -63,  -65,  -67,
+    -69,  -71,  -73,  -75,  -77,  -79,  -81,  -83,  -85,  -86,  -88,  -89,
+    -91,  -92,  -94,  -95,  -97,  -98,  -99,  -100, -101, -102, -103, -104,
+    -105, -106, -106, -107, -107, -108, -108, -109, -109, -109, -109, -109,
+    -110, -109, -109, -109, -109, -109, -108, -108, -107, -107, -106, -106,
+    -105, -104, -103, -102, -101, -100, -99,  -98,  -97,  -95,  -94,  -92,
+    -91,  -89,  -88,  -86,  -85,  -83,  -81,  -79,  -77,  -75,  -73,  -71,
+    -69,  -67,  -65,  -63,  -61,  -58,  -56,  -54,  -51,  -49,  -47,  -44,
+    -42,  -39,  -37,  -34,  -31,  -29,  -26,  -24,  -21,  -18,  -16,  -13,
+    -10,  -8,   -5,   -2};
 
 #define ISIN(x) (SIN_TABLE[(unsigned char)(x)])
 #define ICOS(x) (SIN_TABLE[(unsigned char)((x) + 64)])
@@ -43,14 +45,17 @@ void via_init(void) {
     asm("cli");
 }
 
-int vx[8], vy[8], vz[8];
+signed char vx[8], vy[8], vz[8];
 signed char px[8], py[8];
 
-#define C_SIZE (22 * FP_SCALE)
+#define C_SIZE 22
 
-const int cvx[8] = {-C_SIZE, C_SIZE, C_SIZE, -C_SIZE, -C_SIZE, C_SIZE, C_SIZE, -C_SIZE};
-const int cvy[8] = {-C_SIZE, -C_SIZE, C_SIZE, C_SIZE, -C_SIZE, -C_SIZE, C_SIZE, C_SIZE};
-const int cvz[8] = {-C_SIZE, -C_SIZE, -C_SIZE, -C_SIZE, C_SIZE, C_SIZE, C_SIZE, C_SIZE};
+const signed char cvx[8] = {-C_SIZE, C_SIZE, C_SIZE, -C_SIZE,
+                            -C_SIZE, C_SIZE, C_SIZE, -C_SIZE};
+const signed char cvy[8] = {-C_SIZE, -C_SIZE, C_SIZE, C_SIZE,
+                            -C_SIZE, -C_SIZE, C_SIZE, C_SIZE};
+const signed char cvz[8] = {-C_SIZE, -C_SIZE, -C_SIZE, -C_SIZE,
+                            C_SIZE,  C_SIZE,  C_SIZE,  C_SIZE};
 
 const unsigned char faces[12][3] = {
     {4, 5, 6}, {4, 6, 7}, /* Front */
@@ -87,20 +92,20 @@ void rotate_all(unsigned char ax, unsigned char ay, unsigned char az) {
         z = cvz[i];
 
         /* X Rot */
-        ty = (int)(((long)y * cos_x - (long)z * sin_x) >> (FP_SHIFT - 1));
-        tz = (int)(((long)y * sin_x + (long)z * cos_x) >> (FP_SHIFT - 1));
+        ty = (y * cos_x - z * sin_x) >> 7;
+        tz = (y * sin_x + z * cos_x) >> 7;
         y = ty;
         z = tz;
 
         /* Y Rot */
-        tx = (int)(((long)x * cos_y + (long)z * sin_y) >> (FP_SHIFT - 1));
-        tz = (int)(((long)-x * sin_y + (long)z * cos_y) >> (FP_SHIFT - 1));
+        tx = (x * cos_y + z * sin_y) >> 7;
+        tz = (-x * sin_y + z * cos_y) >> 7;
         x = tx;
         z = tz;
 
         /* Z Rot */
-        tx = (int)(((long)x * cos_z - (long)y * sin_z) >> (FP_SHIFT - 1));
-        ty = (int)(((long)x * sin_z + (long)y * cos_z) >> (FP_SHIFT - 1));
+        tx = (x * cos_z - y * sin_z) >> 7;
+        ty = (x * sin_z + y * cos_z) >> 7;
 
         vx[i] = tx;
         vy[i] = ty;
@@ -113,17 +118,17 @@ void project_all(void) {
     const signed char distance = 80;
     const signed char factor = 60;
     int z_shifted;
-    long factor_precalc;
+    int factor_precalc;
 
     for (i = 0; i < 8; ++i) {
-        z_shifted = (vz[i] >> 8) + distance;
+        z_shifted = vz[i] + distance;
         if (z_shifted < 10) z_shifted = 10;
 
-        factor_precalc = (long)vx[i] * factor;
-        px[i] = (signed char)((int)((factor_precalc >> 8) / z_shifted) + (GPU_WIDTH / 2));
+        factor_precalc = (int)vx[i] * factor;
+        px[i] = (signed char)((factor_precalc / z_shifted) + (GPU_WIDTH / 2));
 
-        factor_precalc = (long)vy[i] * factor;
-        py[i] = (signed char)((GPU_HEIGHT / 2) - (int)((factor_precalc >> 8) / z_shifted));
+        factor_precalc = (int)vy[i] * factor;
+        py[i] = (signed char)((GPU_HEIGHT / 2) - (factor_precalc / z_shifted));
     }
 }
 
