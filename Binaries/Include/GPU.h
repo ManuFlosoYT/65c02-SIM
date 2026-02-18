@@ -28,8 +28,10 @@ void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
 void gpu_draw_rect( signed char x, signed char y,
                     signed char w, signed char h,
                    unsigned char color) {
-    signed char i, j;
+    signed char j;
     signed char max_x, max_y;
+    unsigned char width;
+    unsigned char* vram_row;
     if (x >= GPU_WIDTH || y >= GPU_HEIGHT) return;
     if (x + w < 0 || y + h < 0) return;
 
@@ -48,13 +50,13 @@ void gpu_draw_rect( signed char x, signed char y,
     if (max_x > GPU_WIDTH) max_x = GPU_WIDTH;
     if (max_y > GPU_HEIGHT) max_y = GPU_HEIGHT;
 
+    width = max_x - x;
+    vram_row = (unsigned char*)(unsigned long)(GPU_VRAM_START +
+                                               ((unsigned short)y << 7) + x);
+
     for (j = y; j < max_y; j++) {
-        unsigned char* vram_row =
-            (unsigned char*)(unsigned long)(GPU_VRAM_START +
-                                            ((unsigned short)j << 7));
-        for (i = x; i < max_x; i++) {
-            vram_row[i] = color;
-        }
+        memset(vram_row, color, width);
+        vram_row += GPU_STRIDE;
     }
 }
 
