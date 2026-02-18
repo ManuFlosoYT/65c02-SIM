@@ -10,30 +10,37 @@
 #define GPU_STRIDE 128
 #define GPU_HEIGHT 64
 
-/* Helper Functions */
-
 // Writes a pixel to VRAM if coordinates are within bounds
-void gpu_put_pixel(int x, int y, unsigned char color) {
+void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
     unsigned int offset;
     unsigned char* vram;
 
     if (x < 0 || x >= GPU_WIDTH || y < 0 || y >= GPU_HEIGHT) {
         return;
     }
-    
-    offset = ((unsigned char)y * GPU_STRIDE) + (unsigned char)x;
+
+    // Y * 128 + X
+    offset = ((unsigned int)y << 7) + (unsigned char)x;
     vram = (unsigned char*)GPU_VRAM_START;
     vram[offset] = color;
 }
 
-void gpu_draw_rect(int x, int y, int w, int h, unsigned char color) {
-    int i, j;
-    int max_x, max_y;
+void gpu_draw_rect( signed char x, signed char y,
+                    signed char w, signed char h,
+                    unsigned char color) {
+    signed char i, j;
+    signed char max_x, max_y;
     if (x >= GPU_WIDTH || y >= GPU_HEIGHT) return;
     if (x + w < 0 || y + h < 0) return;
 
-    if (x < 0) { w += x; x = 0; }
-    if (y < 0) { h += y; y = 0; }
+    if (x < 0) {
+        w += x;
+        x = 0;
+    }
+    if (y < 0) {
+        h += y;
+        y = 0;
+    }
 
     max_x = x + w;
     max_y = y + h;
@@ -42,8 +49,9 @@ void gpu_draw_rect(int x, int y, int w, int h, unsigned char color) {
     if (max_y > GPU_HEIGHT) max_y = GPU_HEIGHT;
 
     for (j = y; j < max_y; j++) {
+        unsigned char* vram_row = (unsigned char*)(GPU_VRAM_START + ((unsigned int)j << 7));
         for (i = x; i < max_x; i++) {
-            gpu_put_pixel(i, j, color);
+            vram_row[i] = color;
         }
     }
 }
@@ -56,26 +64,29 @@ void gpu_fill_screen(unsigned char color) {
 
 int gpu_abs(int v) { return (v < 0) ? -v : v; }
 
-void gpu_swap_int(int* a, int* b) {
-    int t = *a;
+void gpu_swap_coord(signed char* a, signed char* b) {
+    signed char t = *a;
     *a = *b;
     *b = t;
 }
 
 // Draws a line using Bresenham's algorithm
-void gpu_draw_line(int x0, int y0, int x1, int y1, unsigned char color) {
-    int dx = gpu_abs(x1 - x0);
-    int dy = -gpu_abs(y1 - y0);
-    int sx = (x0 < x1) ? 1 : -1;
-    int sy = (y0 < y1) ? 1 : -1;
+void gpu_draw_line( signed char x0, signed char y0, 
+                    signed char x1, signed char y1, 
+                    unsigned char color) {
+                        
+    signed char dx = (signed char)gpu_abs(x1 - x0);
+    signed char dy = (signed char)-gpu_abs(y1 - y0);
+    signed char sx = (x0 < x1) ? 1 : -1;
+    signed char sy = (y0 < y1) ? 1 : -1;
     int err = dx + dy;
     int e2;
 
     while (1) {
         gpu_put_pixel(x0, y0, color);
-        
+
         if (x0 == x1 && y0 == y1) break;
-        
+
         e2 = 2 * err;
         if (e2 >= dy) {
             err += dy;
@@ -88,19 +99,22 @@ void gpu_draw_line(int x0, int y0, int x1, int y1, unsigned char color) {
     }
 }
 
-// Draws a triangle (Wireframe OR Filled) with sub-pixel rounding
-void gpu_draw_tri(int x0, int y0, int x1, int y1, int x2, int y2,
+// Fixed point 8.8 math for edge walking
+// value = (integer part << 8) | fractional part
+typedef int fixed_t;
+#define TO_FIXED(x) ((x) << 8)
+#define FROM_FIXED(x) ((x) >> 8)
+
+// Draws a triangle (Wireframe OR Filled)
+void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
+                  signed char y1, signed char x2, signed char y2,
                   unsigned char color, unsigned char fill) {
-    int total_height;
-    int i;
-    int y;
-    int second_half;
-    int segment_height;
-    int A, B;
-    int i_segment;
-    int temp;
-    int x;
-    long num;
+    fixed_t x_left, x_right, x_long, x_short;
+    fixed_t dx_left, dx_right, dx_long, dx_short;
+    signed char y, start_y, end_y;
+    unsigned char* vram_row;
+    int span_len, xl, xr, t;
+    unsigned int offset;
 
     if (!fill) {
         gpu_draw_line(x0, y0, x1, y1, color);
@@ -109,47 +123,105 @@ void gpu_draw_tri(int x0, int y0, int x1, int y1, int x2, int y2,
         return;
     }
 
-
     // Sort vertices by Y (y0 <= y1 <= y2)
-    if (y0 > y1) { gpu_swap_int(&x0, &x1); gpu_swap_int(&y0, &y1); }
-    if (y0 > y2) { gpu_swap_int(&x0, &x2); gpu_swap_int(&y0, &y2); }
-    if (y1 > y2) { gpu_swap_int(&x1, &x2); gpu_swap_int(&y1, &y2); }
+    if (y0 > y1) {
+        gpu_swap_coord(&x0, &x1);
+        gpu_swap_coord(&y0, &y1);
+    }
+    if (y0 > y2) {
+        gpu_swap_coord(&x0, &x2);
+        gpu_swap_coord(&y0, &y2);
+    }
+    if (y1 > y2) {
+        gpu_swap_coord(&x1, &x2);
+        gpu_swap_coord(&y1, &y2);
+    }
 
     if (y2 < 0 || y0 >= GPU_HEIGHT) return;
 
-    total_height = y2 - y0;
-    if (total_height == 0) return;
+    x_long = TO_FIXED(x0);
+    dx_long = 0;
 
-    // Rasterization Loop
-    for (i = 0; i < total_height; i++) {
-        y = y0 + i;
-        
-        if (y < 0) continue;
-        if (y >= GPU_HEIGHT) break;
+    if (y2 != y0) dx_long = TO_FIXED(x2 - x0) / (y2 - y0);
 
-        second_half = (i > (y1 - y0) || y1 == y0);
-        segment_height = second_half ? (y2 - y1) : (y1 - y0);
-        
-        if (segment_height == 0) segment_height = 1;
-        num = (long)(x2 - x0) * (long)i;
-        A = x0 + (int)((num + (total_height / 2)) / total_height);
+    if (y1 > y0) {
+        x_short = TO_FIXED(x0);
+        dx_short = TO_FIXED(x1 - x0) / (y1 - y0);
 
-        if (second_half) {
-            i_segment = i - (y1 - y0);
-            num = (long)(x2 - x1) * (long)i_segment;
-            B = x1 + (int)((num + (segment_height / 2)) / segment_height);
-        } else {
-            num = (long)(x1 - x0) * (long)i;
-            B = x0 + (int)((num + (segment_height / 2)) / segment_height);
+        start_y = y0;
+        end_y = y1;
+
+        if (start_y < 0) {
+            x_long += dx_long * (-start_y);
+            x_short += dx_short * (-start_y);
+            start_y = 0;
         }
 
-        if (A > B) { temp = A; A = B; B = temp; }
+        if (end_y > GPU_HEIGHT) end_y = GPU_HEIGHT;
 
-        if (A < 0) A = 0;
-        if (B >= GPU_WIDTH) B = GPU_WIDTH - 1;
-        
-        for (x = A; x <= B; x++) {
-             gpu_put_pixel(x, y, color);
+        for (y = start_y; y < end_y; y++) {
+            xl = FROM_FIXED(x_long);
+            xr = FROM_FIXED(x_short);
+            if (xl > xr) {
+                t = xl;
+                xl = xr;
+                xr = t;
+            }
+
+            if (xl < 0) xl = 0;
+            if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
+
+            if (xl <= xr) {
+                offset = ((unsigned int)y << 7) + xl;
+                memset((void*)(GPU_VRAM_START + offset), color, xr - xl + 1);
+            }
+
+            x_long += dx_long;
+            x_short += dx_short;
+        }
+    } else {
+        if (y0 < 0) {
+            x_long += dx_long * (-y0);
+        }
+    }
+
+    if (y2 > y1) {
+        x_short = TO_FIXED(x1);
+        dx_short = TO_FIXED(x2 - x1) / (y2 - y1);
+
+        start_y = y1;
+        end_y = y2;
+
+        if (start_y < 0) {
+            x_long += dx_long * (0 - start_y);
+            x_short += dx_short * (0 - start_y);
+            start_y = 0;
+        }
+        if (y0 == y1 && y0 < 0) {
+            x_long += dx_long * (-y0);
+        }
+
+        if (end_y > GPU_HEIGHT) end_y = GPU_HEIGHT;
+
+        for (y = start_y; y < end_y; y++) {
+            xl = FROM_FIXED(x_long);
+            xr = FROM_FIXED(x_short);
+            if (xl > xr) {
+                t = xl;
+                xl = xr;
+                xr = t;
+            }
+
+            if (xl < 0) xl = 0;
+            if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
+
+            if (xl <= xr) {
+                offset = ((unsigned int)y << 7) + xl;
+                memset((void*)(GPU_VRAM_START + offset), color, xr - xl + 1);
+            }
+
+            x_long += dx_long;
+            x_short += dx_short;
         }
     }
 }
@@ -159,7 +231,8 @@ void GPUdelay(unsigned int ms) {
     volatile unsigned int i;
     volatile unsigned int j;
     for (i = 0; i < ms; i++) {
-        for (j = 0; j < GPU_ITERATIONS_PER_MS; j++) { }
+        for (j = 0; j < GPU_ITERATIONS_PER_MS; j++) {
+        }
     }
 }
 
@@ -167,7 +240,6 @@ void gpu_test_pattern() {
     unsigned char r, c;
     unsigned char row_color;
     for (r = 0; r < GPU_HEIGHT; r++) {
-        // Create a gradient or pattern
         row_color = r * 4;
         for (c = 0; c < GPU_WIDTH; c++) {
             gpu_put_pixel(c, r, row_color + c);
