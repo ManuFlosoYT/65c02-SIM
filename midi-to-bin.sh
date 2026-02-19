@@ -12,8 +12,18 @@ echo "--- MIDI to BIN Automation (Smart Optimization) ---"
 # Input Handling
 target_file=""
 
-if [ "$#" -eq 0 ]; then
+if [ "$1" == "all" ]; then
+    shopt -s nullglob
+    files=(SID/*.mid SID/*.midi)
+    shopt -u nullglob
+    
+    if [ ${#files[@]} -eq 0 ]; then
+        echo "Error: No MIDI files found in SID/"
+        exit 1
+    fi
+elif [ "$#" -eq 0 ]; then
     echo "Available MIDI files:"
+    echo "  - all (Compile all MIDI files)"
     shopt -s nullglob
     files=(SID/*.mid SID/*.midi)
     shopt -u nullglob
@@ -26,7 +36,7 @@ if [ "$#" -eq 0 ]; then
         done
     fi
     echo ""
-    echo "Usage: ./midi-to-bin.sh [filename.mid]"
+    echo "Usage: $0 <midi_name>"
     exit 0
 else
     # Argument provided
