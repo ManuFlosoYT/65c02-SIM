@@ -22,6 +22,9 @@ public:
     const static Byte DISPLAY_WIDTH = 132;
     const static Byte DISPLAY_HEIGHT = 78;
 
+    // The CPU can only write to the first 64 rows of VRAM so we use this to calculate if the GPU is in blanking interval
+    const static Byte VRAM_HEIGHT_DRAWABLE_BY_CPU = 64;
+
     GPU() { 
         Init(); 
     }
@@ -44,7 +47,9 @@ public:
 
     // Bus control status
     bool IsInDrawingInterval() const {
-        return pixelX < VRAM_WIDTH && pixelY < VRAM_HEIGHT;
+        // We asume this is always true, since the CPU can only write to the first 64 rows of VRAM
+        // The remaining 14 rows are only accessible by the GPU istelf via loading a bin file into the GPU's memory.
+        return pixelX < VRAM_WIDTH && pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU;
     }
 
     bool IsInBlankingInterval() const { 
