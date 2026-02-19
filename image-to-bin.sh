@@ -9,6 +9,7 @@ listar_imagenes() {
     echo "-----------------------------------------------------"
     echo "Images in '$GPU_DIR/':"
     echo "-----------------------------------------------------"
+    echo "   - all (Compile all images)"
     count=$(find "$GPU_DIR" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.bmp" \) | wc -l)
 
     if [ "$count" -eq 0 ]; then
@@ -23,8 +24,16 @@ listar_imagenes() {
 INPUT_FILE="$1"
 TARGET_FILE=""
 
+if [ "$INPUT_FILE" == "all" ]; then
+    echo "--- Converting ALL Images ---"
+    find "$GPU_DIR" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.bmp" \) | while read -r file; do
+        $0 "$(basename "$file")"
+    done
+    exit 0
+fi
+
 if [ -z "$INPUT_FILE" ]; then
-    echo "Error: Missing file."
+    echo "Usage: $0 <image_name>"
     listar_imagenes
     exit 1
 fi
