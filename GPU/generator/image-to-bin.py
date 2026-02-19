@@ -9,7 +9,8 @@ STRIDE = 128        # Salto de memoria por fila (addressing & 0x7F)
 
 # --- RUTAS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(os.path.dirname(BASE_DIR), "output")
+# Go up 2 levels: GPU/generator -> GPU -> Root
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), "output")
 
 def quantize_color_2bit(value):
     """Convierte 0-255 a 0-3"""

@@ -2,7 +2,7 @@
 
 # --- CONFIGURACIÓN ---
 GPU_DIR="GPU"
-PYTHON_SCRIPT="$GPU_DIR/image-to-bin.py"
+PYTHON_SCRIPT="$GPU_DIR/generator/image-to-bin.py"
 
 # --- FUNCIONES ---
 listar_imagenes() {
@@ -51,8 +51,8 @@ fi
 # --- DEPENDENCIAS ---
 if ! command -v python3 &> /dev/null; then echo "Python3 not found."; exit 1; fi
 if ! python3 -c "import PIL" &> /dev/null; then
-    echo "Installing Pillow..."
-    pip install pillow
+    echo "Pillow not found. Please install it using: pip install pillow"
+    exit 1
 fi
 
 # --- EJECUTAR ---
