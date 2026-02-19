@@ -203,6 +203,8 @@ void Emulator::ThreadLoop() {
     int instructionsThisSecond = 0;
     auto lastSecondTime = high_resolution_clock::now();
 
+    double instructionAccumulator = 0.0;
+
     while (running) {
         {
             std::unique_lock<std::mutex> lock(threadMutex);
@@ -215,8 +217,11 @@ void Emulator::ThreadLoop() {
 
         // Execute in 10ms slices
         int sliceDurationMs = 10;
-        int instructionsPerSlice = currentTarget / (1000 / sliceDurationMs);
-        if (instructionsPerSlice < 1) instructionsPerSlice = 1;
+        double targetPerSlice = (double)currentTarget / (1000.0 / sliceDurationMs);
+
+        instructionAccumulator += targetPerSlice;
+        int instructionsPerSlice = (int)instructionAccumulator;
+        instructionAccumulator -= instructionsPerSlice;
 
         auto sliceStartTime = high_resolution_clock::now();
 
@@ -228,12 +233,9 @@ void Emulator::ThreadLoop() {
                 int res = Step();
                 if (res != 0) {
                     paused = true;
-                    std::cerr << "Emulator stopped with code: " << res
-                              << std::endl;
+                    std::cerr << "Emulator stopped with code: " << res << std::endl;
                     break;
                 }
-                // Check if paused during execution loop for faster response
-                if (paused) break;
             }
         }
 
