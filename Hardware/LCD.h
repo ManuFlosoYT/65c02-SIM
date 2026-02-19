@@ -22,11 +22,17 @@ public:
         return screen; 
     }
 
+    bool IsInitialized() const { 
+        return is_init; 
+    }
+
 private:
     bool four_bit_mode = false;
     bool waiting_low_nibble = false;
     Byte current_high_nibble = 0;
     Byte last_portb = 0;
+
+    bool is_init = false;
 
     // Display State
     char screen[2][16];

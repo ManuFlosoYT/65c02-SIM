@@ -19,6 +19,8 @@ void LCD::Init(Mem& mem) {
     cursorX = 0;
     cursorY = 0;
 
+    is_init = true;
+
     mem.SetWriteHook(DDRB, [this](Word addr, Byte val) { DDRB_DATA = val; });
 }
 
