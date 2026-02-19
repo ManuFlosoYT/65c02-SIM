@@ -50,9 +50,10 @@ if [ "$NAME" == "eater" ]; then
     mkdir -p output/rom
     cp Linker/msbasic/tmp/eater.bin output/rom/eater.bin
 
-elif [ -f "SID/$NAME.s" ]; then
-    echo "--- Assembling $NAME.s (ASM from SID/) ---"
-    ca65 --cpu 65C02 -o "Binaries/build/$NAME.o" "SID/$NAME.s"
+elif [ -f "SID/build/$NAME.s" ]; then
+    echo "--- Assembling $NAME.s (ASM from SID/build/) ---"
+    mkdir -p Binaries/build
+    ca65 --cpu 65C02 -o "Binaries/build/$NAME.o" "SID/build/$NAME.s"
     ld65 -C Linker/raw.cfg -o "Binaries/build/$NAME.bin" "Binaries/build/$NAME.o"
     mkdir -p output/rom
     cp "Binaries/build/$NAME.bin" "output/rom/$NAME.bin"

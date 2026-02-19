@@ -784,7 +784,10 @@ def main():
     
     # Output
     filename_only = os.path.splitext(os.path.basename(args.input))[0].replace(" ", "") + ".s"
-    output_file = os.path.join("SID", filename_only)
+    output_dir = os.path.join("SID", "build")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    output_file = os.path.join(output_dir, filename_only)
     
     print(f"Writing ASM to {output_file}...")
     

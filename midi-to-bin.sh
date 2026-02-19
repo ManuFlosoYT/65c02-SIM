@@ -71,13 +71,17 @@ for midi_file in "${files[@]}"; do
         echo ">> Attempting Mode: $mode"
         
         # 1. Convert MIDI to ASM
-        if ! python3 SID/midi_to_sid.py "$midi_file" --mode "$mode"; then
+        if ! python3 SID/generator/midi_to_sid.py "$midi_file" --mode "$mode"; then
             echo "   [!] Conversion script failed. Skipping."
             break 
         fi
         
         # 2. Compile ASM to BIN
         echo "   Compiling..."
+        
+        # Ensure build directory exists
+        mkdir -p SID/build
+        
         if ./compile-bin.sh "$clean_name" > /dev/null 2>&1; then
             mkdir -p output/midi
             if [ -f "output/rom/$clean_name.bin" ]; then

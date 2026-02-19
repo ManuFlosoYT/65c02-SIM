@@ -14,4 +14,4 @@ SDK.zip
 *.bin
 *.map
 *.lst
-SID/*.s
+SID/build
