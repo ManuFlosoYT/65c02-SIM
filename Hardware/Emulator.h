@@ -34,6 +34,7 @@ public:
     }
 
     const char (&GetLCDScreen() const)[2][16] { return lcd.GetScreen(); }
+    const LCD& GetLCD() const { return lcd; }
     const CPU& GetCPU() const { return cpu; }
     const Mem& GetMem() const { return mem; }
     GPU& GetGPU() { return gpu; }

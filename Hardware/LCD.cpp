@@ -19,7 +19,7 @@ void LCD::Init(Mem& mem) {
     cursorX = 0;
     cursorY = 0;
 
-    is_init = true;
+    is_init = false;
 
     mem.SetWriteHook(DDRB, [this](Word addr, Byte val) { DDRB_DATA = val; });
 }
@@ -47,6 +47,7 @@ void LCD::Update(Byte val) {
             if (!rs && data_nibble == 0x02) {
                 four_bit_mode = true;
                 waiting_low_nibble = false;
+                is_init = true;
             }
         } else {
             // 4-bit mode
