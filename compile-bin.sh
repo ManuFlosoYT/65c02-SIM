@@ -3,6 +3,7 @@ set -e
 
 list_programs() {
     echo "Available programs:"
+    echo "  - all (Compile all programs)"
     echo "  - eater (WOZMON / BASIC)"
     for f in Binaries/*.c; do
         [ -f "$f" ] && echo "  - $(basename "${f%.c}") (C)"
@@ -19,7 +20,27 @@ if [ -z "$1" ]; then
 fi
 
 NAME=$1
+
+if [ "$NAME" == "all" ]; then
+    echo "--- Compiling ALL Targets ---"
+    
+    $0 eater
+
+    for f in Binaries/*.s; do
+        if [ -f "$f" ]; then
+            $0 $(basename "${f%.s}")
+        fi
+    done
+
+    for f in Binaries/*.c; do
+        if [ -f "$f" ]; then
+            $0 $(basename "${f%.c}")
+        fi
+    done
+    exit 0
+fi
 mkdir -p Binaries/build
+mkdir -p output
 
 
 if [ "$NAME" == "eater" ]; then
