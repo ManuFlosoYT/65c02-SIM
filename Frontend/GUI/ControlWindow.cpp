@@ -15,9 +15,7 @@ namespace GUI {
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                        float top_section_height,
                        ImGuiWindowFlags window_flags) {
-    float mainColWidth = state.emulator.GetSID().IsSoundEnabled()
-                             ? work_size.x * 0.4425f
-                             : work_size.x * 0.75f;
+    float mainColWidth = work_size.x * 0.47f;
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, top_section_height * 0.4f),

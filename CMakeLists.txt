@@ -34,32 +34,25 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-set(SDL_SHARED OFF CACHE BOOL "Build shared SDL2" FORCE)
-set(SDL_STATIC ON CACHE BOOL "Build static SDL2" FORCE)
-set(SDL_TEST OFF CACHE BOOL "Build SDL2 test" FORCE)
+set(SDL_SHARED OFF CACHE BOOL "Build shared SDL3" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build static SDL3" FORCE)
+set(SDL_TEST OFF CACHE BOOL "Build SDL3 test" FORCE)
 
 FetchContent_Declare(
-  SDL2
-  GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-  GIT_TAG release-2.32.x
+    SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-3.4.x
 )
 set(CMAKE_WARN_DEPRECATED OFF)
-FetchContent_MakeAvailable(SDL2)
+FetchContent_MakeAvailable(SDL3)
 set(CMAKE_WARN_DEPRECATED ON)
 
 FetchContent_Declare(
-  imgui
-  GIT_REPOSITORY https://github.com/ocornut/imgui.git
-  GIT_TAG docking
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG docking
 )
 FetchContent_MakeAvailable(imgui)
-
-FetchContent_Declare(
-    glew
-    GIT_REPOSITORY https://github.com/Perlmint/glew-cmake.git
-    GIT_TAG master
-)
-FetchContent_MakeAvailable(glew)
 
 FetchContent_Declare(
     ImGuiFileDialog
@@ -142,12 +135,12 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(65c02_core STATIC ${CORE_SOURCES})
 target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(65c02_core PUBLIC SDL2::SDL2)
+target_link_libraries(65c02_core PUBLIC SDL3::SDL3)
 
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV)
 target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(65c02_core_test PUBLIC SDL2::SDL2)
+target_link_libraries(65c02_core_test PUBLIC SDL3::SDL3)
 
 add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -155,19 +148,20 @@ add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 target_include_directories(imgui_lib PUBLIC 
     ${imgui_SOURCE_DIR} 
     ${imgui_SOURCE_DIR}/backends
-    ${glew_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Frontend/glad/include
 )
-target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 libglew_static OpenGL::GL)
+target_link_libraries(imgui_lib PUBLIC SDL3::SDL3 OpenGL::GL)
 
 file(GLOB_RECURSE FRONTEND_SOURCES
     "Frontend/*.cpp"
     "Frontend/*.h"
+    "Frontend/glad/src/*.c"
 )
 
 if(WIN32)
@@ -187,9 +181,7 @@ if(WIN32)
         65c02_core 
         imgui_lib 
         mingw32 
-        SDL2::SDL2main 
-        SDL2::SDL2 
-        libglew_static 
+        SDL3::SDL3 
         OpenGL::GL 
         nlohmann_json::nlohmann_json
         httplib::httplib
@@ -215,8 +207,7 @@ else()
     target_link_libraries(SIM_65C02 PRIVATE 
         65c02_core 
         imgui_lib 
-        SDL2::SDL2 
-        libglew_static 
+        SDL3::SDL3 
         OpenGL::GL 
         nlohmann_json::nlohmann_json
         httplib::httplib
@@ -226,7 +217,7 @@ else()
     )
 endif()
 
-target_include_directories(SIM_65C02 PRIVATE ${glew_SOURCE_DIR}/include ${imguifiledialog_SOURCE_DIR})
+target_include_directories(SIM_65C02 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Frontend/glad/include ${imguifiledialog_SOURCE_DIR})
 
 target_compile_definitions(SIM_65C02 PRIVATE 
     IMGUI_DEFINE_MATH_OPERATORS 

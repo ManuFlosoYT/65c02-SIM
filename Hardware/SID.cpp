@@ -1,9 +1,10 @@
 #include "SID.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include <cstring>
 #include <iostream>
+#include <vector>
 
 namespace Hardware {
 
@@ -31,34 +32,35 @@ const double DECAY_RELEASE_RATES[16] = {
 
 SID::SID() { Reset(); }
 
-SID::~SID() {
-    if (devId != 0) {
-        SDL_CloseAudioDevice(devId);
+SID::~SID() { Close(); }
+
+void SID::Close() {
+    if (audioStream != nullptr) {
+        SDL_DestroyAudioStream(audioStream);
+        audioStream = nullptr;
     }
 }
 
 void SID::Init(int sampleRate) {
     this->sampleRate = sampleRate;
 
-    if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
         std::cerr << "SDL Audio init failed: " << SDL_GetError() << std::endl;
         return;
     }
 
-    SDL_AudioSpec want, have;
+    SDL_AudioSpec want;
     SDL_zero(want);
     want.freq = sampleRate;
-    want.format = AUDIO_S16SYS;
+    want.format = SDL_AUDIO_S16;
     want.channels = 1;
-    want.samples = 1024;
-    want.callback = AudioCallback;
-    want.userdata = this;
 
-    devId = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-    if (devId == 0) {
+    audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+                                            &want, AudioCallback, this);
+    if (audioStream == nullptr) {
         std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
     } else {
-        this->sampleRate = have.freq;
+        SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audioStream));
     }
 }
 
@@ -73,6 +75,10 @@ void SID::Reset() {
         voices[i].noiseShift = 0x7FFFF8;
         voices[i].env.state = ADSREnvelope::IDLE;
         voices[i].env.level = 0;
+        voices[i].env.attackRate = 0;
+        voices[i].env.decayRate = 0;
+        voices[i].env.sustainLevel = 0.0;
+        voices[i].env.releaseRate = 0;
     }
     volumeRegister = 0;
 }
@@ -90,9 +96,13 @@ void SID::SetEmulationPaused(bool paused) {
 }
 
 void SID::UpdateAudioState() {
-    if (devId != 0) {
-        int pause = (!soundEnabled || emulationPaused) ? 1 : 0;
-        SDL_PauseAudioDevice(devId, pause);
+    if (audioStream != nullptr) {
+        SDL_AudioDeviceID devId = SDL_GetAudioStreamDevice(audioStream);
+        if (!soundEnabled || emulationPaused) {
+            SDL_PauseAudioDevice(devId);
+        } else {
+            SDL_ResumeAudioDevice(devId);
+        }
     }
 }
 
@@ -110,9 +120,15 @@ void SID::Write(uint16_t addr, uint8_t data) {
     }
 }
 
-void SID::AudioCallback(void* userdata, uint8_t* stream, int len) {
-    SID* sid = static_cast<SID*>(userdata);
-    sid->GenerateAudio(reinterpret_cast<int16_t*>(stream), len / 2);
+void SID::AudioCallback(void* userdata, SDL_AudioStream* stream,
+                        int additional_amount, int total_amount) {
+    if (additional_amount > 0) {
+        SID* sid = static_cast<SID*>(userdata);
+        int samples = additional_amount / sizeof(int16_t);
+        std::vector<int16_t> buffer(samples);
+        sid->GenerateAudio(buffer.data(), samples);
+        SDL_PutAudioStreamData(stream, buffer.data(), additional_amount);
+    }
 }
 
 void SID::GenerateAudio(int16_t* buffer, int length) {

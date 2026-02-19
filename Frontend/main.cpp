@@ -1,9 +1,9 @@
-#include <GL/glew.h>
 #include <ImGuiFileDialog.h>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
+#include <glad/gl.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl2.h>
+#include <imgui_impl_sdl3.h>
 
 #include <iostream>
 #include <string>
@@ -26,8 +26,7 @@ using namespace Hardware;
 
 int main(int argc, char* argv[]) {
     // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER |
-                 SDL_INIT_AUDIO) != 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
         std::cerr << "Error: " << SDL_GetError() << std::endl;
         return -1;
     }
@@ -49,10 +48,13 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
-                          SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow(
-        "65C02 Simulator " PROJECT_VERSION, SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, 1920, 1080, window_flags);
+                          SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_MAXIMIZED);
+    SDL_Window* window = SDL_CreateWindow("65C02 Simulator " PROJECT_VERSION,
+                                          1920, 1080, window_flags);
+    if (!window) {
+        std::cerr << "Failed to create window: " << SDL_GetError() << std::endl;
+        return -1;
+    }
 
     // Check for updates
     UpdateChecker::CheckForUpdates(
@@ -64,12 +66,19 @@ int main(int argc, char* argv[]) {
         });
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    if (!gl_context) {
+        std::cerr << "Failed to create GL context: " << SDL_GetError()
+                  << std::endl;
+        return -1;
+    }
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1);  // Enable vsync
 
     // Initialize OpenGL loader
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize OpenGL loader!" << std::endl;
+    int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
+    if (version == 0) {
+        std::cerr << "Failed to initialize OpenGL loader (gladLoadGL)!"
+                  << std::endl;
         return 1;
     }
 
@@ -91,16 +100,17 @@ int main(int argc, char* argv[]) {
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.FontGlobalScale = 1.5f;
 
-    // Setup Dear ImGui style
+    float dpi_scale = SDL_GetWindowDisplayScale(window);
+    if (dpi_scale <= 0.0f) dpi_scale = 1.0f;
+
+    io.FontGlobalScale = 1.5f / dpi_scale;
+
     ImGui::StyleColorsDark();
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+    ImGui::GetStyle().ScaleAllSizes(1.0f / dpi_scale);
+    ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Load emulator
     if (argc > 1) {
         state.bin = argv[1];
         std::string errorMsg;
@@ -114,16 +124,14 @@ int main(int argc, char* argv[]) {
     state.emulator.SetOutputCallback(Console::OutputCallback);
     state.emulator.SetGPUEnabled(state.gpuEnabled);
 
-    // Main loop
     bool done = false;
     state.emulator.Start();
     while (!done) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT) done = true;
-            if (event.type == SDL_WINDOWEVENT &&
-                event.window.event == SDL_WINDOWEVENT_CLOSE &&
+            ImGui_ImplSDL3_ProcessEvent(&event);
+            if (event.type == SDL_EVENT_QUIT) done = true;
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
                 event.window.windowID == SDL_GetWindowID(window))
                 done = true;
         }
@@ -134,7 +142,7 @@ int main(int argc, char* argv[]) {
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
         // Layout Configuration
@@ -200,11 +208,12 @@ int main(int argc, char* argv[]) {
 
     // Cleanup
     state.emulator.Stop();
+    state.emulator.GetSID().Close();
     glDeleteTextures(1, &state.vramTexture);
     ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
-    SDL_GL_DeleteContext(gl_context);
+    SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
 

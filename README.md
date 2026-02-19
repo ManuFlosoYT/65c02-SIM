@@ -75,7 +75,7 @@ To compile the simulator from source or use the SDK, you need the following depe
 
 ```bash
 sudo dnf update
-sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel mingw64-openssl mingw64-openssl-static mingw64-zlib-static wget curl git tar
+sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel mingw64-openssl mingw64-openssl-static mingw64-zlib-static wget curl git tar gcc git-core make fribidi-devel pipewire-devel libXext-devel libXfixes-devel libXScrnSaver-devel libXtst-devel dbus-devel ibus-devel systemd-devel mesa-libGLES-devel mesa-libEGL-devel vulkan-devel wayland-protocols-devel libdrm-devel mesa-libgbm-devel libusb1-devel libdecor-devel pipewire-jack-audio-connection-kit-devel libthai-devel liburing-devel zlib-ng-compat-static
 ```
 
 #### Compile and Run Locally

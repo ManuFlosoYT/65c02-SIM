@@ -12,13 +12,8 @@ namespace GUI {
 void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                          float top_section_height,
                          ImGuiWindowFlags window_flags) {
-    if (!state.emulator.GetSID().IsSoundEnabled()) return;
-
-    ImGui::SetNextWindowPos(
-        ImVec2(work_pos.x + work_size.x * 0.4425f, work_pos.y),
-        ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.3375f, top_section_height),
-                             ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(work_pos.x + work_size.x * 0.47f, work_pos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.33f, top_section_height), ImGuiCond_Always);
     ImGui::Begin("SID Viewer", nullptr, window_flags);
 
     for (int i = 0; i < 3; ++i) {

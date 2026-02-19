@@ -1,17 +1,23 @@
 #!/bin/bash
 set -e
 
-# Handle arguments
-if [[ "$1" == "--clean" ]]; then
-    echo "Cleaning build directory..."
-    rm -rf build
-fi
-
 # Detect ccache
 CMAKE_OPTS=""
+
+# Handle arguments
+for arg in "$@"; do
+    if [[ "$arg" == "--clean" ]]; then
+        echo "Cleaning build directory..."
+        rm -rf build
+    elif [[ "$arg" == "--debug" ]]; then
+        echo "Enabling debug symbols..."
+        CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_BUILD_TYPE=Debug"
+    fi
+done
+
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache found, enabling..."
-    CMAKE_OPTS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     ccache -z # Zero stats
 fi
 

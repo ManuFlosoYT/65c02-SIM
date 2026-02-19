@@ -1,6 +1,7 @@
 #include "Frontend/GUI/ConsoleWindow.h"
 
 #include <ImGuiFileDialog.h>
+#include <SDL3/SDL.h>
 
 #include <string>
 #include <vector>
@@ -40,6 +41,10 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
 
     ImGuiIO& io = ImGui::GetIO();
     if (ImGui::IsWindowFocused()) {
+        SDL_Window* sdl_window = SDL_GetKeyboardFocus();
+        if (sdl_window) {
+            SDL_StartTextInput(sdl_window);
+        }
         for (int n = 0; n < io.InputQueueCharacters.Size; n++) {
             unsigned int c = io.InputQueueCharacters[n];
             if (c > 0 && c < 0x80) {

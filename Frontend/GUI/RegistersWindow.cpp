@@ -10,8 +10,8 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                          float top_section_height,
                          ImGuiWindowFlags window_flags) {
     ImGui::SetNextWindowPos(
-        ImVec2(work_pos.x + work_size.x * 0.75f, work_pos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.25f, top_section_height),
+        ImVec2(work_pos.x + work_size.x * 0.80f, work_pos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.20f, top_section_height),
                              ImGuiCond_Always);
     ImGui::Begin("Registers", nullptr, window_flags);
     const auto& cpu = state.emulator.GetCPU();
@@ -22,8 +22,8 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     ImGui::Text("Y:  %02X", cpu.Y);
     ImGui::Separator();
     ImGui::Text("Flags: %02X", cpu.GetStatus());
-    ImGui::Text("N: %d V: %d B: %d D: %d I: %d Z: %d C: %d", cpu.N, cpu.V,
-                cpu.B, cpu.D, cpu.I, cpu.Z, cpu.C);
+    ImGui::Text("N: %d V: %d B: %d D: %d", cpu.N, cpu.V, cpu.B, cpu.D);
+    ImGui::Text("I: %d Z: %d C: %d", cpu.I, cpu.Z, cpu.C);
     ImGui::End();
 }
 

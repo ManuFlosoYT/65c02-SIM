@@ -11,9 +11,7 @@ void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     ImGui::SetNextWindowPos(
         ImVec2(work_pos.x, work_pos.y + top_section_height * 0.4f),
         ImGuiCond_Always);
-    float lcdWidth = state.emulator.GetSID().IsSoundEnabled()
-                         ? work_size.x * 0.4425f
-                         : work_size.x * 0.75f;
+    float lcdWidth = work_size.x * 0.47f;
     ImGui::SetNextWindowSize(ImVec2(lcdWidth, top_section_height * 0.6f),
                              ImGuiCond_Always);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));

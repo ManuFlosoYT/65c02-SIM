@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include <cstdint>
 #include <mutex>
@@ -38,24 +38,23 @@ struct Oscillator {
 
 class SID {
 public:
-    #define MAX_SID_VOICES 3
+#define MAX_SID_VOICES 3
     SID();
     ~SID();
 
     void Init(int sampleRate = 44100);
+    void Close();
     void Reset();
     uint8_t Read(uint16_t addr);
     void Write(uint16_t addr, uint8_t data);
 
     void EnableSound(bool enable);
     void SetEmulationPaused(bool paused);
-    
-    bool IsSoundEnabled() const { 
-        return soundEnabled; 
-    }
-    
-    const Oscillator& GetVoice(int index) const { 
-        return voices[index % MAX_SID_VOICES]; 
+
+    bool IsSoundEnabled() const { return soundEnabled; }
+
+    const Oscillator& GetVoice(int index) const {
+        return voices[index % MAX_SID_VOICES];
     }
 
 private:
@@ -65,12 +64,13 @@ private:
     bool soundEnabled = false;
     bool emulationPaused = false;
 
-    // Audio device ID
-    SDL_AudioDeviceID devId = 0;
+    // Audio Stream
+    SDL_AudioStream* audioStream = nullptr;
     int sampleRate = 44100;
     mutable std::mutex sidMutex;
 
-    static void AudioCallback(void* userdata, uint8_t* stream, int len);
+    static void AudioCallback(void* userdata, SDL_AudioStream* stream,
+                              int additional_amount, int total_amount);
     void GenerateAudio(int16_t* buffer, int length);
     void UpdateAudioState();
 };
