@@ -3,7 +3,7 @@
 <h1>65c02 emulator for the BenEater memory layout implementation</h1>
 <p>Emulated components: CPU, VIA, ACIA, SID, GPU, 32KB RAM, 32KB ROM, 7.5KB VRAM</p>
 
-<h4> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/blob/master/README.md"> Documentation </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Request Feature </a> </h4>
+<h4> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/wiki"> Documentation </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Request Feature </a> </h4>
 
 </div>
 
