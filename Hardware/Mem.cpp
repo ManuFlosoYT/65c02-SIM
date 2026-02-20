@@ -17,15 +17,17 @@ void Mem::WriteWord(Word data, Word addr) {
     Write(addr + 1, data >> 8);  // Write the most significant byte
 }
 
-void Mem::SetWriteHook(Word address, WriteHook hook) {
-    writeHooks[address] = hook;  // Assign the hook
+void Mem::SetWriteHook(Word address, WriteHook hook, void* context) {
+    writeHooks[address] = hook;
+    writeContext[address] = context;
     hasWriteHook[address] = true;
 }
 
 void Mem::WriteROM(Word addr, Byte val) { memory[addr] = val; }
 
-void Mem::SetReadHook(Word address, ReadHook hook) {
-    readHooks[address] = hook;  // Assign the hook
+void Mem::SetReadHook(Word address, ReadHook hook, void* context) {
+    readHooks[address] = hook;
+    readContext[address] = context;
     hasReadHook[address] = true;
 }
 

@@ -1,13 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 
 using Byte = uint8_t;
 using Word = uint16_t;
 
-using WriteHook = std::function<void(Word, Byte)>;
-using ReadHook = std::function<Byte(Word)>;
+using WriteHook = void (*)(void*, Word, Byte);
+using ReadHook = Byte (*)(void*, Word);
 
 #define ACIA_DATA 0x5000
 #define ACIA_STATUS 0x5001
@@ -45,10 +44,11 @@ public:
 
     Byte operator[](Word addr) const { return memory[addr]; }
 
-    void SetWriteHook(Word address, WriteHook hook);
+    void SetWriteHook(Word address, WriteHook hook, void* context = nullptr);
     inline void Write(Word addr, Byte val) {
         if (hasWriteHook[addr]) {
-            writeHooks[addr](addr, val);  // Execute the hook
+            writeHooks[addr](writeContext[addr], addr,
+                             val);  // Execute the hook
         }
         // Don't write to ROM
         if (addr < 0x8000) {
@@ -59,20 +59,23 @@ public:
     void WriteROM(Word addr, Byte val);  // Used by Unit Tests to force writes
     void WriteWord(Word data, Word addr);
 
-    void SetReadHook(Word address, ReadHook hook);
+    void SetReadHook(Word address, ReadHook hook, void* context = nullptr);
 
     inline Byte Read(Word addr) {
         if (hasReadHook[addr]) {
-            return readHooks[addr](addr);  // Execute the hook
+            return readHooks[addr](readContext[addr],
+                                   addr);  // Execute the hook
         }
         return memory[addr];
     }
 
 private:
-    WriteHook writeHooks[MAX_MEM + 1]{};
+    WriteHook writeHooks[MAX_MEM + 1]{nullptr};
+    void* writeContext[MAX_MEM + 1]{nullptr};
     bool hasWriteHook[MAX_MEM + 1]{false};
 
-    ReadHook readHooks[MAX_MEM + 1]{};
+    ReadHook readHooks[MAX_MEM + 1]{nullptr};
+    void* readContext[MAX_MEM + 1]{nullptr};
     bool hasReadHook[MAX_MEM + 1]{false};
 };
 

@@ -26,9 +26,10 @@ void GPU::Clock() {
     }
 }
 
-void GPU::SetWriteHook(Word address, WriteHook hook) {
+void GPU::SetWriteHook(Word address, WriteHook hook, void* context) {
     if (address < 0x4000) {
         writeHooks[address] = hook;
+        writeContext[address] = context;
         hasWriteHook[address] = true;
     }
 }
@@ -36,7 +37,7 @@ void GPU::SetWriteHook(Word address, WriteHook hook) {
 void GPU::Write(Word addr, Byte val) {
     // Check hooks first
     if (addr < 0x4000 && hasWriteHook[addr]) {
-        writeHooks[addr](addr, val);
+        writeHooks[addr](writeContext[addr], addr, val);
     }
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
@@ -48,16 +49,17 @@ void GPU::Write(Word addr, Byte val) {
     }
 }
 
-void GPU::SetReadHook(Word address, ReadHook hook) {
+void GPU::SetReadHook(Word address, ReadHook hook, void* context) {
     if (address < 0x4000) {
         readHooks[address] = hook;
+        readContext[address] = context;
         hasReadHook[address] = true;
     }
 }
 
 Byte GPU::Read(Word addr) {
     if (addr < 0x4000 && hasReadHook[addr]) {
-        return readHooks[addr](addr);
+        return readHooks[addr](readContext[addr], addr);
     }
 
     // Addressing: A0-A6 = X, A7-A13 = Y

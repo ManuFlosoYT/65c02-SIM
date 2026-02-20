@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "Mem.h"
 
 namespace Hardware {

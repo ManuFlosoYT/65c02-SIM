@@ -1,13 +1,6 @@
 #pragma once
 
-#include <cstdint>
-#include <functional>
-
-using Byte = uint8_t;
-using Word = uint16_t;
-
-using WriteHook = std::function<void(Word, Byte)>;
-using ReadHook = std::function<Byte(Word)>;
+#include "Mem.h"
 
 namespace Hardware {
 
@@ -57,17 +50,19 @@ public:
         return vram[y][x];
     }
 
-    void SetWriteHook(Word address, WriteHook hook);
+    void SetWriteHook(Word address, WriteHook hook, void* context = nullptr);
     void Write(Word addr, Byte val);
 
-    void SetReadHook(Word address, ReadHook hook);
+    void SetReadHook(Word address, ReadHook hook, void* context = nullptr);
     Byte Read(Word addr);
 
 private:
-    WriteHook writeHooks[0x4000]{};
+    WriteHook writeHooks[0x4000]{nullptr};
+    void* writeContext[0x4000]{nullptr};
     bool hasWriteHook[0x4000]{false};
 
-    ReadHook readHooks[0x4000]{};
+    ReadHook readHooks[0x4000]{nullptr};
+    void* readContext[0x4000]{nullptr};
     bool hasReadHook[0x4000]{false};
 
     // Pixel counters (14-bit values)

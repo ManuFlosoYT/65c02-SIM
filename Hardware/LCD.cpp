@@ -21,7 +21,12 @@ void LCD::Init(Mem& mem) {
 
     is_init = false;
 
-    mem.SetWriteHook(DDRB, [this](Word addr, Byte val) { DDRB_DATA = val; });
+    mem.SetWriteHook(
+        DDRB,
+        [](void* context, Word addr, Byte val) {
+            static_cast<LCD*>(context)->DDRB_DATA = val;
+        },
+        this);
 }
 
 void LCD::Update(Byte val) {

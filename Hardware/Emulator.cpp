@@ -32,18 +32,17 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     via.SetPortBCallback([this](Byte val) { lcd.Update(val); });
 
     // Set up GPU VRAM write hook for RAM addresses 0x2000-0x3FFF (3 MSB = 001)
-    // The hook will write to VRAM when CPU writes to these addresses
     for (Word addr = 0x2000; addr < 0x4000; addr++) {
-        mem.SetWriteHook(addr, [this, addr](Word, Byte val) {
-            this->mem.memory[addr] = val;
-
-            // Only write to VRAM if GPU is enabled
-            if (gpuEnabled) {
-                // Calculate VRAM address by subtracting base address
-                Word vramAddr = addr - 0x2000;
-                gpu.Write(vramAddr, val);
-            }
-        });
+        mem.SetWriteHook(
+            addr,
+            [](void* context, Word a, Byte val) {
+                auto self = static_cast<Emulator*>(context);
+                self->mem.memory[a] = val;
+                if (self->gpuEnabled) {
+                    self->gpu.Write(a - 0x2000, val);
+                }
+            },
+            this);
     }
 
     // Reset SID state
@@ -51,13 +50,21 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 
     // Map SID to 0x4800 - 0x481F
     for (Word addr = 0x4800; addr <= 0x481F; addr++) {
-        mem.SetWriteHook(addr, [this](Word addr, Byte val) {
-            this->sid.Write(addr - 0x4800, val);
-            this->mem.memory[addr] = val;
-        });
-        mem.SetReadHook(addr, [this](Word addr) -> Byte {
-            return this->sid.Read(addr - 0x4800);
-        });
+        mem.SetWriteHook(
+            addr,
+            [](void* context, Word a, Byte val) {
+                auto self = static_cast<Emulator*>(context);
+                self->sid.Write(a - 0x4800, val);
+                self->mem.memory[a] = val;
+            },
+            this);
+
+        mem.SetReadHook(
+            addr,
+            [](void* context, Word a) {
+                return static_cast<Emulator*>(context)->sid.Read(a - 0x4800);
+            },
+            this);
     }
 
     std::string path = bin;
@@ -221,7 +228,8 @@ void Emulator::ThreadLoop() {
 
         // Execute in 10ms slices
         int sliceDurationMs = 10;
-        double targetPerSlice = (double)currentTarget / (1000.0 / sliceDurationMs);
+        double targetPerSlice =
+            (double)currentTarget / (1000.0 / sliceDurationMs);
 
         instructionAccumulator += targetPerSlice;
         int instructionsPerSlice = (int)instructionAccumulator;
@@ -237,7 +245,8 @@ void Emulator::ThreadLoop() {
                 int res = Step();
                 if (res != 0) {
                     paused = true;
-                    std::cerr << "Emulator stopped with code: " << res << std::endl;
+                    std::cerr << "Emulator stopped with code: " << res
+                              << std::endl;
                     break;
                 }
             }
