@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
 #include "Libs/BIOS.h"
-#include "Libs/GPU.h"
+#include "Libs/GPUDoubleBuffer.h"
 #include "Libs/LCD.h"
 #include "Libs/VIA.h"
 
@@ -269,7 +269,7 @@ int main(void) {
                 1 
             );
         }
-
+        drawFrame();
         via_wait_frame();
     }
     return 0;

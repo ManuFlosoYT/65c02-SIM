@@ -70,8 +70,11 @@ elif [ -f "Binaries/$NAME.c" ]; then
     cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
         -o "Binaries/build/$NAME.s" "Binaries/$NAME.c"
 
-    # Seleccionar configuración de memoria según si el programa usa la GPU
-    if grep -q '#include "Libs/GPU.h"' "Binaries/$NAME.c"; then
+    # Select memory config based on which GPU library the program uses
+    if grep -q '#include "Libs/GPUDoubleBuffer.h"' "Binaries/$NAME.c"; then
+        echo "  [GPUDoubleBuffer detected] Using C-Runtime-GPUDoubleBuffer.cfg (double VRAM buffer)"
+        LINKER_CFG="Linker/C-Runtime-GPUDoubleBuffer.cfg"
+    elif grep -q '#include "Libs/GPU.h"' "Binaries/$NAME.c"; then
         echo "  [GPU detected] Using C-Runtime-GPU.cfg (0x2000-0x3FFF reserved for VRAM)"
         LINKER_CFG="Linker/C-Runtime-GPU.cfg"
     else
