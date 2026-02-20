@@ -59,12 +59,29 @@ public:
     }
 
     // Reads and advances PC
-    const Byte FetchByte(const Mem& mem);  
-    const Word FetchWord(const Mem& mem);  
-    
+    inline const Byte FetchByte(const Mem& mem) {
+        Byte dato = mem[PC];
+        PC++;
+        return dato;
+    }
+
+    inline const Word FetchWord(const Mem& mem) {
+        Word dato = mem[PC];
+        dato |= (mem[PC + 1] << 8);
+        PC += 2;
+        return dato;
+    }
+
     // Reads without advancing PC
-    const Byte ReadByte(const Word addr, Mem& mem);  
-    const Word ReadWord(const Word addr, Mem& mem);  
+    inline const Byte ReadByte(const Word addr, Mem& mem) {
+        return mem.Read(addr);
+    }
+
+    inline const Word ReadWord(const Word addr, Mem& mem) {
+        Word dato = mem.Read(addr);
+        dato |= (mem.Read(addr + 1) << 8);
+        return dato;
+    }
 
     Byte PopByte(Mem& mem);
     Word PopWord(Mem& mem);

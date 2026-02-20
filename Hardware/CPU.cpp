@@ -8,64 +8,30 @@
 
 namespace Hardware {
 
-int CPU::Execute(Mem& mem) { 
-    return CPUExecution::Execute(*this, mem); 
-}
+int CPU::Execute(Mem& mem) { return CPUExecution::Execute(*this, mem); }
 
-void CPU::IRQ(Mem& mem) { 
-    CPUExecution::IRQ(*this, mem); 
-}
+void CPU::IRQ(Mem& mem) { CPUExecution::IRQ(*this, mem); }
 
-int CPU::Step(Mem& mem) { 
-    return CPUExecution::Step(*this, mem); 
-}
+int CPU::Step(Mem& mem) { return CPUExecution::Step(*this, mem); }
 
-void CPU::Reset(Mem& mem) { 
-    CPUExecution::Reset(*this, mem); 
-}
+void CPU::Reset(Mem& mem) { CPUExecution::Reset(*this, mem); }
 
-int CPU::Dispatch(Mem& mem) { 
-    return CPUDispatch::Dispatch(*this, mem); 
-}
+int CPU::Dispatch(Mem& mem) { return CPUDispatch::Dispatch(*this, mem); }
 
 void CPU::PushByte(Byte val, Mem& mem) {
     CPUStackOps::PushByte(*this, val, mem);
 }
 
-Byte CPU::PopByte(Mem& mem) { 
-    return CPUStackOps::PopByte(*this, mem); 
-}
+Byte CPU::PopByte(Mem& mem) { return CPUStackOps::PopByte(*this, mem); }
 
 void CPU::PushWord(Word val, Mem& mem) {
     CPUStackOps::PushWord(*this, val, mem);
 }
 
-Word CPU::PopWord(Mem& mem) { 
-    return CPUStackOps::PopWord(*this, mem); 
-}
+Word CPU::PopWord(Mem& mem) { return CPUStackOps::PopWord(*this, mem); }
 
-const Byte CPU::FetchByte(const Mem& mem) {
-    return CPUMemoryOps::FetchByte(*this, mem);
-}
+const Byte CPU::GetStatus() const { return CPUStatusOps::GetStatus(*this); }
 
-const Word CPU::FetchWord(const Mem& mem) {
-    return CPUMemoryOps::FetchWord(*this, mem);
-}
-
-const Byte CPU::ReadByte(const Word addr, Mem& mem) {
-    return CPUMemoryOps::ReadByte(addr, mem);
-}
-
-const Word CPU::ReadWord(const Word addr, Mem& mem) {
-    return CPUMemoryOps::ReadWord(addr, mem);
-}
-
-const Byte CPU::GetStatus() const { 
-    return CPUStatusOps::GetStatus(*this); 
-}
-
-void CPU::SetStatus(Byte status) { 
-    CPUStatusOps::SetStatus(*this, status); 
-}
+void CPU::SetStatus(Byte status) { CPUStatusOps::SetStatus(*this, status); }
 
 }  // namespace Hardware

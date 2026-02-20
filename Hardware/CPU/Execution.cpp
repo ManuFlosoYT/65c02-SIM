@@ -2,7 +2,6 @@
 
 #include "../CPU.h"
 #include "Dispatch.h"
-#include "MemoryOps.h"
 #include "StackOps.h"
 #include "StatusOps.h"
 
@@ -25,13 +24,13 @@ void IRQ(CPU& cpu, Mem& mem) {
         CPUStackOps::PushByte(cpu, CPUStatusOps::GetStatus(cpu), mem);
         cpu.I = 1;
         cpu.D = 0;  // 65C02 clears Decimal flag in IRQ
-        cpu.PC = CPUMemoryOps::ReadWord(0xFFFE, mem);
+        cpu.PC = cpu.ReadWord(0xFFFE, mem);
     }
 }
 
 int Step(CPU& cpu, Mem& mem) {
     if (!cpu.isInit) {
-        cpu.PC = CPUMemoryOps::ReadWord(0xFFFC, mem);
+        cpu.PC = cpu.ReadWord(0xFFFC, mem);
         cpu.isInit = true;
     }
 
