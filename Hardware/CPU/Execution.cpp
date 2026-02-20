@@ -3,7 +3,6 @@
 #include "../CPU.h"
 #include "Dispatch.h"
 #include "StackOps.h"
-#include "StatusOps.h"
 
 namespace Hardware {
 namespace CPUExecution {
@@ -21,7 +20,7 @@ void IRQ(CPU& cpu, Mem& mem) {
     if (!cpu.I) {
         CPUStackOps::PushWord(cpu, cpu.PC, mem);
         cpu.B = 0;
-        CPUStackOps::PushByte(cpu, CPUStatusOps::GetStatus(cpu), mem);
+        CPUStackOps::PushByte(cpu, cpu.GetStatus(), mem);
         cpu.I = 1;
         cpu.D = 0;  // 65C02 clears Decimal flag in IRQ
         cpu.PC = cpu.ReadWord(0xFFFE, mem);

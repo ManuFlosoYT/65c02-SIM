@@ -43,8 +43,27 @@ public:
 
     int Dispatch(Mem& mem);
 
-    const Byte GetStatus() const;
-    void SetStatus(Byte status);
+    inline const Byte GetStatus() const {
+        Byte status = 0;
+        status |= C;
+        status |= Z << 1;
+        status |= I << 2;
+        status |= D << 3;
+        status |= B << 4;
+        status |= V << 6;
+        status |= N << 7;
+        return status;
+    }
+
+    inline void SetStatus(Byte status) {
+        C = status & 0x01;
+        Z = (status >> 1) & 0x01;
+        I = (status >> 2) & 0x01;
+        D = (status >> 3) & 0x01;
+        B = (status >> 4) & 0x01;
+        V = (status >> 6) & 0x01;
+        N = (status >> 7) & 0x01;
+    }
 
     bool IsCycleAccurate() const { return cycleAccurate; }
     void SetCycleAccurate(bool enabled) { cycleAccurate = enabled; }

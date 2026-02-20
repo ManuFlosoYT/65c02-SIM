@@ -4,7 +4,6 @@
 #include "CPU/Execution.h"
 #include "CPU/MemoryOps.h"
 #include "CPU/StackOps.h"
-#include "CPU/StatusOps.h"
 
 namespace Hardware {
 
@@ -29,9 +28,5 @@ void CPU::PushWord(Word val, Mem& mem) {
 }
 
 Word CPU::PopWord(Mem& mem) { return CPUStackOps::PopWord(*this, mem); }
-
-const Byte CPU::GetStatus() const { return CPUStatusOps::GetStatus(*this); }
-
-void CPU::SetStatus(Byte status) { CPUStatusOps::SetStatus(*this, status); }
 
 }  // namespace Hardware
