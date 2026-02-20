@@ -1,6 +1,6 @@
-# Building — Compilar desde el código fuente
+# Building — Compile from Source
 
-## Prerrequisitos
+## Prerequisites
 
 ### Fedora (dnf)
 
@@ -23,97 +23,97 @@ sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel \
     zlib-ng-compat-static python3-jinja2
 ```
 
-> **Windows:** Usa WSL2 con Fedora para ejecutar los scripts de compilación. Consulta el README para las instrucciones de instalación.
+> **Windows:** Use WSL2 with Fedora to run the build scripts. See the README for installation instructions.
 
-## Clonar el repositorio
+## Clone the repository
 
 ```bash
 git clone https://github.com/ManuFlosoYT/65c02-SIM
 cd 65c02-SIM
 ```
 
-## Compilar para Linux
+## Build for Linux
 
 ```bash
 ./build-linux.sh
 ```
 
-El ejecutable resultante se guarda en `output/linux/SIM_65C02`.
+The resulting executable is saved to `output/linux/SIM_65C02`.
 
-### Opciones del script
+### Script options
 
-| Opción | Descripción |
+| Option | Description |
 |--------|-------------|
-| `--clean` | Fuerza una compilación limpia (elimina la caché de CMake) |
-| `--debug` | Compila con símbolos de depuración (sin optimizaciones) |
+| `--clean` | Forces a clean build (removes the CMake cache) |
+| `--debug` | Builds with debug symbols (no optimizations) |
 
 ```bash
-./build-linux.sh --clean     # Compilación limpia
-./build-linux.sh --debug     # Compilación de depuración
+./build-linux.sh --clean     # Clean build
+./build-linux.sh --debug     # Debug build
 ```
 
-El script:
-1. Detecta **ccache** automáticamente para compilaciones incrementales más rápidas
-2. Detecta **Ninja** para compilación paralela
-3. Ejecuta los **tests unitarios** al final de la compilación
-4. Reporta errores si algún test falla
+The script:
+1. Automatically detects **ccache** for faster incremental builds
+2. Detects **Ninja** for parallel compilation
+3. Runs the **unit tests** at the end of the build
+4. Reports errors if any test fails
 
-## Compilar para Windows (MinGW cross-compilation)
+## Build for Windows (MinGW cross-compilation)
 
 ```bash
 ./build-win.sh
 ```
 
-El ejecutable resultante se guarda en `output/windows/SIM_65C02.exe`.
+The resulting executable is saved to `output/windows/SIM_65C02.exe`.
 
 ```bash
-./build-win.sh --clean       # Compilación limpia
+./build-win.sh --clean       # Clean build
 ```
 
-Si **Wine** está instalado, el script ejecuta automáticamente los tests unitarios.
+If **Wine** is installed, the script automatically runs the unit tests.
 
-## Sistema de compilación (CMake)
+## Build system (CMake)
 
-El proyecto usa **CMake** con los siguientes objetivos:
+The project uses **CMake** with the following targets:
 
-| Target | Tipo | Descripción |
+| Target | Type | Description |
 |--------|------|-------------|
-| `65c02_core` | Biblioteca estática | Motor de emulación (Hardware + CPU) |
-| `imgui_lib` | Biblioteca estática | Dear ImGui + backends SDL3/OpenGL |
-| `SIM_65C02` | Ejecutable | Simulador completo con GUI |
-| `unit_tests` | Ejecutable | Suite de tests unitarios (Google Test) |
+| `65c02_core` | Static library | Emulation engine (Hardware + CPU) |
+| `imgui_lib` | Static library | Dear ImGui + SDL3/OpenGL backends |
+| `SIM_65C02` | Executable | Full simulator with GUI |
+| `unit_tests` | Executable | Unit test runner (Google Test) |
 
-### Estándar y optimizaciones
+### Standard and optimizations
 
 - **C++20** (`set_property(TARGET ... CXX_STANDARD 20)`)
-- **LTO** (Link-Time Optimization) en Release
-- Flags de Release: `-O3 -DNDEBUG -ffunction-sections -fdata-sections -flto -Wl,--gc-sections -s`
+- **LTO** (Link-Time Optimization) in Release mode
+- Release flags: `-O3 -DNDEBUG -ffunction-sections -fdata-sections -flto -Wl,--gc-sections -s`
 
-### Dependencias externas (FetchContent)
+### External dependencies (FetchContent)
 
-CMake descarga automáticamente todas las dependencias durante la primera compilación:
+CMake automatically downloads all dependencies during the first build:
 
-| Dependencia | Versión | Uso |
-|-------------|---------|-----|
-| SDL3 | 3.4.x | Ventana, eventos, audio |
-| ImGui | docking branch | Interfaz gráfica |
-| ImGuiFileDialog | 0.6.4 | Diálogo de archivos |
-| GLAD | 2.0.8 | Cargador de OpenGL |
-| nlohmann/json | 3.12.0 | Parseo JSON |
+| Dependency | Version | Use |
+|------------|---------|-----|
+| SDL3 | 3.4.x | Window, events, audio |
+| ImGui | docking branch | GUI framework |
+| ImGuiFileDialog | 0.6.4 | File dialog |
+| GLAD | 2.0.8 | OpenGL loader |
+| nlohmann/json | 3.12.0 | JSON parsing |
 | cpp-httplib | 0.15.3 | HTTP/HTTPS |
-| GoogleTest | latest | Tests unitarios |
+| GoogleTest | latest | Unit testing |
 
-> La primera compilación puede tardar varios minutos debido a la descarga y compilación de dependencias.
+> The first build may take several minutes due to downloading and compiling dependencies.
 
-## Estructura de salida
+## Output structure
 
 ```
 output/
 ├── linux/
-│   └── SIM_65C02          ← Ejecutable Linux
+│   └── SIM_65C02          ← Linux executable
 ├── windows/
-│   └── SIM_65C02.exe      ← Ejecutable Windows
-└── rom/                   ← Programas compilados con compile-bin.sh
+│   └── SIM_65C02.exe      ← Windows executable
+└── rom/                   ← Programs compiled with compile-bin.sh
     ├── echo.bin
     ├── tetris.bin
     └── ...
@@ -121,7 +121,7 @@ output/
 
 ## CI/CD
 
-El proyecto usa **GitHub Actions** (`.github/workflows/`) para:
-- Compilar automáticamente en cada push
-- Ejecutar los tests unitarios
-- Generar los artefactos de release (Linux + Windows + SDK)
+The project uses **GitHub Actions** (`.github/workflows/`) to:
+- Automatically build on every push
+- Run the unit tests
+- Generate release artifacts (Linux + Windows + SDK)

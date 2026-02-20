@@ -1,81 +1,81 @@
-# GPU — Procesador gráfico y VRAM
+# GPU — Graphics Processor and VRAM
 
-**Archivo:** `Hardware/GPU.h` / `Hardware/GPU.cpp`  
+**File:** `Hardware/GPU.h` / `Hardware/GPU.cpp`  
 **Namespace:** `Hardware::GPU`
 
-## Descripción general
+## Overview
 
-El emulador incluye un **procesador gráfico personalizado** con una VRAM de 7.5 KB. Permite mostrar imágenes en color en la resolución 100×75 píxeles. La interfaz gráfica renderiza el contenido de la VRAM en tiempo real en la ventana **VRAM Viewer**.
+The emulator includes a **custom graphics processor** with 7.5 KB of VRAM. It can display grayscale images at a resolution of 100×75 pixels. The GUI renders the VRAM contents in real time in the **VRAM Viewer** window.
 
-## Dimensiones
+## Dimensions
 
-| Parámetro | Valor | Descripción |
+| Parameter | Value | Description |
 |-----------|-------|-------------|
-| `VRAM_WIDTH` | 100 px | Ancho visible |
-| `VRAM_HEIGHT` | 75 px | Alto visible |
-| `DISPLAY_WIDTH` | 132 px | Ancho total con blanking |
-| `DISPLAY_HEIGHT` | 78 px | Alto total con blanking |
-| `VRAM_HEIGHT_DRAWABLE_BY_CPU` | 64 filas | Filas accesibles por la CPU vía bus |
+| `VRAM_WIDTH` | 100 px | Visible width |
+| `VRAM_HEIGHT` | 75 px | Visible height |
+| `DISPLAY_WIDTH` | 132 px | Total width including blanking |
+| `DISPLAY_HEIGHT` | 78 px | Total height including blanking |
+| `VRAM_HEIGHT_DRAWABLE_BY_CPU` | 64 rows | Rows accessible by the CPU via the bus |
 
-El área de **blanking** (132×78) simula el intervalo de borrado de un monitor analógico. Durante el intervalo de blanking, el bus está libre y la CPU puede escribir en VRAM sin conflictos.
+The **blanking** area (132×78) simulates the retrace interval of an analog monitor. During the blanking interval the bus is free and the CPU can write to VRAM without conflicts.
 
-## Distribución de la VRAM en memoria
+## VRAM layout in the address space
 
-La VRAM ocupa el rango `0x2000`–`0x3FFF` del espacio de direcciones del sistema (configurado en los archivos de linker GPU).
+VRAM occupies the range `0x2000`–`0x3FFF` of the system address space (configured in the GPU linker files).
 
-El direccionamiento de píxeles dentro de la VRAM es:
+Pixel addressing within VRAM is:
 ```
-bits [6:0]   → coordenada X (0–99)
-bits [13:7]  → coordenada Y (0–74)
+bits [6:0]   → X coordinate (0–99)
+bits [13:7]  → Y coordinate (0–74)
 ```
 
-Por ejemplo, para acceder al píxel (x=5, y=10):
+For example, to access pixel (x=5, y=10):
 ```
 addr = (10 << 7) | 5 = 0x0505
-dirección efectiva = 0x2000 + 0x0505 = 0x2505
+effective address = 0x2000 + 0x0505 = 0x2505
 ```
 
-## Formato de píxel
+## Pixel format
 
-Cada byte de la VRAM representa **1 píxel en escala de grises** (0–255).
+Each VRAM byte represents **1 grayscale pixel** (0–255).
 
-## Escritura desde la CPU
+## Writing from the CPU
 
-La CPU puede escribir directamente en VRAM mientras el GPU está en intervalo de blanking. La función `IsInBlankingInterval()` indica cuándo es seguro hacerlo:
+The CPU can write directly to VRAM while the GPU is in the blanking interval. `IsInBlankingInterval()` indicates when it is safe to do so:
 
 ```asm
-; Esperar intervalo de blanking (ejemplo en ensamblador 65c02)
+; Wait for blanking interval (65c02 assembly example)
 WAIT_BLANK:
     LDA $2000,Y
-    ; El bit de estado de blanking indica si es seguro escribir
+    ; The blanking status bit indicates when it is safe to write
     BEQ WAIT_BLANK
-    STA $2000,Y     ; Escribir píxel
+    STA $2000,Y     ; Write pixel
 ```
 
-En la práctica, el simulador asume que la CPU siempre puede acceder a las primeras 64 filas sin conflicto.
+In practice, the simulator assumes the CPU can always access the first 64 rows without conflict.
 
-## Herramienta de conversión de imágenes
+## Image conversion tool
 
-El directorio `GPU/generator/` incluye un script Python que convierte imágenes PNG, JPG o BMP al formato binario de la VRAM.
+The `GPU/generator/` directory contains a Python script that converts PNG, JPG, or BMP images to the VRAM binary format.
 
 ```bash
-./image-to-bin.sh <nombre_imagen>
-# Salida: output/vram/<nombre_imagen>.bin
+./image-to-bin.sh <image_name>
+# Output: output/vram/<image_name>.bin
 ```
 
-El binario resultante puede cargarse directamente en VRAM a través de la interfaz gráfica.
+The resulting binary can be loaded directly into VRAM through the graphical interface.
 
-## Imágenes de ejemplo
+## Sample images
 
-En `GPU/` se incluyen varias imágenes de demostración:
+Several demonstration images are included in `GPU/`:
 - `bocchi.png`
 - `rick.jpeg`
 - `xdd.jpg`
 
 ## Double Buffering
 
-La configuración de linker `C-Runtime-GPUDoubleBuffer.cfg` activa el modo de **doble búfer**: mientras la GPU lee el primer búfer, la CPU escribe en el segundo, eliminando el tearing.
+The linker config `C-Runtime-GPUDoubleBuffer.cfg` enables **double-buffer** mode: while the GPU reads from the first buffer, the CPU writes to the second, eliminating tearing.
 
-## Integración con el Frontend
+## Integration with the Frontend
 
-La ventana **VRAM Viewer** de la GUI lee el array `gpu.vram[y][x]` directamente y lo renderiza como textura OpenGL, actualizándose en cada frame.
+The **VRAM Viewer** window in the GUI reads the `gpu.vram[y][x]` array directly and renders it as an OpenGL texture, updated every frame.

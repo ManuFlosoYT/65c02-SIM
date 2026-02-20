@@ -1,29 +1,29 @@
 # 65c02-SIM Wiki
 
-Bienvenido a la wiki del **emulador 65c02** para el esquema de memoria de Ben Eater.
+Welcome to the wiki for the **65c02 emulator** for Ben Eater's memory layout.
 
-## ¿Qué es este proyecto?
+## What is this project?
 
-Este proyecto es un emulador completo del microprocesador **WDC 65C02** (variante CMOS del clásico 6502 de MOS Technology) pensado para la disposición de memoria de los proyectos de [Ben Eater](https://eater.net/6502). Incluye una interfaz gráfica moderna basada en **ImGui** y una completa cadena de herramientas SDK para desarrollar software para el emulador.
+This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS variant of the classic MOS Technology 6502), designed around the memory layout used in [Ben Eater's](https://eater.net/6502) 65c02 projects. It includes a modern **ImGui**-based graphical interface and a complete SDK toolchain for developing software that runs on the emulator.
 
-## Componentes emulados
+## Emulated components
 
-| Componente | Descripción |
-|------------|-------------|
-| **CPU** | Procesador WDC 65C02 completo |
-| **RAM** | 32 KB de memoria de acceso aleatorio (`0x0000`–`0x7FFF`) |
-| **ROM** | 32 KB de memoria de solo lectura (`0x8000`–`0xFFFF`) |
+| Component | Description |
+|-----------|-------------|
+| **CPU** | Full WDC 65C02 processor |
+| **RAM** | 32 KB of random-access memory (`0x0000`–`0x7FFF`) |
+| **ROM** | 32 KB of read-only memory (`0x8000`–`0xFFFF`) |
 | **VIA** | MOS 6522 Versatile Interface Adapter (timers, I/O) |
 | **ACIA** | MOS 6551 Asynchronous Communications Interface (serial) |
-| **GPU** | Controlador gráfico personalizado con 7.5 KB de VRAM |
-| **SID** | Chip de síntesis de sonido (3 osciladores + ADSR) |
-| **LCD** | Pantalla LCD de 2×16 caracteres |
+| **GPU** | Custom graphics controller with 7.5 KB of VRAM |
+| **SID** | Sound synthesis chip (3 oscillators + ADSR) |
+| **LCD** | 2×16 character LCD display |
 
-## Arquitectura general
+## General architecture
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│              SIM_65C02 (Ejecutable Principal)         │
+│              SIM_65C02 (Main Executable)             │
 ├──────────────────────────────────────────────────────┤
 │                  Frontend / GUI                       │
 │     ImGui · SDL3 · OpenGL 3.3 · ImGuiFileDialog      │
@@ -31,67 +31,67 @@ Este proyecto es un emulador completo del microprocesador **WDC 65C02** (variant
 │                   Control Layer                       │
 │           AppState · Console · UpdateChecker         │
 ├──────────────────────────────────────────────────────┤
-│           Biblioteca estática 65c02_core              │
+│           65c02_core Static Library                   │
 │  ┌───────────┬────────────┬──────────────────────┐   │
-│  │  CPU      │  Memoria   │  Periféricos         │   │
+│  │  CPU      │  Memory    │  Peripherals         │   │
 │  │ (65c02)   │ (RAM+ROM)  │  VIA · ACIA · LCD    │   │
 │  ├───────────┼────────────┼──────────────────────┤   │
-│  │     GPU (VRAM 7.5 KB)  │  SID (síntesis)      │   │
+│  │     GPU (VRAM 7.5 KB)  │  SID (synthesis)     │   │
 │  └───────────┴────────────┴──────────────────────┘   │
 ├──────────────────────────────────────────────────────┤
-│               SDK / Herramientas                      │
+│               SDK / Tools                             │
 │   compile-bin.sh · image-to-bin.sh · midi-to-bin.sh  │
 │     Linker configs · BIOS · Microsoft BASIC          │
 ├──────────────────────────────────────────────────────┤
-│            Programas de ejemplo y Tests               │
+│            Example Programs & Tests                   │
 │    Binaries/ (C + ASM)  ·  UnitTests/ (Google Test)  │
 └──────────────────────────────────────────────────────┘
 ```
 
-## Mapa de páginas de la wiki
+## Wiki page map
 
-- **Hardware y emulación**
-  - [Hardware](Hardware) — Emulador principal y sistema de memoria
-  - [CPU](CPU) — Procesador 65c02 y registros
-  - [CPU Instructions](CPU-Instructions) — Referencia completa del juego de instrucciones
-  - [GPU](GPU) — Procesador gráfico y VRAM
-  - [SID](SID) — Síntesis de sonido
-  - [VIA y ACIA](VIA-and-ACIA) — Chips de entrada/salida
-  - [LCD](LCD) — Pantalla LCD
-- **Interfaz de usuario**
-  - [Frontend](Frontend) — Ventanas ImGui y controles
-- **Desarrollo y SDK**
-  - [Linker y Mapa de Memoria](Linker-and-Memory-Layout) — Configuraciones de enlazado, BIOS, mapa de memoria
-  - [SDK](SDK) — Herramientas de compilación y conversión
-  - [Binaries](Binaries) — Programas de ejemplo incluidos
-- **Construcción y pruebas**
-  - [Building](Building) — Compilar el proyecto desde el código fuente
-  - [Unit Tests](Unit-Tests) — Infraestructura de pruebas unitarias
+- **Hardware & emulation**
+  - [Hardware](Hardware) — Main emulator orchestrator and memory system
+  - [CPU](CPU) — 65c02 processor and registers
+  - [CPU Instructions](CPU-Instructions) — Full instruction set reference
+  - [GPU](GPU) — Graphics processor and VRAM
+  - [SID](SID) — Sound synthesis
+  - [VIA and ACIA](VIA-and-ACIA) — I/O chips
+  - [LCD](LCD) — LCD display
+- **User interface**
+  - [Frontend](Frontend) — ImGui windows and controls
+- **Development & SDK**
+  - [Linker and Memory Layout](Linker-and-Memory-Layout) — Linker configs, BIOS, memory map
+  - [SDK](SDK) — Compilation and conversion tools
+  - [Binaries](Binaries) — Included example programs
+- **Building & testing**
+  - [Building](Building) — Compile the project from source
+  - [Unit Tests](Unit-Tests) — Unit test infrastructure
 
-## Inicio rápido
+## Quick start
 
-### Ejecutar el simulador (binarios precompilados)
+### Run the simulator (pre-compiled binaries)
 
-1. Descarga la última versión desde la [página de releases](https://github.com/ManuFlosoYT/65c02-SIM/releases).
-2. Descarga también el `SDK.zip` si quieres desarrollar programas.
-3. Abre el simulador y selecciona el archivo `.bin` que deseas ejecutar.
+1. Download the latest release from the [releases page](https://github.com/ManuFlosoYT/65c02-SIM/releases).
+2. Also download `SDK.zip` if you want to develop programs.
+3. Open the simulator and select the `.bin` file you want to run.
 
-### Compilar un programa desde el SDK
+### Compile a program from the SDK
 
 ```bash
-# Compilar un programa en C o ensamblador
-./compile-bin.sh <nombre_programa>
+# Compile a C or assembly program
+./compile-bin.sh <program_name>
 
-# Convertir una imagen a formato VRAM
-./image-to-bin.sh <imagen>
+# Convert an image to VRAM format
+./image-to-bin.sh <image>
 
-# Convertir un archivo MIDI a código SID
-./midi-to-bin.sh <archivo_midi>
+# Convert a MIDI file to SID assembly code
+./midi-to-bin.sh <midi_file>
 ```
 
-Consulta la página [SDK](SDK) para más detalles.
+See the [SDK](SDK) page for more details.
 
-## Licencia
+## License
 
-El código fuente C++ del emulador está licenciado bajo la **MIT License**.  
-El proyecto incluye Microsoft BASIC (© 1977 Microsoft) y WozMon (© 1976 Apple Computer, Inc.) con fines educativos.
+The emulator C++ source code is licensed under the **MIT License**.  
+The project includes Microsoft BASIC (© 1977 Microsoft) and WozMon (© 1976 Apple Computer, Inc.) for educational purposes.

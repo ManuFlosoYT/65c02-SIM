@@ -1,95 +1,95 @@
-# Binaries — Programas de ejemplo
+# Binaries — Example Programs
 
-**Directorio:** `Binaries/`
+**Directory:** `Binaries/`
 
-## Descripción general
+## Overview
 
-El directorio `Binaries/` contiene programas de ejemplo escritos en **C** y **ensamblador 65c02** que demuestran las capacidades del emulador. Son la base ideal para desarrollar nuevos programas.
+The `Binaries/` directory contains example programs written in **C** and **65c02 assembly** that demonstrate the emulator's capabilities. They are the ideal starting point for developing new programs.
 
-Todos los programas se compilan con `./compile-bin.sh <nombre>` y el binario resultante se guarda en `output/rom/<nombre>.bin`.
+All programs are compiled with `./compile-bin.sh <name>` and the resulting binary is saved to `output/rom/<name>.bin`.
 
 ---
 
-## Programas en C
+## C programs
 
-### `echo.c` — Echo serie básico
-Programa de referencia mínimo. Lee caracteres de la entrada serie (ACIA) y los reenvía de vuelta a la consola. Útil como plantilla inicial para nuevos proyectos.
+### `echo.c` — Basic serial echo
+Minimal reference program. Reads characters from the serial input (ACIA) and echoes them back to the console. Useful as a starting template for new projects.
 
-### `fullTest.c` — Test completo
-Prueba de integración que ejercita múltiples componentes del hardware a la vez: ACIA, VIA, timers, etc. Útil para verificar que el emulador funciona correctamente.
+### `fullTest.c` — Full integration test
+Integration test that exercises multiple hardware components at once: ACIA, VIA, timers, etc. Useful to verify that the emulator is working correctly.
 
-### `testVIA.c` — Test del VIA 6522
-Demuestra el uso de los timers y puertos de E/S del chip VIA. Incluye ejemplos de configuración de Timer 1 (modo continuo) y Timer 2 (one-shot).
+### `testVIA.c` — VIA 6522 test
+Demonstrates the use of the VIA chip's timers and I/O ports. Includes examples of Timer 1 configuration (continuous mode) and Timer 2 (one-shot).
 
-### `testGPU.c` — Test de la GPU
-Demuestra cómo escribir píxeles en la VRAM y mostrar imágenes o gráficos en la ventana **VRAM Viewer**. Requiere la librería `Libs/GPU.h`.
+### `testGPU.c` — GPU test
+Demonstrates how to write pixels to VRAM and display images or graphics in the **VRAM Viewer** window. Requires the `Libs/GPU.h` library.
 
-### `testSID.c` — Test del SID
-Demuestra el uso del chip de sonido: configuración de osciladores, formas de onda y envolventes ADSR.
+### `testSID.c` — SID test
+Demonstrates the use of the sound chip: oscillator configuration, waveforms, and ADSR envelopes.
 
-### `fillVRAM.c` — Relleno de VRAM
-Rellena toda la VRAM con un patrón de píxeles. Útil para probar el rendimiento de escritura gráfica y la correcta sincronización con el blanking interval de la GPU.
+### `fillVRAM.c` — VRAM fill
+Fills the entire VRAM with a pixel pattern. Useful for testing graphics write performance and the correct synchronisation with the GPU blanking interval.
 
-### `mat.c` — Multiplicación de matrices (8 bits)
-Implementa multiplicación de matrices usando enteros de 8 bits. Demuestra el rendimiento del CPU para operaciones matemáticas y el uso de arrays en memoria.
+### `mat.c` — Matrix multiplication (8-bit)
+Implements matrix multiplication using 8-bit integers. Demonstrates CPU performance on mathematical operations and the use of arrays in memory.
 
-### `mat64.c` — Multiplicación de matrices (64 bits)
-Igual que `mat.c` pero con enteros de 64 bits emulados en software. Útil para medir el rendimiento del 65c02 en operaciones de precisión extendida.
+### `mat64.c` — Matrix multiplication (64-bit)
+Same as `mat.c` but with 64-bit integers emulated in software. Useful for benchmarking the 65c02 on extended-precision arithmetic.
 
-### `cube.c` — Cubo 3D rotante
-Renderiza un cubo 3D rotante en la VRAM usando matemáticas de punto fijo. Requiere la librería `Libs/GPU.h`. Excelente demostración de gráficos en tiempo real.
+### `cube.c` — Rotating 3D cube
+Renders a rotating 3D cube in VRAM using fixed-point maths. Requires the `Libs/GPU.h` library. An excellent real-time graphics demonstration.
 
-### `room.c` — Escena 3D
-Renderiza una escena 3D simple en la VRAM usando ray casting o técnica similar. Requiere `Libs/GPU.h`.
+### `room.c` — 3D scene
+Renders a simple 3D scene in VRAM using ray casting or a similar technique. Requires `Libs/GPU.h`.
 
-### `game.c` — Juego
-Juego interactivo que usa la entrada serie y la GPU para renderizar. Demuestra el bucle de juego clásico: entrada → actualización → renderizado.
+### `game.c` — Game
+Interactive game that uses serial input and the GPU for rendering. Demonstrates the classic game loop: input → update → render.
 
 ### `tetris.c` — Tetris
-Implementación completa del juego **Tetris** para el emulador. Usa la VRAM para los gráficos y la ACIA para la entrada de teclado. Una de las demostraciones más completas del simulador.
+Full implementation of the **Tetris** game for the emulator. Uses VRAM for graphics and the ACIA for keyboard input. One of the most complete demonstrations of the simulator.
 
 ---
 
-## Programas en ensamblador
+## Assembly programs
 
-### `vga.s` — Driver VGA en ensamblador
-Driver de bajo nivel para la GPU escrito directamente en ensamblador 65c02. Muestra cómo acceder directamente a la VRAM y controlar los tiempos de sincronización.
+### `vga.s` — Assembly VGA driver
+Low-level GPU driver written directly in 65c02 assembly. Shows how to access VRAM directly and control synchronisation timings.
 
 ---
 
-## Target especial: `eater`
+## Special target: `eater`
 
 ```bash
 ./compile-bin.sh eater
 ```
 
-Compila el ROM histórico de **WozMon + Microsoft BASIC** tal como lo usa Ben Eater en su proyecto 65c02. El binario resultante (`output/rom/eater.bin`) arranca directamente con el intérprete BASIC interactivo.
+Compiles the historic **WozMon + Microsoft BASIC** ROM as used by Ben Eater in his 65c02 project. The resulting binary (`output/rom/eater.bin`) boots directly into the interactive BASIC interpreter.
 
 ---
 
-## Librerías de soporte (`Binaries/Libs/`)
+## Support libraries (`Binaries/Libs/`)
 
-| Archivo | Descripción |
-|---------|-------------|
-| `BIOS.h` | Declaraciones de las rutinas del BIOS (CHROUT, CHRIN, etc.) |
-| `GPU.h` | Acceso a VRAM con un solo búfer |
-| `GPUDoubleBuffer.h` | Acceso a VRAM con doble búfer (sin tearing) |
-| `LCD.h` | Funciones para escribir en la pantalla LCD |
-| `SID.h` | Control del chip de sonido SID |
-| `VIA.h` | Acceso a los registros del VIA 6522 |
+| File | Description |
+|------|-------------|
+| `BIOS.h` | Declarations for BIOS routines (CHROUT, CHRIN, etc.) |
+| `GPU.h` | VRAM access with a single buffer |
+| `GPUDoubleBuffer.h` | VRAM access with double buffering (no tearing) |
+| `LCD.h` | Functions for writing to the LCD display |
+| `SID.h` | SID sound chip control |
+| `VIA.h` | Access to VIA 6522 registers |
 
 ---
 
-## Crear un nuevo programa
+## Creating a new program
 
-### Programa en C mínimo
+### Minimal C program
 
 ```c
 // Binaries/hello.c
 #include "Libs/BIOS.h"
 
 int main() {
-    // CHROUT escribe un carácter en la consola serie
+    // CHROUT writes a character to the serial console
     CHROUT('H'); CHROUT('e'); CHROUT('l');
     CHROUT('l'); CHROUT('o'); CHROUT('!');
     CHROUT('\n');
@@ -99,10 +99,10 @@ int main() {
 
 ```bash
 ./compile-bin.sh hello
-# Salida: output/rom/hello.bin
+# Output: output/rom/hello.bin
 ```
 
-### Programa con GPU
+### Program with GPU
 
 ```c
 // Binaries/pixels.c
@@ -112,7 +112,7 @@ int main() {
     int x, y;
     for (y = 0; y < 75; y++)
         for (x = 0; x < 100; x++)
-            vram[y][x] = (x + y) & 0xFF;  // degradado diagonal
+            vram[y][x] = (x + y) & 0xFF;  // diagonal gradient
     return 0;
 }
 ```

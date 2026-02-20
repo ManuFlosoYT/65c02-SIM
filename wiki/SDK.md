@@ -1,159 +1,159 @@
-# SDK — Herramientas de desarrollo
+# SDK — Development Tools
 
-El SDK incluye tres scripts de automatización para compilar programas y convertir activos para el emulador.
+The SDK includes three automation scripts for compiling programs and converting assets for the emulator.
 
-> **Windows:** Todos los scripts son Bash. Los usuarios de Windows deben usar **WSL2** (ver sección de instalación en el [README](https://github.com/ManuFlosoYT/65c02-SIM/blob/master/README.md)).
+> **Windows:** All scripts are Bash scripts. Windows users must use **WSL2** (see the installation section in the [README](https://github.com/ManuFlosoYT/65c02-SIM/blob/master/README.md)).
 
 ---
 
-## `compile-bin.sh` — Compilar programas
+## `compile-bin.sh` — Compile programs
 
-Compila programas en **C** o **ensamblador 65c02** y genera un binario `.bin` listo para cargar en el simulador.
+Compiles **C** or **65c02 assembly** programs and generates a `.bin` binary ready to load into the simulator.
 
-### Uso
+### Usage
 
 ```bash
-./compile-bin.sh <nombre_programa>
-./compile-bin.sh all          # Compila todos los programas
-./compile-bin.sh eater        # Compila el ROM de WOZMON + Microsoft BASIC
+./compile-bin.sh <program_name>
+./compile-bin.sh all          # Compile all programs
+./compile-bin.sh eater        # Compile the WOZMON + Microsoft BASIC ROM
 ```
 
-La salida se guarda en `output/rom/<nombre>.bin`.
+Output is saved to `output/rom/<name>.bin`.
 
-### Requisitos
+### Requirements
 
-- **cc65** (`ca65`, `ld65`, `cl65`) — Toolchain de ensamblado/compilación para 6502
-- **Python 3** (para los scripts de conversión)
+- **cc65** (`ca65`, `ld65`, `cl65`) — 6502 assembly/compilation toolchain
+- **Python 3** (for the conversion scripts)
 
-### Flujo de compilación
+### Compilation flow
 
-#### Programas en ensamblador (`.s`)
+#### Assembly programs (`.s`)
 
 ```
-Binaries/<nombre>.s
+Binaries/<name>.s
        ↓ ca65 --cpu 65C02
-Binaries/build/<nombre>.o
+Binaries/build/<name>.o
        ↓ ld65 -C Linker/raw.cfg
-output/rom/<nombre>.bin
+output/rom/<name>.bin
 ```
 
-#### Programas en C (`.c`)
+#### C programs (`.c`)
 
 ```
-Binaries/<nombre>.c
-       ↓ cl65 -O --cpu 65C02 -S     (compilar a ensamblador)
-Binaries/build/<nombre>.s
-       ↓ cl65 --cpu 65C02 -C <cfg>  (ensamblar + enlazar + BIOS)
-       │  Incluye: Linker/bios.s + Linker/C-Runtime.s
-output/rom/<nombre>.bin
+Binaries/<name>.c
+       ↓ cl65 -O --cpu 65C02 -S     (compile to assembly)
+Binaries/build/<name>.s
+       ↓ cl65 --cpu 65C02 -C <cfg>  (assemble + link + BIOS)
+       │  Includes: Linker/bios.s + Linker/C-Runtime.s
+output/rom/<name>.bin
 ```
 
-#### Detección automática del linker
+#### Automatic linker detection
 
-El script detecta qué configuración de linker usar según las cabeceras incluidas en el programa:
+The script detects which linker configuration to use based on the headers included in the program:
 
-| Cabecera detectada | Configuración usada |
-|--------------------|--------------------|
+| Detected header | Configuration used |
+|-----------------|-------------------|
 | `#include "Libs/GPUDoubleBuffer.h"` | `C-Runtime-GPUDoubleBuffer.cfg` |
 | `#include "Libs/GPU.h"` | `C-Runtime-GPU.cfg` |
-| (ninguna) | `C-Runtime.cfg` |
+| (none) | `C-Runtime.cfg` |
 
-#### Target especial `eater`
+#### Special target `eater`
 
-Compila el ROM de **WozMon + Microsoft BASIC** usando el Makefile de `Linker/msbasic/`.
+Compiles the **WozMon + Microsoft BASIC** ROM using the Makefile in `Linker/msbasic/`.
 
 ---
 
-## `image-to-bin.sh` — Convertir imágenes a VRAM
+## `image-to-bin.sh` — Convert images to VRAM
 
-Convierte una imagen (PNG, JPG o BMP) al formato binario de la VRAM del emulador (100×75 píxeles, 1 byte por píxel en escala de grises).
+Converts an image (PNG, JPG, or BMP) to the emulator's VRAM binary format (100×75 pixels, 1 byte per pixel in grayscale).
 
-### Uso
+### Usage
 
 ```bash
-./image-to-bin.sh <nombre_imagen>
-# Ejemplo: ./image-to-bin.sh GPU/bocchi.png
+./image-to-bin.sh <image_name>
+# Example: ./image-to-bin.sh GPU/bocchi.png
 ```
 
-La salida se guarda en `output/vram/<nombre_imagen>.bin`.
+Output is saved to `output/vram/<image_name>.bin`.
 
-### Requisitos
+### Requirements
 
-- **Python 3** con **Pillow** (`pip install Pillow`)
+- **Python 3** with **Pillow** (`pip install Pillow`)
 
-### Proceso de conversión
+### Conversion process
 
-1. Carga la imagen con Pillow
-2. Redimensiona a 100×75 píxeles
-3. Convierte a escala de grises (8 bits por píxel)
-4. Guarda el array de bytes como fichero binario
+1. Load the image with Pillow
+2. Resize to 100×75 pixels
+3. Convert to grayscale (8 bits per pixel)
+4. Save the byte array as a binary file
 
-El binario resultante puede cargarse en la VRAM del emulador a través de la interfaz gráfica.
+The resulting binary can be loaded directly into VRAM through the graphical interface.
 
 ---
 
-## `midi-to-bin.sh` — Convertir MIDI a código SID
+## `midi-to-bin.sh` — Convert MIDI to SID code
 
-Convierte un archivo MIDI en código ensamblador 65c02 para el chip SID del emulador. El resultado puede compilarse y ejecutarse directamente.
+Converts a MIDI file to 65c02 assembly code for the emulator's SID chip. The result can be compiled and run directly.
 
-### Uso
+### Usage
 
 ```bash
-./midi-to-bin.sh <archivo_midi>
-# Ejemplo: ./midi-to-bin.sh SID/overworld.mid
+./midi-to-bin.sh <midi_file>
+# Example: ./midi-to-bin.sh SID/overworld.mid
 ```
 
-La salida se guarda en `output/midi/<cancion>.bin`.
+Output is saved to `output/midi/<song>.bin`.
 
-### Requisitos
+### Requirements
 
-- **Python 3** con **mido** (`pip install mido`)
-- **cc65** (`ca65`, `ld65`) para compilar el ensamblador generado
+- **Python 3** with **mido** (`pip install mido`)
+- **cc65** (`ca65`, `ld65`) to compile the generated assembly
 
-### Modos de optimización
+### Optimization modes
 
-El script tiene **8 modos de compresión** (granularidades de tiempo desde 1 ms hasta 100+ ms). Prueba automáticamente desde el modo más preciso hasta el más comprimido y selecciona el primero que cabe en la ROM de 32 KB:
+The script has **8 compression modes** (time granularities from 1 ms to 100+ ms). It automatically tries from the most precise mode to the most compressed and selects the first one that fits in 32 KB of ROM:
 
-| Modo | Granularidad | Precisión |
-|------|-------------|-----------|
-| 1 | ~1 ms | Máxima fidelidad |
-| 2 | ~2 ms | Alta fidelidad |
-| 3 | ~5 ms | Buena fidelidad |
-| 4 | ~10 ms | Fidelidad media |
-| 5 | ~20 ms | Compresión media |
-| 6 | ~40 ms | Alta compresión |
-| 7 | ~80 ms | Muy comprimido |
-| 8 | ~100+ ms | Compresión máxima |
+| Mode | Granularity | Fidelity |
+|------|-------------|----------|
+| 1 | ~1 ms | Maximum fidelity |
+| 2 | ~2 ms | High fidelity |
+| 3 | ~5 ms | Good fidelity |
+| 4 | ~10 ms | Medium fidelity |
+| 5 | ~20 ms | Medium compression |
+| 6 | ~40 ms | High compression |
+| 7 | ~80 ms | Very compressed |
+| 8 | ~100+ ms | Maximum compression |
 
-Si ningún modo cabe en 32 KB, el script informa del error.
+If no mode fits within 32 KB, the script reports an error.
 
-### Proceso de conversión
+### Conversion process
 
-1. Parsea el archivo MIDI con `mido`
-2. Genera código ensamblador 65c02 que escribe en los registros del SID para reproducir la canción
-3. Compila con `ca65` + `ld65` usando `Linker/raw.cfg`
-4. El binario final se carga en ROM y la CPU ejecuta las instrucciones para reproducir el sonido
+1. Parse the MIDI file with `mido`
+2. Generate 65c02 assembly code that writes to SID registers to play the song
+3. Compile with `ca65` + `ld65` using `Linker/raw.cfg`
+4. The final binary is loaded into ROM and the CPU executes the instructions to produce sound
 
 ---
 
-## Librerías para programas en C
+## C libraries for programs
 
-En `Binaries/Libs/` hay cabeceras C que facilitan el uso del hardware desde código C:
+`Binaries/Libs/` contains C header files that make it easy to use the hardware from C code:
 
-| Archivo | Descripción |
-|---------|-------------|
-| `GPU.h` | Funciones para escribir en VRAM (1 búfer) |
-| `GPUDoubleBuffer.h` | Funciones para double-buffering en VRAM |
-| `SID.h` | Funciones para controlar el chip SID |
-| `VIA.h` | Funciones para acceder al VIA 6522 |
+| File | Description |
+|------|-------------|
+| `GPU.h` | Functions for writing to VRAM (single buffer) |
+| `GPUDoubleBuffer.h` | Functions for double-buffered VRAM access |
+| `SID.h` | Functions for controlling the SID chip |
+| `VIA.h` | Functions for accessing the VIA 6522 |
 
-Ejemplo de uso:
+Example usage:
 
 ```c
 #include "Libs/GPU.h"
 
 int main() {
-    // Escribir un píxel en (x=10, y=20) con valor 128
+    // Write a pixel at (x=10, y=20) with value 128
     vram[20][10] = 128;
     return 0;
 }

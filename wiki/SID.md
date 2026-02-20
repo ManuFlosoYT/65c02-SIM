@@ -1,13 +1,13 @@
-# SID — Síntesis de sonido
+# SID — Sound Synthesis
 
-**Archivo:** `Hardware/SID.h` / `Hardware/SID.cpp`  
+**File:** `Hardware/SID.h` / `Hardware/SID.cpp`  
 **Namespace:** `Hardware::SID`
 
-## Descripción general
+## Overview
 
-El emulador incluye una emulación del chip de síntesis de sonido estilo **SID** (como el MOS 6581 de la Commodore 64). Cuenta con **3 osciladores independientes**, cada uno con su propio **generador de forma de onda** y **envolvente ADSR**. El audio se reproduce en tiempo real a través de SDL3 AudioStream.
+The emulator includes a sound synthesis chip emulation inspired by the **SID** chip (like the MOS 6581 used in the Commodore 64). It has **3 independent oscillators**, each with its own **waveform generator** and **ADSR envelope**. Audio is played back in real time via SDL3 AudioStream.
 
-## Arquitectura interna
+## Internal architecture
 
 ```
 SID
@@ -17,105 +17,105 @@ SID
          ↓
     GenerateAudio()
          ↓
-    SDL3 AudioStream  →  Altavoz
+    SDL3 AudioStream  →  Speaker
 ```
 
-## Struct `Oscillator`
+## `Oscillator` struct
 
-Cada voz tiene un oscilador con los siguientes campos:
+Each voice has an oscillator with the following fields:
 
-| Campo | Tipo | Descripción |
+| Field | Type | Description |
 |-------|------|-------------|
-| `accumulator` | `uint32_t` | Acumulador de fase |
-| `frequency` | `uint32_t` | Frecuencia programada |
-| `pulseWidth` | `uint16_t` | Ancho de pulso (para onda cuadrada) |
-| `control` | `uint8_t` | Registro de control: Gate · Sync · Ring · Test · Tri · Saw · Pulse · Noise |
-| `noiseShift` | `uint32_t` | Registro de desplazamiento LFSR para ruido |
+| `accumulator` | `uint32_t` | Phase accumulator |
+| `frequency` | `uint32_t` | Programmed frequency |
+| `pulseWidth` | `uint16_t` | Pulse width (for square wave) |
+| `control` | `uint8_t` | Control register: Gate · Sync · Ring · Test · Tri · Saw · Pulse · Noise |
+| `noiseShift` | `uint32_t` | LFSR shift register for noise |
 
-### Formas de onda (bits del registro `control`)
+### Waveforms (`control` register bits)
 
-| Bit | Forma | Descripción |
-|-----|-------|-------------|
-| 0 | Gate | Activa/desactiva la envolvente |
-| 1 | Sync | Sincronización con el oscilador anterior |
-| 2 | Ring | Modulación en anillo con el oscilador anterior |
-| 3 | Test | Modo test (detiene el oscilador) |
-| 4 | Triangle | Onda triangular |
-| 5 | Sawtooth | Onda de sierra |
-| 6 | Pulse | Onda cuadrada/pulso |
-| 7 | Noise | Ruido blanco (LFSR) |
+| Bit | Waveform | Description |
+|-----|----------|-------------|
+| 0 | Gate | Enables/disables the envelope |
+| 1 | Sync | Synchronises with the previous oscillator |
+| 2 | Ring | Ring modulation with the previous oscillator |
+| 3 | Test | Test mode (halts the oscillator) |
+| 4 | Triangle | Triangle wave |
+| 5 | Sawtooth | Sawtooth wave |
+| 6 | Pulse | Square/pulse wave |
+| 7 | Noise | White noise (LFSR) |
 
-## Struct `ADSREnvelope`
+## `ADSREnvelope` struct
 
-La envolvente ADSR controla el volumen de cada nota:
+The ADSR envelope controls the volume of each note:
 
-| Estado | Descripción |
-|--------|-------------|
-| `IDLE` | Sin actividad |
-| `ATTACK` | Ataque: subida del nivel desde 0 |
-| `DECAY` | Decaimiento: bajada hacia el nivel de sustain |
-| `SUSTAIN` | Sostenimiento: nivel constante mientras Gate=1 |
-| `RELEASE` | Liberación: bajada hasta 0 cuando Gate=0 |
-
-Parámetros de la envolvente:
-
-| Campo | Descripción |
+| State | Description |
 |-------|-------------|
-| `attackRate` | Velocidad de ataque |
-| `decayRate` | Velocidad de decaimiento |
-| `sustainLevel` | Nivel de sustain (0.0–1.0) |
-| `releaseRate` | Velocidad de liberación |
+| `IDLE` | No activity |
+| `ATTACK` | Attack: level rises from 0 |
+| `DECAY` | Decay: level falls toward the sustain level |
+| `SUSTAIN` | Sustain: constant level while Gate=1 |
+| `RELEASE` | Release: level falls to 0 when Gate=0 |
 
-## Registros mapeados en memoria
+Envelope parameters:
 
-Los registros del SID están accesibles desde el código 65c02 a través de funciones Write/Read (integradas en el emulador vía hooks):
+| Field | Description |
+|-------|-------------|
+| `attackRate` | Attack speed |
+| `decayRate` | Decay speed |
+| `sustainLevel` | Sustain level (0.0–1.0) |
+| `releaseRate` | Release speed |
 
-| Offset | Nombre | Descripción |
-|--------|--------|-------------|
-| `0x00`–`0x06` | Voz 1 | Frecuencia, ancho de pulso, control, ADSR |
-| `0x07`–`0x0D` | Voz 2 | Igual que Voz 1 |
-| `0x0E`–`0x14` | Voz 3 | Igual que Voz 1 |
-| `0x18` | Volumen/Filtro | Byte de volumen maestro y filtro |
+## Memory-mapped registers
 
-## Audio en tiempo real
+SID registers are accessible from 65c02 code through Write/Read functions (integrated into the emulator via hooks):
 
-El SID usa el sistema de audio de **SDL3** (`SDL_AudioStream`) a 44100 Hz, 16 bits por muestra, mono. La generación de audio se realiza en un callback asíncrono:
+| Offset | Name | Description |
+|--------|------|-------------|
+| `0x00`–`0x06` | Voice 1 | Frequency, pulse width, control, ADSR |
+| `0x07`–`0x0D` | Voice 2 | Same as Voice 1 |
+| `0x0E`–`0x14` | Voice 3 | Same as Voice 1 |
+| `0x18` | Volume/Filter | Master volume byte and filter |
+
+## Real-time audio
+
+The SID uses **SDL3**'s audio system (`SDL_AudioStream`) at 44100 Hz, 16-bit samples, mono. Audio generation happens in an asynchronous callback:
 
 ```cpp
 SID::AudioCallback(void* userdata, SDL_AudioStream* stream,
                    int additional_amount, int total_amount);
 ```
 
-### Control de habilitación
+### Enable control
 
 ```cpp
-sid.EnableSound(true);            // Activa el audio
-sid.SetEmulationPaused(true);     // Pausa la generación (silencia)
+sid.EnableSound(true);            // Enable audio
+sid.SetEmulationPaused(true);     // Pause generation (mute)
 bool enabled = sid.IsSoundEnabled();
 ```
 
-## Visualización en el Frontend
+## Frontend visualisation
 
-La ventana **SID Viewer** de la GUI muestra en tiempo real:
-- La forma de onda y estado de cada oscilador
-- El estado de la envolvente (ATTACK/DECAY/SUSTAIN/RELEASE)
-- Los valores de frecuencia y ancho de pulso
+The **SID Viewer** window in the GUI shows in real time:
+- The waveform and state of each oscillator
+- The envelope state (ATTACK/DECAY/SUSTAIN/RELEASE)
+- Frequency and pulse-width values
 
-## Herramienta MIDI-to-SID
+## MIDI-to-SID tool
 
-El directorio `SID/generator/` incluye un script Python que convierte archivos MIDI a código ensamblador 65c02 para reproducir en el emulador.
+The `SID/generator/` directory includes a Python script that converts MIDI files to 65c02 assembly code playable on the emulator.
 
 ```bash
-./midi-to-bin.sh <archivo_midi>
-# Salida: output/midi/<cancion>.bin
+./midi-to-bin.sh <midi_file>
+# Output: output/midi/<song>.bin
 ```
 
-El script tiene 8 modos de optimización de compresión (de 1ms a 100ms+ de granularidad) y selecciona automáticamente el mejor.
+The script has 8 compression optimisation modes (granularities from 1 ms to 100+ ms) and automatically selects the best one.
 
-### Canciones de ejemplo incluidas
+### Included sample songs
 
-En `SID/` se encuentran varios archivos MIDI de demostración:
+Several demonstration MIDI files are provided in `SID/`:
 - `fortnite.mid`
 - `miku.mid`
 - `overworld.mid`
-- y otros (6 más)
+- and 6 more

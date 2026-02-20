@@ -1,40 +1,40 @@
-# Unit Tests — Pruebas unitarias
+# Unit Tests — Unit Test Suite
 
-**Directorio:** `UnitTests/`  
+**Directory:** `UnitTests/`  
 **Framework:** [Google Test](https://github.com/google/googletest)
 
-## Descripción general
+## Overview
 
-El directorio `UnitTests/` contiene una suite de tests unitarios que verifica el correcto funcionamiento de todas las instrucciones del procesador 65c02 y algunos componentes de hardware adicionales.
+The `UnitTests/` directory contains a unit test suite that verifies the correct behaviour of all 65c02 processor instructions and some additional hardware components.
 
-> ⚠️ La carpeta `UnitTests/` fue generada con asistencia de IA.
+> ⚠️ The `UnitTests/` folder was generated with AI assistance.
 
-## Estructura
+## Structure
 
-Cada instrucción tiene su propio archivo o directorio de tests:
+Each instruction has its own test file or directory:
 
 ```
 UnitTests/
-├── ADC/              ← Tests de ADC (varios archivos)
+├── ADC/              ← ADC tests (multiple files)
 ├── AND/
 ├── ASL/
 ├── BCC.cpp
 ├── BCS.cpp
 ├── BEQ.cpp
-├── ...               ← Un .cpp por instrucción de branch
+├── ...               ← One .cpp per branch instruction
 ├── CMP/
 ├── SBC/
 ├── STA/
 ├── ...
-├── Ampliados/        ← Tests de instrucciones 65C02 extendidas
-├── LCD_Test.cpp      ← Tests del LCD (en algunos setups)
-├── VIA_Test.cpp      ← Tests del VIA 6522
-└── repro_freeze.cpp  ← Reproducción de un bug de congelación
+├── Ampliados/        ← Tests for extended 65C02 instructions
+├── LCD_Test.cpp      ← LCD tests (in some setups)
+├── VIA_Test.cpp      ← VIA 6522 tests
+└── repro_freeze.cpp  ← Reproduction of a freeze bug
 ```
 
-## Patrón de test
+## Test pattern
 
-Todos los tests siguen el mismo patrón con **Google Test fixtures**:
+All tests follow the same pattern using **Google Test fixtures**:
 
 ```cpp
 #include <gtest/gtest.h>
@@ -51,7 +51,7 @@ protected:
     CPU cpu;
 };
 
-// Probar BEQ cuando Z=0 (no salta)
+// Test BEQ when Z=0 (no branch)
 TEST_F(BEQ_Test, BEQ_NoBranch_ZeroClear) {
     cpu.Z = 0;
     cpu.PC = 0x1000;
@@ -60,10 +60,10 @@ TEST_F(BEQ_Test, BEQ_NoBranch_ZeroClear) {
     mem.WriteROM(0xFFFC, 0x00);
     mem.WriteROM(0xFFFD, 0x10);
     cpu.Execute(mem);
-    EXPECT_EQ(cpu.PC, 0x1003);  // No saltó: PC avanzó normalmente
+    EXPECT_EQ(cpu.PC, 0x1003);  // Did not branch: PC advanced normally
 }
 
-// Probar BEQ cuando Z=1 (salta)
+// Test BEQ when Z=1 (branch taken)
 TEST_F(BEQ_Test, BEQ_Branch_ZeroSet) {
     cpu.Z = 1;
     cpu.PC = 0x1000;
@@ -72,20 +72,20 @@ TEST_F(BEQ_Test, BEQ_Branch_ZeroSet) {
     mem.WriteROM(0xFFFC, 0x00);
     mem.WriteROM(0xFFFD, 0x10);
     cpu.Execute(mem);
-    EXPECT_EQ(cpu.PC, 0x1008);  // Saltó: 0x1002 + 5 = 0x1007 (JAM); fetch avanza PC a 0x1008
+    EXPECT_EQ(cpu.PC, 0x1008);  // Branched: 0x1002 + 5 = 0x1007 (JAM); fetch advances PC to 0x1008
 }
 ```
 
-### Técnica de terminación (`INS_JAM`)
+### Termination technique (`INS_JAM`)
 
-Los tests usan la instrucción `JAM` (también llamada `STP` o `KIL`) como **terminador**: al ejecutarla, `cpu.Execute()` devuelve 1 y el test puede verificar el estado final de los registros.
+Tests use the `JAM` instruction (also known as `STP` or `KIL`) as a **terminator**: when executed, `cpu.Execute()` returns 1 and the test can verify the final register state.
 
-## Instrucciones con tests
+## Instructions with tests
 
-### Tests simples (un archivo `.cpp`)
+### Simple tests (one `.cpp` file each)
 
-| Instrucción | Archivo |
-|-------------|---------|
+| Instruction | File |
+|-------------|------|
 | BBR0–BBR7 | `BBR.cpp` |
 | BBS0–BBS7 | `BBS.cpp` |
 | BCC | `BCC.cpp` |
@@ -107,48 +107,48 @@ Los tests usan la instrucción `JAM` (también llamada `STP` o `KIL`) como **ter
 | RMB, SMB | `RMB.cpp`, `SMB.cpp` |
 | RTI, RTS | `RTI.cpp`, `RTS.cpp` |
 | SEC, SED, SEI | `SEC.cpp`, `SED.cpp`, `SEI.cpp` |
-| TAX, TAY, TSX, TXA, TXS, TYA | `.cpp` individuales |
+| TAX, TAY, TSX, TXA, TXS, TYA | Individual `.cpp` files |
 
-### Tests con directorio (múltiples modos de direccionamiento)
+### Directory tests (multiple addressing modes)
 
-| Instrucción | Directorio | Modos testeados |
-|-------------|-----------|-----------------|
+| Instruction | Directory | Modes tested |
+|-------------|-----------|--------------|
 | ADC | `ADC/` | Immediate, ZP, ZP_X, Absolute, Absolute_X, Absolute_Y, Indirect_X, Indirect_Y |
-| AND | `AND/` | Todos los modos |
+| AND | `AND/` | All modes |
 | ASL | `ASL/` | Accumulator, ZP, Absolute, etc. |
-| CMP | `CMP/` | Todos los modos |
+| CMP | `CMP/` | All modes |
 | CPX, CPY | `CPX/`, `CPY/` | Immediate, ZP, Absolute |
 | DEC, INC | `DEC/`, `INC/` | ZP, Absolute, Accumulator |
-| EOR | `EOR/` | Todos los modos |
-| LDA, LDX, LDY | `LDA/`, `LDX/`, `LDY/` | Todos los modos |
+| EOR | `EOR/` | All modes |
+| LDA, LDX, LDY | `LDA/`, `LDX/`, `LDY/` | All modes |
 | ROL, ROR | `ROL/`, `ROR/` | Accumulator, ZP, Absolute |
-| SBC | `SBC/` | Todos los modos |
-| STA, STX, STY, STZ | `STA/`, `STX/`, `STY/`, `STZ/` | Todos los modos |
+| SBC | `SBC/` | All modes |
+| STA, STX, STY, STZ | `STA/`, `STX/`, `STY/`, `STZ/` | All modes |
 | TRB, TSB | `TRB/`, `TSB/` | ZP, Absolute |
 
-### Tests de hardware
+### Hardware tests
 
-| Archivo | Descripción |
-|---------|-------------|
-| `VIA_Test.cpp` | Prueba los timers T1/T2, registros DDR y callbacks del VIA 6522 |
-| `repro_freeze.cpp` | Reproducción de un caso de congelación del emulador |
+| File | Description |
+|------|-------------|
+| `VIA_Test.cpp` | Tests T1/T2 timers, DDR registers, and VIA 6522 callbacks |
+| `repro_freeze.cpp` | Reproduction of an emulator freeze case |
 
-## Ejecutar los tests
+## Running the tests
 
-Los tests se compilan y ejecutan automáticamente al final de `build-linux.sh`:
+Tests are compiled and run automatically at the end of `build-linux.sh`:
 
 ```bash
 ./build-linux.sh
 ```
 
-Para ejecutar los tests manualmente después de compilar:
+To run the tests manually after building:
 
 ```bash
 ./output/linux/unit_tests
-# O con filtro para una instrucción específica:
+# Or with a filter for a specific instruction:
 ./output/linux/unit_tests --gtest_filter="BEQ*"
 ```
 
-## Integración con CMake
+## CMake integration
 
-Los tests están registrados como target `unit_tests` en `CMakeLists.txt` y enlazados con la biblioteca `65c02_core` y `googletest`.
+Tests are registered as the `unit_tests` target in `CMakeLists.txt` and linked against the `65c02_core` library and `googletest`.

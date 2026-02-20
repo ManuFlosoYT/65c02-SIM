@@ -1,40 +1,40 @@
-# CPU Instructions — Juego de instrucciones del 65C02
+# CPU Instructions — 65C02 Instruction Set
 
-El emulador implementa el juego completo de instrucciones del **WDC 65C02**, incluyendo las instrucciones adicionales respecto al 6502 NMOS original.
+The emulator implements the complete instruction set of the **WDC 65C02**, including the additional instructions compared to the original NMOS 6502.
 
-Cada instrucción tiene su propia clase en `Hardware/CPU/Instructions/`. El despacho se realiza mediante una tabla `switch` en `Hardware/CPU/Dispatch.cpp`.
+Each instruction has its own class in `Hardware/CPU/Instructions/`. Dispatch is performed via a `switch` table in `Hardware/CPU/Dispatch.cpp`.
 
-## Instrucciones por categoría
+## Instructions by category
 
-### Aritmética
+### Arithmetic
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
-| `ADC` | Add with Carry — suma al acumulador con acarreo | `ADC.h/cpp` |
-| `SBC` | Subtract with Carry — resta del acumulador con acarreo | `SBC.h/cpp` |
-| `INC` | Increment — incrementa memoria o acumulador | `INC.h/cpp` |
-| `DEC` | Decrement — decrementa memoria o acumulador | `DEC.h/cpp` |
+| Mnemonic | Description | File |
+|----------|-------------|------|
+| `ADC` | Add with Carry — adds to the accumulator with carry | `ADC.h/cpp` |
+| `SBC` | Subtract with Carry — subtracts from the accumulator with carry | `SBC.h/cpp` |
+| `INC` | Increment — increments memory or accumulator | `INC.h/cpp` |
+| `DEC` | Decrement — decrements memory or accumulator | `DEC.h/cpp` |
 | `INX` | Increment X | `INX.h/cpp` |
 | `INY` | Increment Y | `INY.h/cpp` |
 | `DEX` | Decrement X | `DEX.h/cpp` |
 | `DEY` | Decrement Y | `DEY.h/cpp` |
 
-### Lógica y desplazamientos
+### Logic and shifts
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
-| `AND` | AND lógico con el acumulador | `AND.h/cpp` |
-| `ORA` | OR inclusivo con el acumulador | `ORA.h/cpp` |
-| `EOR` | OR exclusivo (XOR) con el acumulador | `EOR.h/cpp` |
+| Mnemonic | Description | File |
+|----------|-------------|------|
+| `AND` | Logical AND with accumulator | `AND.h/cpp` |
+| `ORA` | Inclusive OR with accumulator | `ORA.h/cpp` |
+| `EOR` | Exclusive OR (XOR) with accumulator | `EOR.h/cpp` |
 | `ASL` | Arithmetic Shift Left | `ASL.h/cpp` |
 | `LSR` | Logical Shift Right | `LSR.h/cpp` |
-| `ROL` | Rotate Left (a través de Carry) | `ROL.h/cpp` |
-| `ROR` | Rotate Right (a través de Carry) | `ROR.h/cpp` |
+| `ROL` | Rotate Left (through Carry) | `ROL.h/cpp` |
+| `ROR` | Rotate Right (through Carry) | `ROR.h/cpp` |
 
-### Carga y almacenamiento
+### Load and store
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
+| Mnemonic | Description | File |
+|----------|-------------|------|
 | `LDA` | Load Accumulator | `LDA.h/cpp` |
 | `LDX` | Load X | `LDX.h/cpp` |
 | `LDY` | Load Y | `LDY.h/cpp` |
@@ -43,10 +43,10 @@ Cada instrucción tiene su propia clase en `Hardware/CPU/Instructions/`. El desp
 | `STY` | Store Y | `STY.h/cpp` |
 | `STZ` | Store Zero (65C02) | `STZ.h/cpp` |
 
-### Transferencias de registros
+### Register transfers
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
+| Mnemonic | Description | File |
+|----------|-------------|------|
 | `TAX` | Transfer A → X | `TAX.h/cpp` |
 | `TAY` | Transfer A → Y | `TAY.h/cpp` |
 | `TXA` | Transfer X → A | `TXA.h/cpp` |
@@ -54,10 +54,10 @@ Cada instrucción tiene su propia clase en `Hardware/CPU/Instructions/`. El desp
 | `TSX` | Transfer SP → X | `TSX.h/cpp` |
 | `TXS` | Transfer X → SP | `TXS.h/cpp` |
 
-### Pila
+### Stack
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
+| Mnemonic | Description | File |
+|----------|-------------|------|
 | `PHA` | Push Accumulator | `PHA.h/cpp` |
 | `PLA` | Pull Accumulator | `PLA.h/cpp` |
 | `PHP` | Push Processor status | `PHP.h/cpp` |
@@ -67,10 +67,10 @@ Cada instrucción tiene su propia clase en `Hardware/CPU/Instructions/`. El desp
 | `PHY` | Push Y (65C02) | `PHY.h/cpp` |
 | `PLY` | Pull Y (65C02) | `PLY.h/cpp` |
 
-### Ramas (saltos condicionales)
+### Branches (conditional jumps)
 
-| Mnemónico | Condición | Archivo |
-|-----------|-----------|---------|
+| Mnemonic | Condition | File |
+|----------|-----------|------|
 | `BCC` | Branch if Carry Clear (C=0) | `BCC.h/cpp` |
 | `BCS` | Branch if Carry Set (C=1) | `BCS.h/cpp` |
 | `BEQ` | Branch if Equal / Zero Set (Z=1) | `BEQ.h/cpp` |
@@ -81,21 +81,21 @@ Cada instrucción tiene su propia clase en `Hardware/CPU/Instructions/`. El desp
 | `BVS` | Branch if Overflow Set (V=1) | `BVS.h/cpp` |
 | `BRA` | Branch Always (65C02) | `BRA.h/cpp` |
 
-### Control de flujo
+### Flow control
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
-| `JMP` | Jump — salto incondicional | `JMP.h/cpp` |
+| Mnemonic | Description | File |
+|----------|-------------|------|
+| `JMP` | Jump — unconditional jump | `JMP.h/cpp` |
 | `JSR` | Jump to Subroutine | `JSR.h/cpp` |
 | `RTS` | Return from Subroutine | `RTS.h/cpp` |
 | `RTI` | Return from Interrupt | `RTI.h/cpp` |
-| `BRK` | Break — interrupción software | `BRK.h/cpp` |
+| `BRK` | Break — software interrupt | `BRK.h/cpp` |
 | `NOP` | No Operation | `NOP.h/cpp` |
 
-### Flags de estado
+### Status flags
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
+| Mnemonic | Description | File |
+|----------|-------------|------|
 | `CLC` | Clear Carry | `CLC.h/cpp` |
 | `SEC` | Set Carry | `SEC.h/cpp` |
 | `CLI` | Clear Interrupt Disable | `CLI.h/cpp` |
@@ -104,48 +104,48 @@ Cada instrucción tiene su propia clase en `Hardware/CPU/Instructions/`. El desp
 | `SED` | Set Decimal | `SED.h/cpp` |
 | `CLV` | Clear Overflow | `CLV.h/cpp` |
 
-### Comparaciones
+### Comparisons
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
+| Mnemonic | Description | File |
+|----------|-------------|------|
 | `CMP` | Compare Accumulator | `CMP.h/cpp` |
 | `CPX` | Compare X | `CPX.h/cpp` |
 | `CPY` | Compare Y | `CPY.h/cpp` |
 | `BIT` | Bit Test | `BIT.h/cpp` |
 
-### Manipulación de bits (65C02)
+### Bit manipulation (65C02)
 
-Instrucciones exclusivas del WDC 65C02 para operar sobre bits individuales en la página cero:
+Instructions exclusive to the WDC 65C02 for operating on individual bits in zero page:
 
-| Mnemónico | Descripción | Archivo |
-|-----------|-------------|---------|
-| `BBR` | Branch if Bit Reset — salta si el bit N de la dirección de página cero es 0 | `BBR.h/cpp` |
-| `BBS` | Branch if Bit Set — salta si el bit N de la dirección de página cero es 1 | `BBS.h/cpp` |
-| `RMB` | Reset Memory Bit — pone a 0 el bit N de la dirección de página cero | `RMB.h/cpp` |
-| `SMB` | Set Memory Bit — pone a 1 el bit N de la dirección de página cero | `SMB.h/cpp` |
+| Mnemonic | Description | File |
+|----------|-------------|------|
+| `BBR` | Branch if Bit Reset — branches if bit N of the zero-page address is 0 | `BBR.h/cpp` |
+| `BBS` | Branch if Bit Set — branches if bit N of the zero-page address is 1 | `BBS.h/cpp` |
+| `RMB` | Reset Memory Bit — clears bit N of the zero-page address | `RMB.h/cpp` |
+| `SMB` | Set Memory Bit — sets bit N of the zero-page address | `SMB.h/cpp` |
 | `TSB` | Test and Set Bits | `TSB.h/cpp` |
 | `TRB` | Test and Reset Bits | `TRB.h/cpp` |
 
-## Modos de direccionamiento soportados
+## Supported addressing modes
 
-| Modo | Ejemplo | Descripción |
+| Mode | Example | Description |
 |------|---------|-------------|
-| Implícito | `CLC` | Sin operando |
-| Acumulador | `ASL A` | Opera sobre el acumulador |
-| Inmediato | `LDA #$42` | Valor constante |
-| Página cero | `LDA $10` | Dirección en `0x0000`–`0x00FF` |
-| Página cero, X | `LDA $10,X` | Página cero indexado por X |
-| Página cero, Y | `LDA $10,Y` | Página cero indexado por Y |
-| Absoluto | `LDA $1234` | Dirección de 16 bits |
-| Absoluto, X | `LDA $1234,X` | Absoluto indexado por X |
-| Absoluto, Y | `LDA $1234,Y` | Absoluto indexado por Y |
-| Indirecto | `JMP ($1234)` | Indirección a través de puntero |
-| (Indirecto, X) | `LDA ($10,X)` | Indirecto indexado por X |
-| (Indirecto), Y | `LDA ($10),Y` | Indirecto indexado por Y post |
-| (Indirecto) página cero | `LDA ($10)` | Indirecto página cero (65C02) |
-| Relativo | `BEQ label` | Offset relativo de 8 bits |
-| Absoluto Indirecto X | `JMP ($1234,X)` | Indirecto absoluto indexado (65C02) |
+| Implied | `CLC` | No operand |
+| Accumulator | `ASL A` | Operates on the accumulator |
+| Immediate | `LDA #$42` | Constant value |
+| Zero Page | `LDA $10` | Address in `0x0000`–`0x00FF` |
+| Zero Page, X | `LDA $10,X` | Zero page indexed by X |
+| Zero Page, Y | `LDA $10,Y` | Zero page indexed by Y |
+| Absolute | `LDA $1234` | 16-bit address |
+| Absolute, X | `LDA $1234,X` | Absolute indexed by X |
+| Absolute, Y | `LDA $1234,Y` | Absolute indexed by Y |
+| Indirect | `JMP ($1234)` | Indirection through pointer |
+| (Indirect, X) | `LDA ($10,X)` | Pre-indexed indirect by X |
+| (Indirect), Y | `LDA ($10),Y` | Post-indexed indirect by Y |
+| (Indirect) Zero Page | `LDA ($10)` | Zero-page indirect (65C02) |
+| Relative | `BEQ label` | 8-bit relative offset |
+| Absolute Indirect X | `JMP ($1234,X)` | Absolute indexed indirect (65C02) |
 
-## Precisión de ciclos
+## Cycle accuracy
 
-Cuando el modo ciclo-exacto está activado (`SetCycleAccurate(true)`), cada instrucción consume el número correcto de ciclos del 65C02. Los accesos que cruzan límites de página añaden un ciclo extra de penalización.
+When cycle-accurate mode is enabled (`SetCycleAccurate(true)`), each instruction consumes the correct number of 65C02 clock cycles. Accesses that cross a page boundary add an extra penalty cycle.

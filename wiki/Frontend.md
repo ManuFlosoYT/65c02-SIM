@@ -1,120 +1,120 @@
-# Frontend — Interfaz gráfica de usuario
+# Frontend — Graphical User Interface
 
-**Directorio:** `Frontend/`  
-**Tecnologías:** ImGui (docking branch) · SDL3 · OpenGL 3.3 · ImGuiFileDialog
+**Directory:** `Frontend/`  
+**Technologies:** ImGui (docking branch) · SDL3 · OpenGL 3.3 · ImGuiFileDialog
 
-## Descripción general
+## Overview
 
-El frontend proporciona una **interfaz gráfica multi-ventana** basada en Dear ImGui. Permite controlar la emulación, visualizar el estado del hardware en tiempo real y cargar programas binarios. Cada componente del hardware tiene su propia ventana de visualización.
+The frontend provides a **multi-window graphical interface** based on Dear ImGui. It lets you control the emulation, inspect hardware state in real time, and load binary programs. Each hardware component has its own dedicated visualisation window.
 
-## Estructura
+## Structure
 
 ```
 Frontend/
-├── main.cpp                  ← Punto de entrada de la aplicación
-├── UpdateChecker.h/cpp       ← Comprobador de actualizaciones (HTTPS)
+├── main.cpp                  ← Application entry point
+├── UpdateChecker.h/cpp       ← Update checker (HTTPS)
 ├── Control/
-│   ├── AppState.h            ← Estado global de la aplicación
-│   └── Console.h/cpp         ← Búfer de texto de la consola
+│   ├── AppState.h            ← Global application state
+│   └── Console.h/cpp         ← Console text buffer
 └── GUI/
-    ├── ControlWindow         ← Controles principales
-    ├── ConsoleWindow         ← Consola de texto
-    ├── RegistersWindow       ← Visor de registros CPU
-    ├── LCDWindow             ← Pantalla LCD
-    ├── VRAMViewerWindow      ← Visor de VRAM
-    ├── SIDViewerWindow       ← Visor del chip SID
-    └── UpdatePopup           ← Popup de actualización disponible
+    ├── ControlWindow         ← Main controls
+    ├── ConsoleWindow         ← Text console
+    ├── RegistersWindow       ← CPU register viewer
+    ├── LCDWindow             ← LCD display
+    ├── VRAMViewerWindow      ← VRAM viewer
+    ├── SIDViewerWindow       ← SID chip viewer
+    └── UpdatePopup           ← Update available popup
 ```
 
-## Ventanas de la GUI
+## GUI windows
 
-### ControlWindow — Controles de emulación
+### ControlWindow — Emulation controls
 
-Permite al usuario:
-- **Cargar un binario** usando el diálogo de archivos (ImGuiFileDialog)
-- **Iniciar / Pausar / Reanudar / Detener** la emulación
-- **Paso a paso** (`Step`) — ejecuta una instrucción
-- Configurar la **velocidad** (IPS — instrucciones por segundo)
-- Activar/desactivar el **modo ciclo-exacto**
-- Activar/desactivar la **GPU**
-- Mostrar la **velocidad actual** (IPS real)
+Allows the user to:
+- **Load a binary** using the file dialog (ImGuiFileDialog)
+- **Start / Pause / Resume / Stop** emulation
+- **Step** — execute a single instruction
+- Configure the **speed** (IPS — instructions per second)
+- Toggle **cycle-accurate mode**
+- Toggle the **GPU**
+- Display the **current speed** (actual IPS)
 
-### ConsoleWindow — Consola de texto
+### ConsoleWindow — Text console
 
-Muestra el texto enviado por la ACIA (puerto serie del 65c02). También permite **escribir** texto que se inyecta como entrada al emulador (`InjectKey`).
+Displays text sent by the ACIA (serial port of the 65c02). Also lets you **type** text that is injected as input to the emulator (`InjectKey`).
 
-Características:
-- Búfer circular de texto
-- Scroll automático al final
-- Copia al portapapeles
+Features:
+- Circular text buffer
+- Auto-scroll to bottom
+- Copy to clipboard
 
-### RegistersWindow — Visor de registros
+### RegistersWindow — Register viewer
 
-Muestra en tiempo real el estado de la CPU:
+Shows the CPU state in real time:
 
-| Campo | Descripción |
+| Field | Description |
 |-------|-------------|
 | `PC` | Program Counter (hex) |
 | `SP` | Stack Pointer (hex) |
-| `A` | Acumulador |
-| `X` | Registro X |
-| `Y` | Registro Y |
-| `N V - B D I Z C` | Flags de estado individuales |
-| Ciclos restantes | En modo ciclo-exacto |
+| `A` | Accumulator |
+| `X` | X register |
+| `Y` | Y register |
+| `N V - B D I Z C` | Individual status flags |
+| Remaining cycles | In cycle-accurate mode |
 
-### LCDWindow — Pantalla LCD
+### LCDWindow — LCD display
 
-Visualiza el contenido actual de la pantalla LCD 2×16 con una fuente monoespaciada, simulando una pantalla LCD física.
+Renders the current contents of the 2×16 LCD with a monospace font, simulating a physical LCD screen.
 
-### VRAMViewerWindow — Visor de VRAM
+### VRAMViewerWindow — VRAM viewer
 
-Renderiza el contenido de la VRAM (100×75 píxeles) como una textura OpenGL a escala. Se actualiza en cada frame del renderizador.
+Renders the VRAM contents (100×75 pixels) as a scaled OpenGL texture. Updated every renderer frame.
 
-### SIDViewerWindow — Visor del SID
+### SIDViewerWindow — SID viewer
 
-Muestra el estado de los 3 osciladores del chip SID:
-- Frecuencia programada de cada voz
-- Ancho de pulso
-- Estado de la envolvente ADSR (barra de nivel)
-- Formas de onda activas (Triangle / Sawtooth / Pulse / Noise)
+Shows the state of all 3 SID chip oscillators:
+- Programmed frequency for each voice
+- Pulse width
+- ADSR envelope state (level bar)
+- Active waveforms (Triangle / Sawtooth / Pulse / Noise)
 
-### UpdatePopup — Actualización
+### UpdatePopup — Update notification
 
-Al iniciar la aplicación, `UpdateChecker` consulta la última versión en GitHub vía HTTPS. Si hay una versión más reciente disponible, muestra un popup con un enlace a la página de releases.
+At startup, `UpdateChecker` queries the latest version on GitHub via HTTPS. If a newer version is available, a popup is shown with a link to the releases page.
 
 ```cpp
 UpdateChecker checker;
 checker.CheckAsync([](const std::string& latestVersion) {
-    // Mostrar popup si latestVersion > currentVersion
+    // Show popup if latestVersion > currentVersion
 });
 ```
 
-## AppState — Estado global
+## AppState — Global state
 
-`Control/AppState.h` define la estructura de estado compartida entre la GUI y la capa de control. Contiene referencias al emulador, flags de estado (pausado, en ejecución, etc.) y la ruta del binario cargado.
+`Control/AppState.h` defines the shared state structure between the GUI and the control layer. It holds references to the emulator, status flags (paused, running, etc.), and the path of the loaded binary.
 
-## Ciclo de renderizado
+## Render loop
 
-El bucle principal (`main.cpp`) sigue el patrón estándar de ImGui + SDL3 + OpenGL:
+The main loop (`main.cpp`) follows the standard ImGui + SDL3 + OpenGL pattern:
 
 ```
 while (running):
-    1. Procesar eventos SDL3 (teclado, ratón, cierre)
+    1. Process SDL3 events (keyboard, mouse, window close)
     2. ImGui::NewFrame()
-    3. Renderizar todas las ventanas (ControlWindow, ConsoleWindow, ...)
+    3. Render all windows (ControlWindow, ConsoleWindow, ...)
     4. ImGui::Render()
     5. glClear + ImGui_ImplOpenGL3_RenderDrawData()
     6. SDL_GL_SwapWindow()
 ```
 
-## Dependencias externas
+## External dependencies
 
-| Librería | Versión | Uso |
-|----------|---------|-----|
-| SDL3 | 3.4.x | Ventana, eventos, audio |
-| ImGui | docking branch | Interfaz gráfica |
-| ImGuiFileDialog | 0.6.4 | Diálogo de apertura de archivos |
-| GLAD | 2.0.8 | Cargador de OpenGL |
-| nlohmann/json | 3.12.0 | Parseo de JSON (respuesta de GitHub API) |
-| cpp-httplib | 0.15.3 | Cliente HTTP/HTTPS para el update checker |
-| OpenSSL | — | TLS para las peticiones HTTPS |
+| Library | Version | Use |
+|---------|---------|-----|
+| SDL3 | 3.4.x | Window, events, audio |
+| ImGui | docking branch | GUI framework |
+| ImGuiFileDialog | 0.6.4 | File open dialog |
+| GLAD | 2.0.8 | OpenGL loader |
+| nlohmann/json | 3.12.0 | JSON parsing (GitHub API response) |
+| cpp-httplib | 0.15.3 | HTTP/HTTPS client for update checker |
+| OpenSSL | — | TLS for HTTPS requests |

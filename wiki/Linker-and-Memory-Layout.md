@@ -1,88 +1,88 @@
-# Linker y Mapa de Memoria
+# Linker and Memory Layout
 
-**Directorio:** `Linker/`
+**Directory:** `Linker/`
 
-## Descripción general
+## Overview
 
-El directorio `Linker/` contiene los archivos de configuración del enlazador (`ld65` de la suite **cc65**), el BIOS del sistema y el intérprete Microsoft BASIC. Estos archivos definen cómo se organiza el código y los datos en el espacio de direcciones de 64 KB del 65c02.
+The `Linker/` directory contains the linker configuration files (`ld65` from the **cc65** suite), the system BIOS, and the Microsoft BASIC interpreter. These files define how code and data are laid out within the 65c02's 64 KB address space.
 
-## Mapa de memoria completo
+## Full memory map
 
 ```
-0x0000 – 0x00FF   Página cero (Zero Page) — variables de acceso rápido
-0x0100 – 0x01FF   Pila (Stack)
-0x0200 – 0x02FF   (libre)
-0x0300 – 0x03FF   INPUT_BUFFER — búfer circular de entrada BIOS
-0x0400 – 0x47FF   RAM_1 — variables C y heap principal
-0x4800 – 0x481F   SID — 32 registros del chip de sonido
-0x4820 – 0x5FFF   RAM_2 — memoria RAM adicional
-0x5000 – 0x5003   ACIA — registros de comunicación serie (dentro de RAM_2)
-0x6000 – 0x600F   VIA — 16 registros de E/S
-0x6010 – 0x7FFF   RAM_3 — memoria RAM adicional
-0x8000 – 0xFFF9   ROM — código del programa + BASIC + BIOS
-0xFFFA – 0xFFFB   Vector NMI
-0xFFFC – 0xFFFD   Vector RESET
-0xFFFE – 0xFFFF   Vector IRQ/BRK
+0x0000 – 0x00FF   Zero Page — fast-access variables
+0x0100 – 0x01FF   Stack
+0x0200 – 0x02FF   (free)
+0x0300 – 0x03FF   INPUT_BUFFER — BIOS circular input buffer
+0x0400 – 0x47FF   RAM_1 — C variables and main heap
+0x4800 – 0x481F   SID — 32 sound chip registers
+0x4820 – 0x5FFF   RAM_2 — additional RAM
+0x5000 – 0x5003   ACIA — serial communication registers (within RAM_2)
+0x6000 – 0x600F   VIA — 16 I/O registers
+0x6010 – 0x7FFF   RAM_3 — additional RAM
+0x8000 – 0xFFF9   ROM — program code + BASIC + BIOS
+0xFFFA – 0xFFFB   NMI vector
+0xFFFC – 0xFFFD   RESET vector
+0xFFFE – 0xFFFF   IRQ/BRK vector
 ```
 
-> Con GPU habilitada, `0x2000`–`0x3FFF` (dentro de RAM_1) se usa como VRAM.
+> With the GPU enabled, `0x2000`–`0x3FFF` (within RAM_1) is used as VRAM.
 
-## Archivos de configuración del enlazador
+## Linker configuration files
 
-### `C-Runtime.cfg` — Runtime C estándar
+### `C-Runtime.cfg` — Standard C runtime
 
-Configuración por defecto para programas en C. Define:
-- Página cero para variables ZP del runtime cc65
-- Stack C en `$7000`
-- Código en ROM (`$8000`–`$FFFA`)
-- Segmentos `DATA` (copiado de ROM a RAM en el arranque), `BSS`, `CODE`, `RODATA`, `BIOS`
+Default configuration for C programs. Defines:
+- Zero page for cc65 runtime ZP variables
+- C stack at `$7000`
+- Code in ROM (`$8000`–`$FFFA`)
+- Segments `DATA` (copied from ROM to RAM at startup), `BSS`, `CODE`, `RODATA`, `BIOS`
 
-### `C-Runtime-GPU.cfg` — Runtime C con GPU
+### `C-Runtime-GPU.cfg` — C runtime with GPU
 
-Igual que `C-Runtime.cfg` pero reserva `0x2000`–`0x3FFF` como VRAM para la GPU. El heap C comienza después de la VRAM.
+Same as `C-Runtime.cfg` but reserves `0x2000`–`0x3FFF` as VRAM for the GPU. The C heap starts after the VRAM region.
 
-### `C-Runtime-GPUDoubleBuffer.cfg` — GPU con doble búfer
+### `C-Runtime-GPUDoubleBuffer.cfg` — GPU with double buffer
 
-Igual que `C-Runtime-GPU.cfg` pero divide la VRAM en dos mitades para double-buffering (elimina el tearing en animaciones).
+Same as `C-Runtime-GPU.cfg` but splits the VRAM into two halves for double-buffering (eliminates tearing in animations).
 
-### `raw.cfg` — Ensamblador puro
+### `raw.cfg` — Pure assembly
 
-Configuración mínima para programas en ensamblador sin runtime C. El código comienza directamente en `$8000` y los vectores de interrupción están en `$FFFA`–`$FFFF`.
+Minimal configuration for assembly programs without a C runtime. Code starts directly at `$8000` and the interrupt vectors are at `$FFFA`–`$FFFF`.
 
 ## BIOS (`bios.s`)
 
-El BIOS proporciona rutinas básicas de entrada/salida que son usadas tanto por Microsoft BASIC como por los programas en C a través del runtime cc65.
+The BIOS provides basic I/O routines used by both Microsoft BASIC and C programs through the cc65 runtime.
 
-### Rutinas exportadas
+### Exported routines
 
-| Símbolo | Descripción |
-|---------|-------------|
-| `MONRDKEY` / `CHRIN` | Lee un carácter del búfer de entrada (bloqueante) |
-| `MONGETCHAR_NB` | Lee un carácter del búfer sin bloquear |
-| `MONPEEK` | Inspecciona el siguiente carácter sin extraerlo |
-| `MONCOUT` / `CHROUT` | Envía un carácter por la ACIA (consola) |
-| `INIT_BUFFER` | Inicializa el búfer circular de entrada |
-| `IRQ_HANDLER` | Manejador de interrupciones (recibe bytes por ACIA) |
-| `LOAD` / `SAVE` | Stubs vacíos (para compatibilidad con BASIC) |
+| Symbol | Description |
+|--------|-------------|
+| `MONRDKEY` / `CHRIN` | Read a character from the input buffer (blocking) |
+| `MONGETCHAR_NB` | Read a character from the buffer without blocking |
+| `MONPEEK` | Peek at the next character without removing it |
+| `MONCOUT` / `CHROUT` | Send a character via the ACIA (console) |
+| `INIT_BUFFER` | Initialize the circular input buffer |
+| `IRQ_HANDLER` | Interrupt handler (receives bytes via ACIA) |
+| `LOAD` / `SAVE` | Empty stubs (for BASIC compatibility) |
 
-### Búfer circular de entrada
+### Circular input buffer
 
-El BIOS implementa un **búfer circular de 256 bytes** en `$0300`–`$03FF`:
-- `WRITE_PTR` (`$00`): índice de escritura (ISR → buffer)
-- `READ_PTR` (`$01`): índice de lectura (programa → buffer)
-- La ISR (`IRQ_HANDLER`) escribe cada byte recibido por ACIA en el búfer
-- `MONRDKEY` lee del búfer de forma bloqueante
-- Cuando el búfer está casi lleno (`>= 0xB0`), activa el control de flujo por hardware (bit 0 de PORTA)
+The BIOS implements a **256-byte circular buffer** at `$0300`–`$03FF`:
+- `WRITE_PTR` (`$00`): write index (ISR → buffer)
+- `READ_PTR` (`$01`): read index (program → buffer)
+- The ISR (`IRQ_HANDLER`) writes each byte received via ACIA into the buffer
+- `MONRDKEY` reads from the buffer in a blocking loop
+- When the buffer is nearly full (`>= 0xB0`), hardware flow control is asserted (bit 0 of PORTA)
 
-### Rutina de salida `MONCOUT`
+### Output routine `MONCOUT`
 
 ```asm
 MONCOUT:
     pha
-    sta ACIA_DATA       ; Enviar carácter por serie
+    sta ACIA_DATA       ; Send character over serial
     lda #$FF
 @txdelay:
-    dec                 ; Retardo para simular el baud rate
+    dec                 ; Delay to simulate baud rate
     bne @txdelay
     pla
     rts
@@ -90,35 +90,35 @@ MONCOUT:
 
 ## C-Runtime (`C-Runtime.s`)
 
-Código de inicialización del runtime C para cc65. Se ejecuta antes de `main()` y se encarga de:
-1. Copiar el segmento `DATA` de ROM a RAM
-2. Limpiar el segmento `BSS` (poner a cero)
-3. Inicializar el búfer de entrada BIOS
-4. Llamar a los constructores globales de C++
-5. Llamar a `main()`
+C runtime initialization code for cc65. Runs before `main()` and is responsible for:
+1. Copying the `DATA` segment from ROM to RAM
+2. Zeroing the `BSS` segment
+3. Initializing the BIOS input buffer
+4. Calling global C++ constructors
+5. Calling `main()`
 
 ## WozMon (`wozmon.s`)
 
-Monitor de sistema Apple 1 escrito originalmente por **Steve Wozniak** (© 1976 Apple Computer, Inc.). Permite inspeccionar y modificar la memoria directamente desde una consola serie.
+Apple 1 system monitor originally written by **Steve Wozniak** (© 1976 Apple Computer, Inc.). Allows inspecting and modifying memory directly from a serial console.
 
 ## Microsoft BASIC (`msbasic/`)
 
-Directorio con el puerto de **Microsoft BASIC para 6502** (© 1977 Microsoft), basado en las restauraciones de [mist64](https://github.com/mist64/msbasic) y [Ben Eater](https://github.com/beneater/msbasic).
+Directory containing the **Microsoft BASIC for 6502** port (© 1977 Microsoft), based on restorations by [mist64](https://github.com/mist64/msbasic) and [Ben Eater](https://github.com/beneater/msbasic).
 
-- Compilar con `./msbasic/make.sh`
-- El binario resultante se carga en ROM como un programa de ejemplo
-- Permite escribir programas BASIC directamente en la consola del emulador
+- Build with `./msbasic/make.sh`
+- The resulting binary is loaded into ROM as a sample program
+- Allows writing BASIC programs directly in the emulator console
 
-## Herramienta de compilación
+## Compilation tool
 
-La suite cc65 se usa para compilar y enlazar programas:
+The cc65 suite is used to compile and link programs:
 
 ```bash
-# Ensamblar
+# Assemble
 ca65 program.s -o program.o
 
-# Enlazar con el runtime C
+# Link with the C runtime
 ld65 -C Linker/C-Runtime.cfg program.o Linker/C-Runtime.o -o output/rom/program.bin
 ```
 
-El script `compile-bin.sh` automatiza todo este proceso. Consulta la página [SDK](SDK) para más detalles.
+The `compile-bin.sh` script automates the entire process. See the [SDK](SDK) page for more details.

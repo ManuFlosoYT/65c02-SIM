@@ -1,104 +1,104 @@
-# CPU — Procesador WDC 65C02
+# CPU — WDC 65C02 Processor
 
-**Archivo:** `Hardware/CPU.h` / `Hardware/CPU.cpp`  
+**File:** `Hardware/CPU.h` / `Hardware/CPU.cpp`  
 **Namespace:** `Hardware::CPU`
 
-## Descripción general
+## Overview
 
-El núcleo de emulación implementa el procesador **WDC 65C02**, la variante CMOS mejorada del clásico MOS 6502. Añade nuevas instrucciones (bit manipulation, `PHX`, `PHY`, `BRA`, etc.) y corrige algunos comportamientos del 6502 NMOS original.
+The emulation core implements the **WDC 65C02** processor, the enhanced CMOS variant of the classic MOS 6502. It adds new instructions (bit manipulation, `PHX`, `PHY`, `BRA`, etc.) and fixes several behaviors from the original NMOS 6502.
 
-## Registros
+## Registers
 
-| Registro | Tamaño | Descripción |
-|----------|--------|-------------|
-| `PC` | 16 bits | Program Counter — dirección de la próxima instrucción |
-| `SP` | 16 bits | Stack Pointer — apunta a la página 1 (`0x0100`–`0x01FF`) |
-| `A` | 8 bits | Acumulador |
-| `X` | 8 bits | Registro de índice X |
-| `Y` | 8 bits | Registro de índice Y |
+| Register | Size | Description |
+|----------|------|-------------|
+| `PC` | 16 bits | Program Counter — address of the next instruction |
+| `SP` | 16 bits | Stack Pointer — points into page 1 (`0x0100`–`0x01FF`) |
+| `A` | 8 bits | Accumulator |
+| `X` | 8 bits | X index register |
+| `Y` | 8 bits | Y index register |
 
-## Registro de estado (flags)
+## Status register (flags)
 
-El byte de estado se construye con `GetStatus()` / `SetStatus()`:
+The status byte is built with `GetStatus()` / `SetStatus()`:
 
-| Bit | Flag | Descripción |
+| Bit | Flag | Description |
 |-----|------|-------------|
-| 7 | `N` | Negativo (bit 7 del resultado) |
-| 6 | `V` | Desbordamiento |
-| 5 | — | Siempre 1 (no implementado como campo) |
-| 4 | `B` | Break — indica origen de la interrupción en la pila |
-| 3 | `D` | Modo BCD (Decimal) |
-| 2 | `I` | Deshabilitar interrupciones IRQ |
-| 1 | `Z` | Cero (resultado fue 0) |
-| 0 | `C` | Carry / acarreo |
+| 7 | `N` | Negative (bit 7 of the result) |
+| 6 | `V` | Overflow |
+| 5 | — | Always 1 (not implemented as a field) |
+| 4 | `B` | Break — indicates interrupt source on the stack |
+| 3 | `D` | BCD (Decimal) mode |
+| 2 | `I` | IRQ interrupt disable |
+| 1 | `Z` | Zero (result was 0) |
+| 0 | `C` | Carry |
 
-## Vectores de interrupción
+## Interrupt vectors
 
-| Dirección | Vector | Uso |
-|-----------|--------|-----|
-| `0xFFFA`–`0xFFFB` | NMI | Interrupción no enmascarable |
-| `0xFFFC`–`0xFFFD` | RESET | Dirección de inicio tras reset |
-| `0xFFFE`–`0xFFFF` | IRQ/BRK | Interrupción enmascarable / instrucción BRK |
+| Address | Vector | Use |
+|---------|--------|-----|
+| `0xFFFA`–`0xFFFB` | NMI | Non-maskable interrupt |
+| `0xFFFC`–`0xFFFD` | RESET | Start address after reset |
+| `0xFFFE`–`0xFFFF` | IRQ/BRK | Maskable interrupt / BRK instruction |
 
-Al arrancar, la CPU lee el vector RESET (`0xFFFC`) para obtener la dirección inicial.
+On startup, the CPU reads the RESET vector (`0xFFFC`) to obtain the initial address.
 
-## Ciclo de ejecución
+## Execution cycle
 
 ```
 Reset() → isInit = false
    ↓
-Step() → si !isInit: leer vector RESET → PC
+Step() → if !isInit: read RESET vector → PC
    ↓
-Dispatch() → leer opcode en PC, ejecutar instrucción
+Dispatch() → fetch opcode at PC, execute instruction
    ↓
-Devuelve 0 (OK) / 1 (JAM) / -1 (opcode inválido)
+Returns 0 (OK) / 1 (JAM) / -1 (invalid opcode)
 ```
 
-### Modo ciclo-exacto (`cycleAccurate`)
+### Cycle-accurate mode (`cycleAccurate`)
 
-Cuando está activo, cada instrucción consume el número correcto de ciclos de reloj:
+When enabled, each instruction consumes the correct number of clock cycles:
 
 ```cpp
 emulator.SetCycleAccurate(true);
 ```
 
-Internamente, `remainingCycles` decrementa en cada llamada a `Step()` hasta llegar a 0, momento en que se ejecuta la siguiente instrucción. También aplica penalizaciones por cruce de página:
+Internally, `remainingCycles` decrements on each `Step()` call until it reaches 0, at which point the next instruction is executed. Page-crossing penalties are also applied:
 
 ```cpp
 cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
 ```
 
-## Interrupciones
+## Interrupts
 
-### IRQ (enmascarable)
+### IRQ (maskable)
 ```
-IRQ() → si flag I == 0:
-   1. Push PC en pila
-   2. Push estado (B=0) en pila
-   3. I = 1, D = 0  ← el 65C02 limpia el flag Decimal
+IRQ() → if flag I == 0:
+   1. Push PC onto stack
+   2. Push status (B=0) onto stack
+   3. I = 1, D = 0  ← the 65C02 clears the Decimal flag on IRQ
    4. PC = mem[0xFFFE]
 ```
 
-### Modo espera (`WAI`)
-La instrucción `WAI` pone la CPU en estado `waiting = true`. Se despierta cuando el bit 7 del registro `ACIA_STATUS` (`0x5001`) cambia a 1.
+### Wait mode (`WAI`)
+The `WAI` instruction puts the CPU into `waiting = true` state. It wakes up when bit 7 of the `ACIA_STATUS` register (`0x5001`) becomes 1.
 
-## Pila
+## Stack
 
-La pila reside en la **página 1** (`0x0100`–`0x01FF`). El puntero de pila (`SP`) apunta al siguiente byte libre y crece hacia abajo. Las operaciones de desbordamiento hacen wrap dentro de la misma página:
+The stack lives in **page 1** (`0x0100`–`0x01FF`). The stack pointer (`SP`) points to the next free byte and grows downward. Overflow wraps within the same page:
 
 ```
 PushByte: SP < 0x0100 → SP = 0x01FF
 PopByte:  SP > 0x01FF → SP = 0x0100
 ```
 
-## Despacho de instrucciones
+## Instruction dispatch
 
-El despacho se realiza en `Hardware/CPU/Dispatch.cpp`. Cada opcode tiene su propia clase en `Hardware/CPU/Instructions/`, de forma que el compilador puede optimizar con inline o LTO.
+Dispatch is handled in `Hardware/CPU/Dispatch.cpp`. Each opcode has its own class in `Hardware/CPU/Instructions/`, allowing the compiler to apply inline expansion or LTO.
 
 ```
 Dispatch(cpu, mem)
    └─ FetchByte(PC)  →  opcode
-      └─ switch(opcode)  →  Instrucción::Execute(cpu, mem)
+      └─ switch(opcode)  →  Instruction::Execute(cpu, mem)
 ```
 
-Consulta la página [CPU Instructions](CPU-Instructions) para ver el listado completo de instrucciones soportadas.
+See the [CPU Instructions](CPU-Instructions) page for the full list of supported instructions.
