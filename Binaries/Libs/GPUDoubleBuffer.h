@@ -6,15 +6,22 @@
 /* VRAM Constants */
 #define GPU_VRAM_START 0x2000
 #define GPU_VRAM_END 0x3FFF
-#define GPU_BACKBUF_START 0x4000
+#define GPU_BACKBUF_START 0x6010
 #define GPU_WIDTH 100
 #define GPU_STRIDE 128
+#define GPU_BACKBUF_STRIDE 100
 #define GPU_HEIGHT 64
 
 // Copies the back buffer to the front buffer (VRAM), presenting the frame
 void drawFrame() {
-    memcpy((void*)(unsigned long)GPU_VRAM_START,
-           (void*)(unsigned long)GPU_BACKBUF_START, GPU_STRIDE * GPU_HEIGHT);
+    register unsigned char i;
+    unsigned char* src = (unsigned char*)(unsigned long)GPU_BACKBUF_START;
+    unsigned char* dst = (unsigned char*)(unsigned long)GPU_VRAM_START;
+    for (i = 0; i < GPU_HEIGHT; ++i) {
+        memcpy(dst, src, GPU_WIDTH);
+        src += GPU_BACKBUF_STRIDE;
+        dst += GPU_STRIDE;
+    }
 }
 
 // Writes a pixel to the back buffer if coordinates are within bounds
@@ -26,8 +33,8 @@ void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
         return;
     }
 
-    // Y * 128 + X
-    offset = ((unsigned short)y << 7) + (unsigned char)x;
+    // Y * 100 + X
+    offset = (unsigned short)y * GPU_BACKBUF_STRIDE + (unsigned char)x;
     buf = (unsigned char*)(unsigned long)GPU_BACKBUF_START;
     buf[offset] = color;
 }
@@ -57,19 +64,21 @@ void gpu_draw_rect(signed char x, signed char y, signed char w, signed char h,
     if (max_y > GPU_HEIGHT) max_y = GPU_HEIGHT;
 
     width = max_x - x;
-    buf_row = (unsigned char*)(unsigned long)(GPU_BACKBUF_START +
-                                              ((unsigned short)y << 7) + x);
+    buf_row =
+        (unsigned char*)(unsigned long)(GPU_BACKBUF_START +
+                                        (unsigned short)y * GPU_BACKBUF_STRIDE +
+                                        x);
 
     for (j = y; j < max_y; j++) {
         memset(buf_row, color, width);
-        buf_row += GPU_STRIDE;
+        buf_row += GPU_BACKBUF_STRIDE;
     }
 }
 
 // Fills the entire back buffer
 void gpu_fill_screen(unsigned char color) {
     unsigned char* buf = (unsigned char*)(unsigned long)GPU_BACKBUF_START;
-    memset(buf, color, GPU_STRIDE * GPU_HEIGHT);
+    memset(buf, color, GPU_BACKBUF_STRIDE * GPU_HEIGHT);
 }
 
 int gpu_abs(int v) { return (v < 0) ? -v : v; }
@@ -177,7 +186,7 @@ void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
             if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
 
             if (xl <= xr) {
-                offset = ((unsigned short)y << 7) + xl;
+                offset = (unsigned short)y * GPU_BACKBUF_STRIDE + xl;
                 memset((void*)(unsigned long)(GPU_BACKBUF_START + offset),
                        color, xr - xl + 1);
             }
@@ -222,7 +231,7 @@ void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
             if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
 
             if (xl <= xr) {
-                offset = ((unsigned short)y << 7) + xl;
+                offset = (unsigned short)y * GPU_BACKBUF_STRIDE + xl;
                 memset((void*)(unsigned long)(GPU_BACKBUF_START + offset),
                        color, xr - xl + 1);
             }
