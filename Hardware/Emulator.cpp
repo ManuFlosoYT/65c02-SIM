@@ -124,7 +124,7 @@ int Emulator::Step() {
     if (baudDelay > 0) baudDelay--;
 
     // Check ACIA IRQ
-    if ((mem.Read(ACIA_STATUS) & 0x80) != 0) {
+    if ((mem.memory[ACIA_STATUS] & 0x80) != 0) {
         cpu.IRQ(mem);
     }
 
@@ -136,7 +136,7 @@ int Emulator::Step() {
 
     // If waiting (WAI), check if there is a pending interrupt
     if (cpu.waiting) {
-        if ((mem.Read(ACIA_STATUS) & 0x80) != 0 || via.isIRQAsserted()) {
+        if ((mem.memory[ACIA_STATUS] & 0x80) != 0 || via.isIRQAsserted()) {
             cpu.waiting = false;
         } else {
             return 0;
@@ -144,7 +144,7 @@ int Emulator::Step() {
     }
 
     // Process input buffer if ACIA is ready
-    {
+    if (hasInput.load(std::memory_order_relaxed)) {
         std::lock_guard<std::mutex> lock(bufferMutex);
         if (!inputBuffer.empty() && (mem.memory[ACIA_STATUS] & 0x80) == 0 &&
             (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
@@ -159,6 +159,9 @@ int Emulator::Step() {
             // Set delay (2000 clock cycles)
             baudDelay = 2000;
         }
+        if (inputBuffer.empty()) {
+            hasInput.store(false, std::memory_order_relaxed);
+        }
     }
     return res;
 }
@@ -167,6 +170,7 @@ void Emulator::InjectKey(char c) {
     if (c == '\n') c = '\r';
     std::lock_guard<std::mutex> lock(bufferMutex);
     inputBuffer.push_back(c);
+    hasInput.store(true, std::memory_order_relaxed);
 }
 
 void Emulator::SetOutputCallback(std::function<void(char)> cb) {

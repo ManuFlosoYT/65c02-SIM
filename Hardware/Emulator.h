@@ -76,6 +76,7 @@ private:
     // Input buffer
     std::deque<char> inputBuffer;
     std::mutex bufferMutex;
+    std::atomic<bool> hasInput{false};
     int baudDelay = 0;
     bool gpuEnabled = false;
 
