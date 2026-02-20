@@ -25,7 +25,17 @@ public:
     void Init();
 
     // Clock the GPU to advance pixel counters
-    void Clock();
+    inline void Clock() {
+        // Increment pixel counters
+        pixelX++;
+        if (pixelX >= DISPLAY_WIDTH) {
+            pixelX = 0;
+            pixelY++;
+            if (pixelY >= DISPLAY_HEIGHT) {
+                pixelY = 0;
+            }
+        }
+    }
 
     // Get current pixel position (14-bit values)
     Word GetPixelX() const { return pixelX; }

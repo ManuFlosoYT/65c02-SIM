@@ -14,18 +14,6 @@ void GPU::Init() {
     pixelY = 0;
 }
 
-void GPU::Clock() {
-    // Increment pixel counters
-    pixelX++;
-    if (pixelX >= DISPLAY_WIDTH) {
-        pixelX = 0;
-        pixelY++;
-        if (pixelY >= DISPLAY_HEIGHT) {
-            pixelY = 0;
-        }
-    }
-}
-
 void GPU::SetWriteHook(Word address, WriteHook hook, void* context) {
     if (address < 0x4000) {
         writeHooks[address] = hook;
