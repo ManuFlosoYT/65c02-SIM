@@ -6,6 +6,10 @@ void Mem::Init() {
     for (Byte& byte : memory) {
         byte = 0;
     }
+    for (uint32_t i = 0; i <= MAX_MEM; i++) {
+        hasWriteHook[i] = false;
+        hasReadHook[i] = false;
+    }
 }
 
 void Mem::WriteWord(Word data, Word addr) {
@@ -14,9 +18,8 @@ void Mem::WriteWord(Word data, Word addr) {
 }
 
 void Mem::Write(Word addr, Byte val) {
-    auto it = writeHooks.find(addr);  // Find the hook
-    if (it != writeHooks.end()) {
-        it->second(addr, val);  // Execute the hook
+    if (hasWriteHook[addr]) {
+        writeHooks[addr](addr, val);  // Execute the hook
     }
     // Don't write to ROM
     if (addr < 0x8000) {
@@ -26,18 +29,19 @@ void Mem::Write(Word addr, Byte val) {
 
 void Mem::SetWriteHook(Word address, WriteHook hook) {
     writeHooks[address] = hook;  // Assign the hook
+    hasWriteHook[address] = true;
 }
 
 void Mem::WriteROM(Word addr, Byte val) { memory[addr] = val; }
 
 void Mem::SetReadHook(Word address, ReadHook hook) {
     readHooks[address] = hook;  // Assign the hook
+    hasReadHook[address] = true;
 }
 
 Byte Mem::Read(Word addr) {
-    auto it = readHooks.find(addr);  // Find the hook
-    if (it != readHooks.end()) {
-        return it->second(addr);  // Execute the hook
+    if (hasReadHook[addr]) {
+        return readHooks[addr](addr);  // Execute the hook
     }
     return memory[addr];
 }

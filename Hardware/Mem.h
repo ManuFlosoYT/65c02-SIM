@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <map>
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -47,16 +46,19 @@ public:
     Byte operator[](Word addr) const { return memory[addr]; }
 
     void SetWriteHook(Word address, WriteHook hook);
-    void Write(Word addr, Byte val);    // Protects against writing to ROM
-    void WriteROM(Word addr, Byte val); // Used by Unit Tests to force writes
+    void Write(Word addr, Byte val);     // Protects against writing to ROM
+    void WriteROM(Word addr, Byte val);  // Used by Unit Tests to force writes
     void WriteWord(Word data, Word addr);
 
     void SetReadHook(Word address, ReadHook hook);
     Byte Read(Word addr);
 
 private:
-    std::map<Word, WriteHook> writeHooks;
-    std::map<Word, ReadHook> readHooks;
+    WriteHook writeHooks[MAX_MEM + 1]{};
+    bool hasWriteHook[MAX_MEM + 1]{false};
+
+    ReadHook readHooks[MAX_MEM + 1]{};
+    bool hasReadHook[MAX_MEM + 1]{false};
 };
 
 }  // namespace Hardware

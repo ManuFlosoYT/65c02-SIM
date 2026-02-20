@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <map>
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -22,13 +21,12 @@ public:
     const static Byte DISPLAY_WIDTH = 132;
     const static Byte DISPLAY_HEIGHT = 78;
 
-    // The CPU can only write to the first 64 rows of VRAM so we use this to calculate if the GPU is in blanking interval
+    // The CPU can only write to the first 64 rows of VRAM so we use this to
+    // calculate if the GPU is in blanking interval
     const static Byte VRAM_HEIGHT_DRAWABLE_BY_CPU = 64;
 
-    GPU() { 
-        Init(); 
-    }
-    
+    GPU() { Init(); }
+
     Byte vram[VRAM_HEIGHT][VRAM_WIDTH]{};
 
     void Init();
@@ -37,24 +35,19 @@ public:
     void Clock();
 
     // Get current pixel position (14-bit values)
-    Word GetPixelX() const { 
-        return pixelX; 
-    }
+    Word GetPixelX() const { return pixelX; }
 
-    Word GetPixelY() const { 
-        return pixelY; 
-    }
+    Word GetPixelY() const { return pixelY; }
 
     // Bus control status
     bool IsInDrawingInterval() const {
-        // We asume this is always true, since the CPU can only write to the first 64 rows of VRAM
-        // The remaining 14 rows are only accessible by the GPU istelf via loading a bin file into the GPU's memory.
+        // We asume this is always true, since the CPU can only write to the
+        // first 64 rows of VRAM The remaining 14 rows are only accessible by
+        // the GPU istelf via loading a bin file into the GPU's memory.
         return pixelX < VRAM_WIDTH && pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU;
     }
 
-    bool IsInBlankingInterval() const { 
-        return !IsInDrawingInterval(); 
-    }
+    bool IsInBlankingInterval() const { return !IsInDrawingInterval(); }
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
     Byte operator[](Word addr) const {
@@ -71,8 +64,11 @@ public:
     Byte Read(Word addr);
 
 private:
-    std::map<Word, WriteHook> writeHooks;
-    std::map<Word, ReadHook> readHooks;
+    WriteHook writeHooks[0x4000]{};
+    bool hasWriteHook[0x4000]{false};
+
+    ReadHook readHooks[0x4000]{};
+    bool hasReadHook[0x4000]{false};
 
     // Pixel counters (14-bit values)
     Word pixelX = 0;  // 0-131 (132 total)

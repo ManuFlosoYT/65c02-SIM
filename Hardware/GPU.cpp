@@ -6,8 +6,10 @@ namespace Hardware {
 
 void GPU::Init() {
     std::memset(vram, 0, sizeof(vram));
-    writeHooks.clear();
-    readHooks.clear();
+    for (Word i = 0; i < 0x4000; i++) {
+        hasWriteHook[i] = false;
+        hasReadHook[i] = false;
+    }
     pixelX = 0;
     pixelY = 0;
 }
@@ -25,14 +27,16 @@ void GPU::Clock() {
 }
 
 void GPU::SetWriteHook(Word address, WriteHook hook) {
-    writeHooks[address] = hook;
+    if (address < 0x4000) {
+        writeHooks[address] = hook;
+        hasWriteHook[address] = true;
+    }
 }
 
 void GPU::Write(Word addr, Byte val) {
     // Check hooks first
-    auto it = writeHooks.find(addr);
-    if (it != writeHooks.end()) {
-        it->second(addr, val);
+    if (addr < 0x4000 && hasWriteHook[addr]) {
+        writeHooks[addr](addr, val);
     }
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
@@ -45,13 +49,15 @@ void GPU::Write(Word addr, Byte val) {
 }
 
 void GPU::SetReadHook(Word address, ReadHook hook) {
-    readHooks[address] = hook;
+    if (address < 0x4000) {
+        readHooks[address] = hook;
+        hasReadHook[address] = true;
+    }
 }
 
 Byte GPU::Read(Word addr) {
-    auto it = readHooks.find(addr);
-    if (it != readHooks.end()) {
-        return it->second(addr);
+    if (addr < 0x4000 && hasReadHook[addr]) {
+        return readHooks[addr](addr);
     }
 
     // Addressing: A0-A6 = X, A7-A13 = Y
