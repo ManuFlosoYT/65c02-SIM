@@ -1,9 +1,9 @@
 #include <stdlib.h>
 
-#include "Include/BIOS.h"
-#include "Include/GPU.h"
-#include "Include/LCD.h"
-#include "Include/VIA.h"
+#include "Libs/BIOS.h"
+#include "Libs/GPU.h"
+#include "Libs/LCD.h"
+#include "Libs/VIA.h"
 
 #define CLOCK_HZ 1000000UL
 #define TARGET_FPS 30

@@ -1,5 +1,5 @@
-#include "Include/VIA.h"
-#include "Include/BIOS.h"
+#include "Libs/VIA.h"
+#include "Libs/BIOS.h"
 
 // Simple wait loop
 void wait(long cycles) {

@@ -1,5 +1,5 @@
 
-#include "Include/SID.h"
+#include "Libs/SID.h"
 
 int main() {
     uint16_t melody[] = {NOTE_C4, NOTE_E4, NOTE_G4, NOTE_C5,

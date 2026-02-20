@@ -69,7 +69,16 @@ elif [ -f "Binaries/$NAME.c" ]; then
     echo "--- Compiling $NAME.c (C) ---"
     cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
         -o "Binaries/build/$NAME.s" "Binaries/$NAME.c"
-    cl65 --cpu 65C02 -t none -C Linker/C-Runtime.cfg \
+
+    # Seleccionar configuración de memoria según si el programa usa la GPU
+    if grep -q '#include "Libs/GPU.h"' "Binaries/$NAME.c"; then
+        echo "  [GPU detected] Using C-Runtime-GPU.cfg (0x2000-0x3FFF reserved for VRAM)"
+        LINKER_CFG="Linker/C-Runtime-GPU.cfg"
+    else
+        LINKER_CFG="Linker/C-Runtime.cfg"
+    fi
+
+    cl65 --cpu 65C02 -t none -C "$LINKER_CFG" \
         -o "Binaries/build/$NAME.bin" \
         -m "Binaries/build/$NAME.map" \
         -l "Binaries/build/$NAME.lst" \

@@ -1,7 +1,7 @@
-#include "Include/BIOS.h"
-#include "Include/GPU.h"
-#include "Include/LCD.h"
-#include "Include/VIA.h"
+#include "Libs/BIOS.h"
+#include "Libs/GPU.h"
+#include "Libs/LCD.h"
+#include "Libs/VIA.h"
 
 // --- VIA Configuration ---
 #define CLOCK_HZ 1000000UL

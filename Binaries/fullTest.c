@@ -1,7 +1,7 @@
-#include "Include/BIOS.h"
-#include "Include/GPU.h"
-#include "Include/LCD.h"
-#include "Include/SID.h"
+#include "Libs/BIOS.h"
+#include "Libs/GPU.h"
+#include "Libs/LCD.h"
+#include "Libs/SID.h"
 
 /* --- Helper Variables --- */
 unsigned int failures = 0;

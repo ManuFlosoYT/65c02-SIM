@@ -1,8 +1,8 @@
-#include "Include/BIOS.h"
-#include "Include/GPU.h"
-#include "Include/LCD.h"
-#include "Include/VIA.h"
-#include "Include/SID.h"
+#include "Libs/BIOS.h"
+#include "Libs/GPU.h"
+#include "Libs/LCD.h"
+#include "Libs/VIA.h"
+#include "Libs/SID.h"
 
 /* --- CONFIGURACIÓN --- */
 #define CLOCK_HZ        1000000UL
