@@ -47,23 +47,35 @@ void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
 
             draw_list->AddRectFilled(cell_min, cell_max, cellColor);
 
-            char c = screen[row][col];
-            if (c != 0) {
-                char str[2] = {c, 0};
+            if (lcd.IsDisplayOn()) {
+                char c = screen[row][col];
+                if (c != 0) {
+                    char str[2] = {c, 0};
 
-                ImFont* font = ImGui::GetFont();
-                float fontSize = cell_h * 0.8f;
+                    ImFont* font = ImGui::GetFont();
+                    float fontSize = cell_h * 0.8f;
 
-                ImVec2 textSize =
-                    font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, str);
-                float textX = x + (cell_w - textSize.x) * 0.5f;
-                float textY = y + (cell_h - textSize.y) * 0.5f;
+                    ImVec2 textSize =
+                        font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, str);
+                    float textX = x + (cell_w - textSize.x) * 0.5f;
+                    float textY = y + (cell_h - textSize.y) * 0.5f;
 
-                // Simulating bold text by drawing twice with offset
-                draw_list->AddText(font, fontSize, ImVec2(textX + 1.0f, textY),
-                                   textColor, str);
-                draw_list->AddText(font, fontSize, ImVec2(textX, textY),
-                                   textColor, str);
+                    // Simulating bold text by drawing twice with offset
+                    draw_list->AddText(font, fontSize,
+                                       ImVec2(textX + 1.0f, textY), textColor,
+                                       str);
+                    draw_list->AddText(font, fontSize, ImVec2(textX, textY),
+                                       textColor, str);
+                }
+
+                if (lcd.IsCursorOn() && row == lcd.GetCursorY() &&
+                    col == lcd.GetCursorX()) {
+                    ImVec2 cursor_min = ImVec2(cell_min.x + 2.0f,
+                                               cell_max.y - (cell_h * 0.15f));
+                    ImVec2 cursor_max =
+                        ImVec2(cell_max.x - 2.0f, cell_max.y - 2.0f);
+                    draw_list->AddRectFilled(cursor_min, cursor_max, textColor);
+                }
             }
         }
     }

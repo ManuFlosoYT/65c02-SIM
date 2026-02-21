@@ -97,22 +97,70 @@ void LCD::WriteCharToScreen(char c) {
         screen[cursorY][cursorX] = c;
     }
 
-    cursorX++;
-    if (cursorX >= 16) {
-        cursorX = 0;
-        cursorY++;
-        if (cursorY >= 2) cursorY = 0;
+    if (cursor_increment) {
+        cursorX++;
+        if (cursorX >= 16) {
+            cursorX = 0;
+            cursorY++;
+            if (cursorY >= 2) cursorY = 0;
+        }
+    } else {
+        cursorX--;
+        if (cursorX < 0) {
+            cursorX = 15;
+            cursorY--;
+            if (cursorY < 0) cursorY = 1;
+        }
     }
 }
 
 void LCD::HandleCommand(Byte cmd) {
-    if (cmd == 0x01) {
-        // Clear Display
-        std::memset(screen, ' ', sizeof(screen));
-        cursorX = 0;
-        cursorY = 0;
+    switch (cmd) {
+        case 0x01:
+            std::memset(screen, ' ', sizeof(screen));
+            cursorX = 0;
+            cursorY = 0;
+            break;
+        case 0x02:
+            cursorX = 0;
+            cursorY = 0;
+            break;
+        case 0x06:
+            cursor_increment = true;
+            break;
+        case 0x0C:
+            display_on = true;
+            cursor_on = false;
+            break;
+        case 0x0E:
+            display_on = true;
+            cursor_on = true;
+            break;
+        case 0x28:
+            four_bit_mode = true;
+            break;
+        case 0x80:
+            cursorX = 0;
+            cursorY = 0;
+            break;
+        case 0xC0:
+            cursorX = 0;
+            cursorY = 1;
+            break;
+        default:
+            if ((cmd & 0x80) == 0x80) {
+                Byte addr = cmd & 0x7F;
+                if (addr >= 0x40) {
+                    cursorY = 1;
+                    cursorX = addr - 0x40;
+                } else {
+                    cursorY = 0;
+                    cursorX = addr;
+                }
+                if (cursorX > 15) cursorX = 15;
+            }
+            break;
     }
-    // Other commands could be implemented here
 }
 
 }  // namespace Hardware

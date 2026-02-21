@@ -14,17 +14,16 @@ public:
     void Init(Mem& mem);
     void Update(Byte portBVal);
 
-    void SetOutputCallback(std::function<void(char)> cb) { 
-        onChar = cb; 
-    }
-    
-    const char (&GetScreen() const)[2][16] { 
-        return screen; 
-    }
+    void SetOutputCallback(std::function<void(char)> cb) { onChar = cb; }
 
-    bool IsInitialized() const { 
-        return is_init; 
-    }
+    const char (&GetScreen() const)[2][16] { return screen; }
+
+    bool IsInitialized() const { return is_init; }
+
+    bool IsDisplayOn() const { return display_on; }
+    bool IsCursorOn() const { return cursor_on; }
+    int GetCursorX() const { return cursorX; }
+    int GetCursorY() const { return cursorY; }
 
 private:
     bool four_bit_mode = false;
@@ -38,6 +37,11 @@ private:
     char screen[2][16];
     int cursorX = 0;
     int cursorY = 0;
+
+    bool display_on = true;
+    bool cursor_on = false;
+    bool cursor_increment = true;
+
     std::function<void(char)> onChar;
 
     void WriteCharToScreen(char c);

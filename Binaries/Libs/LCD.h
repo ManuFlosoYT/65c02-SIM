@@ -48,6 +48,26 @@ void lcd_print_char(unsigned char c) {
 void lcd_clear(void) { lcd_instruction(0x01); }
 
 /*
+   Triggers: LCD::HandleCommand with cmd 0x02
+*/
+void lcd_return_home(void) { lcd_instruction(0x02); }
+
+/*
+   Triggers: LCD::HandleCommand with cmd 0x06
+*/
+void lcd_entry_mode_increment(void) { lcd_instruction(0x06); }
+
+/*
+   Triggers: LCD::HandleCommand with cmd 0x0C
+*/
+void lcd_display_on_cursor_off(void) { lcd_instruction(0x0C); }
+
+/*
+   Triggers: LCD::HandleCommand with cmd 0x0E
+*/
+void lcd_display_on_cursor_on(void) { lcd_instruction(0x0E); }
+
+/*
    Triggers: LCD::WriteCharToScreen with '\n', which resets cursorX and
    increments cursorY
 */
