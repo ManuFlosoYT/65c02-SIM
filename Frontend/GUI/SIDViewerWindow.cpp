@@ -12,9 +12,16 @@ namespace GUI {
 void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                          float top_section_height,
                          ImGuiWindowFlags window_flags) {
-    ImGui::SetNextWindowPos(ImVec2(work_pos.x + work_size.x * 0.47f, work_pos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.33f, top_section_height), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(
+        ImVec2(work_pos.x + work_size.x * 0.47f, work_pos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.33f, top_section_height),
+                             ImGuiCond_Always);
     ImGui::Begin("SID Viewer", nullptr, window_flags);
+
+    static double sid_time = 0.0;
+    if (state.emulator.IsRunning() && !state.emulator.IsPaused()) {
+        sid_time += ImGui::GetIO().DeltaTime;
+    }
 
     for (int i = 0; i < 3; ++i) {
         const auto& voice = state.emulator.GetSID().GetVoice(i);
@@ -26,8 +33,21 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         ImGui::Text("Voice %d", i + 1);
 
         // Waveform visualization
+        static float noise_buffer[3][50];
+        static bool initialized = false;
+
+        if (!initialized) {
+            for (int v = 0; v < 3; v++)
+                for (int n = 0; n < 50; n++)
+                    noise_buffer[v][n] = ((float)(rand() % 100) / 50.0f) - 1.0f;
+            initialized = true;
+        }
+
+        bool should_update =
+            state.emulator.IsRunning() && !state.emulator.IsPaused();
+
         float points[50];
-        double time = ImGui::GetTime();
+        double time = sid_time;
         float speed = 2.0f;
         float freqScale = 1.0f + (voice.frequency / 4000.0f);
 
@@ -47,7 +67,10 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                 if (pw == 0) pw = 0.5f;
                 val = (phase < pw) ? 1.0f : -1.0f;
             } else if (voice.control & 0x80) {  // Noise
-                val = ((float)(rand() % 100) / 50.0f) - 1.0f;
+                if (should_update) {
+                    noise_buffer[i][n] = ((float)(rand() % 100) / 50.0f) - 1.0f;
+                }
+                val = noise_buffer[i][n];
             }
             points[n] = val;
         }
