@@ -41,11 +41,13 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     ImGui::EndDisabled();
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
-        if (state.romLoaded) {
-            bool wasRunning = !state.emulator.IsPaused();
-            if (wasRunning) state.emulator.Pause();
+        bool wasRunning = !state.emulator.IsPaused();
+        if (wasRunning) state.emulator.Pause();
 
-            Console::Clear();
+        Console::Clear();
+        state.emulator.GetGPU().Init();
+
+        if (state.romLoaded) {
             std::string errorMsg;
             if (!state.emulator.Init(state.bin, errorMsg)) {
                 std::cerr << "Error resetting ROM: " << errorMsg << std::endl;
@@ -54,13 +56,12 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                     "ChooseFileDlgKey", "Choose File", ".bin", ".");
             } else {
                 state.emulator.SetGPUEnabled(state.gpuEnabled);
-                state.emulator.GetGPU().Init();
             }
+        }
 
-            if (wasRunning) {
-                state.emulator.Resume();
-                state.emulator.GetSID().SetEmulationPaused(false);
-            }
+        if (wasRunning) {
+            state.emulator.Resume();
+            state.emulator.GetSID().SetEmulationPaused(false);
         }
     }
     ImGui::SameLine();
