@@ -3,6 +3,7 @@
 #include <ImGuiFileDialog.h>
 
 #include <cstdio>
+#include <ctime>
 
 using namespace Control;
 using namespace Core;
@@ -29,6 +30,21 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
             if (!ImGuiFileDialog::Instance()->IsOpened()) {
                 ImGuiFileDialog::Instance()->OpenDialog(
                     "ChooseVRAMImageKey", "Choose VRAM Image", ".bin", ".", "");
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Capture VRAM")) {
+            if (!ImGuiFileDialog::Instance()->IsOpened()) {
+                time_t t = time(nullptr);
+                struct tm* tm_info = localtime(&t);
+                char filenameBuffer[64];
+                strftime(filenameBuffer, sizeof(filenameBuffer),
+                         "65C02-SIM_VRAM_CAPTURE_%Y-%m-%d-%H-%M-%S.",
+                         tm_info);
+
+                ImGuiFileDialog::Instance()->OpenDialog(
+                    "SaveVRAMImageKey", "Save VRAM Image", ".bmp", ".",
+                    filenameBuffer);
             }
         }
 
@@ -90,6 +106,36 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                     }
                 }
                 delete[] buf;
+            }
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // VRAM Image Save Dialog
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGuiFileDialog::Instance()->Display("SaveVRAMImageKey")) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string imgPath =
+                ImGuiFileDialog::Instance()->GetFilePathName();
+
+            GPU& gpu = state.emulator.GetGPU();
+            unsigned char pixels[GPU::VRAM_HEIGHT * GPU::VRAM_WIDTH * 3];
+            for (int y = 0; y < GPU::VRAM_HEIGHT; y++) {
+                for (int x = 0; x < GPU::VRAM_WIDTH; x++) {
+                    int idx = (y * GPU::VRAM_WIDTH + x) * 3;
+                    Byte val = gpu.vram[y][x];
+                    pixels[idx + 0] = ((val >> 4) & 0x03) * 85;  // R
+                    pixels[idx + 1] = ((val >> 2) & 0x03) * 85;  // G
+                    pixels[idx + 2] = (val & 0x03) * 85;         // B
+                }
+            }
+
+            SDL_Surface* surface = SDL_CreateSurfaceFrom(
+                GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, SDL_PIXELFORMAT_RGB24,
+                pixels, GPU::VRAM_WIDTH * 3);
+            if (surface) {
+                SDL_SaveBMP(surface, imgPath.c_str());
+                SDL_DestroySurface(surface);
             }
         }
         ImGuiFileDialog::Instance()->Close();
