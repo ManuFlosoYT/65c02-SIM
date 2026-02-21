@@ -114,8 +114,4 @@ The script has 8 compression optimisation modes (granularities from 1 ms to 100+
 
 ### Included sample songs
 
-Several demonstration MIDI files are provided in `SID/`:
-- `fortnite.mid`
-- `miku.mid`
-- `overworld.mid`
-- and 6 more
+Several demonstration MIDI files are provided in `SID/`

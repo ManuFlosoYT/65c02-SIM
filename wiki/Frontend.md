@@ -34,10 +34,10 @@ Allows the user to:
 - **Load a binary** using the file dialog (ImGuiFileDialog)
 - **Start / Pause / Resume / Stop** emulation
 - **Step** — execute a single instruction
-- Configure the **speed** (IPS — instructions per second)
+- Configure the **speed** (Hz / IPS — instructions per second)
 - Toggle **cycle-accurate mode**
 - Toggle the **GPU**
-- Display the **current speed** (actual IPS)
+- Display the **current speed** (actual Hz / IPS)
 
 ### ConsoleWindow — Text console
 

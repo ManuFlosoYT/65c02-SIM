@@ -66,7 +66,7 @@ Compiles the **WozMon + Microsoft BASIC** ROM using the Makefile in `Linker/msba
 
 ## `image-to-bin.sh` — Convert images to VRAM
 
-Converts an image (PNG, JPG, or BMP) to the emulator's VRAM binary format (100×75 pixels, 1 byte per pixel in grayscale).
+Converts an image (PNG, JPG, or BMP) to the emulator's VRAM binary format (100×75 pixels, 1 byte per pixel in RGB 222).
 
 ### Usage
 
@@ -85,7 +85,7 @@ Output is saved to `output/vram/<image_name>.bin`.
 
 1. Load the image with Pillow
 2. Resize to 100×75 pixels
-3. Convert to grayscale (8 bits per pixel)
+3. Convert to RGB 222 (2 bits per color channel)
 4. Save the byte array as a binary file
 
 The resulting binary can be loaded directly into VRAM through the graphical interface.
@@ -146,15 +146,3 @@ If no mode fits within 32 KB, the script reports an error.
 | `GPUDoubleBuffer.h` | Functions for double-buffered VRAM access |
 | `SID.h` | Functions for controlling the SID chip |
 | `VIA.h` | Functions for accessing the VIA 6522 |
-
-Example usage:
-
-```c
-#include "Libs/GPU.h"
-
-int main() {
-    // Write a pixel at (x=10, y=20) with value 128
-    vram[20][10] = 128;
-    return 0;
-}
-```

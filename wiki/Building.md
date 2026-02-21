@@ -45,11 +45,14 @@ The resulting executable is saved to `output/linux/SIM_65C02`.
 | Option | Description |
 |--------|-------------|
 | `--clean` | Forces a clean build (removes the CMake cache) |
-| `--debug` | Builds with debug symbols (no optimizations) |
+| `--debug` | Builds with debug symbols |
+| `--clean --debug` | Forces a clean build and builds with debug symbols |
 
 ```bash
-./build-linux.sh --clean     # Clean build
-./build-linux.sh --debug     # Debug build
+./build-linux.sh                     # Build (default)
+./build-linux.sh --clean             # Clean build
+./build-linux.sh --debug             # Debug build
+./build-linux.sh --clean --debug     # Clean build and debug build
 ```
 
 The script:
@@ -67,7 +70,10 @@ The script:
 The resulting executable is saved to `output/windows/SIM_65C02.exe`.
 
 ```bash
-./build-win.sh --clean       # Clean build
+./build-win.sh                     # Build (default)
+./build-win.sh --clean             # Clean build
+./build-win.sh --debug             # Debug build
+./build-win.sh --clean --debug     # Clean build and debug build
 ```
 
 If **Wine** is installed, the script automatically runs the unit tests.

@@ -5,7 +5,7 @@
 
 ## Overview
 
-The emulator includes a **custom graphics processor** with 7.5 KB of VRAM. It can display grayscale images at a resolution of 100×75 pixels. The GUI renders the VRAM contents in real time in the **VRAM Viewer** window.
+The emulator includes a **custom graphics processor** with 7.5 KB of VRAM. It can display color images at a resolution of 100×75 pixels. The GUI renders the VRAM contents in real time in the **VRAM Viewer** window.
 
 ## Dimensions
 
@@ -37,7 +37,7 @@ effective address = 0x2000 + 0x0505 = 0x2505
 
 ## Pixel format
 
-Each VRAM byte represents **1 grayscale pixel** (0–255).
+Each VRAM byte represents **1 pixel** (RGB 222).
 
 ## Writing from the CPU
 
@@ -67,10 +67,7 @@ The resulting binary can be loaded directly into VRAM through the graphical inte
 
 ## Sample images
 
-Several demonstration images are included in `GPU/`:
-- `bocchi.png`
-- `rick.jpeg`
-- `xdd.jpg`
+Several demonstration images are included in `GPU/`
 
 ## Double Buffering
 

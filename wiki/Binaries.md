@@ -89,10 +89,7 @@ Compiles the historic **WozMon + Microsoft BASIC** ROM as used by Ben Eater in h
 #include "Libs/BIOS.h"
 
 int main() {
-    // CHROUT writes a character to the serial console
-    CHROUT('H'); CHROUT('e'); CHROUT('l');
-    CHROUT('l'); CHROUT('o'); CHROUT('!');
-    CHROUT('\n');
+    print_str("Hello, World!\n");
     return 0;
 }
 ```
@@ -100,23 +97,4 @@ int main() {
 ```bash
 ./compile-bin.sh hello
 # Output: output/rom/hello.bin
-```
-
-### Program with GPU
-
-```c
-// Binaries/pixels.c
-#include "Libs/GPU.h"
-
-int main() {
-    int x, y;
-    for (y = 0; y < 75; y++)
-        for (x = 0; x < 100; x++)
-            vram[y][x] = (x + y) & 0xFF;  // diagonal gradient
-    return 0;
-}
-```
-
-```bash
-./compile-bin.sh pixels
 ```

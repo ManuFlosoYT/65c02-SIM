@@ -25,13 +25,13 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 ┌──────────────────────────────────────────────────────┐
 │              SIM_65C02 (Main Executable)             │
 ├──────────────────────────────────────────────────────┤
-│                  Frontend / GUI                       │
+│                  Frontend / GUI                      │
 │     ImGui · SDL3 · OpenGL 3.3 · ImGuiFileDialog      │
 ├──────────────────────────────────────────────────────┤
-│                   Control Layer                       │
+│                   Control Layer                      │
 │           AppState · Console · UpdateChecker         │
 ├──────────────────────────────────────────────────────┤
-│           65c02_core Static Library                   │
+│           65c02_core Static Library                  │
 │  ┌───────────┬────────────┬──────────────────────┐   │
 │  │  CPU      │  Memory    │  Peripherals         │   │
 │  │ (65c02)   │ (RAM+ROM)  │  VIA · ACIA · LCD    │   │
@@ -39,11 +39,11 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 │  │     GPU (VRAM 7.5 KB)  │  SID (synthesis)     │   │
 │  └───────────┴────────────┴──────────────────────┘   │
 ├──────────────────────────────────────────────────────┤
-│               SDK / Tools                             │
+│               SDK / Tools                            │
 │   compile-bin.sh · image-to-bin.sh · midi-to-bin.sh  │
 │     Linker configs · BIOS · Microsoft BASIC          │
 ├──────────────────────────────────────────────────────┤
-│            Example Programs & Tests                   │
+│            Example Programs & Tests                  │
 │    Binaries/ (C + ASM)  ·  UnitTests/ (Google Test)  │
 └──────────────────────────────────────────────────────┘
 ```
