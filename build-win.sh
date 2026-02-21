@@ -1,14 +1,22 @@
 #!/bin/bash
 set -e
 
+# Default BUILD_TYPE
+BUILD_TYPE="Release"
+CMAKE_OPTS=""
+
 # Handle arguments
-if [[ "$1" == "--clean" ]]; then
-    echo "Cleaning build directory..."
-    rm -rf build_win
-fi
+for arg in "$@"; do
+    if [[ "$arg" == "--clean" ]]; then
+        echo "Cleaning build directory..."
+        rm -rf build_win
+    elif [[ "$arg" == "--debug" ]]; then
+        echo "Enabling debug symbols..."
+        BUILD_TYPE="Debug"
+    fi
+done
 
 # Detect ccache
-CMAKE_OPTS=""
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache found, enabling..."
     CMAKE_OPTS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
@@ -30,7 +38,7 @@ fi
 
 # Windows Build (Cross-compile)
 echo "Compiling for Windows (MinGW)..."
-cmake -S . -B build_win -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=Release $CMAKE_OPTS
+cmake -S . -B build_win -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
 cmake --build build_win -j$(nproc)
 
 if command -v ccache >/dev/null 2>&1; then
