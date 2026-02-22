@@ -9,7 +9,7 @@
 #include <sstream>
 
 #include "Frontend/Control/Console.h"
-#include "Libs/picosha2.h"
+#include <picosha2.h>
 
 using namespace Hardware;
 

@@ -68,6 +68,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 
 FetchContent_Declare(
+    picosha2
+    URL https://raw.githubusercontent.com/okdshin/PicoSHA2/master/picosha2.h
+    DOWNLOAD_NO_EXTRACT TRUE
+)
+FetchContent_MakeAvailable(picosha2)
+
+FetchContent_Declare(
     glad
     GIT_REPOSITORY https://github.com/Dav1dde/glad.git
     GIT_TAG v2.0.8
@@ -144,12 +151,12 @@ file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(65c02_core STATIC ${CORE_SOURCES})
-target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR})
 target_link_libraries(65c02_core PUBLIC SDL3::SDL3)
 
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV)
-target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR})
 target_link_libraries(65c02_core_test PUBLIC SDL3::SDL3)
 
 add_library(imgui_lib STATIC
