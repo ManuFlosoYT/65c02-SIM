@@ -8,16 +8,16 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 
 ## Emulated components
 
-| Component | Description |
-|-----------|-------------|
-| **CPU** | Full WDC 65C02 processor |
-| **RAM** | 32 KB of random-access memory (`0x0000`–`0x7FFF`) |
-| **ROM** | 32 KB of read-only memory (`0x8000`–`0xFFFF`) |
-| **VIA** | MOS 6522 Versatile Interface Adapter (timers, I/O) |
-| **ACIA** | MOS 6551 Asynchronous Communications Interface (serial) |
-| **GPU** | Custom graphics controller with 7.5 KB of VRAM |
-| **SID** | Sound synthesis chip (3 oscillators + ADSR) |
-| **LCD** | 2×16 character LCD display |
+| Component | Description                                             |
+| --------- | ------------------------------------------------------- |
+| **CPU**   | Full WDC 65C02 processor                                |
+| **RAM**   | 32 KB of random-access memory (`0x0000`–`0x7FFF`)       |
+| **ROM**   | 32 KB of read-only memory (`0x8000`–`0xFFFF`)           |
+| **VIA**   | MOS 6522 Versatile Interface Adapter (timers, I/O)      |
+| **ACIA**  | MOS 6551 Asynchronous Communications Interface (serial) |
+| **GPU**   | Custom graphics controller with 7.5 KB of VRAM          |
+| **SID**   | Sound synthesis chip (3 oscillators + ADSR)             |
+| **LCD**   | 2×16 character LCD display                              |
 
 ## General architecture
 
@@ -58,6 +58,7 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
   - [SID](SID) — Sound synthesis
   - [VIA and ACIA](VIA-and-ACIA) — I/O chips
   - [LCD](LCD) — LCD display
+  - [Save States](Save-States) — Serializing emulator state to binary files
 - **User interface**
   - [Frontend](Frontend) — ImGui windows and controls
 - **Development & SDK**

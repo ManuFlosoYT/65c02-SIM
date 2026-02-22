@@ -53,4 +53,20 @@ void ACIA::Init(Mem& mem) {
         &ctx);
 }
 
+bool ACIA::SaveState(std::ostream& out) const {
+    out.write(reinterpret_cast<const char*>(&DATA), sizeof(DATA));
+    out.write(reinterpret_cast<const char*>(&STATUS), sizeof(STATUS));
+    out.write(reinterpret_cast<const char*>(&CMD), sizeof(CMD));
+    out.write(reinterpret_cast<const char*>(&CTRL), sizeof(CTRL));
+    return out.good();
+}
+
+bool ACIA::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(&DATA), sizeof(DATA));
+    in.read(reinterpret_cast<char*>(&STATUS), sizeof(STATUS));
+    in.read(reinterpret_cast<char*>(&CMD), sizeof(CMD));
+    in.read(reinterpret_cast<char*>(&CTRL), sizeof(CTRL));
+    return in.good();
+}
+
 }  // namespace Hardware

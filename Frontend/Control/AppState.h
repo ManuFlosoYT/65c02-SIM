@@ -24,6 +24,7 @@ struct AppState {
     float ipsLogScale = 6.0f;
     bool gpuEnabled = false;
     bool cycleAccurate = true;  // Enabled by default
+    bool ignoreSaveStateHash = false;
 
     // Update
     std::atomic<bool> updateAvailable{false};

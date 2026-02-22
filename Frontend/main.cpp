@@ -176,9 +176,57 @@ int main(int argc, char* argv[]) {
             ImGuiFileDialog::Instance()->Close();
         }
 
+        // Save State Dialog
+        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+        if (ImGuiFileDialog::Instance()->Display("SaveStateDlgKey")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::string filePathName =
+                    ImGuiFileDialog::Instance()->GetFilePathName();
+                state.emulator.Pause();
+                if (!state.emulator.SaveState(filePathName)) {
+                    ImGui::OpenPopup("ErrorSavingState");
+                }
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+
+        // Load State Dialog
+        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+        if (ImGuiFileDialog::Instance()->Display("LoadStateDlgKey")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::string filePathName =
+                    ImGuiFileDialog::Instance()->GetFilePathName();
+                state.emulator.Pause();
+                if (!state.emulator.LoadState(filePathName,
+                                              state.ignoreSaveStateHash)) {
+                    ImGui::OpenPopup("ErrorLoadingState");
+                }
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+
         if (ImGui::BeginPopupModal("ErrorLoadingROM", NULL,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Error loading ROM. Please check the file.");
+            if (ImGui::Button("OK", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopupModal("ErrorSavingState", NULL,
+                                   ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Error saving state. Please check your permissions.");
+            if (ImGui::Button("OK", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopupModal("ErrorLoadingState", NULL,
+                                   ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text(
+                "Error loading state. File may be corrupt or hash mismatch.");
             if (ImGui::Button("OK", ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
             }

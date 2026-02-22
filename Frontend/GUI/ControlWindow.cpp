@@ -2,7 +2,11 @@
 
 #include <ImGuiFileDialog.h>
 
+#include <chrono>
+#include <ctime>
+#include <filesystem>
 #include <iostream>
+#include <sstream>
 
 #include "Frontend/Control/Console.h"
 
@@ -75,11 +79,64 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         state.emulator.GetSID().EnableSound(!soundEnabled);
     }
     ImGui::SameLine();
-    if (ImGui::Button(state.cycleAccurate ? "Cycle-Accurate (On)"
-                                          : "Cycle-Accurate (Off)")) {
-        state.cycleAccurate = !state.cycleAccurate;
-        state.emulator.SetCycleAccurate(state.cycleAccurate);
+    if (ImGui::Button("Settings")) {
+        ImGui::OpenPopup("SettingsMenu");
     }
+
+    if (ImGui::BeginPopup("SettingsMenu")) {
+        if (ImGui::Checkbox("Cycle-Accurate", &state.cycleAccurate)) {
+            state.emulator.SetCycleAccurate(state.cycleAccurate);
+        }
+        ImGui::Checkbox("Ignore Save State Hash", &state.ignoreSaveStateHash);
+
+        ImGui::Separator();
+
+        if (ImGui::Button("Save State")) {
+            // Build default filename: SIM65C02SST_<bin>_<date>.savestate
+            std::string binName = "unknown";
+            if (!state.bin.empty()) {
+                binName = std::filesystem::path(state.bin).stem().string();
+            }
+            auto now = std::chrono::system_clock::now();
+            std::time_t t = std::chrono::system_clock::to_time_t(now);
+            std::tm* tm = std::localtime(&t);
+            std::ostringstream dateStr;
+            dateStr << (tm->tm_year + 1900) << (tm->tm_mon + 1 < 10 ? "0" : "")
+                    << (tm->tm_mon + 1) << (tm->tm_mday < 10 ? "0" : "")
+                    << tm->tm_mday << "_" << (tm->tm_hour < 10 ? "0" : "")
+                    << tm->tm_hour << (tm->tm_min < 10 ? "0" : "") << tm->tm_min
+                    << (tm->tm_sec < 10 ? "0" : "") << tm->tm_sec;
+            std::string defaultName =
+                "SIM65C02SST_" + binName + "_" + dateStr.str();
+            ImGuiFileDialog::Instance()->OpenDialog("SaveStateDlgKey",
+                                                    "Save State", ".savestate",
+                                                    ".", defaultName);
+            ImGui::CloseCurrentPopup();
+        }
+        if (ImGui::Button("Load State")) {
+            ImGuiFileDialog::Instance()->OpenDialog(
+                "LoadStateDlgKey", "Load State", ".savestate", ".");
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    int tempIPS = state.instructionsPerFrame;
+    char targetLabel[32];
+    snprintf(targetLabel, sizeof(targetLabel), "Target %s",
+             state.cycleAccurate ? "Hz" : "IPS");
+
+    ImGui::SetNextItemWidth(mainColWidth * 0.5f);
+    if (ImGui::InputInt(targetLabel, &tempIPS, 100000, 100000)) {
+        if (state.instructionsPerFrame == 1 && tempIPS == 100001)
+            tempIPS = 100000;
+
+        if (tempIPS < 1) tempIPS = 1;
+        state.instructionsPerFrame = tempIPS;
+        state.emulator.SetTargetIPS(state.instructionsPerFrame);
+    }
+
     ImGui::SameLine();
     {
         int actualIPS = state.emulator.GetActualIPS();
@@ -98,19 +155,6 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
             else
                 ImGui::Text("Sim: %d IPS", actualIPS);
         }
-    }
-
-    int tempIPS = state.instructionsPerFrame;
-    char targetLabel[32];
-    snprintf(targetLabel, sizeof(targetLabel), "Target %s",
-             state.cycleAccurate ? "Hz" : "IPS");
-    if (ImGui::InputInt(targetLabel, &tempIPS, 100000, 100000)) {
-        if (state.instructionsPerFrame == 1 && tempIPS == 100001)
-            tempIPS = 100000;
-
-        if (tempIPS < 1) tempIPS = 1;
-        state.instructionsPerFrame = tempIPS;
-        state.emulator.SetTargetIPS(state.instructionsPerFrame);
     }
     ImGui::SetScrollHereY(1.0f);
     ImGui::End();

@@ -31,4 +31,14 @@ void Mem::SetReadHook(Word address, ReadHook hook, void* context) {
     hasReadHook[address] = true;
 }
 
+bool Mem::SaveState(std::ostream& out) const {
+    out.write(reinterpret_cast<const char*>(memory), MAX_MEM + 1);
+    return out.good();
+}
+
+bool Mem::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(memory), MAX_MEM + 1);
+    return in.good();
+}
+
 }  // namespace Hardware

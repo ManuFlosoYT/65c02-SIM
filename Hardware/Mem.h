@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iostream>
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -43,6 +44,9 @@ public:
     void Init();
 
     Byte operator[](Word addr) const { return memory[addr]; }
+
+    bool SaveState(std::ostream& out) const;
+    bool LoadState(std::istream& in);
 
     void SetWriteHook(Word address, WriteHook hook, void* context = nullptr);
     inline void Write(Word addr, Byte val) {

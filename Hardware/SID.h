@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <cstdint>
+#include <iostream>
 #include <mutex>
 
 namespace Hardware {
@@ -20,6 +21,9 @@ struct ADSREnvelope {
 
     void Update(bool gate, int sampleRate = 44100);
     double Next();
+
+    bool SaveState(std::ostream& out) const;
+    bool LoadState(std::istream& in);
 };
 
 struct Oscillator {
@@ -34,6 +38,9 @@ struct Oscillator {
     uint32_t noiseShift = 0x7FFFF8;
 
     double Next(int sampleRate = 44100);
+
+    bool SaveState(std::ostream& out) const;
+    bool LoadState(std::istream& in);
 };
 
 class SID {
@@ -56,6 +63,9 @@ public:
     const Oscillator& GetVoice(int index) const {
         return voices[index % MAX_SID_VOICES];
     }
+
+    bool SaveState(std::ostream& out);
+    bool LoadState(std::istream& in);
 
 private:
     uint8_t registers[0x20];

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <iostream>
 
 #include "Mem.h"
 
@@ -11,6 +12,9 @@ public:
     VIA();
     void Init(Mem& mem);
     void Reset();
+
+    bool SaveState(std::ostream& out) const;
+    bool LoadState(std::istream& in);
 
     Byte GetPortA() const;
     Byte GetPortB() const;

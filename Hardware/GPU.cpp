@@ -59,4 +59,16 @@ Byte GPU::Read(Word addr) {
     return 0;
 }
 
+bool GPU::SaveState(std::ostream& out) const {
+    out.write(reinterpret_cast<const char*>(&pixelX), sizeof(pixelX));
+    out.write(reinterpret_cast<const char*>(&pixelY), sizeof(pixelY));
+    return out.good();
+}
+
+bool GPU::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(&pixelX), sizeof(pixelX));
+    in.read(reinterpret_cast<char*>(&pixelY), sizeof(pixelY));
+    return in.good();
+}
+
 }  // namespace Hardware

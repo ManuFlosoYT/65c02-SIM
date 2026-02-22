@@ -25,6 +25,10 @@ public:
     ~Emulator() = default;
 
     bool Init(const std::string& binPath, std::string& errorMsg);
+
+    bool SaveState(const std::string& filename);
+    bool LoadState(const std::string& filename, bool ignoreHash = false);
+
     int Step();
     void InjectKey(char c);
 

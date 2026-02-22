@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <iostream>
 
 #include "CPU/Instructions/InstructionSet.h"
 #include "Mem.h"
@@ -39,6 +40,9 @@ public:
 
     int remainingCycles = 0;
     bool cycleAccurate = true;
+
+    bool SaveState(std::ostream& out) const;
+    bool LoadState(std::istream& in);
 
     inline void Reset(Mem& mem) {
         PC = 0xFFFC;

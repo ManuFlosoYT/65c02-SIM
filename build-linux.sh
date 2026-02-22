@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-# Detect ccache
+# Default BUILD_TYPE
+BUILD_TYPE="Release"
 CMAKE_OPTS=""
 
 # Handle arguments
@@ -11,7 +12,7 @@ for arg in "$@"; do
         rm -rf build
     elif [[ "$arg" == "--debug" ]]; then
         echo "Enabling debug symbols..."
-        CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_BUILD_TYPE=Debug"
+        BUILD_TYPE="Debug"
     fi
 done
 
@@ -37,7 +38,7 @@ fi
 
 # Linux Build
 echo "Compiling for Linux..."
-cmake -S . -B build $CMAKE_OPTS
+cmake -S . -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
 cmake --build build -j$(nproc)
 
 if command -v ccache >/dev/null 2>&1; then

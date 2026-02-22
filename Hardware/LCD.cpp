@@ -163,4 +163,45 @@ void LCD::HandleCommand(Byte cmd) {
     }
 }
 
+bool LCD::SaveState(std::ostream& out) const {
+    out.write(reinterpret_cast<const char*>(&PORTB_DATA), sizeof(PORTB_DATA));
+    out.write(reinterpret_cast<const char*>(&DDRB_DATA), sizeof(DDRB_DATA));
+    out.write(reinterpret_cast<const char*>(&four_bit_mode),
+              sizeof(four_bit_mode));
+    out.write(reinterpret_cast<const char*>(&waiting_low_nibble),
+              sizeof(waiting_low_nibble));
+    out.write(reinterpret_cast<const char*>(&current_high_nibble),
+              sizeof(current_high_nibble));
+    out.write(reinterpret_cast<const char*>(&last_portb), sizeof(last_portb));
+    out.write(reinterpret_cast<const char*>(&is_init), sizeof(is_init));
+    out.write(reinterpret_cast<const char*>(screen), sizeof(screen));
+    out.write(reinterpret_cast<const char*>(&cursorX), sizeof(cursorX));
+    out.write(reinterpret_cast<const char*>(&cursorY), sizeof(cursorY));
+    out.write(reinterpret_cast<const char*>(&display_on), sizeof(display_on));
+    out.write(reinterpret_cast<const char*>(&cursor_on), sizeof(cursor_on));
+    out.write(reinterpret_cast<const char*>(&cursor_increment),
+              sizeof(cursor_increment));
+    return out.good();
+}
+
+bool LCD::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(&PORTB_DATA), sizeof(PORTB_DATA));
+    in.read(reinterpret_cast<char*>(&DDRB_DATA), sizeof(DDRB_DATA));
+    in.read(reinterpret_cast<char*>(&four_bit_mode), sizeof(four_bit_mode));
+    in.read(reinterpret_cast<char*>(&waiting_low_nibble),
+            sizeof(waiting_low_nibble));
+    in.read(reinterpret_cast<char*>(&current_high_nibble),
+            sizeof(current_high_nibble));
+    in.read(reinterpret_cast<char*>(&last_portb), sizeof(last_portb));
+    in.read(reinterpret_cast<char*>(&is_init), sizeof(is_init));
+    in.read(reinterpret_cast<char*>(screen), sizeof(screen));
+    in.read(reinterpret_cast<char*>(&cursorX), sizeof(cursorX));
+    in.read(reinterpret_cast<char*>(&cursorY), sizeof(cursorY));
+    in.read(reinterpret_cast<char*>(&display_on), sizeof(display_on));
+    in.read(reinterpret_cast<char*>(&cursor_on), sizeof(cursor_on));
+    in.read(reinterpret_cast<char*>(&cursor_increment),
+            sizeof(cursor_increment));
+    return in.good();
+}
+
 }  // namespace Hardware

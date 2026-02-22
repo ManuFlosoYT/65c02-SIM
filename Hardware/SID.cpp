@@ -20,15 +20,13 @@ static uint32_t fast_rand() {
 }
 
 // Lookup tables for ADSR roughly based on SID specs
-const double ATTACK_RATES[16] = {
-    0.002, 0.008, 0.016, 0.024, 0.038, 0.056, 0.068, 0.080,
-    0.100, 0.250, 0.500, 0.800, 1.000, 3.000, 5.000, 8.000
-};
+const double ATTACK_RATES[16] = {0.002, 0.008, 0.016, 0.024, 0.038, 0.056,
+                                 0.068, 0.080, 0.100, 0.250, 0.500, 0.800,
+                                 1.000, 3.000, 5.000, 8.000};
 
 const double DECAY_RELEASE_RATES[16] = {
     0.006, 0.024, 0.048, 0.072, 0.114, 0.168, 0.204,  0.240,
-    0.300, 0.750, 1.500, 2.400, 3.000, 9.000, 15.000, 24.000
-};
+    0.300, 0.750, 1.500, 2.400, 3.000, 9.000, 15.000, 24.000};
 
 SID::SID() { Reset(); }
 
@@ -134,7 +132,8 @@ void SID::AudioCallback(void* userdata, SDL_AudioStream* stream,
 void SID::GenerateAudio(int16_t* buffer, int length) {
     uint8_t currentVolume = 0;
 
-    // Synchronization Phase: Copy parameters from registers to voices (under lock)
+    // Synchronization Phase: Copy parameters from registers to voices (under
+    // lock)
     {
         std::lock_guard<std::mutex> lock(sidMutex);
 
@@ -271,6 +270,75 @@ double Oscillator::Next(int sampleRate) {
     }
 
     return output * env.level;
+}
+
+bool ADSREnvelope::SaveState(std::ostream& out) const {
+    out.write(reinterpret_cast<const char*>(&state), sizeof(state));
+    out.write(reinterpret_cast<const char*>(&level), sizeof(level));
+    out.write(reinterpret_cast<const char*>(&attackRate), sizeof(attackRate));
+    out.write(reinterpret_cast<const char*>(&decayRate), sizeof(decayRate));
+    out.write(reinterpret_cast<const char*>(&sustainLevel),
+              sizeof(sustainLevel));
+    out.write(reinterpret_cast<const char*>(&releaseRate), sizeof(releaseRate));
+    return out.good();
+}
+
+bool ADSREnvelope::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(&state), sizeof(state));
+    in.read(reinterpret_cast<char*>(&level), sizeof(level));
+    in.read(reinterpret_cast<char*>(&attackRate), sizeof(attackRate));
+    in.read(reinterpret_cast<char*>(&decayRate), sizeof(decayRate));
+    in.read(reinterpret_cast<char*>(&sustainLevel), sizeof(sustainLevel));
+    in.read(reinterpret_cast<char*>(&releaseRate), sizeof(releaseRate));
+    return in.good();
+}
+
+bool Oscillator::SaveState(std::ostream& out) const {
+    out.write(reinterpret_cast<const char*>(&accumulator), sizeof(accumulator));
+    out.write(reinterpret_cast<const char*>(&frequency), sizeof(frequency));
+    out.write(reinterpret_cast<const char*>(&pulseWidth), sizeof(pulseWidth));
+    out.write(reinterpret_cast<const char*>(&control), sizeof(control));
+    out.write(reinterpret_cast<const char*>(&noiseShift), sizeof(noiseShift));
+    env.SaveState(out);
+    return out.good();
+}
+
+bool Oscillator::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(&accumulator), sizeof(accumulator));
+    in.read(reinterpret_cast<char*>(&frequency), sizeof(frequency));
+    in.read(reinterpret_cast<char*>(&pulseWidth), sizeof(pulseWidth));
+    in.read(reinterpret_cast<char*>(&control), sizeof(control));
+    in.read(reinterpret_cast<char*>(&noiseShift), sizeof(noiseShift));
+    env.LoadState(in);
+    return in.good();
+}
+
+bool SID::SaveState(std::ostream& out) {
+    std::lock_guard<std::mutex> lock(sidMutex);
+    out.write(reinterpret_cast<const char*>(registers), sizeof(registers));
+    for (int i = 0; i < MAX_SID_VOICES; ++i) {
+        voices[i].SaveState(out);
+    }
+    out.write(reinterpret_cast<const char*>(&volumeRegister),
+              sizeof(volumeRegister));
+    out.write(reinterpret_cast<const char*>(&soundEnabled),
+              sizeof(soundEnabled));
+    out.write(reinterpret_cast<const char*>(&emulationPaused),
+              sizeof(emulationPaused));
+    return out.good();
+}
+
+bool SID::LoadState(std::istream& in) {
+    std::lock_guard<std::mutex> lock(sidMutex);
+    in.read(reinterpret_cast<char*>(registers), sizeof(registers));
+    for (int i = 0; i < MAX_SID_VOICES; ++i) {
+        voices[i].LoadState(in);
+    }
+    in.read(reinterpret_cast<char*>(&volumeRegister), sizeof(volumeRegister));
+    in.read(reinterpret_cast<char*>(&soundEnabled), sizeof(soundEnabled));
+    in.read(reinterpret_cast<char*>(&emulationPaused), sizeof(emulationPaused));
+    UpdateAudioState();
+    return in.good();
 }
 
 }  // namespace Hardware

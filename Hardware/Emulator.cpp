@@ -1,9 +1,15 @@
 #include "Emulator.h"
 
 #include <cstdio>
+#include <cstring>
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
+
+#include "Frontend/Control/Console.h"
+#include "Libs/picosha2.h"
 
 using namespace Hardware;
 
@@ -106,6 +112,101 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 
     fclose(file);
     return true;
+}
+
+bool Emulator::SaveState(const std::string& filename) {
+    std::lock_guard<std::mutex> lock(emulationMutex);
+
+    std::stringstream ss;
+
+    // Save state of all components
+    if (!mem.SaveState(ss)) return false;
+    if (!cpu.SaveState(ss)) return false;
+    if (!via.SaveState(ss)) return false;
+    if (!sid.SaveState(ss)) return false;
+    if (!acia.SaveState(ss)) return false;
+    if (!lcd.SaveState(ss)) return false;
+    if (!gpu.SaveState(ss)) return false;
+    if (!Console::SaveState(ss)) return false;
+
+    std::string payload = ss.str();
+
+    // Compute SHA256 hash
+    std::string hashHex = picosha2::hash256_hex_string(payload);
+
+    std::ofstream out(filename, std::ios::binary);
+    if (!out.is_open()) return false;
+
+    // Write magic header
+    const char magic[] = "SIM65C02SST";
+    out.write(magic, sizeof(magic) - 1);  // Exclude null terminator
+
+    // Write payload
+    out.write(payload.c_str(), payload.size());
+
+    // Write hash
+    out.write(hashHex.c_str(), hashHex.size());
+
+    return out.good();
+}
+
+bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
+    std::lock_guard<std::mutex> lock(emulationMutex);
+
+    std::ifstream in(filename, std::ios::binary | std::ios::ate);
+    if (!in.is_open()) return false;
+
+    std::streamsize size = in.tellg();
+    in.seekg(0, std::ios::beg);
+
+    const char magic[] = "SIM65C02SST";
+    size_t magicLen = sizeof(magic) - 1;
+    size_t hashLen = 64;  // SHA256 hex string length is 64
+
+    if (size < (std::streamsize)(magicLen + hashLen)) return false;
+
+    // Verify magic header
+    char fileMagic[11];
+    in.read(fileMagic, magicLen);
+    if (strncmp(fileMagic, magic, magicLen) != 0) {
+        return false;
+    }
+
+    size_t payloadLen = size - magicLen - hashLen;
+    std::string payload(payloadLen, '\0');
+    in.read(&payload[0], payloadLen);
+
+    char fileHash[64];
+    in.read(fileHash, hashLen);
+
+    // Verify hash
+    if (!ignoreHash) {
+        std::string computedHash = picosha2::hash256_hex_string(payload);
+        if (strncmp(fileHash, computedHash.c_str(), hashLen) != 0) {
+            std::cerr << "Save state hash mismatch! Computed: " << computedHash
+                      << " Expected: " << std::string(fileHash, hashLen)
+                      << std::endl;
+            return false;
+        }
+    }
+
+    std::stringstream ss(payload);
+
+    if (!mem.LoadState(ss)) return false;
+    if (!cpu.LoadState(ss)) return false;
+    if (!via.LoadState(ss)) return false;
+    if (!sid.LoadState(ss)) return false;
+    if (!acia.LoadState(ss)) return false;
+    if (!lcd.LoadState(ss)) return false;
+    if (!gpu.LoadState(ss)) return false;
+    if (!Console::LoadState(ss)) return false;
+
+    // Sync VRAM to recreate Write Hooks
+    for (Word addr = 0x2000; addr < 0x4000; addr++) {
+        gpu.Write(addr - 0x2000, mem.memory[addr]);
+    }
+
+    return ss.good() || ss.eof();
 }
 
 int Emulator::Step() {

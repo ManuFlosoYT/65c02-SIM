@@ -441,4 +441,75 @@ void VIA::SetIER(Byte val) { ier = val; }
 Byte VIA::GetORA_NH() const { return ora_nh; }
 void VIA::SetORA_NH(Byte val) { ora_nh = val; }
 
+bool VIA::SaveState(std::ostream& out) const {
+    out.write(reinterpret_cast<const char*>(&orb), sizeof(orb));
+    out.write(reinterpret_cast<const char*>(&ora), sizeof(ora));
+    out.write(reinterpret_cast<const char*>(&ddrb), sizeof(ddrb));
+    out.write(reinterpret_cast<const char*>(&ddra), sizeof(ddra));
+    out.write(reinterpret_cast<const char*>(&t1c_l), sizeof(t1c_l));
+    out.write(reinterpret_cast<const char*>(&t1c_h), sizeof(t1c_h));
+    out.write(reinterpret_cast<const char*>(&t1l_l), sizeof(t1l_l));
+    out.write(reinterpret_cast<const char*>(&t1l_h), sizeof(t1l_h));
+    out.write(reinterpret_cast<const char*>(&t2c_l), sizeof(t2c_l));
+    out.write(reinterpret_cast<const char*>(&t2c_h), sizeof(t2c_h));
+    out.write(reinterpret_cast<const char*>(&sr), sizeof(sr));
+    out.write(reinterpret_cast<const char*>(&acr), sizeof(acr));
+    out.write(reinterpret_cast<const char*>(&pcr), sizeof(pcr));
+    out.write(reinterpret_cast<const char*>(&ifr), sizeof(ifr));
+    out.write(reinterpret_cast<const char*>(&ier), sizeof(ier));
+    out.write(reinterpret_cast<const char*>(&ora_nh), sizeof(ora_nh));
+    out.write(reinterpret_cast<const char*>(&t1c), sizeof(t1c));
+    out.write(reinterpret_cast<const char*>(&t1l), sizeof(t1l));
+    out.write(reinterpret_cast<const char*>(&t2c), sizeof(t2c));
+    out.write(reinterpret_cast<const char*>(&t2l), sizeof(t2l));
+    out.write(reinterpret_cast<const char*>(&t1_active), sizeof(t1_active));
+    out.write(reinterpret_cast<const char*>(&t2_active), sizeof(t2_active));
+    out.write(reinterpret_cast<const char*>(&t1_pb7_output),
+              sizeof(t1_pb7_output));
+    out.write(reinterpret_cast<const char*>(&ira), sizeof(ira));
+    out.write(reinterpret_cast<const char*>(&irb), sizeof(irb));
+    out.write(reinterpret_cast<const char*>(&last_irb), sizeof(last_irb));
+    out.write(reinterpret_cast<const char*>(&cb1_in), sizeof(cb1_in));
+    out.write(reinterpret_cast<const char*>(&cb2_in), sizeof(cb2_in));
+    out.write(reinterpret_cast<const char*>(&sr_cnt), sizeof(sr_cnt));
+    out.write(reinterpret_cast<const char*>(&sr_active), sizeof(sr_active));
+    out.write(reinterpret_cast<const char*>(&sr_out_cb2), sizeof(sr_out_cb2));
+    return out.good();
+}
+
+bool VIA::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(&orb), sizeof(orb));
+    in.read(reinterpret_cast<char*>(&ora), sizeof(ora));
+    in.read(reinterpret_cast<char*>(&ddrb), sizeof(ddrb));
+    in.read(reinterpret_cast<char*>(&ddra), sizeof(ddra));
+    in.read(reinterpret_cast<char*>(&t1c_l), sizeof(t1c_l));
+    in.read(reinterpret_cast<char*>(&t1c_h), sizeof(t1c_h));
+    in.read(reinterpret_cast<char*>(&t1l_l), sizeof(t1l_l));
+    in.read(reinterpret_cast<char*>(&t1l_h), sizeof(t1l_h));
+    in.read(reinterpret_cast<char*>(&t2c_l), sizeof(t2c_l));
+    in.read(reinterpret_cast<char*>(&t2c_h), sizeof(t2c_h));
+    in.read(reinterpret_cast<char*>(&sr), sizeof(sr));
+    in.read(reinterpret_cast<char*>(&acr), sizeof(acr));
+    in.read(reinterpret_cast<char*>(&pcr), sizeof(pcr));
+    in.read(reinterpret_cast<char*>(&ifr), sizeof(ifr));
+    in.read(reinterpret_cast<char*>(&ier), sizeof(ier));
+    in.read(reinterpret_cast<char*>(&ora_nh), sizeof(ora_nh));
+    in.read(reinterpret_cast<char*>(&t1c), sizeof(t1c));
+    in.read(reinterpret_cast<char*>(&t1l), sizeof(t1l));
+    in.read(reinterpret_cast<char*>(&t2c), sizeof(t2c));
+    in.read(reinterpret_cast<char*>(&t2l), sizeof(t2l));
+    in.read(reinterpret_cast<char*>(&t1_active), sizeof(t1_active));
+    in.read(reinterpret_cast<char*>(&t2_active), sizeof(t2_active));
+    in.read(reinterpret_cast<char*>(&t1_pb7_output), sizeof(t1_pb7_output));
+    in.read(reinterpret_cast<char*>(&ira), sizeof(ira));
+    in.read(reinterpret_cast<char*>(&irb), sizeof(irb));
+    in.read(reinterpret_cast<char*>(&last_irb), sizeof(last_irb));
+    in.read(reinterpret_cast<char*>(&cb1_in), sizeof(cb1_in));
+    in.read(reinterpret_cast<char*>(&cb2_in), sizeof(cb2_in));
+    in.read(reinterpret_cast<char*>(&sr_cnt), sizeof(sr_cnt));
+    in.read(reinterpret_cast<char*>(&sr_active), sizeof(sr_active));
+    in.read(reinterpret_cast<char*>(&sr_out_cb2), sizeof(sr_out_cb2));
+    return in.good();
+}
+
 }  // namespace Hardware

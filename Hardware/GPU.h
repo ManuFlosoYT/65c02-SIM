@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include "Mem.h"
 
 namespace Hardware {
@@ -23,6 +25,9 @@ public:
     Byte vram[VRAM_HEIGHT][VRAM_WIDTH]{};
 
     void Init();
+
+    bool SaveState(std::ostream& out) const;
+    bool LoadState(std::istream& in);
 
     // Clock the GPU to advance pixel counters
     inline void Clock() {
