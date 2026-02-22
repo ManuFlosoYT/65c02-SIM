@@ -182,8 +182,11 @@ if(WIN32)
         -static-libgcc 
         -static-libstdc++ 
         -Wl,--gc-sections 
-        -s
+        -Wl,--stack,8388608
     )
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_link_options(SIM_65C02 PRIVATE -s)
+    endif()
     
     target_link_libraries(SIM_65C02 PRIVATE 
         65c02_core 
@@ -210,8 +213,10 @@ else()
         -static-libgcc 
         -static-libstdc++ 
         -Wl,--gc-sections 
-        -s
     )
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_link_options(SIM_65C02 PRIVATE -s)
+    endif()
     
     target_link_libraries(SIM_65C02 PRIVATE 
         65c02_core 
