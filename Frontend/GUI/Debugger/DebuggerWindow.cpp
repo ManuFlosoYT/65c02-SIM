@@ -4,6 +4,7 @@
 #include <imgui.h>
 
 #include "Frontend/Control/Console.h"
+#include "Frontend/GUI/Debugger/DisassemblerWindow.h"
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
 
 namespace GUI {
@@ -14,18 +15,21 @@ void DrawDebuggerWindow(Control::AppState& state) {
         return;
     }
 
+    state.emulator.SetProfilingEnabled(true);
+
     ImVec2 vpSize = ImGui::GetMainViewport()->Size;
     ImGui::SetNextWindowSize(ImVec2(vpSize.x * 0.7f, vpSize.y * 0.7f),
                              ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Debugger", &state.debuggerOpen,
-                      ImGuiWindowFlags_NoCollapse)) {
+    if (!ImGui::Begin(
+            "Debugger", &state.debuggerOpen,
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
         state.emulator.SetProfilingEnabled(false);
         ImGui::End();
         return;
     }
 
     // Left sidebar
-    const char* modes[] = {"Debugger", "Disassembly", "Profiler"};
+    const char* modes[] = {"Disassembly", "Profiler", "Debugger"};
     const float sidebarWidth = 140.0f;
     ImGui::BeginChild("DebugSidebar", ImVec2(sidebarWidth, 0), false,
                       ImGuiWindowFlags_NoScrollbar);
@@ -85,6 +89,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
         if (wasRunning) state.emulator.Pause();
         Console::Clear();
         state.emulator.GetGPU().Init();
+        state.emulator.ClearProfiler();
         if (state.romLoaded) {
             std::string errorMsg;
             if (!state.emulator.Init(state.bin, errorMsg)) {
@@ -127,10 +132,11 @@ void DrawDebuggerWindow(Control::AppState& state) {
     // Content area
     ImGui::BeginChild("DebugContent", ImVec2(0, 0), false);
 
-    if (state.debuggerMode == 2) {  // Profiler
+    if (state.debuggerMode == 0) {  // Disassembly
+        DrawDisassemblerContent(state);
+    } else if (state.debuggerMode == 1) {  // Profiler
         DrawProfilerWindow(state);
-    } else {
-        state.emulator.SetProfilingEnabled(false);
+    } else {  // Debugger
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
         const char* wip = "WIP :)";
         ImVec2 textSize = ImGui::CalcTextSize(wip);

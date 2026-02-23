@@ -125,6 +125,7 @@ int main(int argc, char* argv[]) {
         std::string errorMsg;
         if (state.emulator.Init(state.bin, errorMsg)) {
             state.romLoaded = true;
+            state.emulator.ClearProfiler();
         } else {
             std::cerr << "Failed to load ROM from args: " << errorMsg
                       << std::endl;
@@ -185,6 +186,7 @@ int main(int argc, char* argv[]) {
                     state.bin = filePathName;
                     state.romLoaded = true;
                     state.emulator.SetGPUEnabled(state.gpuEnabled);
+                    state.emulator.ClearProfiler();
                 } else {
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }

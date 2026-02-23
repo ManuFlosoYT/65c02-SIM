@@ -10,7 +10,8 @@ Click the **Debugger** button in the main control panel. The debugger will open 
 
 The debugger is a **non-modal window**, which means:
 
-- You can move and resize it at any time.
+- You can move it at any time.
+- It is **not resizable** to maintain a consistent layout.
 - It doesn't block the background UI; you can still interact with the control panel or other windows.
 - It can remain open while the emulator is running.
 
@@ -25,15 +26,16 @@ The sidebar on the left provides quick access to frequently used commands:
 
 ## Debugger Tabs
 
-### 1. Debugger (WIP)
+### 1. Disassembly
 
-Placeholder for future debugging features such as register inspection and breakpoints.
+The **Real-Time Disassembler** translates binary data from memory back into human-readable 65C02 assembly language.
 
-### 2. Disassembly (WIP)
+- **Address & Bytes**: Shows the memory address and the raw bytes (hex) of each instruction.
+- **Mnemonic & Operands**: Displays the 65C02 instruction name and its corresponding parameters (using various addressing modes like `$1234`, `#$55`, `($20,X)`, etc.).
+- **Live Highlight**: The instruction currently at the **Program Counter (PC)** is highlighted in blue, allowing you to follow the execution flow in real-time.
+- **Dynamic Fetching**: Instructions are disassembled on-the-fly around the current PC as you step through the code or while the emulator is running.
 
-Placeholder for real-time disassembly of the running code.
-
-### 3. Profiler
+### 2. Profiler
 
 The **Memory Profiler** provides a visual representation of memory access patterns across the entire 64 KB address space.
 
@@ -58,8 +60,14 @@ The **Memory Profiler** provides a visual representation of memory access patter
 - **Export as BMP**: Save a high-resolution 256×256 BMP image of the current heatmap for external analysis. The exported image preserves the logarithmic scaling used in the display.
 - **Export RAW**: Save a full dump of the 64 KB memory access counters to a `.txt` file. Each line follows the format `0xXXXX: <count>`.
 
+### 3. Debugger (WIP)
+
+Placeholder for future debugging features such as register inspection, memory editing, and advanced breakpoints.
+
 ## Technical Implementation
 
 - **File Location**: `Frontend/GUI/Debugger/`
 - **Profiling Logic**: `Frontend/GUI/Debugger/ProfilerWindow.cpp`
+- **Disassembly Logic**: `Hardware/CPU/Disassembler.cpp`
+- **Disassembly UI**: `Frontend/GUI/Debugger/DisassemblerWindow.cpp`
 - **Hardware Integration**: `Hardware/Mem.h` (using `profilerCounts` array and `profilingEnabled` flag).

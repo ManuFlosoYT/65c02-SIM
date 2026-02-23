@@ -15,7 +15,6 @@ using namespace Hardware;
 namespace GUI {
 
 void DrawProfilerWindow(AppState& state) {
-    state.emulator.SetProfilingEnabled(true);
     uint32_t* counts = state.emulator.GetProfilerCounts();
 
     uint32_t maxCount = 0;
@@ -133,7 +132,8 @@ void DrawProfilerWindow(AppState& state) {
             FILE* f = fopen(filePath.c_str(), "w");
             if (f) {
                 for (int i = 0; i < 65536; i++) {
-                    fprintf(f, "%s0x%04X: %u", (i > 0 ? "\n" : ""), i, counts[i]);
+                    fprintf(f, "%s0x%04X: %u", (i > 0 ? "\n" : ""), i,
+                            counts[i]);
                 }
                 fclose(f);
             }

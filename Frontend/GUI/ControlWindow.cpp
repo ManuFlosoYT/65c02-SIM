@@ -51,6 +51,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
 
         Console::Clear();
         state.emulator.GetGPU().Init();
+        state.emulator.ClearProfiler();
 
         if (state.romLoaded) {
             std::string errorMsg;

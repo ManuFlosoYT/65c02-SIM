@@ -174,7 +174,7 @@ target_include_directories(imgui_lib PUBLIC
 )
 target_link_libraries(imgui_lib PUBLIC SDL3::SDL3 OpenGL::GL glad_gl)
 
-file(GLOB_RECURSE FRONTEND_SOURCES
+file(GLOB_RECURSE FRONTEND_SOURCES CONFIGURE_DEPENDS
     "Frontend/*.cpp"
     "Frontend/*.h"
 )

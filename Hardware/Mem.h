@@ -52,8 +52,7 @@ public:
     inline void Write(Word addr, Byte val) {
         if (profilingEnabled) profilerCounts[addr]++;
         if (hasWriteHook[addr]) {
-            writeHooks[addr](writeContext[addr], addr,
-                             val);  // Execute the hook
+            writeHooks[addr](writeContext[addr], addr, val);  // Execute the hook
         }
         // Don't write to ROM
         if (addr < 0x8000) {
@@ -69,11 +68,12 @@ public:
     inline Byte Read(Word addr) {
         if (profilingEnabled) profilerCounts[addr]++;
         if (hasReadHook[addr]) {
-            return readHooks[addr](readContext[addr],
-                                   addr);  // Execute the hook
+            return readHooks[addr](readContext[addr], addr);  // Execute the hook
         }
         return memory[addr];
     }
+
+    inline Byte Peek(Word addr) const { return memory[addr]; }
 
     void ClearProfiler() {
         for (int i = 0; i <= MAX_MEM; i++) profilerCounts[i] = 0;
