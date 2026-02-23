@@ -5,6 +5,8 @@
 
 <h4> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/wiki"> Documentation </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Request Feature </a> </h4>
 
+[![Build and Release](https://github.com/ManuFlosoYT/65c02-SIM/actions/workflows/release.yml/badge.svg)](https://github.com/ManuFlosoYT/65c02-SIM/actions/workflows/release.yml)
+
 </div>
 
 ## :toolbox: Getting Started
