@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "Frontend/Control/Console.h"
+#include "Frontend/GUI/Debugger/DebuggerWindow.h"
 
 using namespace Control;
 using namespace Core;
@@ -82,6 +83,10 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     if (ImGui::Button("Settings")) {
         ImGui::OpenPopup("SettingsMenu");
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Debugger")) {
+        state.debuggerOpen = true;
+    }
 
     if (ImGui::BeginPopup("SettingsMenu")) {
         if (ImGui::Checkbox("Cycle-Accurate", &state.cycleAccurate)) {
@@ -121,6 +126,8 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
 
         ImGui::EndPopup();
     }
+
+    DrawDebuggerWindow(state);
 
     int tempIPS = state.instructionsPerFrame;
     char targetLabel[32];

@@ -50,6 +50,7 @@ public:
 
     void SetWriteHook(Word address, WriteHook hook, void* context = nullptr);
     inline void Write(Word addr, Byte val) {
+        if (profilingEnabled) profilerCounts[addr]++;
         if (hasWriteHook[addr]) {
             writeHooks[addr](writeContext[addr], addr,
                              val);  // Execute the hook
@@ -66,12 +67,20 @@ public:
     void SetReadHook(Word address, ReadHook hook, void* context = nullptr);
 
     inline Byte Read(Word addr) {
+        if (profilingEnabled) profilerCounts[addr]++;
         if (hasReadHook[addr]) {
             return readHooks[addr](readContext[addr],
                                    addr);  // Execute the hook
         }
         return memory[addr];
     }
+
+    void ClearProfiler() {
+        for (int i = 0; i <= MAX_MEM; i++) profilerCounts[i] = 0;
+    }
+
+    void SetProfilingEnabled(bool enabled) { profilingEnabled = enabled; }
+    uint32_t* GetProfilerCounts() { return profilerCounts; }
 
 private:
     WriteHook writeHooks[MAX_MEM + 1]{nullptr};
@@ -81,6 +90,9 @@ private:
     ReadHook readHooks[MAX_MEM + 1]{nullptr};
     void* readContext[MAX_MEM + 1]{nullptr};
     bool hasReadHook[MAX_MEM + 1]{false};
+
+    bool profilingEnabled = false;
+    uint32_t profilerCounts[MAX_MEM + 1]{0};
 };
 
 }  // namespace Hardware

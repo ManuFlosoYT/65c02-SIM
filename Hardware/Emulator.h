@@ -65,6 +65,10 @@ public:
     int GetTargetIPS() const { return targetIPS; }
     int GetActualIPS() const { return actualIPS; }
 
+    void SetProfilingEnabled(bool enabled) { mem.SetProfilingEnabled(enabled); }
+    void ClearProfiler() { mem.ClearProfiler(); }
+    uint32_t* GetProfilerCounts() { return mem.GetProfilerCounts(); }
+
 private:
     void ThreadLoop();
 

@@ -26,12 +26,17 @@ struct AppState {
     bool cycleAccurate = true;  // Enabled by default
     bool ignoreSaveStateHash = false;
 
+    // Debugger
+    bool debuggerOpen = false;
+    int debuggerMode = 0;  // 0=Debugger, 1=Disassembly, 2=Profiler
+
     // Update
     std::atomic<bool> updateAvailable{false};
     std::string latestVersionTag;
 
     // VRAM texture (OpenGL)
     GLuint vramTexture = 0;
+    GLuint profilerTexture = 0;
 };
 
 }  // namespace Control

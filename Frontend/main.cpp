@@ -93,6 +93,14 @@ int main(int argc, char* argv[]) {
     unsigned char emptyPixels[GPU::VRAM_HEIGHT * GPU::VRAM_WIDTH * 3] = {0};
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, 0,
                  GL_RGB, GL_UNSIGNED_BYTE, emptyPixels);
+
+    glGenTextures(1, &state.profilerTexture);
+    glBindTexture(GL_TEXTURE_2D, state.profilerTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB,
+                 GL_UNSIGNED_BYTE, nullptr);
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // Setup Dear ImGui context
@@ -127,7 +135,15 @@ int main(int argc, char* argv[]) {
 
     bool done = false;
     state.emulator.Start();
+
+    const int FPS = 60;
+    const int frameDelay = 1000 / FPS;
+    Uint64 frameStart;
+    int frameTime;
+
     while (!done) {
+        frameStart = SDL_GetTicks();
+
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
@@ -253,6 +269,11 @@ int main(int argc, char* argv[]) {
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
+
+        frameTime = (int)(SDL_GetTicks() - frameStart);
+        if (frameDelay > frameTime) {
+            SDL_Delay(frameDelay - frameTime);
+        }
     }
 
     // Cleanup
