@@ -60,7 +60,8 @@ public:
         }
     }
 
-    void WriteROM(Word addr, Byte val);  // Used by Unit Tests to force writes
+    void WriteROM(Word addr, Byte val);  // Used internally to force writes to ROM when needed
+    void WriteDebug(Word addr, Byte val);
     void WriteWord(Word data, Word addr);
 
     void SetReadHook(Word address, ReadHook hook, void* context = nullptr);

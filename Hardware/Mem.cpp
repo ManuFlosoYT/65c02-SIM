@@ -25,6 +25,13 @@ void Mem::SetWriteHook(Word address, WriteHook hook, void* context) {
 
 void Mem::WriteROM(Word addr, Byte val) { memory[addr] = val; }
 
+void Mem::WriteDebug(Word addr, Byte val) {
+    if (hasWriteHook[addr]) {
+        writeHooks[addr](writeContext[addr], addr, val);
+    }
+    memory[addr] = val;
+}
+
 void Mem::SetReadHook(Word address, ReadHook hook, void* context) {
     readHooks[address] = hook;
     readContext[address] = context;

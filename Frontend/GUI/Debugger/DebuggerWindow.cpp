@@ -86,7 +86,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
                         if (ImGui::InputScalar(
                                 label, ImGuiDataType_U8, &val, NULL, NULL,
                                 "%02X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                            mem.Write(addr, val);
+                            mem.WriteDebug(addr, val);
                         }
                         ImGui::PopItemWidth();
                     }
@@ -114,7 +114,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
 
     if (ImGui::Button("Fill Random Junk")) {
         for (int i = startAddr; i <= (int)endAddr; i++) {
-            mem.WriteROM((Word)i, (Byte)(rand() % 256));
+            mem.WriteDebug((Word)i, (Byte)(rand() % 256));
         }
     }
 }
