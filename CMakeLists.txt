@@ -179,6 +179,31 @@ file(GLOB_RECURSE FRONTEND_SOURCES CONFIGURE_DEPENDS
     "Frontend/*.h"
 )
 
+# ---------------------------------------------------------------------------
+# Embed CRT shaders (crt.vert + crt.frag) into a generated header at build time.
+# Edit Frontend/GUI/Video/crt.vert / crt.frag; the header is regenerated
+# automatically whenever either file changes.
+# ---------------------------------------------------------------------------
+set(CRT_VERT "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.vert")
+set(CRT_FRAG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.frag")
+set(CRT_SHADERS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/CRTShaders.h")
+
+add_custom_command(
+    OUTPUT  "${CRT_SHADERS_H}"
+    COMMAND ${CMAKE_COMMAND}
+        -DVERT_FILE=${CRT_VERT}
+        -DFRAG_FILE=${CRT_FRAG}
+        -DOUTPUT=${CRT_SHADERS_H}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCRTShaders.cmake"
+    DEPENDS "${CRT_VERT}" "${CRT_FRAG}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCRTShaders.cmake"
+    COMMENT "Embedding CRT shaders into CRTShaders.h"
+    VERBATIM
+)
+
+add_custom_target(crt_shaders DEPENDS "${CRT_SHADERS_H}")
+
+
 if(WIN32)
     add_executable(SIM_65C02 WIN32
         ${FRONTEND_SOURCES}
@@ -239,7 +264,11 @@ else()
     )
 endif()
 
-target_include_directories(SIM_65C02 PRIVATE ${imguifiledialog_SOURCE_DIR})
+target_include_directories(SIM_65C02 PRIVATE
+    ${imguifiledialog_SOURCE_DIR}
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+add_dependencies(SIM_65C02 crt_shaders)
 
 target_compile_definitions(SIM_65C02 PRIVATE 
     IMGUI_DEFINE_MATH_OPERATORS 

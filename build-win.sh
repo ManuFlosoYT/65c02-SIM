@@ -38,7 +38,7 @@ fi
 
 # Windows Build (Cross-compile)
 echo "Compiling for Windows (MinGW)..."
-cmake -S . -B build_win -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
+cmake -S . -B build_win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
 cmake --build build_win -j$(nproc)
 
 if command -v ccache >/dev/null 2>&1; then

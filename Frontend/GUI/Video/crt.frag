@@ -1,19 +1,3 @@
-#pragma once
-
-// Vertex shader
-static const char* kCRTVertSrc = R"(
-#version 130
-in vec2 a_pos;
-in vec2 a_uv;
-out vec2 v_uv;
-void main() {
-    v_uv = a_uv;
-    gl_Position = vec4(a_pos, 0.0, 1.0);
-}
-)";
-
-// Fragment shader
-static const char* kCRTFragSrc = R"(
 #version 130
 in vec2 v_uv;
 out vec4 fragColor;
@@ -170,7 +154,7 @@ void main() {
     }
 
     if (u_scanlines) {
-        // Beam blooming: haz más ancho en zonas brillantes, más estrecho en oscuras
+        // Beam blooming: haz mas ancho en zonas brillantes, mas estrecho en oscuras
         float luma = dot(color.rgb, vec3(0.299, 0.587, 0.114));
         float scanlineIntensity = 0.5 + (luma * 0.5);
         float line = mod(gl_FragCoord.y, 2.0);
@@ -205,4 +189,3 @@ void main() {
 
     fragColor = color;
 }
-)";

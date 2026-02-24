@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "Frontend/GUI/Video/CRTShaders.h"
+#include "CRTShaders.h"
 
 namespace GUI {
 
