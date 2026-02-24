@@ -109,6 +109,7 @@ int main(int argc, char* argv[]) {
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.IniFilename = nullptr;
 
     float dpi_scale = SDL_GetWindowDisplayScale(window);
     if (dpi_scale <= 0.0f) dpi_scale = 1.0f;
