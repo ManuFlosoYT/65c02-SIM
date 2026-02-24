@@ -1,6 +1,7 @@
 # ASM file writer for SID bytecode output
 
 import os
+import subprocess
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -45,18 +46,65 @@ def write_asm(bytecode, input_path, mode):
 
         f.write(f".segment \"VECTORS\"\n    .word reset\n    .word reset\n    .word reset\n")
 
-    # Size Report
     size_bytes = len(bytecode)
-    size_kb = size_bytes / 1024.0
-    limit_32k = 32768
-    percent = (size_bytes / limit_32k) * 100.0
-
     print(f"Generated {output_file}")
-    print(f"Size: {size_bytes} bytes ({size_kb:.1f} KB)")
-    print(f"Usage: {percent:.1f}% of 32KB Limit")
-    if size_bytes > limit_32k:
-        print(">> WARNING: FILE EXCEEDS 32KB LIMIT!")
-    else:
-        print(">> OK: Fits in 32KB.")
+    print(f"Bytecode: {size_bytes} bytes ({size_bytes / 1024.0:.1f} KB)")
+
+    _compile_and_report(output_file, limit_bytes=32768)
 
     return output_file
+
+
+def _compile_and_report(asm_file, limit_bytes):
+    """
+    Assemble and link the .s file to get the real binary size.
+    Reports success with exact size, or failure with linker error and estimated excess.
+    """
+    name = os.path.splitext(os.path.basename(asm_file))[0]
+    build_dir = os.path.dirname(asm_file)
+    obj_file = os.path.join(build_dir, name + ".o")
+    bin_file = os.path.join(build_dir, name + ".bin")
+
+    # _SCRIPT_DIR = SID/generator -> SID -> project root
+    project_root = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
+    linker_cfg = os.path.join(project_root, "Linker", "raw.cfg")
+
+    # Step 1: Assemble
+    r = subprocess.run(
+        ["ca65", "--cpu", "65C02", "-o", obj_file, asm_file],
+        capture_output=True, text=True
+    )
+    if r.returncode != 0:
+        print(">> [ca65 ERROR] Assembly failed:")
+        print(r.stderr.strip())
+        return
+
+    # Step 2: Link
+    r = subprocess.run(
+        ["ld65", "-C", linker_cfg, "-o", bin_file, obj_file],
+        capture_output=True, text=True
+    )
+    if r.returncode != 0:
+        print(f">> WARNING: Linking FAILED — likely exceeds {limit_bytes // 1024}KB limit")
+        if r.stderr:
+            print(r.stderr.strip())
+        # Best estimate: bytecode size already printed; use obj file if available
+        if os.path.exists(obj_file):
+            excess = os.path.getsize(obj_file) - limit_bytes
+            if excess > 0:
+                print(f"   Estimated excess: ~{excess} bytes ({excess / 1024:.1f} KB) over limit")
+        return
+
+    # Step 3: Report real binary size
+    bin_size = os.path.getsize(bin_file)
+    bin_kb = bin_size / 1024.0
+    percent = (bin_size / limit_bytes) * 100.0
+    limit_kb = limit_bytes // 1024
+
+    print(f"Binary:   {bin_size} bytes ({bin_kb:.1f} KB) — {percent:.1f}% of {limit_kb}KB")
+    if bin_size > limit_bytes:
+        excess = bin_size - limit_bytes
+        print(f">> WARNING: FILE EXCEEDS 32KB LIMIT by {excess} bytes ({excess / 1024:.1f} KB)!")
+    else:
+        free = limit_bytes - bin_size
+        print(f">> OK: Fits in 32KB. ({free} bytes free)")
