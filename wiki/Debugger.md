@@ -60,9 +60,35 @@ The **Memory Profiler** provides a visual representation of memory access patter
 - **Export as BMP**: Save a high-resolution 256×256 BMP image of the current heatmap for external analysis. The exported image preserves the logarithmic scaling used in the display.
 - **Export RAW**: Save a full dump of the 64 KB memory access counters to a `.txt` file. Each line follows the format `0xXXXX: <count>`.
 
-### 3. Debugger (WIP)
+### 3. Debugger
 
-Placeholder for future debugging features such as register inspection, memory editing, and advanced breakpoints.
+The **Hardware Debugger** allows for direct inspection and modification of the system state during execution or while paused.
+
+#### CPU Register Editing
+
+All core CPU registers can be modified in real-time:
+
+- **PC (Program Counter)**: Change the starting address for code execution.
+- **SP (Stack Pointer)**: Manually adjust the stack location.
+- **A, X, Y**: Modify the values in the accumulator and index registers.
+
+> [!TIP]
+> Changes to registers take effect immediately on the next clock cycle or instruction step.
+
+#### Memory Editor
+
+A comprehensive interface to view and modify the entire 64 KB memory space (RAM and ROM).
+
+- **Interactive Table**: Displays memory in a 16-column grid for easy cross-referencing.
+- **Direct Entry**: Click on any hex value to type a new byte value (00-FF).
+- **Infinite Scrolling**: Uses an optimized list clipper to allow smooth navigation through the full address range without performance loss.
+
+#### Memory Tools
+
+Located at the bottom of the debugger window, these tools allow for batch operations:
+
+- **Range Selection**: Define a Start and End address in hexadecimal.
+- **Fill Random Junk**: Populate the specified range with random bytes. This is particularly useful for stress-testing memory management or visualizing memory patterns in the Profiler.
 
 ## Technical Implementation
 
