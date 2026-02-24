@@ -5,6 +5,7 @@
 #include <atomic>
 #include <string>
 
+#include "Frontend/GUI/CRTFilter.h"
 #include "Hardware/Emulator.h"
 
 namespace Control {
@@ -37,6 +38,12 @@ struct AppState {
     // VRAM texture (OpenGL)
     GLuint vramTexture = 0;
     GLuint profilerTexture = 0;
+
+    // CRT filters
+    bool crtScanlines = false;
+    bool crtCurvature = false;
+    bool crtChromatic = false;
+    GUI::CRTFilter crtFilter;
 };
 
 }  // namespace Control

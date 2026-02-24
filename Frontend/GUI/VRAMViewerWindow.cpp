@@ -39,8 +39,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
                 struct tm* tm_info = localtime(&t);
                 char filenameBuffer[64];
                 strftime(filenameBuffer, sizeof(filenameBuffer),
-                         "65C02-SIM_VRAM_CAPTURE_%Y-%m-%d-%H-%M-%S.",
-                         tm_info);
+                         "65C02-SIM_VRAM_CAPTURE_%Y-%m-%d-%H-%M-%S.", tm_info);
 
                 ImGuiFileDialog::Instance()->OpenDialog(
                     "SaveVRAMImageKey", "Save VRAM Image", ".bmp", ".",
@@ -79,8 +78,15 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         if (offsetX > 0) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
         if (offsetY > 0) ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
 
-        ImGui::Image((ImTextureID)(intptr_t)state.vramTexture,
-                     ImVec2(imgW, imgH));
+        bool anyCRT =
+            state.crtScanlines || state.crtCurvature || state.crtChromatic;
+        GLuint displayTex = anyCRT ? state.crtFilter.Apply(
+                                         state.vramTexture, (int)imgW,
+                                         (int)imgH, state.crtScanlines,
+                                         state.crtCurvature, state.crtChromatic)
+                                   : state.vramTexture;
+
+        ImGui::Image((ImTextureID)(intptr_t)displayTex, ImVec2(imgW, imgH));
         ImGui::End();
     }
 

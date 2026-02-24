@@ -125,6 +125,12 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
             ImGui::CloseCurrentPopup();
         }
 
+        ImGui::Separator();
+        ImGui::Text("CRT Filters (GPU)");
+        ImGui::Checkbox("Scanlines", &state.crtScanlines);
+        ImGui::Checkbox("Screen Curvature", &state.crtCurvature);
+        ImGui::Checkbox("Chromatic Aberration", &state.crtChromatic);
+
         ImGui::EndPopup();
     }
 

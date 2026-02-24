@@ -103,6 +103,8 @@ int main(int argc, char* argv[]) {
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    state.crtFilter.Init(GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT);
+
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -282,6 +284,7 @@ int main(int argc, char* argv[]) {
     // Cleanup
     state.emulator.Stop();
     state.emulator.GetSID().Close();
+    state.crtFilter.Destroy();
     glDeleteTextures(1, &state.vramTexture);
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
