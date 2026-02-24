@@ -55,8 +55,8 @@ else
 fi
 
 # Copy Output
-mkdir -p output/windows
-cp build_win/SIM_65C02.exe output/windows/ 2>/dev/null || true
+mkdir -p output
+cp build_win/SIM_65C02.exe output/ 2>/dev/null || true
 
-echo "Windows build completed in output/windows"
+echo "Windows build completed in output"
 exit 0

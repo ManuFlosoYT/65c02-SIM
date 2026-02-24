@@ -49,7 +49,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SIM_65C02-linux
-          path: output/linux/SIM_65C02
+          path: output/SIM_65C02
 
   build-windows:
     runs-on: ubuntu-latest
@@ -91,7 +91,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SIM_65C02-windows
-          path: output/windows/SIM_65C02.exe
+          path: output/SIM_65C02.exe
 
       - name: Upload Unit Tests
         uses: actions/upload-artifact@v4
@@ -157,13 +157,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: SIM_65C02-linux
-          path: output/linux
+          path: output
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
           name: SIM_65C02-windows
-          path: output/windows
+          path: output
 
       - name: Download SDK Artifact
         uses: actions/download-artifact@v4
@@ -176,8 +176,8 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            output/linux/SIM_65C02
-            output/windows/SIM_65C02.exe
+            output/SIM_65C02
+            output/SIM_65C02.exe
             SDK.zip
 
   update-wiki:

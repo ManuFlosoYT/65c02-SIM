@@ -50,8 +50,8 @@ echo "Running unit tests (Linux)..."
 ./build/unit_tests
 
 # Copy Output
-mkdir -p output/linux
-cp build/SIM_65C02 output/linux/ 2>/dev/null || true
+mkdir -p output
+cp build/SIM_65C02 output/ 2>/dev/null || true
 
-echo "Linux build completed in output/linux"
+echo "Linux build completed in output"
 exit 0
