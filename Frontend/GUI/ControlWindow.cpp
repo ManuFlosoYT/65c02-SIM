@@ -146,6 +146,9 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     }
 
     ImGui::SameLine();
+    ImGui::Text(" || ");
+
+    ImGui::SameLine();
     {
         int actualIPS = state.emulator.GetActualIPS();
         if (state.cycleAccurate) {
