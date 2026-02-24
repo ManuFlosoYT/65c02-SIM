@@ -10,8 +10,10 @@ SDK.zip
 /output
 /Binaries/build
 
+SID/generator/__pycache__
+SID/generator/build
+
 *.o
 *.bin
 *.map
 *.lst
-SID/build

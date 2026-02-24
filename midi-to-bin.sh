@@ -80,7 +80,7 @@ for midi_file in "${files[@]}"; do
         echo "   Compiling..."
         
         # Ensure build directory exists
-        mkdir -p SID/build
+        mkdir -p SID/generator/build
         
         if ./compile-bin.sh "$clean_name" > /dev/null 2>&1; then
             mkdir -p output/midi
