@@ -5,6 +5,10 @@
 namespace Hardware {
 
 void ACIA::Init(Mem& mem) {
+    DATA = 0;
+    STATUS = 0;
+    CMD = 0;
+    CTRL = 0;
     mem.SetWriteHook(
         ACIA_DATA,
         [](void* context, Word dir, Byte val) {

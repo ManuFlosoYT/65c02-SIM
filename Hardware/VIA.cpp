@@ -41,6 +41,7 @@ void VIA::Reset() {
 }
 
 void VIA::Init(Mem& mem) {
+    Reset();
     mem.SetWriteHook(
         PORTB,
         [](void* context, Word dir, Byte val) {

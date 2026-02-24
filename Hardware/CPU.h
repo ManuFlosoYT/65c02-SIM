@@ -62,6 +62,8 @@ public:
         V = 0;
         N = 0;
         isInit = false;
+        waiting = false;
+        remainingCycles = 0;
     }
 
     inline int Execute(Mem& mem) {
