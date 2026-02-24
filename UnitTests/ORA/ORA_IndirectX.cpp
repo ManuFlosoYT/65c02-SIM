@@ -8,7 +8,7 @@ using namespace Hardware;
 
 class ORA_IndirectX_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(mem); }
+    void SetUp() override { cpu.Reset(); }
 
     Mem mem;
     CPU cpu;
@@ -22,8 +22,8 @@ TEST_F(ORA_IndirectX_Test, ORA_IndirectX) {
     mem.Write(0x4000, INS_ORA_INDX);
     mem.Write(0x4001,
               0x02);  // ZP Addr = 0x02. Actual Lookup: 0x02 + 0x04 = 0x06
-    mem.Write(0x0006, 0x00);  // Low Byte
-    mem.Write(0x0007, 0x80);  // High Byte -> Eff Address: 0x8000
+    mem.Write(0x0006, 0x00);     // Low Byte
+    mem.Write(0x0007, 0x80);     // High Byte -> Eff Address: 0x8000
     mem.WriteROM(0x8000, 0x0F);  // 0x00 | 0x0F = 0x0F
     mem.Write(0x4002, INS_JAM);
 

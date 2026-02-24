@@ -40,7 +40,9 @@ public:
     const char (&GetLCDScreen() const)[2][16] { return lcd.GetScreen(); }
     const LCD& GetLCD() const { return lcd; }
     const CPU& GetCPU() const { return cpu; }
+    CPU& GetCPU() { return cpu; }
     const Mem& GetMem() const { return mem; }
+    Mem& GetMem() { return mem; }
     GPU& GetGPU() { return gpu; }
     void SetGPUEnabled(bool enabled) { gpuEnabled = enabled; }
     bool IsGPUEnabled() const { return gpuEnabled; }

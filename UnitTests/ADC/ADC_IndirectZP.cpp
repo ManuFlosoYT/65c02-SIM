@@ -8,7 +8,7 @@ using namespace Hardware;
 
 class ADC_IndirectZP_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(mem); }
+    void SetUp() override { cpu.Reset(); }
 
     Mem mem;
     CPU cpu;
@@ -24,7 +24,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Basic) {
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0005, 0x00);
-    mem.Write(0x0006, 0x80);  // Pointer -> 0x8000
+    mem.Write(0x0006, 0x80);     // Pointer -> 0x8000
     mem.WriteROM(0x8000, 0x10);  // Value
 
     cpu.Execute(mem);
@@ -46,7 +46,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Carry) {
     mem.Write(0x4001, 0x05);
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0005, 0x00);
-    mem.Write(0x0006, 0x80);  // Pointer -> 0x8000
+    mem.Write(0x0006, 0x80);     // Pointer -> 0x8000
     mem.WriteROM(0x8000, 0x10);  // Value
 
     cpu.Execute(mem);
@@ -66,7 +66,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Overflow) {
     mem.Write(0x4001, 0x10);
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0010, 0x00);
-    mem.Write(0x0011, 0x90);  // Pointer -> 0x9000
+    mem.Write(0x0011, 0x90);     // Pointer -> 0x9000
     mem.WriteROM(0x9000, 0x50);  // Positive (+80)
 
     // 0x50 + 0x50 = 0xA0 (-96) -> Overflow

@@ -8,7 +8,7 @@ using namespace Hardware;
 
 class SBC_IndirectZP_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(mem); }
+    void SetUp() override { cpu.Reset(); }
 
     Mem mem;
     CPU cpu;
@@ -25,7 +25,7 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_Basic) {
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0002, 0x00);     // Pointer low
     mem.Write(0x0003, 0x80);     // Pointer high -> 0x8000
-    mem.WriteROM(0x8000, 0x05);     // Value
+    mem.WriteROM(0x8000, 0x05);  // Value
 
     cpu.Execute(mem);
 
@@ -45,7 +45,7 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_Borrow) {
     mem.Write(0x4001, 0x10);
     mem.Write(0x4002, INS_JAM);  // Stop
     mem.Write(0x0010, 0x00);
-    mem.Write(0x0011, 0x90);  // 0x9000
+    mem.Write(0x0011, 0x90);     // 0x9000
     mem.WriteROM(0x9000, 0x0A);  // 5 - 10
 
     cpu.Execute(mem);

@@ -14,7 +14,7 @@ protected:
     ACIA acia;
 
     void SetUp() override {
-        cpu.Reset(mem);
+        cpu.Reset();
         acia.Init(mem);
         // Load MSBASIC binary manually or assume BIOS is present
         // Since we can't easily link basic.bin here, we will simulate the BIOS

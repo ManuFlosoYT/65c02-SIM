@@ -1,14 +1,14 @@
 #include <gtest/gtest.h>
 
 #include "../../Hardware/CPU.h"
-#include "../../Hardware/Mem.h"
 #include "../../Hardware/CPU/Instructions/InstructionSet.h"
+#include "../../Hardware/Mem.h"
 
 using namespace Hardware;
 
 class ADC_Absolute_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(mem); }
+    void SetUp() override { cpu.Reset(); }
 
     Mem mem;
     CPU cpu;

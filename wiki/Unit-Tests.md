@@ -46,7 +46,7 @@ using namespace Hardware;
 
 class BEQ_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(mem); }
+    void SetUp() override { cpu.Reset(); }
     Mem mem;
     CPU cpu;
 };
@@ -84,54 +84,54 @@ Tests use the `JAM` instruction (also known as `STP` or `KIL`) as a **terminator
 
 ### Simple tests (one `.cpp` file each)
 
-| Instruction | File |
-|-------------|------|
-| BBR0–BBR7 | `BBR.cpp` |
-| BBS0–BBS7 | `BBS.cpp` |
-| BCC | `BCC.cpp` |
-| BCS | `BCS.cpp` |
-| BEQ | `BEQ.cpp` |
-| BMI | `BMI.cpp` |
-| BNE | `BNE.cpp` |
-| BPL | `BPL.cpp` |
-| BRA | `BRA.cpp` |
-| BRK | `BRK.cpp` |
-| BVC | `BVC.cpp` |
-| BVS | `BVS.cpp` |
-| CLC, CLD, CLI, CLV | `CLC.cpp`, `CLD.cpp`, `CLI.cpp`, `CLV.cpp` |
-| DEX, DEY | `DEX.cpp`, `DEY.cpp` |
-| INX, INY | `INX.cpp`, `INY.cpp` |
-| NOP | `NOP.cpp` |
-| PHA, PHP, PHX, PHY | `PHA.cpp`, `PHP.cpp`, `PHX.cpp`, `PHY.cpp` |
-| PLA, PLP, PLX, PLY | `PLA.cpp`, `PLP.cpp`, `PLX.cpp`, `PLY.cpp` |
-| RMB, SMB | `RMB.cpp`, `SMB.cpp` |
-| RTI, RTS | `RTI.cpp`, `RTS.cpp` |
-| SEC, SED, SEI | `SEC.cpp`, `SED.cpp`, `SEI.cpp` |
-| TAX, TAY, TSX, TXA, TXS, TYA | Individual `.cpp` files |
+| Instruction                  | File                                       |
+| ---------------------------- | ------------------------------------------ |
+| BBR0–BBR7                    | `BBR.cpp`                                  |
+| BBS0–BBS7                    | `BBS.cpp`                                  |
+| BCC                          | `BCC.cpp`                                  |
+| BCS                          | `BCS.cpp`                                  |
+| BEQ                          | `BEQ.cpp`                                  |
+| BMI                          | `BMI.cpp`                                  |
+| BNE                          | `BNE.cpp`                                  |
+| BPL                          | `BPL.cpp`                                  |
+| BRA                          | `BRA.cpp`                                  |
+| BRK                          | `BRK.cpp`                                  |
+| BVC                          | `BVC.cpp`                                  |
+| BVS                          | `BVS.cpp`                                  |
+| CLC, CLD, CLI, CLV           | `CLC.cpp`, `CLD.cpp`, `CLI.cpp`, `CLV.cpp` |
+| DEX, DEY                     | `DEX.cpp`, `DEY.cpp`                       |
+| INX, INY                     | `INX.cpp`, `INY.cpp`                       |
+| NOP                          | `NOP.cpp`                                  |
+| PHA, PHP, PHX, PHY           | `PHA.cpp`, `PHP.cpp`, `PHX.cpp`, `PHY.cpp` |
+| PLA, PLP, PLX, PLY           | `PLA.cpp`, `PLP.cpp`, `PLX.cpp`, `PLY.cpp` |
+| RMB, SMB                     | `RMB.cpp`, `SMB.cpp`                       |
+| RTI, RTS                     | `RTI.cpp`, `RTS.cpp`                       |
+| SEC, SED, SEI                | `SEC.cpp`, `SED.cpp`, `SEI.cpp`            |
+| TAX, TAY, TSX, TXA, TXS, TYA | Individual `.cpp` files                    |
 
 ### Directory tests (multiple addressing modes)
 
-| Instruction | Directory | Modes tested |
-|-------------|-----------|--------------|
-| ADC | `ADC/` | Immediate, ZP, ZP_X, Absolute, Absolute_X, Absolute_Y, Indirect_X, Indirect_Y |
-| AND | `AND/` | All modes |
-| ASL | `ASL/` | Accumulator, ZP, Absolute, etc. |
-| CMP | `CMP/` | All modes |
-| CPX, CPY | `CPX/`, `CPY/` | Immediate, ZP, Absolute |
-| DEC, INC | `DEC/`, `INC/` | ZP, Absolute, Accumulator |
-| EOR | `EOR/` | All modes |
-| LDA, LDX, LDY | `LDA/`, `LDX/`, `LDY/` | All modes |
-| ROL, ROR | `ROL/`, `ROR/` | Accumulator, ZP, Absolute |
-| SBC | `SBC/` | All modes |
-| STA, STX, STY, STZ | `STA/`, `STX/`, `STY/`, `STZ/` | All modes |
-| TRB, TSB | `TRB/`, `TSB/` | ZP, Absolute |
+| Instruction        | Directory                      | Modes tested                                                                  |
+| ------------------ | ------------------------------ | ----------------------------------------------------------------------------- |
+| ADC                | `ADC/`                         | Immediate, ZP, ZP_X, Absolute, Absolute_X, Absolute_Y, Indirect_X, Indirect_Y |
+| AND                | `AND/`                         | All modes                                                                     |
+| ASL                | `ASL/`                         | Accumulator, ZP, Absolute, etc.                                               |
+| CMP                | `CMP/`                         | All modes                                                                     |
+| CPX, CPY           | `CPX/`, `CPY/`                 | Immediate, ZP, Absolute                                                       |
+| DEC, INC           | `DEC/`, `INC/`                 | ZP, Absolute, Accumulator                                                     |
+| EOR                | `EOR/`                         | All modes                                                                     |
+| LDA, LDX, LDY      | `LDA/`, `LDX/`, `LDY/`         | All modes                                                                     |
+| ROL, ROR           | `ROL/`, `ROR/`                 | Accumulator, ZP, Absolute                                                     |
+| SBC                | `SBC/`                         | All modes                                                                     |
+| STA, STX, STY, STZ | `STA/`, `STX/`, `STY/`, `STZ/` | All modes                                                                     |
+| TRB, TSB           | `TRB/`, `TSB/`                 | ZP, Absolute                                                                  |
 
 ### Hardware tests
 
-| File | Description |
-|------|-------------|
-| `VIA_Test.cpp` | Tests T1/T2 timers, DDR registers, and VIA 6522 callbacks |
-| `repro_freeze.cpp` | Reproduction of an emulator freeze case |
+| File               | Description                                               |
+| ------------------ | --------------------------------------------------------- |
+| `VIA_Test.cpp`     | Tests T1/T2 timers, DDR registers, and VIA 6522 callbacks |
+| `repro_freeze.cpp` | Reproduction of an emulator freeze case                   |
 
 ## Running the tests
 

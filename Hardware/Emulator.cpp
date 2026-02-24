@@ -1,5 +1,7 @@
 #include "Emulator.h"
 
+#include <picosha2.h>
+
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -9,7 +11,6 @@
 #include <sstream>
 
 #include "Frontend/Control/Console.h"
-#include <picosha2.h>
 
 using namespace Hardware;
 
@@ -29,8 +30,9 @@ void Emulator::PrintState() {
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::lock_guard<std::mutex> lock(emulationMutex);
-    cpu.Reset(mem);
-    lcd.Init(mem);  // Clears state
+    mem.Init();
+    cpu.Reset();
+    lcd.Init(mem);
     acia.Init(mem);
     via.Init(mem);
 

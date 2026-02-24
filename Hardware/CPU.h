@@ -44,7 +44,7 @@ public:
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& in);
 
-    inline void Reset(Mem& mem) {
+    inline void Reset() {
         PC = 0xFFFC;
         SP = 0x01FF;  // Top of Stack
 

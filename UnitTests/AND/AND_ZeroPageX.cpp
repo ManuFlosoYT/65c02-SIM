@@ -8,7 +8,7 @@ using namespace Hardware;
 
 class AND_ZeroPageX_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(mem); }
+    void SetUp() override { cpu.Reset(); }
 
     Mem mem;
     CPU cpu;
