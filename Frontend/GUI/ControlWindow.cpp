@@ -9,7 +9,7 @@
 #include <sstream>
 
 #include "Frontend/Control/Console.h"
-#include "Frontend/GUI/Debugger/DebuggerWindow.h"
+#include "Frontend/GUI/Debugger/DebugMenu.h"
 
 using namespace Control;
 using namespace Core;
@@ -128,7 +128,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         ImGui::EndPopup();
     }
 
-    DrawDebuggerWindow(state);
+    DrawDebugMenu(state);
 
     int tempIPS = state.instructionsPerFrame;
     char targetLabel[32];
