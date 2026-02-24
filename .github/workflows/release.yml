@@ -125,7 +125,7 @@ jobs:
       - name: Install dependencies
         run: |
           dnf -y update
-          dnf -y install cc65 python3-pip zip
+          dnf -y install cc65 python3-pip zip git
           pip3 install pillow mido
 
       - name: Checkout code
