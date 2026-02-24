@@ -52,11 +52,11 @@ output/rom/<name>.bin
 
 The script detects which linker configuration to use based on the headers included in the program:
 
-| Detected header | Configuration used |
-|-----------------|-------------------|
+| Detected header                     | Configuration used              |
+| ----------------------------------- | ------------------------------- |
 | `#include "Libs/GPUDoubleBuffer.h"` | `C-Runtime-GPUDoubleBuffer.cfg` |
-| `#include "Libs/GPU.h"` | `C-Runtime-GPU.cfg` |
-| (none) | `C-Runtime.cfg` |
+| `#include "Libs/GPU.h"`             | `C-Runtime-GPU.cfg`             |
+| (none)                              | `C-Runtime.cfg`                 |
 
 #### Special target `eater`
 
@@ -72,6 +72,7 @@ Converts an image (PNG, JPG, or BMP) to the emulator's VRAM binary format (100×
 
 ```bash
 ./image-to-bin.sh <image_name>
+./image-to-bin.sh all         # Convert all images in GPU/
 # Example: ./image-to-bin.sh GPU/bocchi.png
 ```
 
@@ -100,6 +101,7 @@ Converts a MIDI file to 65c02 assembly code for the emulator's SID chip. The res
 
 ```bash
 ./midi-to-bin.sh <midi_file>
+./midi-to-bin.sh all          # Convert all MIDI files in SID/
 # Example: ./midi-to-bin.sh SID/overworld.mid
 ```
 
@@ -114,16 +116,16 @@ Output is saved to `output/midi/<song>.bin`.
 
 The script has **8 compression modes** (time granularities from 1 ms to 100+ ms). It automatically tries from the most precise mode to the most compressed and selects the first one that fits in 32 KB of ROM:
 
-| Mode | Granularity | Fidelity |
-|------|-------------|----------|
-| 1 | ~1 ms | Maximum fidelity |
-| 2 | ~2 ms | High fidelity |
-| 3 | ~5 ms | Good fidelity |
-| 4 | ~10 ms | Medium fidelity |
-| 5 | ~20 ms | Medium compression |
-| 6 | ~40 ms | High compression |
-| 7 | ~80 ms | Very compressed |
-| 8 | ~100+ ms | Maximum compression |
+| Mode | Granularity | Fidelity            |
+| ---- | ----------- | ------------------- |
+| 1    | ~1 ms       | Maximum fidelity    |
+| 2    | ~2 ms       | High fidelity       |
+| 3    | ~5 ms       | Good fidelity       |
+| 4    | ~10 ms      | Medium fidelity     |
+| 5    | ~20 ms      | Medium compression  |
+| 6    | ~40 ms      | High compression    |
+| 7    | ~80 ms      | Very compressed     |
+| 8    | ~100+ ms    | Maximum compression |
 
 If no mode fits within 32 KB, the script reports an error.
 
@@ -140,9 +142,19 @@ If no mode fits within 32 KB, the script reports an error.
 
 `Binaries/Libs/` contains C header files that make it easy to use the hardware from C code:
 
-| File | Description |
-|------|-------------|
-| `GPU.h` | Functions for writing to VRAM (single buffer) |
-| `GPUDoubleBuffer.h` | Functions for double-buffered VRAM access |
-| `SID.h` | Functions for controlling the SID chip |
-| `VIA.h` | Functions for accessing the VIA 6522 |
+| File                | Description                                   |
+| ------------------- | --------------------------------------------- |
+| `GPU.h`             | Functions for writing to VRAM (single buffer) |
+| `GPUDoubleBuffer.h` | Functions for double-buffered VRAM access     |
+| `SID.h`             | Functions for controlling the SID chip        |
+| `VIA.h`             | Functions for accessing the VIA 6522          |
+
+---
+
+## Pre-compiled Assets
+
+The **SDK.zip** distributed in the official releases already contains the `output/` folder with all programs, images, and music pre-compiled. You can find them in:
+
+- `output/rom/`: Main program binaries.
+- `output/vram/`: Converted images for the GPU.
+- `output/midi/`: Compiled music for the SID chip.
