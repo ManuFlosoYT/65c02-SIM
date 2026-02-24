@@ -28,22 +28,13 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     ImGui::Begin("Control", nullptr,
                  window_flags | ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoScrollWithMouse);
-    ImGui::BeginDisabled(!state.romLoaded);
-    if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
-        if (state.emulator.IsPaused())
-            state.emulator.Resume();
-        else
-            state.emulator.Pause();
-        state.emulator.GetSID().SetEmulationPaused(state.emulator.IsPaused());
+    if (ImGui::Button("Settings")) {
+        ImGui::OpenPopup("SettingsMenu");
     }
     ImGui::SameLine();
-    if (ImGui::Button("Step")) {
-        state.emulator.GetSID().SetEmulationPaused(false);
-        state.emulator.Pause();
-        state.emulator.Step();
-        state.emulator.GetSID().SetEmulationPaused(true);
+    if (ImGui::Button("Debugger")) {
+        state.debuggerOpen = true;
     }
-    ImGui::EndDisabled();
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
         bool wasRunning = !state.emulator.IsPaused();
@@ -70,23 +61,33 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
             state.emulator.GetSID().SetEmulationPaused(false);
         }
     }
+
     ImGui::SameLine();
-    if (ImGui::Button(state.gpuEnabled ? "GPU (On)" : "GPU (Off)")) {
-        state.gpuEnabled = !state.gpuEnabled;
+    ImGui::BeginDisabled(!state.romLoaded);
+    if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
+        if (state.emulator.IsPaused())
+            state.emulator.Resume();
+        else
+            state.emulator.Pause();
+        state.emulator.GetSID().SetEmulationPaused(state.emulator.IsPaused());
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Step")) {
+        state.emulator.GetSID().SetEmulationPaused(false);
+        state.emulator.Pause();
+        state.emulator.Step();
+        state.emulator.GetSID().SetEmulationPaused(true);
+    }
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    if (ImGui::Checkbox("GPU", &state.gpuEnabled)) {
         state.emulator.SetGPUEnabled(state.gpuEnabled);
     }
     ImGui::SameLine();
     bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
-    if (ImGui::Button(soundEnabled ? "SID (On)" : "SID (Off)")) {
-        state.emulator.GetSID().EnableSound(!soundEnabled);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Settings")) {
-        ImGui::OpenPopup("SettingsMenu");
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Debugger")) {
-        state.debuggerOpen = true;
+    if (ImGui::Checkbox("SID", &soundEnabled)) {
+        state.emulator.GetSID().EnableSound(soundEnabled);
     }
 
     if (ImGui::BeginPopup("SettingsMenu")) {

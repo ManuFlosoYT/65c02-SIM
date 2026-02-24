@@ -30,18 +30,20 @@ Frontend/
 
 ### ControlWindow — Emulation controls
 
-Allows the user to:
+Allows the user to control the emulation through these elements (in order):
 
-- **Load a binary** using the file dialog (ImGuiFileDialog)
-- **Start / Pause / Resume / Stop** emulation
-- **Step** — execute a single instruction
-- Configure the **speed** (Target Hz / IPS — instructions per second)
-- Toggle **cycle-accurate mode** (in Settings)
-- Toggle the **GPU** (On/Off)
-- Toggle the **SID** (Sound On/Off)
-- Display the **current speed** (actual Hz / IPS)
-- Access the **Settings Menu** for advanced configuration
-- Open the **Debugger**
+- **Settings** — Access advanced configuration.
+- **Debugger** — Open the integrated debugger.
+- **Reset** — Restart the machine and reload the ROM.
+- **Run / Pause** — Toggle emulation execution.
+- **Step** — Execute a single instruction.
+- **GPU** (Checkbox) — Toggle graphics processing.
+- **SID** (Checkbox) — Toggle sound synthesis.
+
+Other features in this window:
+
+- Configure the **Target speed** (Hz / IPS).
+- Display the **Actual speed** (Hz / IPS).
 
 ### Settings Menu
 
