@@ -1,7 +1,9 @@
 #pragma once
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <filesystem>
 #include <functional>
 #include <mutex>
 #include <string>
@@ -71,6 +73,9 @@ public:
     void ClearProfiler() { mem.ClearProfiler(); }
     uint32_t* GetProfilerCounts() { return mem.GetProfilerCounts(); }
 
+    void SetAutoReload(bool enabled) { autoReloadRequested = enabled; }
+    bool IsAutoReloadEnabled() const { return autoReloadRequested; }
+
 private:
     void ThreadLoop();
 
@@ -99,6 +104,10 @@ private:
     std::mutex threadMutex;
     std::condition_variable pauseCV;
     std::mutex emulationMutex;  // mutex for thread safety during reset/step
+
+    std::string currentBinPath;
+    std::filesystem::file_time_type lastBinModificationTime;
+    std::atomic<bool> autoReloadRequested{true};
 };
 
 }  // namespace Core

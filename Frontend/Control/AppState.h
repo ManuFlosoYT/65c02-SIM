@@ -26,6 +26,7 @@ struct AppState {
     bool gpuEnabled = false;
     bool cycleAccurate = true;  // Enabled by default
     bool ignoreSaveStateHash = false;
+    bool autoReload = true;
 
     // Debugger
     bool debuggerOpen = false;

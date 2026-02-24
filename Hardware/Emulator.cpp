@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -113,6 +114,17 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     }
 
     fclose(file);
+
+    // Save current binary info for auto-reload
+    currentBinPath = path;
+    try {
+        if (std::filesystem::exists(path)) {
+            lastBinModificationTime = std::filesystem::last_write_time(path);
+        }
+    } catch (...) {
+        // Ignore filesystem errors
+    }
+
     return true;
 }
 
@@ -318,6 +330,7 @@ void Emulator::ThreadLoop() {
     auto lastSecondTime = high_resolution_clock::now();
 
     double instructionAccumulator = 0.0;
+    auto lastWatchCheck = high_resolution_clock::now();
 
     while (running) {
         {
@@ -373,6 +386,35 @@ void Emulator::ThreadLoop() {
         // duration), reset the schedule to avoid running too fast to catch up.
         if (high_resolution_clock::now() > nextSliceTime) {
             nextSliceTime = high_resolution_clock::now();
+        }
+
+        // Check for binary file modification for auto-reload
+        if (autoReloadRequested.load() && !currentBinPath.empty()) {
+            auto now = high_resolution_clock::now();
+            if (duration_cast<milliseconds>(now - lastWatchCheck).count() >=
+                500) {
+                lastWatchCheck = now;
+                try {
+                    if (std::filesystem::exists(currentBinPath)) {
+                        auto latestTime =
+                            std::filesystem::last_write_time(currentBinPath);
+                        if (latestTime > lastBinModificationTime) {
+                            std::string errorMsg;
+                            std::cerr << "Auto-reloading: " << currentBinPath
+                                      << std::endl;
+                            if (Init(currentBinPath, errorMsg)) {
+                                Console::Clear();
+                            } else {
+                                std::cerr << "Auto-reload failed: " << errorMsg
+                                          << std::endl;
+                            }
+                        }
+                    }
+                } catch (...) {
+                    // Ignore transient filesystem errors (like if the file is
+                    // being written to)
+                }
+            }
         }
     }
 }
