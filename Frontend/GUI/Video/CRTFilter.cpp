@@ -133,6 +133,7 @@ GLuint CRTFilter::Apply(GLuint inputTex, int w, int h, const CRTParams& p) {
     glUniform1f(glGetUniformLocation(m_shader, "u_time"), p.time);
 
     uni1i("u_scanlines", p.scanlines);
+    uni1i("u_interlacing", p.interlacing);
     uni1i("u_curvature", p.curvature);
     uni1i("u_chromatic", p.chromatic);
     uni1i("u_blur", p.blur);

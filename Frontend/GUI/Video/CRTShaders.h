@@ -24,6 +24,7 @@ uniform float u_time;
 
 // Essentials
 uniform bool u_scanlines;
+uniform bool u_interlacing;
 uniform bool u_curvature;
 uniform bool u_chromatic;
 uniform bool u_blur;
@@ -90,8 +91,9 @@ void main() {
     }
 
     if (u_vsyncJitter) {
-        float band  = float(int(uv.y * (1.0 / u_texelSize.y) * 0.03));
-        float drift = (hash(vec2(band, u_time * 0.1)) - 0.5) * u_texelSize.x * 0.4;
+        float scrolledY = uv.y + u_time * 0.15;
+        float band  = float(int(scrolledY * (1.0 / u_texelSize.y) * 0.04));
+        float drift = (hash(vec2(band, floor(u_time * 3.0))) - 0.5) * u_texelSize.x * 0.5;
         uv.x += drift;
     }
 
@@ -168,8 +170,18 @@ void main() {
     }
 
     if (u_scanlines) {
+        // Beam blooming: haz más ancho en zonas brillantes, más estrecho en oscuras
+        float luma = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+        float scanlineIntensity = 0.5 + (luma * 0.5);
         float line = mod(gl_FragCoord.y, 2.0);
-        if (line < 1.0) color.rgb *= 0.6;
+        if (line < 1.0) color.rgb *= scanlineIntensity;
+    }
+
+    if (u_interlacing) {
+        float osc = sin(u_time * 3.14159265 * 25.0); // ~12.5 Hz smooth wave
+        float lineSign = mod(gl_FragCoord.y, 2.0) < 1.0 ? 1.0 : -1.0;
+        float modulation = 1.0 + osc * lineSign * 0.02; // +-2% per line, net = 0
+        color.rgb *= clamp(modulation, 0.0, 1.0);
     }
 
     if (u_noise) {

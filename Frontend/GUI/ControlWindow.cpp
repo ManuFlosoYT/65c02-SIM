@@ -127,8 +127,20 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
 
         ImGui::Separator();
         ImGui::Text("CRT Filters (GPU)");
+        auto setCRTAll = [&](bool v) {
+            state.crtScanlines = state.crtInterlacing = state.crtCurvature =
+                state.crtChromatic = state.crtBlur = state.crtShadowMask =
+                    state.crtVignette = state.crtCornerRounding =
+                        state.crtGlassGlare = state.crtColorBleeding =
+                            state.crtNoise = state.crtVSyncJitter =
+                                state.crtPhosphorDecay = state.crtBloom = v;
+        };
+        if (ImGui::Button("All On")) setCRTAll(true);
+        ImGui::SameLine();
+        if (ImGui::Button("All Off")) setCRTAll(false);
         ImGui::Text("Essentials");
         ImGui::Checkbox("Scanlines", &state.crtScanlines);
+        ImGui::Checkbox("Interlacing", &state.crtInterlacing);
         ImGui::Checkbox("Screen Curvature", &state.crtCurvature);
         ImGui::Checkbox("Chromatic Aberration", &state.crtChromatic);
         ImGui::Checkbox("Phosphor Blur", &state.crtBlur);

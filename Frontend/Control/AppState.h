@@ -40,28 +40,34 @@ struct AppState {
     GLuint profilerTexture = 0;
 
     // CRT filters - The Essentials
-    bool crtScanlines = false;
-    bool crtCurvature = false;
-    bool crtChromatic = false;
-    bool crtBlur = false;
+    bool crtScanlines = true;
+    bool crtInterlacing = true;
+    bool crtCurvature = true;
+    bool crtChromatic = true;
+    bool crtBlur = true;
 
     // CRT filters - Screen Physicality
-    bool crtShadowMask = false;
-    bool crtVignette = false;
-    bool crtCornerRounding = false;
-    bool crtGlassGlare = false;
+    bool crtShadowMask = true;
+    bool crtVignette = true;
+    bool crtCornerRounding = true;
+    bool crtGlassGlare = true;
 
     // CRT filters - Signal & Analog Imperfections
-    bool crtColorBleeding = false;
-    bool crtNoise = false;
-    bool crtVSyncJitter = false;
-    bool crtPhosphorDecay = false;
+    bool crtColorBleeding = true;
+    bool crtNoise = true;
+    bool crtVSyncJitter = true;
+    bool crtPhosphorDecay = true;
 
     // CRT filters - Lighting
-    bool crtBloom = false;
+    bool crtBloom = true;
 
     float crtTime = 0.0f;
     GUI::CRTFilter crtFilter;
+
+    // Last rendered display texture (post-CRT) for capture
+    GLuint lastDisplayTex = 0;
+    int lastDisplayW = 0;
+    int lastDisplayH = 0;
 };
 
 }  // namespace Control

@@ -7,6 +7,7 @@ namespace GUI {
 struct CRTParams {
     // Essentials
     bool scanlines = false;
+    bool interlacing = false;
     bool curvature = false;
     bool chromatic = false;
     bool blur = false;
