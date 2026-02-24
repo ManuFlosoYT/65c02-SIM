@@ -127,9 +127,23 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
 
         ImGui::Separator();
         ImGui::Text("CRT Filters (GPU)");
+        ImGui::Text("Essentials");
         ImGui::Checkbox("Scanlines", &state.crtScanlines);
         ImGui::Checkbox("Screen Curvature", &state.crtCurvature);
         ImGui::Checkbox("Chromatic Aberration", &state.crtChromatic);
+        ImGui::Checkbox("Phosphor Blur", &state.crtBlur);
+        ImGui::Text("Screen Physicality");
+        ImGui::Checkbox("Shadow Mask", &state.crtShadowMask);
+        ImGui::Checkbox("Vignette", &state.crtVignette);
+        ImGui::Checkbox("Corner Rounding", &state.crtCornerRounding);
+        ImGui::Checkbox("Glass Glare", &state.crtGlassGlare);
+        ImGui::Text("Signal & Analog");
+        ImGui::Checkbox("Color Bleeding", &state.crtColorBleeding);
+        ImGui::Checkbox("RF Noise", &state.crtNoise);
+        ImGui::Checkbox("VSync Jitter", &state.crtVSyncJitter);
+        ImGui::Checkbox("Phosphor Decay", &state.crtPhosphorDecay);
+        ImGui::Text("Lighting");
+        ImGui::Checkbox("Bloom", &state.crtBloom);
 
         ImGui::EndPopup();
     }

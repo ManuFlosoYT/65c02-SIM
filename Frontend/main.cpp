@@ -17,7 +17,7 @@
 #include "Frontend/GUI/RegistersWindow.h"
 #include "Frontend/GUI/SIDViewerWindow.h"
 #include "Frontend/GUI/UpdatePopup.h"
-#include "Frontend/GUI/VRAMViewerWindow.h"
+#include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #include "UpdateChecker.h"
 
 using namespace Control;
@@ -265,6 +265,7 @@ int main(int argc, char* argv[]) {
                                  wf);
         GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height,
                                wf);
+        state.crtTime = SDL_GetTicks() / 1000.0f;
         GUI::DrawVRAMViewerWindow(state, work_pos, work_size,
                                   top_section_height, wf);
 

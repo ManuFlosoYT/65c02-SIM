@@ -1,73 +1,10 @@
-#include "Frontend/GUI/CRTFilter.h"
+#include "Frontend/GUI/Video/CRTFilter.h"
 
 #include <iostream>
 
+#include "Frontend/GUI/Video/CRTShaders.h"
+
 namespace GUI {
-
-// ---------------------------------------------------------------------------
-// GLSL 130 shaders
-// ---------------------------------------------------------------------------
-
-static const char* kVertSrc = R"(
-#version 130
-in vec2 a_pos;
-in vec2 a_uv;
-out vec2 v_uv;
-void main() {
-    v_uv = a_uv;
-    gl_Position = vec4(a_pos, 0.0, 1.0);
-}
-)";
-
-static const char* kFragSrc = R"(
-#version 130
-in vec2 v_uv;
-out vec4 fragColor;
-
-uniform sampler2D u_texture;
-uniform bool u_scanlines;
-uniform bool u_curvature;
-uniform bool u_chromatic;
-
-vec2 curveUV(vec2 uv) {
-    uv = uv * 2.0 - 1.0;
-    vec2 offset = abs(uv.yx) / vec2(5.5, 4.0);
-    uv = uv + uv * offset * offset;
-    return uv * 0.5 + 0.5;
-}
-
-void main() {
-    vec2 uv = v_uv;
-
-    if (u_curvature) {
-        uv = curveUV(uv);
-        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-            fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
-        }
-    }
-
-    vec4 color;
-    if (u_chromatic) {
-        float shift = 0.004;
-        float r = texture(u_texture, uv + vec2(shift, 0.0)).r;
-        float g = texture(u_texture, uv).g;
-        float b = texture(u_texture, uv - vec2(shift, 0.0)).b;
-        color = vec4(r, g, b, 1.0);
-    } else {
-        color = texture(u_texture, uv);
-    }
-
-    if (u_scanlines) {
-        float line = mod(gl_FragCoord.y, 2.0);
-        if (line < 1.0) color.rgb *= 0.6;
-    }
-
-    fragColor = color;
-}
-)";
-
-// ---------------------------------------------------------------------------
 
 GLuint CRTFilter::CompileShader(const char* vertSrc, const char* fragSrc) {
     auto compile = [](GLenum type, const char* src) -> GLuint {
@@ -119,12 +56,10 @@ void CRTFilter::CreateFBO(int w, int h) {
 }
 
 void CRTFilter::Init(int w, int h) {
-    m_shader = CompileShader(kVertSrc, kFragSrc);
+    m_shader = CompileShader(kCRTVertSrc, kCRTFragSrc);
 
-    // Fullscreen quad: positions + UVs
     // clang-format off
     float verts[] = {
-        // pos        // uv
         -1.f, -1.f,  0.f, 0.f,
          1.f, -1.f,  1.f, 0.f,
          1.f,  1.f,  1.f, 1.f,
@@ -172,11 +107,9 @@ void CRTFilter::Resize(int w, int h) {
     CreateFBO(w, h);
 }
 
-GLuint CRTFilter::Apply(GLuint inputTex, int w, int h, bool scanlines,
-                        bool curvature, bool chromatic) {
+GLuint CRTFilter::Apply(GLuint inputTex, int w, int h, const CRTParams& p) {
     Resize(w, h);
 
-    // Save previous GL state
     GLint prevFBO, prevViewport[4];
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
     glGetIntegerv(GL_VIEWPORT, prevViewport);
@@ -189,13 +122,29 @@ GLuint CRTFilter::Apply(GLuint inputTex, int w, int h, bool scanlines,
     glUseProgram(m_shader);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, inputTex);
+
+    auto uni1i = [&](const char* n, bool v) {
+        glUniform1i(glGetUniformLocation(m_shader, n), v ? 1 : 0);
+    };
+
     glUniform1i(glGetUniformLocation(m_shader, "u_texture"), 0);
-    glUniform1i(glGetUniformLocation(m_shader, "u_scanlines"),
-                scanlines ? 1 : 0);
-    glUniform1i(glGetUniformLocation(m_shader, "u_curvature"),
-                curvature ? 1 : 0);
-    glUniform1i(glGetUniformLocation(m_shader, "u_chromatic"),
-                chromatic ? 1 : 0);
+    glUniform2f(glGetUniformLocation(m_shader, "u_texelSize"), 1.f / w,
+                1.f / h);
+    glUniform1f(glGetUniformLocation(m_shader, "u_time"), p.time);
+
+    uni1i("u_scanlines", p.scanlines);
+    uni1i("u_curvature", p.curvature);
+    uni1i("u_chromatic", p.chromatic);
+    uni1i("u_blur", p.blur);
+    uni1i("u_shadowMask", p.shadowMask);
+    uni1i("u_vignette", p.vignette);
+    uni1i("u_cornerRounding", p.cornerRounding);
+    uni1i("u_glassGlare", p.glassGlare);
+    uni1i("u_colorBleeding", p.colorBleeding);
+    uni1i("u_noise", p.noise);
+    uni1i("u_vsyncJitter", p.vsyncJitter);
+    uni1i("u_phosphorDecay", p.phosphorDecay);
+    uni1i("u_bloom", p.bloom);
 
     glBindVertexArray(m_vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -204,7 +153,6 @@ GLuint CRTFilter::Apply(GLuint inputTex, int w, int h, bool scanlines,
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // Restore previous state
     glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
     glViewport(prevViewport[0], prevViewport[1], prevViewport[2],
                prevViewport[3]);

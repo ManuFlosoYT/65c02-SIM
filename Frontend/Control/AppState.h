@@ -5,7 +5,7 @@
 #include <atomic>
 #include <string>
 
-#include "Frontend/GUI/CRTFilter.h"
+#include "Frontend/GUI/Video/CRTFilter.h"
 #include "Hardware/Emulator.h"
 
 namespace Control {
@@ -39,10 +39,28 @@ struct AppState {
     GLuint vramTexture = 0;
     GLuint profilerTexture = 0;
 
-    // CRT filters
+    // CRT filters - The Essentials
     bool crtScanlines = false;
     bool crtCurvature = false;
     bool crtChromatic = false;
+    bool crtBlur = false;
+
+    // CRT filters - Screen Physicality
+    bool crtShadowMask = false;
+    bool crtVignette = false;
+    bool crtCornerRounding = false;
+    bool crtGlassGlare = false;
+
+    // CRT filters - Signal & Analog Imperfections
+    bool crtColorBleeding = false;
+    bool crtNoise = false;
+    bool crtVSyncJitter = false;
+    bool crtPhosphorDecay = false;
+
+    // CRT filters - Lighting
+    bool crtBloom = false;
+
+    float crtTime = 0.0f;
     GUI::CRTFilter crtFilter;
 };
 

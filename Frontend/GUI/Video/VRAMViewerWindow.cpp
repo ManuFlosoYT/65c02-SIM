@@ -1,4 +1,4 @@
-#include "Frontend/GUI/VRAMViewerWindow.h"
+#include "Frontend/GUI/Video/VRAMViewerWindow.h"
 
 #include <ImGuiFileDialog.h>
 
@@ -79,12 +79,32 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         if (offsetY > 0) ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
 
         bool anyCRT =
-            state.crtScanlines || state.crtCurvature || state.crtChromatic;
-        GLuint displayTex = anyCRT ? state.crtFilter.Apply(
-                                         state.vramTexture, (int)imgW,
-                                         (int)imgH, state.crtScanlines,
-                                         state.crtCurvature, state.crtChromatic)
-                                   : state.vramTexture;
+            state.crtScanlines || state.crtCurvature || state.crtChromatic ||
+            state.crtBlur || state.crtShadowMask || state.crtVignette ||
+            state.crtCornerRounding || state.crtGlassGlare ||
+            state.crtColorBleeding || state.crtNoise || state.crtVSyncJitter ||
+            state.crtPhosphorDecay || state.crtBloom;
+
+        GLuint displayTex = state.vramTexture;
+        if (anyCRT) {
+            GUI::CRTParams p;
+            p.scanlines = state.crtScanlines;
+            p.curvature = state.crtCurvature;
+            p.chromatic = state.crtChromatic;
+            p.blur = state.crtBlur;
+            p.shadowMask = state.crtShadowMask;
+            p.vignette = state.crtVignette;
+            p.cornerRounding = state.crtCornerRounding;
+            p.glassGlare = state.crtGlassGlare;
+            p.colorBleeding = state.crtColorBleeding;
+            p.noise = state.crtNoise;
+            p.vsyncJitter = state.crtVSyncJitter;
+            p.phosphorDecay = state.crtPhosphorDecay;
+            p.bloom = state.crtBloom;
+            p.time = state.crtTime;
+            displayTex = state.crtFilter.Apply(state.vramTexture, (int)imgW,
+                                               (int)imgH, p);
+        }
 
         ImGui::Image((ImTextureID)(intptr_t)displayTex, ImVec2(imgW, imgH));
         ImGui::End();
