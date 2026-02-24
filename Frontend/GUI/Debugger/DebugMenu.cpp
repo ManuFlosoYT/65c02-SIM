@@ -19,7 +19,7 @@ void DrawDebugMenu(Control::AppState& state) {
     state.emulator.SetProfilingEnabled(true);
 
     ImVec2 vpSize = ImGui::GetMainViewport()->Size;
-    ImGui::SetNextWindowSize(ImVec2(vpSize.x * 0.7f, vpSize.y * 0.7f),
+    ImGui::SetNextWindowSize(ImVec2(vpSize.x * 0.75f, vpSize.y * 0.75f),
                              ImGuiCond_FirstUseEver);
     if (!ImGui::Begin(
             "Debug Menu", &state.debuggerOpen,

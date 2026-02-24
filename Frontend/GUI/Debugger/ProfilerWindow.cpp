@@ -72,7 +72,7 @@ void DrawProfilerWindow(AppState& state) {
         }
     }
 
-    ImGui::SetCursorPos(ImVec2(10, 10));
+    ImGui::SetCursorPos(ImVec2(10, 5));
     if (ImGui::Button("Clear Data")) {
         state.emulator.ClearProfiler();
     }
