@@ -37,12 +37,14 @@ Byte GPU::Read(Word addr) {
 bool GPU::SaveState(std::ostream& out) const {
     out.write(reinterpret_cast<const char*>(&pixelX), sizeof(pixelX));
     out.write(reinterpret_cast<const char*>(&pixelY), sizeof(pixelY));
+    out.write(reinterpret_cast<const char*>(vram), sizeof(vram));
     return out.good();
 }
 
 bool GPU::LoadState(std::istream& in) {
     in.read(reinterpret_cast<char*>(&pixelX), sizeof(pixelX));
     in.read(reinterpret_cast<char*>(&pixelY), sizeof(pixelY));
+    in.read(reinterpret_cast<char*>(vram), sizeof(vram));
     return in.good();
 }
 

@@ -220,10 +220,6 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
         if (!forceLoad) return false;
     }
 
-    for (Word addr = 0x2000; addr < 0x4000; addr++) {
-        gpu.Write(addr - 0x2000, bus.ReadDirect(addr));
-    }
-
     return true;
 }
 
