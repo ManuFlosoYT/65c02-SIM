@@ -5,51 +5,47 @@
 namespace Hardware {
 
 void GPU::Reset() {
-    std::memset(vram, 0, sizeof(vram));
     pixelX = 0;
     pixelY = 0;
     isYDrawing = true;
     isBlanking = false;
-}
-
-// SetWriteHook removed.
-
-void GPU::Write(Word addr, Byte val) {
-    // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
-    Byte x = addr & 0x7F;
-    Byte y = (addr >> 7) & 0x7F;
-
-    if (x < VRAM_WIDTH && y < VRAM_HEIGHT) {
-        vram[y][x] = val;
-    }
-}
-
-// SetReadHook removed.
-
-Byte GPU::Read(Word addr) {
-    // Addressing: A0-A6 = X, A7-A13 = Y
-    Byte x = addr & 0x7F;
-    Byte y = (addr >> 7) & 0x7F;
-    if (x < VRAM_WIDTH && y < VRAM_HEIGHT) {
-        return vram[y][x];
-    }
-    return 0;
+    ticksToNextEvent = VRAM_WIDTH;
+    std::memset(vram, 0, sizeof(vram));
 }
 
 bool GPU::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&pixelX), sizeof(pixelX));
-    out.write(reinterpret_cast<const char*>(&pixelY), sizeof(pixelY));
-    out.write(reinterpret_cast<const char*>(vram), sizeof(vram));
+    out.write(reinterpret_cast<const char*>(&vram), sizeof(vram));
+    Word px = pixelX;
+    Word py = pixelY;
+    out.write(reinterpret_cast<const char*>(&px), sizeof(px));
+    out.write(reinterpret_cast<const char*>(&py), sizeof(py));
     return out.good();
 }
 
 bool GPU::LoadState(std::istream& in) {
     in.read(reinterpret_cast<char*>(&vram), sizeof(vram));
-    in.read(reinterpret_cast<char*>(&pixelX), sizeof(pixelX));
-    in.read(reinterpret_cast<char*>(&pixelY), sizeof(pixelY));
+
+    Word px, py;
+    in.read(reinterpret_cast<char*>(&px), sizeof(px));
+    in.read(reinterpret_cast<char*>(&py), sizeof(py));
+    pixelX = px;
+    pixelY = py;
 
     isYDrawing = (pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU);
-    isBlanking = !isYDrawing || (pixelX >= VRAM_WIDTH);
+
+    if (!isYDrawing) {
+        isBlanking = true;
+        ticksToNextEvent = DISPLAY_WIDTH - pixelX;
+    } else {
+        if (pixelX < VRAM_WIDTH) {
+            isBlanking = false;
+            ticksToNextEvent = VRAM_WIDTH - pixelX;
+        } else {
+            isBlanking = true;
+            ticksToNextEvent = DISPLAY_WIDTH - pixelX;
+        }
+    }
+
     return in.good();
 }
 

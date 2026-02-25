@@ -42,18 +42,19 @@ public:
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
     inline Byte operator[](Word addr) const;
 
-    void Write(Word addr, Byte val) override;
-    Byte Read(Word addr) override;
+    inline void Write(Word addr, Byte val) override;
+    inline Byte Read(Word addr) override;
     inline std::string GetName() const override;
 
 private:
-    // Pixel counters (14-bit values)
-    Word pixelX = 0;  // 0-131 (132 total)
-    Word pixelY = 0;  // 0-77 (78 total)
+    // Pixel counters (32-bit native to prevent partial register stalls on x86)
+    uint32_t pixelX = 0;  // 0-131 (132 total)
+    uint32_t pixelY = 0;  // 0-77 (78 total)
 
     // Cached states for O(1) interval access without arithmetic/branches
     bool isBlanking = true;
     bool isYDrawing = true;
+    uint32_t ticksToNextEvent = 0;
 };
 
 }  // namespace Hardware
