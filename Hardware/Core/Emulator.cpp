@@ -220,10 +220,7 @@ int Emulator::Step() {
             char c = inputBuffer.front();
             inputBuffer.pop_front();
 
-            bus.WriteDirect(ACIA_DATA, c);
-            bus.WriteDirect(ACIA_STATUS,
-                            bus.ReadDirect(ACIA_STATUS) |
-                                0x80);
+            acia.ReceiveData(c);
             cpu.IRQ(bus);
 
             baudDelay = 2000;

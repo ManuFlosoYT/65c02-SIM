@@ -11,6 +11,7 @@ class ACIA : public IBusDevice {
 public:
     ACIA();
     void Reset() override;
+    void ReceiveData(Byte data);
 
     // IBusDevice implementation
     Byte Read(Word address) override;

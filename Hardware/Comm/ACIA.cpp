@@ -49,6 +49,11 @@ void ACIA::Write(Word address, Byte val) {
     }
 }
 
+void ACIA::ReceiveData(Byte data) {
+    DATA = data;
+    STATUS |= 0x80;
+}
+
 bool ACIA::SaveState(std::ostream& out) const {
     out.write(reinterpret_cast<const char*>(&DATA), sizeof(DATA));
     out.write(reinterpret_cast<const char*>(&STATUS), sizeof(STATUS));
