@@ -50,6 +50,12 @@ struct BusSlot {
     Word baseAddress;
 };
 
+struct FastBusSlot {
+    const Byte* rawPtr;
+    IBusDevice* device;
+    Word offset;
+};
+
 class Bus {
 public:
     Bus();
@@ -86,7 +92,7 @@ private:
     void UpdateCache();
 
     BusSlot deviceMap[BUS_SIZE];
-    std::function<Byte()> readCache[BUS_SIZE];
+    FastBusSlot fastCache[BUS_SIZE];
 
     std::vector<DeviceRegistration> registeredDevices;
     std::vector<BusWriteHook> globalWriteHooks;

@@ -21,6 +21,10 @@ public:
 
     virtual bool SaveState(std::ostream& out) const = 0;
     virtual bool LoadState(std::istream& in) = 0;
+
+    // Optional direct memory access for cache optimization (returns nullptr if
+    // not supported)
+    virtual Byte* GetRawMemory() { return nullptr; }
 };
 
 }  // namespace Hardware

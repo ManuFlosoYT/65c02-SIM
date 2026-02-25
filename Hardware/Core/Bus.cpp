@@ -127,9 +127,9 @@ void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart,
 void Bus::Write(Word address, Byte data) {
     if (profilingEnabled) profilerCounts[address]++;
 
-    if (deviceMap[address].device != nullptr) {
-        deviceMap[address].device->Write(
-            address - deviceMap[address].baseAddress, data);
+    const auto& slot = fastCache[address];
+    if (slot.device) {
+        slot.device->Write(slot.offset, data);
     }
 
     for (auto& hook : globalWriteHooks) {
@@ -138,9 +138,9 @@ void Bus::Write(Word address, Byte data) {
 }
 
 void Bus::WriteDirect(Word address, Byte data) {
-    if (deviceMap[address].device != nullptr) {
-        deviceMap[address].device->Write(
-            address - deviceMap[address].baseAddress, data);
+    const auto& slot = fastCache[address];
+    if (slot.device) {
+        slot.device->Write(slot.offset, data);
     }
 }
 
@@ -196,15 +196,16 @@ void Bus::RebuildDeviceMap() {
 void Bus::UpdateCache() {
     for (int i = 0; i < BUS_SIZE; ++i) {
         if (deviceMap[i].device != nullptr) {
-            // Unbind the device and its correct address offset into a fast
-            // lambda
             auto* dev = deviceMap[i].device;
             Word offset = i - deviceMap[i].baseAddress;
-            readCache[i] = [dev, offset]() -> Byte {
-                return dev->Read(offset);
-            };
+            Byte* raw = dev->GetRawMemory();
+
+            fastCache[i].device = dev;
+            fastCache[i].offset = offset;
+            fastCache[i].rawPtr = (raw != nullptr) ? (raw + offset) : nullptr;
         } else {
-            readCache[i] = nullptr;
+            fastCache[i].device = nullptr;
+            fastCache[i].rawPtr = nullptr;
         }
     }
 }

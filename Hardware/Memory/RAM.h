@@ -17,6 +17,8 @@ public:
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& in) override;
 
+    Byte* GetRawMemory() override { return data.data(); }
+
 private:
     std::vector<Byte> data;
     size_t size;

@@ -12,9 +12,11 @@ inline Byte Bus::Read(Word address) {
     if (profilingEnabled) profilerCounts[address]++;
     Byte data = 0;
 
-    if (deviceMap[address].device != nullptr) {
-        data = deviceMap[address].device->Read(address -
-                                               deviceMap[address].baseAddress);
+    const auto& slot = fastCache[address];
+    if (slot.rawPtr) {
+        data = *slot.rawPtr;
+    } else if (slot.device) {
+        data = slot.device->Read(slot.offset);
     }
 
     for (auto& hook : globalReadHooks) {
@@ -24,8 +26,12 @@ inline Byte Bus::Read(Word address) {
 }
 
 inline Byte Bus::ReadDirect(Word address) const {
-    if (readCache[address]) {
-        return readCache[address]();
+    const auto& slot = fastCache[address];
+    if (slot.rawPtr) {
+        return *slot.rawPtr;
+    }
+    if (slot.device) {
+        return slot.device->Read(slot.offset);
     }
     return 0;
 }

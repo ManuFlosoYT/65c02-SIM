@@ -17,6 +17,8 @@ public:
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& in) override;
 
+    Byte* GetRawMemory() override { return data.data(); }
+
     void Load(const std::vector<Byte>& buffer, Word offset = 0);
     void WriteDirect(Word address, Byte data);
 
