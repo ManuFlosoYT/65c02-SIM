@@ -7,7 +7,8 @@
 namespace Hardware {
 
 using BusWriteHook = std::function<void(Word /* address */, Byte /* data */)>;
-using BusReadHook = std::function<void(Word /* address */, Byte /* data_read */)>;
+using BusReadHook =
+    std::function<void(Word /* address */, Byte /* data_read */)>;
 
 constexpr Word MAX_ADDR = 0xFFFF;
 constexpr uint32_t BUS_SIZE = (uint32_t)MAX_ADDR + 1;
@@ -74,9 +75,9 @@ public:
     void AddGlobalWriteHook(BusWriteHook hook);
     void AddGlobalReadHook(BusReadHook hook);
 
-    void SetProfilingEnabled(bool enabled) { profilingEnabled = enabled; }
+    void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
-    uint32_t* GetProfilerCounts() { return profilerCounts; }
+    uint32_t* GetProfilerCounts();
 
     const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
     void RebuildDeviceMap();
@@ -93,3 +94,5 @@ private:
 };
 
 }  // namespace Hardware
+
+#include "Hardware/Core/Bus.inl"

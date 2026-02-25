@@ -44,25 +44,23 @@ public:
     void InjectKey(char c);
 
     void SetOutputCallback(std::function<void(char)> cb);
-    void SetLCDOutputCallback(std::function<void(char)> cb) {
-        lcd.SetOutputCallback(cb);
-    }
+    void SetLCDOutputCallback(std::function<void(char)> cb);
 
-    const char (&GetLCDScreen() const)[2][16] { return lcd.GetScreen(); }
-    const LCD& GetLCD() const { return lcd; }
-    const CPU& GetCPU() const { return cpu; }
-    CPU& GetCPU() { return cpu; }
-    const Bus& GetMem() const { return bus; }
-    Bus& GetMem() { return bus; }
-    GPU& GetGPU() { return gpu; }
-    void SetGPUEnabled(bool enabled) { gpuEnabled = enabled; }
-    bool IsGPUEnabled() const { return gpuEnabled; }
+    const char (&GetLCDScreen() const)[2][16];
+    const LCD& GetLCD() const;
+    const CPU& GetCPU() const;
+    CPU& GetCPU();
+    const Bus& GetMem() const;
+    Bus& GetMem();
+    GPU& GetGPU();
+    void SetGPUEnabled(bool enabled);
+    bool IsGPUEnabled() const;
 
-    SID& GetSID() { return sid; }
-    VIA& GetVIA() { return via; }
+    SID& GetSID();
+    VIA& GetVIA();
 
-    void SetCycleAccurate(bool enabled) { cpu.SetCycleAccurate(enabled); }
-    bool IsCycleAccurate() const { return cpu.IsCycleAccurate(); }
+    void SetCycleAccurate(bool enabled);
+    bool IsCycleAccurate() const;
 
     void PrintState();
 
@@ -71,23 +69,23 @@ public:
     void Stop();
     void Pause();
     void Resume();
-    bool IsRunning() const { return running; }
-    bool IsPaused() const { return paused; }
+    bool IsRunning() const;
+    bool IsPaused() const;
 
-    void SetTargetIPS(int ips) { targetIPS = ips; }
-    int GetTargetIPS() const { return targetIPS; }
-    int GetActualIPS() const { return actualIPS; }
+    void SetTargetIPS(int ips);
+    int GetTargetIPS() const;
+    int GetActualIPS() const;
 
-    void SetProfilingEnabled(bool enabled) { bus.SetProfilingEnabled(enabled); }
-    void ClearProfiler() { bus.ClearProfiler(); }
-    uint32_t* GetProfilerCounts() { return bus.GetProfilerCounts(); }
+    void SetProfilingEnabled(bool enabled);
+    void ClearProfiler();
+    uint32_t* GetProfilerCounts();
 
-    void SetAutoReload(bool enabled) { autoReloadRequested = enabled; }
-    bool IsAutoReloadEnabled() const { return autoReloadRequested; }
+    void SetAutoReload(bool enabled);
+    bool IsAutoReloadEnabled() const;
 
-    SavestateLoadResult GetLastLoadResult() const { return lastLoadResult; }
-    std::string GetLastLoadVersion() const { return lastLoadVersion; }
-    std::string GetCurrentBinPath() const { return currentBinPath; }
+    SavestateLoadResult GetLastLoadResult() const;
+    std::string GetLastLoadVersion() const;
+    std::string GetCurrentBinPath() const;
 
 private:
     void ThreadLoop();
@@ -130,3 +128,5 @@ private:
 };
 
 }  // namespace Core
+
+#include "Hardware/Core/Emulator.inl"

@@ -20,7 +20,7 @@ public:
     // calculate if the GPU is in blanking interval
     const static Byte VRAM_HEIGHT_DRAWABLE_BY_CPU = 64;
 
-    GPU() { Reset(); }
+    GPU();
     void Reset() override;
 
     Byte vram[VRAM_HEIGHT][VRAM_WIDTH]{};
@@ -29,44 +29,22 @@ public:
     bool LoadState(std::istream& in) override;
 
     // Clock the GPU to advance pixel counters
-    inline void Clock() {
-        // Increment pixel counters
-        pixelX++;
-        if (pixelX >= DISPLAY_WIDTH) {
-            pixelX = 0;
-            pixelY++;
-            if (pixelY >= DISPLAY_HEIGHT) {
-                pixelY = 0;
-            }
-        }
-    }
+    void Clock();
 
     // Get current pixel position (14-bit values)
-    Word GetPixelX() const { return pixelX; }
-
-    Word GetPixelY() const { return pixelY; }
+    Word GetPixelX() const;
+    Word GetPixelY() const;
 
     // Bus control status
-    bool IsInDrawingInterval() const {
-        // We asume this is always true, since the CPU can only write to the
-        // first 64 rows of VRAM The remaining 14 rows are only accessible by
-        // the GPU istelf via loading a bin file into the GPU's memory.
-        return pixelX < VRAM_WIDTH && pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU;
-    }
-
-    bool IsInBlankingInterval() const { return !IsInDrawingInterval(); }
+    bool IsInDrawingInterval() const;
+    bool IsInBlankingInterval() const;
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
-    Byte operator[](Word addr) const {
-        Byte x = addr & 0x7F;         // bits 0-6
-        Byte y = (addr >> 7) & 0x7F;  // bits 7-13
-        if (x >= VRAM_WIDTH || y >= VRAM_HEIGHT) return 0;
-        return vram[y][x];
-    }
+    Byte operator[](Word addr) const;
 
     void Write(Word addr, Byte val) override;
     Byte Read(Word addr) override;
-    std::string GetName() const override { return "GPU"; }
+    std::string GetName() const override;
 
 private:
     // Pixel counters (14-bit values)
@@ -75,3 +53,5 @@ private:
 };
 
 }  // namespace Hardware
+
+#include "Hardware/Video/GPU.inl"

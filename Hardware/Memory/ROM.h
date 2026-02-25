@@ -12,8 +12,8 @@ public:
 
     Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
-    std::string GetName() const override { return "ROM"; }
-    void Reset() override {}
+    std::string GetName() const override;
+    void Reset() override;
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& in) override;
 
@@ -26,3 +26,5 @@ private:
 };
 
 }  // namespace Hardware
+
+#include "Hardware/Memory/ROM.inl"

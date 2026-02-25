@@ -17,10 +17,12 @@ public:
 
     virtual std::string GetName() const = 0;
 
-    virtual void Reset() {}
+    virtual void Reset();
 
     virtual bool SaveState(std::ostream& out) const = 0;
     virtual bool LoadState(std::istream& in) = 0;
 };
 
 }  // namespace Hardware
+
+#include "Hardware/Core/IBusDevice.inl"

@@ -15,23 +15,23 @@ public:
     // IBusDevice implementation
     Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
-    std::string GetName() const override { return "LCD"; }
+    std::string GetName() const override;
 
     void Update(Byte portBVal);
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& in) override;
 
-    void SetOutputCallback(std::function<void(char)> cb) { onChar = cb; }
+    void SetOutputCallback(std::function<void(char)> cb);
 
-    const char (&GetScreen() const)[2][16] { return screen; }
+    const char (&GetScreen() const)[2][16];
 
-    bool IsInitialized() const { return is_init; }
+    bool IsInitialized() const;
 
-    bool IsDisplayOn() const { return display_on; }
-    bool IsCursorOn() const { return cursor_on; }
-    int GetCursorX() const { return cursorX; }
-    int GetCursorY() const { return cursorY; }
+    bool IsDisplayOn() const;
+    bool IsCursorOn() const;
+    int GetCursorX() const;
+    int GetCursorY() const;
 
 private:
     Byte PORTB_DATA;
@@ -60,3 +60,5 @@ private:
 };
 
 }  // namespace Hardware
+
+#include "Hardware/Video/LCD.inl"

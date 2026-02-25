@@ -56,16 +56,14 @@ public:
     void Reset() override;
     Byte Read(Word addr) override;
     void Write(Word addr, Byte data) override;
-    std::string GetName() const override { return "SID"; }
+    std::string GetName() const override;
 
     void EnableSound(bool enable);
     void SetEmulationPaused(bool paused);
 
-    bool IsSoundEnabled() const { return soundEnabled; }
+    bool IsSoundEnabled() const;
 
-    const Oscillator& GetVoice(int index) const {
-        return voices[index % MAX_SID_VOICES];
-    }
+    const Oscillator& GetVoice(int index) const;
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& in) override;
@@ -89,3 +87,5 @@ private:
 };
 
 }  // namespace Hardware
+
+#include "Hardware/Audio/SID.inl"
