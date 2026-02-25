@@ -12,20 +12,20 @@ inline void GPU::Clock() {
         if (pixelY >= DISPLAY_HEIGHT) {
             pixelY = 0;
         }
+        // State update
+        isYDrawing = (pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU);
+        isBlanking = !isYDrawing;
+    } else if (pixelX == VRAM_WIDTH) {
+        isBlanking = true;
     }
 }
 
 inline Word GPU::GetPixelX() const { return pixelX; }
 inline Word GPU::GetPixelY() const { return pixelY; }
 
-inline bool GPU::IsInDrawingInterval() const {
-    // We asume this is always true, since the CPU can only write to the
-    // first 64 rows of VRAM The remaining 14 rows are only accessible by
-    // the GPU istelf via loading a bin file into the GPU's memory.
-    return pixelX < VRAM_WIDTH && pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU;
-}
+inline bool GPU::IsInDrawingInterval() const { return !isBlanking; }
 
-inline bool GPU::IsInBlankingInterval() const { return !IsInDrawingInterval(); }
+inline bool GPU::IsInBlankingInterval() const { return isBlanking; }
 
 inline Byte GPU::operator[](Word addr) const {
     Byte x = addr & 0x7F;         // bits 0-6

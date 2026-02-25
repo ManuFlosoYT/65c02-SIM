@@ -127,6 +127,11 @@ private:
     bool sr_active;   // Is SR currently shifting?
     bool sr_out_cb2;  // State of CB2 output for SR modes
 
+    bool anyActive = false;
+    inline void UpdateAnyActive() {
+        anyActive = t1_active || t2_active || sr_active;
+    }
+
     void UpdateIRQ();
 
     // Output Callbacks (triggered when Output Pins change)

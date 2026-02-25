@@ -8,6 +8,8 @@ void GPU::Reset() {
     std::memset(vram, 0, sizeof(vram));
     pixelX = 0;
     pixelY = 0;
+    isYDrawing = true;
+    isBlanking = false;
 }
 
 // SetWriteHook removed.
@@ -42,9 +44,12 @@ bool GPU::SaveState(std::ostream& out) const {
 }
 
 bool GPU::LoadState(std::istream& in) {
+    in.read(reinterpret_cast<char*>(&vram), sizeof(vram));
     in.read(reinterpret_cast<char*>(&pixelX), sizeof(pixelX));
     in.read(reinterpret_cast<char*>(&pixelY), sizeof(pixelY));
-    in.read(reinterpret_cast<char*>(vram), sizeof(vram));
+
+    isYDrawing = (pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU);
+    isBlanking = !isYDrawing || (pixelX >= VRAM_WIDTH);
     return in.good();
 }
 

@@ -46,6 +46,7 @@ void VIA::Reset() {
     sr_cnt = 0;
     sr_active = false;
     sr_out_cb2 = true;
+    UpdateAnyActive();
 }
 
 Byte VIA::Read(Word address) {
@@ -82,6 +83,7 @@ Byte VIA::Read(Word address) {
             ifr &= ~0x04;  // Clear SR interrupt bit on read
             sr_active = true;
             sr_cnt = 0;
+            UpdateAnyActive();
             UpdateIRQ();
             return sr;
         case ACR & 0x0F:
@@ -151,6 +153,7 @@ void VIA::Write(Word address, Byte val) {
             t1c = t1l;  // Load counter with latch
             ifr &= ~0x40;
             t1_active = true;
+            UpdateAnyActive();
             t1_pb7_output = false;
             if ((acr & 0x80) && (ddrb & 0x80)) {
                 orb &= ~0x80;
@@ -179,12 +182,14 @@ void VIA::Write(Word address, Byte val) {
             t2c = t2l;
             ifr &= ~0x20;
             t2_active = true;
+            UpdateAnyActive();
             UpdateIRQ();
             break;
         case SR & 0x0F:
             sr = val;
             ifr &= ~0x04;
             sr_active = true;
+            UpdateAnyActive();
             sr_cnt = 0;
             UpdateIRQ();
             break;
@@ -281,6 +286,7 @@ void VIA::SetInputB(Byte val) {
             if (t2c == 0xFFFF) {
                 ifr |= 0x20;
                 t2_active = false;
+                UpdateAnyActive();
                 UpdateIRQ();
             }
         }
@@ -445,6 +451,7 @@ bool VIA::LoadState(std::istream& in) {
     in.read(reinterpret_cast<char*>(&sr_cnt), sizeof(sr_cnt));
     in.read(reinterpret_cast<char*>(&sr_active), sizeof(sr_active));
     in.read(reinterpret_cast<char*>(&sr_out_cb2), sizeof(sr_out_cb2));
+    UpdateAnyActive();
     UpdateIRQ();
     return in.good();
 }

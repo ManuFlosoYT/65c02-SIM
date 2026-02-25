@@ -50,6 +50,10 @@ private:
     // Pixel counters (14-bit values)
     Word pixelX = 0;  // 0-131 (132 total)
     Word pixelY = 0;  // 0-77 (78 total)
+
+    // Cached states for O(1) interval access without arithmetic/branches
+    bool isBlanking = true;
+    bool isYDrawing = true;
 };
 
 }  // namespace Hardware

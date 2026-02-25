@@ -11,6 +11,8 @@ inline void VIA::SetPortBCallback(std::function<void(Byte)> cb) {
 inline bool VIA::isIRQAsserted() const { return (ifr & 0x80) != 0; }
 
 inline void VIA::Clock() {
+    if (!anyActive) return;
+
     // Timer 1
     if (t1_active) {
         t1c--;
