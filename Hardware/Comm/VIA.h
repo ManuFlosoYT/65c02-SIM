@@ -74,6 +74,8 @@ public:
     // External Input Setters (to simulate pins)
     void SetInputA(Byte val);
     void SetInputB(Byte val);
+    void SetCA1(bool val);
+    void SetCA2(bool val);
     void SetCB1(bool val);
     void SetCB2(bool val);
 
@@ -214,8 +216,14 @@ private:
 
     // Pulse Counting & CB state
     Byte last_irb;
+    bool ca1_in;
+    bool ca2_in;
     bool cb1_in;
     bool cb2_in;
+    bool last_ca1;
+    bool last_ca2;
+    bool last_cb1;
+    bool last_cb2;
 
     // Shift Register state
     Byte sr_cnt;      // Number of bits shifted so far (for 8-bit cycle)

@@ -37,6 +37,12 @@ void VIA::Reset() {
     t1_pb7_output = true;
     cb1_in = true;
     cb2_in = true;
+    ca1_in = true;
+    ca2_in = true;
+    last_ca1 = true;
+    last_ca2 = true;
+    last_cb1 = true;
+    last_cb2 = true;
     sr_cnt = 0;
     sr_active = false;
     sr_out_cb2 = true;
@@ -45,8 +51,12 @@ void VIA::Reset() {
 Byte VIA::Read(Word address) {
     switch (address & 0x0F) {
         case PORTB & 0x0F:
+            ifr &= ~0x18;  // Clear CB1 and CB2 flags
+            UpdateIRQ();
             return (irb & ~ddrb) | (orb & ddrb);
         case PORTA & 0x0F:
+            ifr &= ~0x03;  // Clear CA1 and CA2 flags
+            UpdateIRQ();
             return (ira & ~ddra) | (ora & ddra);
         case DDRB & 0x0F:
             return ddrb;
@@ -98,6 +108,8 @@ void VIA::Write(Word address, Byte val) {
             if (port_b_callback && (old_pins != new_pins)) {
                 port_b_callback(new_pins);
             }
+            ifr &= ~0x18;  // Clear CB1 and CB2 flags
+            UpdateIRQ();
             break;
         }
         case PORTA & 0x0F: {
@@ -107,6 +119,8 @@ void VIA::Write(Word address, Byte val) {
             if (port_a_callback && (old_pins != new_pins)) {
                 port_a_callback(new_pins);
             }
+            ifr &= ~0x03;  // Clear CA1 and CA2 flags
+            UpdateIRQ();
             break;
         }
         case DDRB & 0x0F: {
@@ -213,9 +227,47 @@ bool VIA::isIRQAsserted() const { return (ifr & 0x80) != 0; }
 Byte VIA::GetPortA() const { return (ira & ~ddra) | (ora & ddra); }
 Byte VIA::GetPortB() const { return (irb & ~ddrb) | (orb & ddrb); }
 
-void VIA::SetInputA(Byte val) {
-    ira = val;
-    // TODO: Logic: if CA1/CA2 transition, IRQ. (Not fully impl yet)
+void VIA::SetInputA(Byte val) { ira = val; }
+
+void VIA::SetCA1(bool val) {
+    bool old_ca1 = ca1_in;
+    ca1_in = val;
+    bool active_edge = false;
+    if (!(pcr & 0x01)) {  // Negative edge
+        if (old_ca1 && !val) active_edge = true;
+    } else {  // Positive edge
+        if (!old_ca1 && val) active_edge = true;
+    }
+    if (active_edge) {
+        ifr |= 0x02;
+        UpdateIRQ();
+    }
+}
+
+void VIA::SetCA2(bool val) {
+    bool old_ca2 = ca2_in;
+    ca2_in = val;
+    // CA2 control is bits 1-3 of PCR
+    Byte ca2_mode = (pcr >> 1) & 0x07;
+    bool active_edge = false;
+    if (ca2_mode == 0) {  // Input, negative edge
+        if (old_ca2 && !val) active_edge = true;
+    } else if (ca2_mode == 1) {  // Independent input, neg edge
+        // bit 1 is active edge, bit 2 is independent, bit 3 is output
+        // mode 0: input neg edge, mode 1: input neg edge independent
+        // mode 2: input pos edge, mode 3: input pos edge independent
+        if (old_ca2 && !val) active_edge = true;
+    } else if (ca2_mode == 2) {  // Input, positive edge
+        if (!old_ca2 && val) active_edge = true;
+    } else if (ca2_mode == 3) {  // Independent input, pos edge
+        if (!old_ca2 && val) active_edge = true;
+    }
+    // (Modes 4-7 are output modes)
+
+    if (active_edge) {
+        ifr |= 0x01;
+        UpdateIRQ();
+    }
 }
 
 void VIA::SetInputB(Byte val) {
@@ -239,8 +291,36 @@ void VIA::SetInputB(Byte val) {
     irb = val;
 }
 
-void VIA::SetCB1(bool val) { cb1_in = val; }
-void VIA::SetCB2(bool val) { cb2_in = val; }
+void VIA::SetCB1(bool val) {
+    bool old_cb1 = cb1_in;
+    cb1_in = val;
+    bool active_edge = false;
+    if (!(pcr & 0x10)) {  // Negative edge
+        if (old_cb1 && !val) active_edge = true;
+    } else {  // Positive edge
+        if (!old_cb1 && val) active_edge = true;
+    }
+    if (active_edge) {
+        ifr |= 0x10;
+        UpdateIRQ();
+    }
+}
+
+void VIA::SetCB2(bool val) {
+    bool old_cb2 = cb2_in;
+    cb2_in = val;
+    Byte cb2_mode = (pcr >> 5) & 0x07;
+    bool active_edge = false;
+    if (cb2_mode == 0 || cb2_mode == 1) {
+        if (old_cb2 && !val) active_edge = true;
+    } else if (cb2_mode == 2 || cb2_mode == 3) {
+        if (!old_cb2 && val) active_edge = true;
+    }
+    if (active_edge) {
+        ifr |= 0x08;
+        UpdateIRQ();
+    }
+}
 
 void VIA::SetPortA(Byte val) { ora = val; }
 void VIA::SetPortB(Byte val) { orb = val; }
@@ -315,8 +395,14 @@ bool VIA::SaveState(std::ostream& out) const {
     out.write(reinterpret_cast<const char*>(&ira), sizeof(ira));
     out.write(reinterpret_cast<const char*>(&irb), sizeof(irb));
     out.write(reinterpret_cast<const char*>(&last_irb), sizeof(last_irb));
+    out.write(reinterpret_cast<const char*>(&ca1_in), sizeof(ca1_in));
+    out.write(reinterpret_cast<const char*>(&ca2_in), sizeof(ca2_in));
     out.write(reinterpret_cast<const char*>(&cb1_in), sizeof(cb1_in));
     out.write(reinterpret_cast<const char*>(&cb2_in), sizeof(cb2_in));
+    out.write(reinterpret_cast<const char*>(&last_ca1), sizeof(last_ca1));
+    out.write(reinterpret_cast<const char*>(&last_ca2), sizeof(last_ca2));
+    out.write(reinterpret_cast<const char*>(&last_cb1), sizeof(last_cb1));
+    out.write(reinterpret_cast<const char*>(&last_cb2), sizeof(last_cb2));
     out.write(reinterpret_cast<const char*>(&sr_cnt), sizeof(sr_cnt));
     out.write(reinterpret_cast<const char*>(&sr_active), sizeof(sr_active));
     out.write(reinterpret_cast<const char*>(&sr_out_cb2), sizeof(sr_out_cb2));
@@ -350,8 +436,14 @@ bool VIA::LoadState(std::istream& in) {
     in.read(reinterpret_cast<char*>(&ira), sizeof(ira));
     in.read(reinterpret_cast<char*>(&irb), sizeof(irb));
     in.read(reinterpret_cast<char*>(&last_irb), sizeof(last_irb));
+    in.read(reinterpret_cast<char*>(&ca1_in), sizeof(ca1_in));
+    in.read(reinterpret_cast<char*>(&ca2_in), sizeof(ca2_in));
     in.read(reinterpret_cast<char*>(&cb1_in), sizeof(cb1_in));
     in.read(reinterpret_cast<char*>(&cb2_in), sizeof(cb2_in));
+    in.read(reinterpret_cast<char*>(&last_ca1), sizeof(last_ca1));
+    in.read(reinterpret_cast<char*>(&last_ca2), sizeof(last_ca2));
+    in.read(reinterpret_cast<char*>(&last_cb1), sizeof(last_cb1));
+    in.read(reinterpret_cast<char*>(&last_cb2), sizeof(last_cb2));
     in.read(reinterpret_cast<char*>(&sr_cnt), sizeof(sr_cnt));
     in.read(reinterpret_cast<char*>(&sr_active), sizeof(sr_active));
     in.read(reinterpret_cast<char*>(&sr_out_cb2), sizeof(sr_out_cb2));
