@@ -21,6 +21,14 @@
 
 namespace Core {
 
+enum class SavestateLoadResult {
+    Success,
+    HashMismatch,
+    VersionMismatch,
+    StructuralError,
+    GenericError
+};
+
 using namespace Hardware;
 
 class Emulator {
@@ -78,6 +86,9 @@ public:
     void SetAutoReload(bool enabled) { autoReloadRequested = enabled; }
     bool IsAutoReloadEnabled() const { return autoReloadRequested; }
 
+    SavestateLoadResult GetLastLoadResult() const { return lastLoadResult; }
+    std::string GetLastLoadVersion() const { return lastLoadVersion; }
+
 private:
     void ThreadLoop();
 
@@ -112,6 +123,9 @@ private:
     std::string currentBinPath;
     std::filesystem::file_time_type lastBinModificationTime;
     std::atomic<bool> autoReloadRequested{true};
+
+    SavestateLoadResult lastLoadResult = SavestateLoadResult::Success;
+    std::string lastLoadVersion;
 };
 
 }  // namespace Core

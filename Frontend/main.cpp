@@ -225,9 +225,11 @@ int main(int argc, char* argv[]) {
                 std::string filePathName =
                     ImGuiFileDialog::Instance()->GetFilePathName();
                 state.emulator.Pause();
-                if (!state.emulator.LoadState(filePathName,
-                                              state.forceLoadSaveState)) {
-                    ImGui::OpenPopup("ErrorLoadingState");
+                state.emulator.LoadState(filePathName,
+                                         state.forceLoadSaveState);
+                if (state.emulator.GetLastLoadResult() !=
+                    SavestateLoadResult::Success) {
+                    ImGui::OpenPopup("SavestateFeedback");
                 }
             }
             ImGuiFileDialog::Instance()->Close();
@@ -251,10 +253,38 @@ int main(int argc, char* argv[]) {
             ImGui::EndPopup();
         }
 
-        if (ImGui::BeginPopupModal("ErrorLoadingState", NULL,
+        if (ImGui::BeginPopupModal("SavestateFeedback", NULL,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text(
-                "Error loading state. File may be corrupt or hash mismatch.");
+            auto result = state.emulator.GetLastLoadResult();
+            if (result == SavestateLoadResult::VersionMismatch ||
+                result == SavestateLoadResult::HashMismatch) {
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
+                                   "Warning: Savestate compatibility issue");
+                if (result == SavestateLoadResult::VersionMismatch) {
+                    ImGui::Text("Version mismatch detected:");
+                    ImGui::BulletText(
+                        "Saved: %s",
+                        state.emulator.GetLastLoadVersion().c_str());
+                    ImGui::BulletText("Current: %s", PROJECT_VERSION);
+                } else {
+                    ImGui::Text(
+                        "Hash mismatch. The data might be modified or "
+                        "corrupt.");
+                }
+                ImGui::Text(
+                    "The state was loaded, but some things might not work "
+                    "correctly.");
+            } else if (result == SavestateLoadResult::StructuralError) {
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                                   "Error: Failed to load state");
+                ImGui::Text(
+                    "The data is structurally incompatible or corrupted.");
+            } else {
+                ImGui::Text(
+                    "An unknown error occurred while loading the state.");
+            }
+
+            ImGui::Spacing();
             if (ImGui::Button("OK", ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
             }

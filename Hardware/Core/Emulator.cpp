@@ -96,14 +96,7 @@ bool Emulator::SaveState(const std::string& filename) {
     std::lock_guard<std::mutex> lock(emulationMutex);
 
     std::stringstream ss;
-
     if (!bus.SaveState(ss)) return false;
-
-    std::string version = PROJECT_VERSION;
-    uint32_t versionLen = static_cast<uint32_t>(version.length());
-    ss.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));
-    ss.write(version.c_str(), versionLen);
-
     if (!cpu.SaveState(ss)) return false;
     if (!ram.SaveState(ss)) return false;
     if (!rom.SaveState(ss)) return false;
@@ -115,17 +108,25 @@ bool Emulator::SaveState(const std::string& filename) {
     if (!Console::SaveState(ss)) return false;
 
     std::string payload = ss.str();
+    std::string payloadHash = picosha2::hash256_hex_string(payload);
 
-    std::string hashHex = picosha2::hash256_hex_string(payload);
+    std::string version = PROJECT_VERSION;
+    uint32_t versionLen = static_cast<uint32_t>(version.length());
+    const char magic[] = "SIM65C02SST";
+
+    // Metadata hash (Magic + Version)
+    std::string metadata = std::string(magic) + version;
+    std::string metadataHash = picosha2::hash256_hex_string(metadata);
 
     std::ofstream out(filename, std::ios::binary);
     if (!out.is_open()) return false;
 
-    const char magic[] = "SIM65C02SST";
     out.write(magic, sizeof(magic) - 1);
-
+    out.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));
+    out.write(version.c_str(), versionLen);
     out.write(payload.c_str(), payload.size());
-    out.write(hashHex.c_str(), hashHex.size());
+    out.write(payloadHash.c_str(), payloadHash.size());
+    out.write(metadataHash.c_str(), metadataHash.size());
 
     return out.good();
 }
@@ -143,72 +144,87 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     size_t magicLen = sizeof(magic) - 1;
     size_t hashLen = 64;
 
-    if (size < (std::streamsize)(magicLen + hashLen)) return false;
+    if (size < (std::streamsize)(magicLen + sizeof(uint32_t) + (hashLen * 2)))
+        return false;
 
-    char fileMagic[11];
+    char fileMagic[16] = {0};
     in.read(fileMagic, magicLen);
     if (strncmp(fileMagic, magic, magicLen) != 0) {
         return false;
     }
 
-    size_t payloadLen = size - magicLen - hashLen;
-    std::string payload(payloadLen, '\0');
-    in.read(&payload[0], payloadLen);
+    uint32_t versionLen = 0;
+    in.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));
+    lastLoadVersion.assign(versionLen, '\0');
+    in.read(&lastLoadVersion[0], versionLen);
 
-    char fileHash[64];
-    in.read(fileHash, hashLen);
+    // Calculate metadata hash for verification (Magic + Version)
+    std::string metadata = std::string(magic) + lastLoadVersion;
+    std::string computedMetadataHash = picosha2::hash256_hex_string(metadata);
 
-    if (!forceLoad) {
-        std::string computedHash = picosha2::hash256_hex_string(payload);
-        if (strncmp(fileHash, computedHash.c_str(), hashLen) != 0) {
-            std::cerr << "Save state hash mismatch! Computed: " << computedHash
-                      << " Expected: " << std::string(fileHash, hashLen)
-                      << std::endl;
-            return false;
+    size_t payloadSize =
+        size - (magicLen + sizeof(versionLen) + versionLen + (hashLen * 2));
+    std::string payload(payloadSize, '\0');
+    in.read(&payload[0], payloadSize);
+
+    char filePayloadHash[64];
+    in.read(filePayloadHash, hashLen);
+
+    char fileMetadataHash[64];
+    in.read(fileMetadataHash, hashLen);
+
+    lastLoadResult = SavestateLoadResult::Success;
+
+    // 1. Verify Metadata Hash
+    if (strncmp(fileMetadataHash, computedMetadataHash.c_str(), hashLen) != 0) {
+        std::cerr << "Error: Savestate metadata corruption detected!"
+                  << std::endl;
+        lastLoadResult = SavestateLoadResult::GenericError;
+        if (!forceLoad) return false;
+    }
+
+    // 2. Verify Payload Hash
+    std::string computedPayloadHash = picosha2::hash256_hex_string(payload);
+    if (strncmp(filePayloadHash, computedPayloadHash.c_str(), hashLen) != 0) {
+        lastLoadResult = SavestateLoadResult::HashMismatch;
+        std::cerr << "Warning: Savestate payload hash mismatch!" << std::endl;
+    }
+
+    // 3. Check Version
+    if (lastLoadVersion != PROJECT_VERSION) {
+        if (lastLoadResult == SavestateLoadResult::Success) {
+            lastLoadResult = SavestateLoadResult::VersionMismatch;
         }
+        std::cerr << "Warning: Savestate version mismatch! File: "
+                  << lastLoadVersion << " Current: " << PROJECT_VERSION
+                  << std::endl;
     }
 
     std::stringstream ss(payload);
 
-    if (!bus.LoadState(ss) && !forceLoad) return false;
+    // Load components
+    bool structuralSuccess = true;
+    if (!bus.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !cpu.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !ram.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !rom.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !via.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !sid.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !acia.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !lcd.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !gpu.LoadState(ss)) structuralSuccess = false;
+    if (structuralSuccess && !Console::LoadState(ss)) structuralSuccess = false;
 
-    uint32_t versionLen = 0;
-    ss.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));
-    std::string version(versionLen, '\0');
-    ss.read(&version[0], versionLen);
-
-    bool versionMismatch = (version != PROJECT_VERSION);
-    if (versionMismatch) {
-        std::cerr << "Warning: Savestate version mismatch! File: " << version
-                  << " Current: " << PROJECT_VERSION << std::endl;
-    }
-
-    bool success = true;
-    if (!cpu.LoadState(ss)) success = false;
-    if (success && !ram.LoadState(ss)) success = false;
-    if (success && !rom.LoadState(ss)) success = false;
-    if (success && !via.LoadState(ss)) success = false;
-    if (success && !sid.LoadState(ss)) success = false;
-    if (success && !acia.LoadState(ss)) success = false;
-    if (success && !lcd.LoadState(ss)) success = false;
-    if (success && !gpu.LoadState(ss)) success = false;
-    if (success && !Console::LoadState(ss)) success = false;
-
-    if (!success || (!ss.good() && !ss.eof())) {
-        if (!forceLoad) {
-            if (versionMismatch) {
-                std::cerr << "Error: Savestate version " << version
-                          << " is not compatible." << std::endl;
-            }
-            return false;
-        }
+    if (!structuralSuccess || (!ss.good() && !ss.eof())) {
+        lastLoadResult = SavestateLoadResult::StructuralError;
+        if (!forceLoad) return false;
     }
 
     for (Word addr = 0x2000; addr < 0x4000; addr++) {
         gpu.Write(addr - 0x2000, bus.ReadDirect(addr));
     }
 
-    return forceLoad || (success && (ss.good() || ss.eof()));
+    return true;
 }
 
 int Emulator::Step() {
