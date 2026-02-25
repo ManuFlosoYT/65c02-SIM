@@ -18,6 +18,7 @@ public:
     bool LoadState(std::istream& in) override;
 
     Byte* GetRawMemory() override { return data.data(); }
+    bool IsReadOnly() const override { return true; }
 
     void Load(const std::vector<Byte>& buffer, Word offset = 0);
     void WriteDirect(Word address, Byte data);

@@ -25,6 +25,7 @@ public:
     // Optional direct memory access for cache optimization (returns nullptr if
     // not supported)
     virtual Byte* GetRawMemory() { return nullptr; }
+    virtual bool IsReadOnly() const { return false; }
 };
 
 }  // namespace Hardware

@@ -47,12 +47,6 @@ struct DeviceRegistration {
 
 struct BusSlot {
     IBusDevice* device;
-    Word baseAddress;
-};
-
-struct FastBusSlot {
-    const Byte* rawPtr;
-    IBusDevice* device;
     Word offset;
 };
 
@@ -73,9 +67,9 @@ public:
                                   bool ignoreCollision);
 
     inline Byte Read(Word address);
-    void Write(Word address, Byte data);
+    inline void Write(Word address, Byte data);
 
-    void WriteDirect(Word address, Byte data);
+    inline void WriteDirect(Word address, Byte data);
     inline Byte ReadDirect(Word address) const;
 
     void AddGlobalWriteHook(BusWriteHook hook);
@@ -92,7 +86,8 @@ private:
     void UpdateCache();
 
     BusSlot deviceMap[BUS_SIZE];
-    FastBusSlot fastCache[BUS_SIZE];
+    Byte* pageReadMap[256];
+    Byte* pageWriteMap[256];
 
     std::vector<DeviceRegistration> registeredDevices;
     std::vector<BusWriteHook> globalWriteHooks;

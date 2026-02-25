@@ -12,8 +12,14 @@ Bus::Bus() { Init(); }
 void Bus::Init() {
     for (int i = 0; i < BUS_SIZE; ++i) {
         deviceMap[i].device = nullptr;
-        deviceMap[i].baseAddress = 0;
+        deviceMap[i].offset = 0;
     }
+    for (int i = 0; i < 256; ++i) {
+        pageReadMap[i] = nullptr;
+        pageWriteMap[i] = nullptr;
+    }
+    hasWriteHooks = false;
+    hasReadHooks = false;
     globalWriteHooks.clear();
     globalReadHooks.clear();
     RebuildDeviceMap();
@@ -124,28 +130,6 @@ void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart,
     RebuildDeviceMap();
 }
 
-void Bus::Write(Word address, Byte data) {
-    if (profilingEnabled) profilerCounts[address]++;
-
-    const auto& slot = fastCache[address];
-    if (slot.device) {
-        slot.device->Write(slot.offset, data);
-    }
-
-    if (hasWriteHooks) {
-        for (auto& hook : globalWriteHooks) {
-            hook(address, data);
-        }
-    }
-}
-
-void Bus::WriteDirect(Word address, Byte data) {
-    const auto& slot = fastCache[address];
-    if (slot.device) {
-        slot.device->Write(slot.offset, data);
-    }
-}
-
 void Bus::AddGlobalWriteHook(BusWriteHook hook) {
     globalWriteHooks.push_back(hook);
     hasWriteHooks = !globalWriteHooks.empty();
@@ -167,7 +151,7 @@ const std::vector<DeviceRegistration>& Bus::GetRegisteredDevices() const {
 void Bus::RebuildDeviceMap() {
     for (int i = 0; i < BUS_SIZE; ++i) {
         deviceMap[i].device = nullptr;
-        deviceMap[i].baseAddress = 0;
+        deviceMap[i].offset = 0;
     }
 
     for (const auto& reg : registeredDevices) {
@@ -180,7 +164,7 @@ void Bus::RebuildDeviceMap() {
                         reg.device->GetName());
                 }
                 deviceMap[i].device = reg.device;
-                deviceMap[i].baseAddress = reg.startAddress;
+                deviceMap[i].offset = i - reg.startAddress;
             }
         }
     }
@@ -189,7 +173,7 @@ void Bus::RebuildDeviceMap() {
         if (reg.enabled && reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
                 deviceMap[i].device = reg.device;
-                deviceMap[i].baseAddress = reg.startAddress;
+                deviceMap[i].offset = i - reg.startAddress;
             }
         }
     }
@@ -198,18 +182,37 @@ void Bus::RebuildDeviceMap() {
 }
 
 void Bus::UpdateCache() {
-    for (int i = 0; i < BUS_SIZE; ++i) {
-        if (deviceMap[i].device != nullptr) {
-            auto* dev = deviceMap[i].device;
-            Word offset = i - deviceMap[i].baseAddress;
-            Byte* raw = dev->GetRawMemory();
+    for (int p = 0; p < 256; ++p) {
+        pageReadMap[p] = nullptr;
+        pageWriteMap[p] = nullptr;
 
-            fastCache[i].device = dev;
-            fastCache[i].offset = offset;
-            fastCache[i].rawPtr = (raw != nullptr) ? (raw + offset) : nullptr;
+        bool pageIsUniform = true;
+        IBusDevice* firstDevice = deviceMap[p << 8].device;
+        if (!firstDevice || !firstDevice->GetRawMemory()) {
+            pageIsUniform = false;
         } else {
-            fastCache[i].device = nullptr;
-            fastCache[i].rawPtr = nullptr;
+            Word expectedOffset = deviceMap[p << 8].offset;
+            for (int i = 0; i < 256; ++i) {
+                Word addr = (p << 8) | i;
+                if (deviceMap[addr].device != firstDevice) {
+                    pageIsUniform = false;
+                    break;
+                }
+                if (deviceMap[addr].offset != expectedOffset + i) {
+                    pageIsUniform = false;
+                    break;
+                }
+            }
+        }
+
+        if (pageIsUniform) {
+            Byte* rawPtr = firstDevice->GetRawMemory();
+            Byte* memoryBase = rawPtr + deviceMap[p << 8].offset - (p << 8);
+
+            pageReadMap[p] = memoryBase;
+            if (!firstDevice->IsReadOnly()) {
+                pageWriteMap[p] = memoryBase;
+            }
         }
     }
 }
