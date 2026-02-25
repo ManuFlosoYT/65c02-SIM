@@ -88,9 +88,11 @@ public:
 
     SavestateLoadResult GetLastLoadResult() const { return lastLoadResult; }
     std::string GetLastLoadVersion() const { return lastLoadVersion; }
+    std::string GetCurrentBinPath() const { return currentBinPath; }
 
 private:
     void ThreadLoop();
+    void SetupHardware();
 
     // Components
     Bus bus;

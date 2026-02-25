@@ -20,25 +20,7 @@ Emulator::Emulator() : bus(), cpu(), lcd(), ram(), rom(), acia(), via() {}
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::lock_guard<std::mutex> lock(emulationMutex);
-    bus.Init();
-    cpu.Reset();
-
-    if (bus.GetRegisteredDevices().empty()) {
-        bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
-        bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
-        bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
-        bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
-        bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
-        bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
-    }
-
-    acia.Reset();
-    via.Reset();
-    sid.Reset();
-    gpu.Reset();
-    lcd.Reset();
-
-    via.SetPortBCallback([this](Byte val) { lcd.Update(val); });
+    SetupHardware();
 
     std::string path = bin;
 
@@ -109,11 +91,25 @@ bool Emulator::SaveState(const std::string& filename) {
 
     // Internal Emulator state
     ss.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));
+
+    bool gpuE = gpuEnabled;
+    ss.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));
+
+    int tIPS = targetIPS.load();
+    ss.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));
+
     size_t qSize = inputBuffer.size();
     ss.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));
     for (char c : inputBuffer) {
         ss.write(&c, 1);
     }
+
+    size_t binPathLen = currentBinPath.length();
+    ss.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));
+    ss.write(currentBinPath.c_str(), binPathLen);
+
+    bool autoReload = autoReloadRequested.load();
+    ss.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));
 
     std::string payload = ss.str();
     std::string payloadHash = picosha2::hash256_hex_string(payload);
@@ -141,6 +137,7 @@ bool Emulator::SaveState(const std::string& filename) {
 
 bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     std::lock_guard<std::mutex> lock(emulationMutex);
+    SetupHardware();
 
     std::ifstream in(filename, std::ios::binary | std::ios::ate);
     if (!in.is_open()) return false;
@@ -225,6 +222,15 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
 
     if (structuralSuccess) {
         ss.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));
+
+        bool gpuE;
+        ss.read(reinterpret_cast<char*>(&gpuE), sizeof(gpuE));
+        gpuEnabled = gpuE;
+
+        int tIPS;
+        ss.read(reinterpret_cast<char*>(&tIPS), sizeof(tIPS));
+        targetIPS.store(tIPS);
+
         size_t qSize = 0;
         ss.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));
         std::lock_guard<std::mutex> lock(bufferMutex);
@@ -235,6 +241,15 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
             inputBuffer.push_back(c);
         }
         hasInput.store(!inputBuffer.empty());
+
+        size_t binPathLen = 0;
+        ss.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));
+        currentBinPath.assign(binPathLen, '\0');
+        ss.read(&currentBinPath[0], binPathLen);
+
+        bool autoReload;
+        ss.read(reinterpret_cast<char*>(&autoReload), sizeof(autoReload));
+        autoReloadRequested.store(autoReload);
     }
 
     if (!structuralSuccess || (!ss.good() && !ss.eof())) {
@@ -416,6 +431,28 @@ void Emulator::ThreadLoop() {
             }
         }
     }
+}
+
+void Emulator::SetupHardware() {
+    bus.Init();
+    cpu.Reset();
+
+    if (bus.GetRegisteredDevices().empty()) {
+        bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
+        bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
+        bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
+        bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
+        bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
+        bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
+    }
+
+    acia.Reset();
+    via.Reset();
+    sid.Reset();
+    gpu.Reset();
+    lcd.Reset();
+
+    via.SetPortBCallback([this](Byte val) { lcd.Update(val); });
 }
 
 }  // namespace Core

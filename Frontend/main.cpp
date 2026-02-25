@@ -227,6 +227,17 @@ int main(int argc, char* argv[]) {
                 state.emulator.Pause();
                 state.emulator.LoadState(filePathName,
                                          state.forceLoadSaveState);
+                if (state.emulator.GetLastLoadResult() ==
+                        SavestateLoadResult::Success ||
+                    state.forceLoadSaveState) {
+                    state.romLoaded = true;
+                    state.gpuEnabled = state.emulator.IsGPUEnabled();
+                    state.instructionsPerFrame = state.emulator.GetTargetIPS();
+                    state.cycleAccurate = state.emulator.IsCycleAccurate();
+                    state.autoReload = state.emulator.IsAutoReloadEnabled();
+                    state.bin = state.emulator.GetCurrentBinPath();
+                }
+
                 if (state.emulator.GetLastLoadResult() !=
                     SavestateLoadResult::Success) {
                     ImGui::OpenPopup("SavestateFeedback");
