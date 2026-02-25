@@ -1,15 +1,20 @@
 #include <gtest/gtest.h>
 
-#include "../../Hardware/CPU.h"
-#include "../../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class Ampliados_BloqueMemoria : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
-    Mem mem;
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -23,15 +28,15 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
 
     // Init memoria origen con valores
     for (int i = 0; i < 256; i++) {
-        mem.Write(SRC_PAGE + i, (Byte)i);
-        mem.Write(DST_PAGE + i, 0);  // Limpiar destino
+        bus.Write(SRC_PAGE + i, (Byte)i);
+        bus.Write(DST_PAGE + i, 0);  // Limpiar destino
     }
 
     Word PC = CODE_START;
 
     // LDX #$00 (Indice)
-    mem.Write(PC++, INS_LDX_IM);
-    mem.Write(PC++, 0x00);
+    bus.Write(PC++, INS_LDX_IM);
+    bus.Write(PC++, 0x00);
 
     Word LOOP_START = PC;
     // Bucle:
@@ -39,38 +44,38 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
     // LDA SRC_PAGE, X
     // Nota: Como es Absoluto indexed X, toma 2 bytes de direccion.
     // Usaremos direccion base SRC_PAGE (0x8000)
-    mem.Write(PC++, INS_LDA_ABSX);
-    mem.Write(PC++, (Byte)(SRC_PAGE & 0xFF));  // Low byte
-    mem.Write(PC++, (Byte)(SRC_PAGE >> 8));    // High byte
+    bus.Write(PC++, INS_LDA_ABSX);
+    bus.Write(PC++, (Byte)(SRC_PAGE & 0xFF));  // Low byte
+    bus.Write(PC++, (Byte)(SRC_PAGE >> 8));    // High byte
 
     // STA DST_PAGE, X
-    mem.Write(PC++, INS_STA_ABSX);
-    mem.Write(PC++, (Byte)(DST_PAGE & 0xFF));  // Low byte
-    mem.Write(PC++, (Byte)(DST_PAGE >> 8));    // High byte
+    bus.Write(PC++, INS_STA_ABSX);
+    bus.Write(PC++, (Byte)(DST_PAGE & 0xFF));  // Low byte
+    bus.Write(PC++, (Byte)(DST_PAGE >> 8));    // High byte
 
     // INX
-    mem.Write(PC++, INS_INX);
+    bus.Write(PC++, INS_INX);
 
     // BNE LOOP_START
     // INX incrementa y, al desbordar de 255 a 0, Z flag se pondra a 1.
     // Eso ocurrira DESPUES de copiar el byte en indice 255 (0xFF).
     // Cuando X pasa de 0xFF a 0x00, Z=1, y BNE no salta.
-    mem.Write(PC++, INS_BNE);
+    bus.Write(PC++, INS_BNE);
     int8_t offset = LOOP_START - (PC + 1);
-    mem.Write(PC++, (Byte)offset);
+    bus.Write(PC++, (Byte)offset);
 
     // Stop
-    mem.Write(PC++, INS_JAM);
+    bus.Write(PC++, INS_JAM);
 
     // Execute
     cpu.PC = CODE_START;
     cpu.isInit =
         true;  // Previene ejecutar de resetear PC a vector 0xFFFC (que es 0)
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     // Verificacion
     for (int i = 0; i < 256; i++) {
-        EXPECT_EQ(mem[DST_PAGE + i], (Byte)i) << "Fallo en indice " << i;
+        EXPECT_EQ(bus.ReadDirect(DST_PAGE + i), (Byte)i) << "Fallo en indice " << i;
     }
 
     EXPECT_EQ(cpu.X, 0x00);  // Debe haber dado la vuelta completa

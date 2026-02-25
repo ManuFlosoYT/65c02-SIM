@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "../Mem.h"
+#include "Hardware/Core/Bus.h"
 
 namespace Hardware {
 
@@ -16,7 +16,7 @@ struct DisassembledInstruction {
 
 class Disassembler {
 public:
-    static DisassembledInstruction Disassemble(const Mem& mem, uint16_t addr);
+    static DisassembledInstruction Disassemble(const Bus& bus, uint16_t addr);
 };
 
 }  // namespace Hardware

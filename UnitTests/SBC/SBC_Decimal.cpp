@@ -1,16 +1,21 @@
 #include <gtest/gtest.h>
 
-#include "../../Hardware/CPU.h"
-#include "../../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class SBC_Decimal_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -20,13 +25,13 @@ TEST_F(SBC_Decimal_Test, SBC_Decimal_Simple) {
     cpu.D = 1;
     cpu.C = 1;  // No borrow
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_SBC_IM);
-    mem.Write(0x4001, 0x05);
-    mem.Write(0x4002, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_SBC_IM);
+    bus.Write(0x4001, 0x05);
+    bus.Write(0x4002, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x05);
     EXPECT_TRUE(cpu.C);  // No borrow
@@ -38,13 +43,13 @@ TEST_F(SBC_Decimal_Test, SBC_Decimal_Borrow) {
     cpu.D = 1;
     cpu.C = 1;  // No borrow start
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_SBC_IM);
-    mem.Write(0x4001, 0x06);
-    mem.Write(0x4002, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_SBC_IM);
+    bus.Write(0x4001, 0x06);
+    bus.Write(0x4002, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x99);
     EXPECT_FALSE(cpu.C);  // Borrow

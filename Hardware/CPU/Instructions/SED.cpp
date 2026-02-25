@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void SED::Execute(CPU& cpu, Mem& mem) {
+void SED::Execute(CPU& cpu, Bus& bus) {
     cpu.D = 1;
 }
 

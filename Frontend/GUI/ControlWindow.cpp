@@ -41,7 +41,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         if (wasRunning) state.emulator.Pause();
 
         Console::Clear();
-        state.emulator.GetGPU().Init();
+        state.emulator.GetGPU().Reset();
         state.emulator.ClearProfiler();
 
         if (state.romLoaded) {

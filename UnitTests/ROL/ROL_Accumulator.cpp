@@ -1,16 +1,21 @@
 #include <gtest/gtest.h>
 
-#include "../../Hardware/CPU.h"
-#include "../../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class ROL_Accumulator_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -25,12 +30,12 @@ TEST_F(ROL_Accumulator_Test, ROL_Accumulator_Rotate) {
     cpu.A = 0x80;
     cpu.C = 0;
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_ROL_A);
-    mem.Write(0x4001, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_ROL_A);
+    bus.Write(0x4001, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.C);
@@ -44,12 +49,12 @@ TEST_F(ROL_Accumulator_Test, ROL_Accumulator_NoCarryOut) {
     cpu.A = 0x40;
     cpu.C = 1;
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_ROL_A);
-    mem.Write(0x4001, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_ROL_A);
+    bus.Write(0x4001, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x81);
     EXPECT_FALSE(cpu.C);

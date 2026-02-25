@@ -2,8 +2,8 @@
 
 namespace Hardware::Instructions {
 
-void BRA::Execute(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BRA::Execute(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     cpu.PC += offset;
 }
 

@@ -3,18 +3,19 @@
 #include <functional>
 #include <iostream>
 
-#include "Mem.h"
+#include "Hardware/Core/IBusDevice.h"
 
 namespace Hardware {
 
-class ACIA {
+class ACIA : public IBusDevice {
 public:
-    Byte DATA;
-    Byte STATUS;
-    Byte CMD;
-    Byte CTRL;
+    ACIA();
+    void Reset() override;
 
-    void Init(Mem& mem);
+    // IBusDevice implementation
+    Byte Read(Word address) override;
+    void Write(Word address, Byte data) override;
+    std::string GetName() const override { return "ACIA"; }
 
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& in);
@@ -24,6 +25,11 @@ public:
     }
 
 private:
+    Byte DATA;
+    Byte STATUS;
+    Byte CMD;
+    Byte CTRL;
+
     std::function<void(char)> outputCallback;
 };
 

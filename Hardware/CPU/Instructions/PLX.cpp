@@ -2,8 +2,8 @@
 
 namespace Hardware::Instructions {
 
-void PLX::Execute(CPU& cpu, Mem& mem) {
-    cpu.X = cpu.PopByte(mem);
+void PLX::Execute(CPU& cpu, Bus& bus) {
+    cpu.X = cpu.PopByte(bus);
     cpu.Z = (cpu.X == 0);
     cpu.N = (cpu.X & 0b10000000) > 0;
 }

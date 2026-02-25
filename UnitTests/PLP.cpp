@@ -1,25 +1,30 @@
 #include <gtest/gtest.h>
 
-#include "../Hardware/CPU.h"
-#include "../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class PLP_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
 TEST_F(PLP_Test, PLP) {
     // 0xFFFC: PLP
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_PLP);
-    mem.Write(0x4001, INS_JAM);  // Stop
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_PLP);
+    bus.Write(0x4001, INS_JAM);  // Stop
 
     cpu.SP = 0x01FE;
     // Stack contains flags to be set
@@ -29,9 +34,9 @@ TEST_F(PLP_Test, PLP) {
     // not set by PLP). Break flag (bit 4) is ignored. Unused bit (bit 5) is
     // ignored.
 
-    mem.Write(0x01FF, 0xEF);
+    bus.Write(0x01FF, 0xEF);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_TRUE(cpu.C);
     EXPECT_TRUE(cpu.Z);

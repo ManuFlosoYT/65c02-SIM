@@ -3,16 +3,20 @@
 #include <functional>
 #include <iostream>
 
-#include "Mem.h"
+#include "Hardware/Core/IBusDevice.h"
 
 namespace Hardware {
 
-class LCD {
+class LCD : public IBusDevice {
 public:
-    Byte PORTB_DATA;
-    Byte DDRB_DATA;
+    LCD();
+    void Reset() override;
 
-    void Init(Mem& mem);
+    // IBusDevice implementation
+    Byte Read(Word address) override;
+    void Write(Word address, Byte data) override;
+    std::string GetName() const override { return "LCD"; }
+
     void Update(Byte portBVal);
 
     bool SaveState(std::ostream& out) const;
@@ -30,6 +34,9 @@ public:
     int GetCursorY() const { return cursorY; }
 
 private:
+    Byte PORTB_DATA;
+    Byte DDRB_DATA;
+
     bool four_bit_mode = false;
     bool waiting_low_nibble = false;
     Byte current_high_nibble = 0;

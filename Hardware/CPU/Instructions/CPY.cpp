@@ -8,23 +8,23 @@ static void SetFlags(CPU& cpu, Byte dato) {
     cpu.N = ((cpu.Y - dato) & 0b10000000) > 0;
 }
 
-void CPY::ExecuteImmediate(CPU& cpu, Mem& mem) {
-    Byte dato = cpu.FetchByte(mem);
+void CPY::ExecuteImmediate(CPU& cpu, Bus& bus) {
+    Byte dato = cpu.FetchByte(bus);
 
     SetFlags(cpu, dato);
 }
 
-void CPY::ExecuteZP(CPU& cpu, Mem& mem) {
-    Byte ZP_Dir = cpu.FetchByte(mem);
+void CPY::ExecuteZP(CPU& cpu, Bus& bus) {
+    Byte ZP_Dir = cpu.FetchByte(bus);
 
-    Byte dato = cpu.ReadByte(ZP_Dir, mem);
+    Byte dato = cpu.ReadByte(ZP_Dir, bus);
     SetFlags(cpu, dato);
 }
 
-void CPY::ExecuteABS(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
+void CPY::ExecuteABS(CPU& cpu, Bus& bus) {
+    Word Dir = cpu.FetchWord(bus);
 
-    Byte dato = cpu.ReadByte(Dir, mem);
+    Byte dato = cpu.ReadByte(Dir, bus);
     SetFlags(cpu, dato);
 }
 

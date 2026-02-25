@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void TXS::Execute(CPU& cpu, Mem& mem) { 
+void TXS::Execute(CPU& cpu, Bus& bus) { 
     cpu.SP = 0x0100 | cpu.X; 
 }
 

@@ -2,8 +2,8 @@
 
 namespace Hardware::Instructions {
 
-void PHY::Execute(CPU& cpu, Mem& mem) {
-    cpu.PushByte(cpu.Y, mem);
+void PHY::Execute(CPU& cpu, Bus& bus) {
+    cpu.PushByte(cpu.Y, bus);
 }
 
 }  // namespace Hardware::Instructions

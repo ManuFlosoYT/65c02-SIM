@@ -1,21 +1,21 @@
 #pragma once
 
-#include "../../CPU.h"
-#include "../../Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Core/Bus.h"
 
 namespace Hardware::Instructions {
 
 class EOR {
 public:
-    static void ExecuteImmediate(CPU& cpu, Mem& mem);
-    static void ExecuteZP(CPU& cpu, Mem& mem);
-    static void ExecuteZPX(CPU& cpu, Mem& mem);
-    static void ExecuteABS(CPU& cpu, Mem& mem);
-    static void ExecuteABSX(CPU& cpu, Mem& mem);
-    static void ExecuteABSY(CPU& cpu, Mem& mem);
-    static void ExecuteINDX(CPU& cpu, Mem& mem);
-    static void ExecuteINDY(CPU& cpu, Mem& mem);
-    static void ExecuteIND_ZP(CPU& cpu, Mem& mem);
+    static void ExecuteImmediate(CPU& cpu, Bus& bus);
+    static void ExecuteZP(CPU& cpu, Bus& bus);
+    static void ExecuteZPX(CPU& cpu, Bus& bus);
+    static void ExecuteABS(CPU& cpu, Bus& bus);
+    static void ExecuteABSX(CPU& cpu, Bus& bus);
+    static void ExecuteABSY(CPU& cpu, Bus& bus);
+    static void ExecuteINDX(CPU& cpu, Bus& bus);
+    static void ExecuteINDY(CPU& cpu, Bus& bus);
+    static void ExecuteIND_ZP(CPU& cpu, Bus& bus);
 };
 
 }  // namespace Hardware::Instructions

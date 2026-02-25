@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void TYA::Execute(CPU& cpu, Mem& mem) {
+void TYA::Execute(CPU& cpu, Bus& bus) {
     cpu.A = cpu.Y;
     cpu.Z = (cpu.A == 0);
     cpu.N = (cpu.A & 0b10000000) > 0;

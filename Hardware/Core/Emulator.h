@@ -9,13 +9,15 @@
 #include <string>
 #include <thread>
 
-#include "ACIA.h"
-#include "CPU.h"
-#include "GPU.h"
-#include "LCD.h"
-#include "Mem.h"
-#include "SID.h"
-#include "VIA.h"
+#include "Hardware/Audio/SID.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Comm/ACIA.h"
+#include "Hardware/Comm/VIA.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
+#include "Hardware/Memory/ROM.h"
+#include "Hardware/Video/GPU.h"
+#include "Hardware/Video/LCD.h"
 
 namespace Core {
 
@@ -43,8 +45,8 @@ public:
     const LCD& GetLCD() const { return lcd; }
     const CPU& GetCPU() const { return cpu; }
     CPU& GetCPU() { return cpu; }
-    const Mem& GetMem() const { return mem; }
-    Mem& GetMem() { return mem; }
+    const Bus& GetMem() const { return bus; }
+    Bus& GetMem() { return bus; }
     GPU& GetGPU() { return gpu; }
     void SetGPUEnabled(bool enabled) { gpuEnabled = enabled; }
     bool IsGPUEnabled() const { return gpuEnabled; }
@@ -69,9 +71,9 @@ public:
     int GetTargetIPS() const { return targetIPS; }
     int GetActualIPS() const { return actualIPS; }
 
-    void SetProfilingEnabled(bool enabled) { mem.SetProfilingEnabled(enabled); }
-    void ClearProfiler() { mem.ClearProfiler(); }
-    uint32_t* GetProfilerCounts() { return mem.GetProfilerCounts(); }
+    void SetProfilingEnabled(bool enabled) { bus.SetProfilingEnabled(enabled); }
+    void ClearProfiler() { bus.ClearProfiler(); }
+    uint32_t* GetProfilerCounts() { return bus.GetProfilerCounts(); }
 
     void SetAutoReload(bool enabled) { autoReloadRequested = enabled; }
     bool IsAutoReloadEnabled() const { return autoReloadRequested; }
@@ -80,9 +82,11 @@ private:
     void ThreadLoop();
 
     // Components
-    Mem mem;
+    Bus bus;
     CPU cpu;
     LCD lcd;
+    RAM ram;
+    ROM rom;
     ACIA acia;
     GPU gpu;
     SID sid;

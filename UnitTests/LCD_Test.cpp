@@ -1,21 +1,23 @@
-#include "../Hardware/LCD.h"
+#include "Hardware/Video/LCD.h"
 
 #include <gtest/gtest.h>
 
 #include <iostream>
 
-#include "../Hardware/Mem.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class TestLCD : public ::testing::Test {
 protected:
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     LCD lcd;
 
     void SetUp() override {
-        mem.Init();
-        lcd.Init(mem);
+        bus.Init();
+        lcd.Reset();
         lcd.SetOutputCallback([](char c) {
             std::cout << c;
             std::cout.flush();

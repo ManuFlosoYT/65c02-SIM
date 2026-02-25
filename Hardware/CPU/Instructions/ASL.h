@@ -1,17 +1,17 @@
 #pragma once
 
-#include "../../CPU.h"
-#include "../../Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Core/Bus.h"
 
 namespace Hardware::Instructions {
 
 class ASL {
 public:
-    static void ExecuteAccumulator(CPU& cpu, Mem& mem);
-    static void ExecuteZP(CPU& cpu, Mem& mem);
-    static void ExecuteZPX(CPU& cpu, Mem& mem);
-    static void ExecuteABS(CPU& cpu, Mem& mem);
-    static void ExecuteABSX(CPU& cpu, Mem& mem);
+    static void ExecuteAccumulator(CPU& cpu, Bus& bus);
+    static void ExecuteZP(CPU& cpu, Bus& bus);
+    static void ExecuteZPX(CPU& cpu, Bus& bus);
+    static void ExecuteABS(CPU& cpu, Bus& bus);
+    static void ExecuteABSX(CPU& cpu, Bus& bus);
 };
 
 }  // namespace Hardware::Instructions

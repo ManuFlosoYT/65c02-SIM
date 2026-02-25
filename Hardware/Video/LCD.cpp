@@ -1,32 +1,38 @@
-#include "LCD.h"
+#include "Hardware/Video/LCD.h"
 
 #include <cstring>
 
-#include "Mem.h"
+#include "Hardware/Core/Bus.h"
 
 namespace Hardware {
 
-void LCD::Init(Mem& mem) {
-    // Reset state
+LCD::LCD() { Reset(); }
+
+void LCD::Reset() {
     four_bit_mode = false;
     waiting_low_nibble = false;
     last_portb = 0;
     PORTB_DATA = 0;
     DDRB_DATA = 0;
 
-    // Clear screen buffer
     std::memset(screen, ' ', sizeof(screen));
     cursorX = 0;
     cursorY = 0;
-
     is_init = false;
+}
 
-    mem.SetWriteHook(
-        DDRB,
-        [](void* context, Word addr, Byte val) {
-            static_cast<LCD*>(context)->DDRB_DATA = val;
-        },
-        this);
+Byte LCD::Read(Word address) {
+    if (address == PORTB) return PORTB_DATA;
+    if (address == DDRB) return DDRB_DATA;
+    return 0;
+}
+
+void LCD::Write(Word address, Byte data) {
+    if (address == PORTB) {
+        Update(data);
+    } else if (address == DDRB) {
+        DDRB_DATA = data;
+    }
 }
 
 void LCD::Update(Byte val) {

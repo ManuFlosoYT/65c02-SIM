@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void CLI::Execute(CPU& cpu, Mem& mem) {
+void CLI::Execute(CPU& cpu, Bus& bus) {
     cpu.I = 0;
 }
 

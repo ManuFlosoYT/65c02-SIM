@@ -1,25 +1,30 @@
 #include <gtest/gtest.h>
 
-#include "../Hardware/CPU.h"
-#include "../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class RTS_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
 TEST_F(RTS_Test, RTS_Implied) {
     // 0xFFFC: RTS
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_RTS);
-    mem.Write(0x4001, INS_JAM);  // Stop
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_RTS);
+    bus.Write(0x4001, INS_JAM);  // Stop
 
     // Simulate Return Address on Stack
     // Want to return to 0x2035
@@ -42,11 +47,11 @@ TEST_F(RTS_Test, RTS_Implied) {
     // SP is 0x01FD.
 
     cpu.SP = 0x01FD;
-    mem.Write(0x01FE, 0xFF);
-    mem.Write(0x01FF, 0x7F);
-    mem.WriteROM(0x8000, INS_JAM);  // Stop opcode at return address
+    bus.Write(0x01FE, 0xFF);
+    bus.Write(0x01FF, 0x7F);
+    bus.WriteDirect(0x8000, INS_JAM);  // Stop opcode at return address
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     // Expected PC:
     // RTS sets PC = 0x8000.

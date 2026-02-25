@@ -1,4 +1,4 @@
-#include "CPU.h"
+#include "Hardware/CPU/CPU.h"
 
 namespace Hardware {
 

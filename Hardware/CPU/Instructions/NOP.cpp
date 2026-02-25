@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void NOP::Execute(CPU& cpu, Mem& mem) {
+void NOP::Execute(CPU& cpu, Bus& bus) {
     // Bruh, you really thought NOP would do something lmao 😂😂😂😂
 }
 

@@ -1,30 +1,35 @@
 #include <gtest/gtest.h>
 
-#include "../Hardware/CPU.h"
-#include "../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class TXA_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
 TEST_F(TXA_Test, TXA) {
     // 0xFFFC: TXA
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_TXA);
-    mem.Write(0x4001, INS_JAM);  // Stop
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_TXA);
+    bus.Write(0x4001, INS_JAM);  // Stop
 
     cpu.X = 0x42;
     cpu.A = 0x00;
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x42);
     EXPECT_FALSE(cpu.Z);
@@ -33,15 +38,15 @@ TEST_F(TXA_Test, TXA) {
 
 TEST_F(TXA_Test, TXA_ZeroFlag) {
     // 0xFFFC: TXA
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_TXA);
-    mem.Write(0x4001, INS_JAM);  // Stop
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_TXA);
+    bus.Write(0x4001, INS_JAM);  // Stop
 
     cpu.X = 0x00;
     cpu.A = 0x42;
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -50,15 +55,15 @@ TEST_F(TXA_Test, TXA_ZeroFlag) {
 
 TEST_F(TXA_Test, TXA_NegativeFlag) {
     // 0xFFFC: TXA
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_TXA);
-    mem.Write(0x4001, INS_JAM);  // Stop
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_TXA);
+    bus.Write(0x4001, INS_JAM);  // Stop
 
     cpu.X = 0x80;
     cpu.A = 0x00;
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x80);
     EXPECT_FALSE(cpu.Z);

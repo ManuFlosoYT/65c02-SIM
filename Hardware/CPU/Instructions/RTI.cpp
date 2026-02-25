@@ -2,10 +2,10 @@
 
 namespace Hardware::Instructions {
 
-void RTI::Execute(CPU& cpu, Mem& mem) {
-    Byte status = cpu.PopByte(mem);
+void RTI::Execute(CPU& cpu, Bus& bus) {
+    Byte status = cpu.PopByte(bus);
     cpu.SetStatus(status);
-    cpu.PC = cpu.PopWord(mem);
+    cpu.PC = cpu.PopWord(bus);
 }
 
 }  // namespace Hardware::Instructions

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../CPU.h"
-#include "../../Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Core/Bus.h"
 
 namespace Hardware::Instructions {
 
 class INX {
 public:
-    static void Execute(CPU& cpu, Mem& mem);
+    static void Execute(CPU& cpu, Bus& bus);
 };
 
 }  // namespace Hardware::Instructions

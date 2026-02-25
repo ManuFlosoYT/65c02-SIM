@@ -1,20 +1,20 @@
 #pragma once
 
-#include "../../CPU.h"
-#include "../../Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Core/Bus.h"
 
 namespace Hardware::Instructions {
 
 class RMB {
 public:
-    static void Execute0(CPU& cpu, Mem& mem);
-    static void Execute1(CPU& cpu, Mem& mem);
-    static void Execute2(CPU& cpu, Mem& mem);
-    static void Execute3(CPU& cpu, Mem& mem);
-    static void Execute4(CPU& cpu, Mem& mem);
-    static void Execute5(CPU& cpu, Mem& mem);
-    static void Execute6(CPU& cpu, Mem& mem);
-    static void Execute7(CPU& cpu, Mem& mem);
+    static void Execute0(CPU& cpu, Bus& bus);
+    static void Execute1(CPU& cpu, Bus& bus);
+    static void Execute2(CPU& cpu, Bus& bus);
+    static void Execute3(CPU& cpu, Bus& bus);
+    static void Execute4(CPU& cpu, Bus& bus);
+    static void Execute5(CPU& cpu, Bus& bus);
+    static void Execute6(CPU& cpu, Bus& bus);
+    static void Execute7(CPU& cpu, Bus& bus);
 };
 
 }  // namespace Hardware::Instructions

@@ -101,6 +101,13 @@ int main(int argc, char* argv[]) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB,
                  GL_UNSIGNED_BYTE, nullptr);
 
+    glGenTextures(1, &state.layoutTexture);
+    glBindTexture(GL_TEXTURE_2D, state.layoutTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB,
+                 GL_UNSIGNED_BYTE, nullptr);
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     state.crtFilter.Init(GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT);
@@ -287,6 +294,9 @@ int main(int argc, char* argv[]) {
     state.emulator.GetSID().Close();
     state.crtFilter.Destroy();
     glDeleteTextures(1, &state.vramTexture);
+    glDeleteTextures(1, &state.profilerTexture);
+    glDeleteTextures(1, &state.layoutTexture);
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

@@ -48,7 +48,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
 
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f),
                        "Memory Editor (0x0000-0xFFFF)");
-    Hardware::Mem& mem = state.emulator.GetMem();
+    Hardware::Bus& bus = state.emulator.GetMem();
 
     if (ImGui::BeginChild("MemEditScroll",
                           ImVec2(0, -ImGui::GetFrameHeightWithSpacing() * 4),
@@ -78,7 +78,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
                     for (int col = 0; col < 16; col++) {
                         ImGui::TableNextColumn();
                         Word addr = (Word)(row * 16 + col);
-                        Byte val = mem.Peek(addr);
+                        Byte val = bus.ReadDirect(addr);
 
                         char label[16];
                         sprintf(label, "##m%04X", addr);
@@ -86,7 +86,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
                         if (ImGui::InputScalar(
                                 label, ImGuiDataType_U8, &val, NULL, NULL,
                                 "%02X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                            mem.WriteDebug(addr, val);
+                            bus.WriteDirect(addr, val);
                         }
                         ImGui::PopItemWidth();
                     }
@@ -114,7 +114,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
 
     if (ImGui::Button("Fill Random Junk")) {
         for (int i = startAddr; i <= (int)endAddr; i++) {
-            mem.WriteDebug((Word)i, (Byte)(rand() % 256));
+            bus.WriteDirect((Word)i, (Byte)(rand() % 256));
         }
     }
 }

@@ -2,8 +2,8 @@
 
 namespace Hardware::Instructions {
 
-void PHP::Execute(CPU& cpu, Mem& mem) {    
-    cpu.PushByte(cpu.GetStatus(), mem);
+void PHP::Execute(CPU& cpu, Bus& bus) {    
+    cpu.PushByte(cpu.GetStatus(), bus);
 }
 
 }  // namespace Hardware::Instructions

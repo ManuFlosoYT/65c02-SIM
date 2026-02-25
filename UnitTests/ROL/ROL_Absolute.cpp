@@ -1,16 +1,21 @@
 #include <gtest/gtest.h>
 
-#include "../../Hardware/CPU.h"
-#include "../../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class ROL_Absolute_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -19,17 +24,17 @@ TEST_F(ROL_Absolute_Test, ROL_Absolute) {
     // Carry Out = Old Bit 7 (1).
     cpu.C = 0;
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_ROL_ABS);
-    mem.Write(0x4001, 0x80);
-    mem.Write(0x4002, 0x20);  // 0x2080
-    mem.Write(0x2080, 0x80);
-    mem.Write(0x4003, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_ROL_ABS);
+    bus.Write(0x4001, 0x80);
+    bus.Write(0x4002, 0x20);  // 0x2080
+    bus.Write(0x2080, 0x80);
+    bus.Write(0x4003, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
-    EXPECT_EQ(mem[0x2080], 0x00);
+    EXPECT_EQ(bus.ReadDirect(0x2080), 0x00);
     EXPECT_TRUE(cpu.C);
     EXPECT_TRUE(cpu.Z);
 }

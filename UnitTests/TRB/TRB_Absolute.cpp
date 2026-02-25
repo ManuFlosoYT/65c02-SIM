@@ -1,16 +1,21 @@
 #include <gtest/gtest.h>
 
-#include "../../Hardware/CPU.h"
-#include "../../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class TRB_Absolute_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -20,18 +25,18 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_SetsZeroFlag) {
     // A & M = 0 -> Z = 1
     // M = M & ~A = 0x55 & 0x55 = 0x55
     cpu.A = 0xAA;
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_TRB_ABS);
-    mem.Write(0x4001, 0x00);
-    mem.Write(0x4002, 0x20);
-    mem.WriteROM(0x2000, 0x55);
-    mem.Write(0x4003, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_TRB_ABS);
+    bus.Write(0x4001, 0x00);
+    bus.Write(0x4002, 0x20);
+    bus.WriteDirect(0x2000, 0x55);
+    bus.Write(0x4003, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_TRUE(cpu.Z);
-    EXPECT_EQ(mem[0x2000], 0x55);
+    EXPECT_EQ(bus.ReadDirect(0x2000), 0x55);
 }
 
 TEST_F(TRB_Absolute_Test, TRB_Absolute_ClearsZeroFlag_And_ResetsBits) {
@@ -40,23 +45,23 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_ClearsZeroFlag_And_ResetsBits) {
     // A & M = 0xFF != 0 -> Z = 0
     // M = M & ~A = 0xFF & 0x00 = 0x00
     cpu.A = 0xFF;
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_TRB_ABS);
-    mem.Write(0x4001, 0x00);
-    mem.Write(0x4002, 0x20);
-    mem.WriteROM(0x2000, 0xFF);
-    mem.Write(0x4003, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_TRB_ABS);
+    bus.Write(0x4001, 0x00);
+    bus.Write(0x4002, 0x20);
+    bus.WriteDirect(0x2000, 0xFF);
+    bus.Write(0x4003, INS_JAM);
     // -> 8000 (Exec?) No.
     // 0xFFFC: Op
     // 0xFFFD: Lo
     // 0xFFFE: Hi
     // 0xFFFF: Next Opcode
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_FALSE(cpu.Z);
-    EXPECT_EQ(mem[0x2000], 0x00);
+    EXPECT_EQ(bus.ReadDirect(0x2000), 0x00);
 }
 
 TEST_F(TRB_Absolute_Test, TRB_Absolute_PartialReset) {
@@ -65,16 +70,16 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_PartialReset) {
     // A & M = 0xA0 (1010 0000) != 0 -> Z = 0
     // M = M & ~A = 0xAA & 0x0F = 0x0A (0000 1010)
     cpu.A = 0xF0;
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_TRB_ABS);
-    mem.Write(0x4001, 0x00);
-    mem.Write(0x4002, 0x20);
-    mem.WriteROM(0x2000, 0xAA);
-    mem.Write(0x4003, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_TRB_ABS);
+    bus.Write(0x4001, 0x00);
+    bus.Write(0x4002, 0x20);
+    bus.WriteDirect(0x2000, 0xAA);
+    bus.Write(0x4003, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_FALSE(cpu.Z);
-    EXPECT_EQ(mem[0x2000], 0x0A);
+    EXPECT_EQ(bus.ReadDirect(0x2000), 0x0A);
 }

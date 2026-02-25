@@ -1,15 +1,15 @@
 #pragma once
 
-#include "../../CPU.h"
-#include "../../Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Core/Bus.h"
 
 namespace Hardware::Instructions {
 
 class JMP {
 public:
-    static void ExecuteABS(CPU& cpu, Mem& mem);
-    static void ExecuteIND(CPU& cpu, Mem& mem);
-    static void ExecuteABSX(CPU& cpu, Mem& mem);
+    static void ExecuteABS(CPU& cpu, Bus& bus);
+    static void ExecuteIND(CPU& cpu, Bus& bus);
+    static void ExecuteABSX(CPU& cpu, Bus& bus);
 };
 
 }  // namespace Hardware::Instructions

@@ -2,20 +2,20 @@
 
 namespace Hardware::Instructions {
 
-void JMP::ExecuteABS(CPU& cpu, Mem& mem) {
-    Word dir = cpu.FetchWord(mem);
+void JMP::ExecuteABS(CPU& cpu, Bus& bus) {
+    Word dir = cpu.FetchWord(bus);
     cpu.PC = dir;
 }
 
-void JMP::ExecuteABSX(CPU& cpu, Mem& mem) {
-    Word dir = cpu.FetchWord(mem);
+void JMP::ExecuteABSX(CPU& cpu, Bus& bus) {
+    Word dir = cpu.FetchWord(bus);
     dir += cpu.X;
     cpu.PC = dir;
 }
 
-void JMP::ExecuteIND(CPU& cpu, Mem& mem) {
-    Word dirIND = cpu.FetchWord(mem);
-    Word dir = cpu.ReadWord(dirIND, mem);
+void JMP::ExecuteIND(CPU& cpu, Bus& bus) {
+    Word dirIND = cpu.FetchWord(bus);
+    Word dir = cpu.ReadWord(dirIND, bus);
     cpu.PC = dir;
 }
 

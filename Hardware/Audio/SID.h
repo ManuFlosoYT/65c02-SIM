@@ -6,6 +6,8 @@
 #include <iostream>
 #include <mutex>
 
+#include "Hardware/Core/IBusDevice.h"
+
 namespace Hardware {
 
 struct ADSREnvelope {
@@ -43,7 +45,7 @@ struct Oscillator {
     bool LoadState(std::istream& in);
 };
 
-class SID {
+class SID : public IBusDevice {
 public:
 #define MAX_SID_VOICES 3
     SID();
@@ -51,9 +53,10 @@ public:
 
     void Init(int sampleRate = 44100);
     void Close();
-    void Reset();
-    uint8_t Read(uint16_t addr);
-    void Write(uint16_t addr, uint8_t data);
+    void Reset() override;
+    Byte Read(Word addr) override;
+    void Write(Word addr, Byte data) override;
+    std::string GetName() const override { return "SID"; }
 
     void EnableSound(bool enable);
     void SetEmulationPaused(bool paused);

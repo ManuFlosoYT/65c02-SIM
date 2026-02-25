@@ -2,11 +2,12 @@
 
 #include <iostream>
 
-#include "Mem.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Core/IBusDevice.h"
 
 namespace Hardware {
 
-class GPU {
+class GPU : public IBusDevice {
 public:
     // VRAM dimensions (visible area)
     const static Byte VRAM_WIDTH = 100;
@@ -20,11 +21,10 @@ public:
     // calculate if the GPU is in blanking interval
     const static Byte VRAM_HEIGHT_DRAWABLE_BY_CPU = 64;
 
-    GPU() { Init(); }
+    GPU() { Reset(); }
+    void Reset() override;
 
     Byte vram[VRAM_HEIGHT][VRAM_WIDTH]{};
-
-    void Init();
 
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& in);
@@ -65,21 +65,11 @@ public:
         return vram[y][x];
     }
 
-    void SetWriteHook(Word address, WriteHook hook, void* context = nullptr);
-    void Write(Word addr, Byte val);
-
-    void SetReadHook(Word address, ReadHook hook, void* context = nullptr);
-    Byte Read(Word addr);
+    void Write(Word addr, Byte val) override;
+    Byte Read(Word addr) override;
+    std::string GetName() const override { return "GPU"; }
 
 private:
-    WriteHook writeHooks[0x4000]{nullptr};
-    void* writeContext[0x4000]{nullptr};
-    bool hasWriteHook[0x4000]{false};
-
-    ReadHook readHooks[0x4000]{nullptr};
-    void* readContext[0x4000]{nullptr};
-    bool hasReadHook[0x4000]{false};
-
     // Pixel counters (14-bit values)
     Word pixelX = 0;  // 0-131 (132 total)
     Word pixelY = 0;  // 0-77 (78 total)

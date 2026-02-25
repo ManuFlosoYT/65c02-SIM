@@ -2,20 +2,20 @@
 
 namespace Hardware::Instructions {
 
-void STY::ExecuteZP(CPU& cpu, Mem& mem) {
-    Byte ZP_Dir = cpu.FetchByte(mem);
-    mem.Write(ZP_Dir, cpu.Y);
+void STY::ExecuteZP(CPU& cpu, Bus& bus) {
+    Byte ZP_Dir = cpu.FetchByte(bus);
+    bus.Write(ZP_Dir, cpu.Y);
 }
 
-void STY::ExecuteZPX(CPU& cpu, Mem& mem) {
-    Byte ZP_Dir = cpu.FetchByte(mem);
+void STY::ExecuteZPX(CPU& cpu, Bus& bus) {
+    Byte ZP_Dir = cpu.FetchByte(bus);
     ZP_Dir += cpu.X;
-    mem.Write(ZP_Dir, cpu.Y);
+    bus.Write(ZP_Dir, cpu.Y);
 }
 
-void STY::ExecuteABS(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    mem.Write(Dir, cpu.Y);
+void STY::ExecuteABS(CPU& cpu, Bus& bus) {
+    Word Dir = cpu.FetchWord(bus);
+    bus.Write(Dir, cpu.Y);
 }
 
 }  // namespace Hardware::Instructions

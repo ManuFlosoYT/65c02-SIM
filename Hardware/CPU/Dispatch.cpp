@@ -2,83 +2,84 @@
 
 #include <iostream>
 
-#include "../CPU.h"
-#include "Instructions/ADC.h"
-#include "Instructions/AND.h"
-#include "Instructions/ASL.h"
-#include "Instructions/BBR.h"
-#include "Instructions/BBS.h"
-#include "Instructions/BCC.h"
-#include "Instructions/BCS.h"
-#include "Instructions/BEQ.h"
-#include "Instructions/BIT.h"
-#include "Instructions/BMI.h"
-#include "Instructions/BNE.h"
-#include "Instructions/BPL.h"
-#include "Instructions/BRA.h"
-#include "Instructions/BRK.h"
-#include "Instructions/BVC.h"
-#include "Instructions/BVS.h"
-#include "Instructions/CLC.h"
-#include "Instructions/CLD.h"
-#include "Instructions/CLI.h"
-#include "Instructions/CLV.h"
-#include "Instructions/CMP.h"
-#include "Instructions/CPX.h"
-#include "Instructions/CPY.h"
-#include "Instructions/DEC.h"
-#include "Instructions/DEX.h"
-#include "Instructions/DEY.h"
-#include "Instructions/EOR.h"
-#include "Instructions/INC.h"
-#include "Instructions/INX.h"
-#include "Instructions/INY.h"
-#include "Instructions/JMP.h"
-#include "Instructions/JSR.h"
-#include "Instructions/LDA.h"
-#include "Instructions/LDX.h"
-#include "Instructions/LDY.h"
-#include "Instructions/LSR.h"
-#include "Instructions/NOP.h"
-#include "Instructions/ORA.h"
-#include "Instructions/PHA.h"
-#include "Instructions/PHP.h"
-#include "Instructions/PHX.h"
-#include "Instructions/PHY.h"
-#include "Instructions/PLA.h"
-#include "Instructions/PLP.h"
-#include "Instructions/PLX.h"
-#include "Instructions/PLY.h"
-#include "Instructions/RMB.h"
-#include "Instructions/ROL.h"
-#include "Instructions/ROR.h"
-#include "Instructions/RTI.h"
-#include "Instructions/RTS.h"
-#include "Instructions/SBC.h"
-#include "Instructions/SEC.h"
-#include "Instructions/SED.h"
-#include "Instructions/SEI.h"
-#include "Instructions/SMB.h"
-#include "Instructions/STA.h"
-#include "Instructions/STX.h"
-#include "Instructions/STY.h"
-#include "Instructions/STZ.h"
-#include "Instructions/TAX.h"
-#include "Instructions/TAY.h"
-#include "Instructions/TRB.h"
-#include "Instructions/TSB.h"
-#include "Instructions/TSX.h"
-#include "Instructions/TXA.h"
-#include "Instructions/TXS.h"
-#include "Instructions/TYA.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/ADC.h"
+#include "Hardware/CPU/Instructions/AND.h"
+#include "Hardware/CPU/Instructions/ASL.h"
+#include "Hardware/CPU/Instructions/BBR.h"
+#include "Hardware/CPU/Instructions/BBS.h"
+#include "Hardware/CPU/Instructions/BCC.h"
+#include "Hardware/CPU/Instructions/BCS.h"
+#include "Hardware/CPU/Instructions/BEQ.h"
+#include "Hardware/CPU/Instructions/BIT.h"
+#include "Hardware/CPU/Instructions/BMI.h"
+#include "Hardware/CPU/Instructions/BNE.h"
+#include "Hardware/CPU/Instructions/BPL.h"
+#include "Hardware/CPU/Instructions/BRA.h"
+#include "Hardware/CPU/Instructions/BRK.h"
+#include "Hardware/CPU/Instructions/BVC.h"
+#include "Hardware/CPU/Instructions/BVS.h"
+#include "Hardware/CPU/Instructions/CLC.h"
+#include "Hardware/CPU/Instructions/CLD.h"
+#include "Hardware/CPU/Instructions/CLI.h"
+#include "Hardware/CPU/Instructions/CLV.h"
+#include "Hardware/CPU/Instructions/CMP.h"
+#include "Hardware/CPU/Instructions/CPX.h"
+#include "Hardware/CPU/Instructions/CPY.h"
+#include "Hardware/CPU/Instructions/DEC.h"
+#include "Hardware/CPU/Instructions/DEX.h"
+#include "Hardware/CPU/Instructions/DEY.h"
+#include "Hardware/CPU/Instructions/EOR.h"
+#include "Hardware/CPU/Instructions/INC.h"
+#include "Hardware/CPU/Instructions/INX.h"
+#include "Hardware/CPU/Instructions/INY.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/CPU/Instructions/JMP.h"
+#include "Hardware/CPU/Instructions/JSR.h"
+#include "Hardware/CPU/Instructions/LDA.h"
+#include "Hardware/CPU/Instructions/LDX.h"
+#include "Hardware/CPU/Instructions/LDY.h"
+#include "Hardware/CPU/Instructions/LSR.h"
+#include "Hardware/CPU/Instructions/NOP.h"
+#include "Hardware/CPU/Instructions/ORA.h"
+#include "Hardware/CPU/Instructions/PHA.h"
+#include "Hardware/CPU/Instructions/PHP.h"
+#include "Hardware/CPU/Instructions/PHX.h"
+#include "Hardware/CPU/Instructions/PHY.h"
+#include "Hardware/CPU/Instructions/PLA.h"
+#include "Hardware/CPU/Instructions/PLP.h"
+#include "Hardware/CPU/Instructions/PLX.h"
+#include "Hardware/CPU/Instructions/PLY.h"
+#include "Hardware/CPU/Instructions/RMB.h"
+#include "Hardware/CPU/Instructions/ROL.h"
+#include "Hardware/CPU/Instructions/ROR.h"
+#include "Hardware/CPU/Instructions/RTI.h"
+#include "Hardware/CPU/Instructions/RTS.h"
+#include "Hardware/CPU/Instructions/SBC.h"
+#include "Hardware/CPU/Instructions/SEC.h"
+#include "Hardware/CPU/Instructions/SED.h"
+#include "Hardware/CPU/Instructions/SEI.h"
+#include "Hardware/CPU/Instructions/SMB.h"
+#include "Hardware/CPU/Instructions/STA.h"
+#include "Hardware/CPU/Instructions/STX.h"
+#include "Hardware/CPU/Instructions/STY.h"
+#include "Hardware/CPU/Instructions/STZ.h"
+#include "Hardware/CPU/Instructions/TAX.h"
+#include "Hardware/CPU/Instructions/TAY.h"
+#include "Hardware/CPU/Instructions/TRB.h"
+#include "Hardware/CPU/Instructions/TSB.h"
+#include "Hardware/CPU/Instructions/TSX.h"
+#include "Hardware/CPU/Instructions/TXA.h"
+#include "Hardware/CPU/Instructions/TXS.h"
+#include "Hardware/CPU/Instructions/TYA.h"
 
 using namespace Hardware::Instructions;
 
 namespace Hardware {
 namespace CPUDispatch {
 
-int Dispatch(CPU& cpu, Mem& mem) {
-    Byte opcode = cpu.FetchByte(mem);
+int Dispatch(CPU& cpu, Bus& bus) {
+    Byte opcode = cpu.FetchByte(bus);
     switch (opcode) {
         case INS_WAI: {
             cpu.waiting = true;
@@ -91,7 +92,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             return 1;
         }
         case INS_BRA: {
-            BRA::Execute(cpu, mem);
+            BRA::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BRA - 1;
@@ -99,7 +100,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_NOP: {
-            NOP::Execute(cpu, mem);
+            NOP::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_NOP - 1;
@@ -107,7 +108,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_IM: {
-            LDA::ExecuteImmediate(cpu, mem);
+            LDA::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_IM - 1;
@@ -115,7 +116,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_ZP: {
-            LDA::ExecuteZP(cpu, mem);
+            LDA::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_ZP - 1;
@@ -123,7 +124,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_ZPX: {
-            LDA::ExecuteZPX(cpu, mem);
+            LDA::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_ZPX - 1;
@@ -131,7 +132,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_ABS: {
-            LDA::ExecuteABS(cpu, mem);
+            LDA::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_ABS - 1;
@@ -139,7 +140,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_ABSX: {
-            LDA::ExecuteABSX(cpu, mem);
+            LDA::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_ABSX - 1;
@@ -147,7 +148,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_ABSY: {
-            LDA::ExecuteABSY(cpu, mem);
+            LDA::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_ABSY - 1;
@@ -155,7 +156,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_INDX: {
-            LDA::ExecuteINDX(cpu, mem);
+            LDA::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_INDX - 1;
@@ -163,7 +164,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_INDY: {
-            LDA::ExecuteINDY(cpu, mem);
+            LDA::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_INDY - 1;
@@ -171,7 +172,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDA_IND_ZP: {
-            LDA::ExecuteIND_ZP(cpu, mem);
+            LDA::ExecuteIND_ZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDA_IND_ZP - 1;
@@ -179,7 +180,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_JSR: {
-            JSR::Execute(cpu, mem);
+            JSR::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_JSR - 1;
@@ -187,7 +188,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RTS: {
-            RTS::Execute(cpu, mem);
+            RTS::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RTS - 1;
@@ -195,7 +196,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDX_IM: {
-            LDX::ExecuteImmediate(cpu, mem);
+            LDX::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDX_IM - 1;
@@ -203,7 +204,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDX_ZP: {
-            LDX::ExecuteZP(cpu, mem);
+            LDX::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDX_ZP - 1;
@@ -211,7 +212,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDX_ZPY: {
-            LDX::ExecuteZPY(cpu, mem);
+            LDX::ExecuteZPY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDX_ZPY - 1;
@@ -219,7 +220,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDX_ABS: {
-            LDX::ExecuteABS(cpu, mem);
+            LDX::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDX_ABS - 1;
@@ -227,7 +228,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDX_ABSY: {
-            LDX::ExecuteABSY(cpu, mem);
+            LDX::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDX_ABSY - 1;
@@ -235,7 +236,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDY_IM: {
-            LDY::ExecuteImmediate(cpu, mem);
+            LDY::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDY_IM - 1;
@@ -243,7 +244,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDY_ZP: {
-            LDY::ExecuteZP(cpu, mem);
+            LDY::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDY_ZP - 1;
@@ -251,7 +252,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDY_ZPX: {
-            LDY::ExecuteZPX(cpu, mem);
+            LDY::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDY_ZPX - 1;
@@ -259,7 +260,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDY_ABS: {
-            LDY::ExecuteABS(cpu, mem);
+            LDY::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDY_ABS - 1;
@@ -267,7 +268,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LDY_ABSX: {
-            LDY::ExecuteABSX(cpu, mem);
+            LDY::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LDY_ABSX - 1;
@@ -275,7 +276,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_JMP_ABS: {
-            JMP::ExecuteABS(cpu, mem);
+            JMP::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_JMP_ABS - 1;
@@ -283,7 +284,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_JMP_IND: {
-            JMP::ExecuteIND(cpu, mem);
+            JMP::ExecuteIND(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_JMP_IND - 1;
@@ -291,7 +292,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_JMP_ABSX: {
-            JMP::ExecuteABSX(cpu, mem);
+            JMP::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_JMP_ABSX - 1;
@@ -299,7 +300,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_ZP: {
-            STA::ExecuteZP(cpu, mem);
+            STA::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_ZP - 1;
@@ -307,7 +308,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_ZPX: {
-            STA::ExecuteZPX(cpu, mem);
+            STA::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_ZPX - 1;
@@ -315,7 +316,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_ABS: {
-            STA::ExecuteABS(cpu, mem);
+            STA::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_ABS - 1;
@@ -323,7 +324,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_ABSX: {
-            STA::ExecuteABSX(cpu, mem);
+            STA::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_ABSX - 1;
@@ -331,7 +332,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_ABSY: {
-            STA::ExecuteABSY(cpu, mem);
+            STA::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_ABSY - 1;
@@ -339,7 +340,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_INDX: {
-            STA::ExecuteINDX(cpu, mem);
+            STA::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_INDX - 1;
@@ -347,7 +348,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_INDY: {
-            STA::ExecuteINDY(cpu, mem);
+            STA::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_INDY - 1;
@@ -355,7 +356,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STA_IND_ZP: {
-            STA::ExecuteINDZP(cpu, mem);
+            STA::ExecuteINDZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STA_IND_ZP - 1;
@@ -363,7 +364,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STX_ZP: {
-            STX::ExecuteZP(cpu, mem);
+            STX::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STX_ZP - 1;
@@ -371,7 +372,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STX_ZPY: {
-            STX::ExecuteZPY(cpu, mem);
+            STX::ExecuteZPY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STX_ZPY - 1;
@@ -379,7 +380,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STX_ABS: {
-            STX::ExecuteABS(cpu, mem);
+            STX::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STX_ABS - 1;
@@ -387,7 +388,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STY_ZP: {
-            STY::ExecuteZP(cpu, mem);
+            STY::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STY_ZP - 1;
@@ -395,7 +396,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STY_ZPX: {
-            STY::ExecuteZPX(cpu, mem);
+            STY::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STY_ZPX - 1;
@@ -403,7 +404,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STY_ABS: {
-            STY::ExecuteABS(cpu, mem);
+            STY::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STY_ABS - 1;
@@ -411,7 +412,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STZ_ZP: {
-            STZ::ExecuteZP(cpu, mem);
+            STZ::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STZ_ZP - 1;
@@ -419,7 +420,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STZ_ZPX: {
-            STZ::ExecuteZPX(cpu, mem);
+            STZ::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STZ_ZPX - 1;
@@ -427,7 +428,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STZ_ABS: {
-            STZ::ExecuteABS(cpu, mem);
+            STZ::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STZ_ABS - 1;
@@ -435,7 +436,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_STZ_ABSX: {
-            STZ::ExecuteABSX(cpu, mem);
+            STZ::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_STZ_ABSX - 1;
@@ -443,7 +444,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TSX: {
-            TSX::Execute(cpu, mem);
+            TSX::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TSX - 1;
@@ -451,7 +452,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TXS: {
-            TXS::Execute(cpu, mem);
+            TXS::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TXS - 1;
@@ -459,7 +460,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PHA: {
-            PHA::Execute(cpu, mem);
+            PHA::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PHA - 1;
@@ -467,7 +468,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PHP: {
-            PHP::Execute(cpu, mem);
+            PHP::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PHP - 1;
@@ -475,7 +476,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PHX: {
-            PHX::Execute(cpu, mem);
+            PHX::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PHX - 1;
@@ -483,7 +484,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PHY: {
-            PHY::Execute(cpu, mem);
+            PHY::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PHY - 1;
@@ -491,7 +492,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PLA: {
-            PLA::Execute(cpu, mem);
+            PLA::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PLA - 1;
@@ -499,7 +500,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PLP: {
-            PLP::Execute(cpu, mem);
+            PLP::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PLP - 1;
@@ -507,7 +508,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PLX: {
-            PLX::Execute(cpu, mem);
+            PLX::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PLX - 1;
@@ -515,7 +516,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_PLY: {
-            PLY::Execute(cpu, mem);
+            PLY::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_PLY - 1;
@@ -523,7 +524,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TAX: {
-            TAX::Execute(cpu, mem);
+            TAX::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TAX - 1;
@@ -531,7 +532,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TXA: {
-            TXA::Execute(cpu, mem);
+            TXA::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TXA - 1;
@@ -539,7 +540,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TAY: {
-            TAY::Execute(cpu, mem);
+            TAY::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TAY - 1;
@@ -547,7 +548,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TYA: {
-            TYA::Execute(cpu, mem);
+            TYA::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TYA - 1;
@@ -555,7 +556,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_IM: {
-            AND::ExecuteImmediate(cpu, mem);
+            AND::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_IM - 1;
@@ -563,7 +564,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_ZP: {
-            AND::ExecuteZP(cpu, mem);
+            AND::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_ZP - 1;
@@ -571,7 +572,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_ZPX: {
-            AND::ExecuteZPX(cpu, mem);
+            AND::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_ZPX - 1;
@@ -579,7 +580,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_ABS: {
-            AND::ExecuteABS(cpu, mem);
+            AND::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_ABS - 1;
@@ -587,7 +588,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_ABSX: {
-            AND::ExecuteABSX(cpu, mem);
+            AND::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_ABSX - 1;
@@ -595,7 +596,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_ABSY: {
-            AND::ExecuteABSY(cpu, mem);
+            AND::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_ABSY - 1;
@@ -603,7 +604,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_INDX: {
-            AND::ExecuteINDX(cpu, mem);
+            AND::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_INDX - 1;
@@ -611,7 +612,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_INDY: {
-            AND::ExecuteINDY(cpu, mem);
+            AND::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_INDY - 1;
@@ -619,7 +620,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_AND_IND_ZP: {
-            AND::ExecuteIND_ZP(cpu, mem);
+            AND::ExecuteIND_ZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_AND_IND_ZP - 1;
@@ -627,7 +628,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_IM: {
-            EOR::ExecuteImmediate(cpu, mem);
+            EOR::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_IM - 1;
@@ -635,7 +636,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_ZP: {
-            EOR::ExecuteZP(cpu, mem);
+            EOR::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_ZP - 1;
@@ -643,7 +644,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_ZPX: {
-            EOR::ExecuteZPX(cpu, mem);
+            EOR::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_ZPX - 1;
@@ -651,7 +652,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_ABS: {
-            EOR::ExecuteABS(cpu, mem);
+            EOR::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_ABS - 1;
@@ -659,7 +660,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_ABSX: {
-            EOR::ExecuteABSX(cpu, mem);
+            EOR::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_ABSX - 1;
@@ -667,7 +668,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_ABSY: {
-            EOR::ExecuteABSY(cpu, mem);
+            EOR::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_ABSY - 1;
@@ -675,7 +676,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_INDX: {
-            EOR::ExecuteINDX(cpu, mem);
+            EOR::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_INDX - 1;
@@ -683,7 +684,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_INDY: {
-            EOR::ExecuteINDY(cpu, mem);
+            EOR::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_INDY - 1;
@@ -691,7 +692,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_EOR_IND_ZP: {
-            EOR::ExecuteIND_ZP(cpu, mem);
+            EOR::ExecuteIND_ZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_EOR_IND_ZP - 1;
@@ -699,7 +700,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_IM: {
-            ORA::ExecuteImmediate(cpu, mem);
+            ORA::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_IM - 1;
@@ -707,7 +708,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_ZP: {
-            ORA::ExecuteZP(cpu, mem);
+            ORA::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_ZP - 1;
@@ -715,7 +716,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_ZPX: {
-            ORA::ExecuteZPX(cpu, mem);
+            ORA::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_ZPX - 1;
@@ -723,7 +724,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_ABS: {
-            ORA::ExecuteABS(cpu, mem);
+            ORA::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_ABS - 1;
@@ -731,7 +732,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_ABSX: {
-            ORA::ExecuteABSX(cpu, mem);
+            ORA::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_ABSX - 1;
@@ -739,7 +740,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_ABSY: {
-            ORA::ExecuteABSY(cpu, mem);
+            ORA::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_ABSY - 1;
@@ -747,7 +748,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_INDX: {
-            ORA::ExecuteINDX(cpu, mem);
+            ORA::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_INDX - 1;
@@ -755,7 +756,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_INDY: {
-            ORA::ExecuteINDY(cpu, mem);
+            ORA::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_INDY - 1;
@@ -763,7 +764,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ORA_IND_ZP: {
-            ORA::ExecuteIND_ZP(cpu, mem);
+            ORA::ExecuteIND_ZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ORA_IND_ZP - 1;
@@ -771,7 +772,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BIT_IM: {
-            BIT::ExecuteImmediate(cpu, mem);
+            BIT::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BIT_IM - 1;
@@ -779,7 +780,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BIT_ZP: {
-            BIT::ExecuteZP(cpu, mem);
+            BIT::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BIT_ZP - 1;
@@ -787,7 +788,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BIT_ZPX: {
-            BIT::ExecuteZPX(cpu, mem);
+            BIT::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BIT_ZPX - 1;
@@ -795,7 +796,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BIT_ABS: {
-            BIT::ExecuteABS(cpu, mem);
+            BIT::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BIT_ABS - 1;
@@ -803,7 +804,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BIT_ABSX: {
-            BIT::ExecuteABSX(cpu, mem);
+            BIT::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BIT_ABSX - 1;
@@ -811,7 +812,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_DEX: {
-            DEX::Execute(cpu, mem);
+            DEX::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_DEX - 1;
@@ -819,7 +820,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_DEY: {
-            DEY::Execute(cpu, mem);
+            DEY::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_DEY - 1;
@@ -827,7 +828,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_INX: {
-            INX::Execute(cpu, mem);
+            INX::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_INX - 1;
@@ -835,7 +836,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_INY: {
-            INY::Execute(cpu, mem);
+            INY::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_INY - 1;
@@ -843,7 +844,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_INC_A: {
-            INC::ExecuteAccumulator(cpu, mem);
+            INC::ExecuteAccumulator(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_INC_A - 1;
@@ -851,7 +852,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_INC_ZP: {
-            INC::ExecuteZP(cpu, mem);
+            INC::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_INC_ZP - 1;
@@ -859,7 +860,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_INC_ZPX: {
-            INC::ExecuteZPX(cpu, mem);
+            INC::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_INC_ZPX - 1;
@@ -867,7 +868,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_INC_ABS: {
-            INC::ExecuteABS(cpu, mem);
+            INC::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_INC_ABS - 1;
@@ -875,7 +876,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_INC_ABSX: {
-            INC::ExecuteABSX(cpu, mem);
+            INC::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_INC_ABSX - 1;
@@ -883,7 +884,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_DEC_A: {
-            DEC::ExecuteAccumulator(cpu, mem);
+            DEC::ExecuteAccumulator(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_DEC_A - 1;
@@ -891,7 +892,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_DEC_ZP: {
-            DEC::ExecuteZP(cpu, mem);
+            DEC::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_DEC_ZP - 1;
@@ -899,7 +900,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_DEC_ZPX: {
-            DEC::ExecuteZPX(cpu, mem);
+            DEC::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_DEC_ZPX - 1;
@@ -907,7 +908,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_DEC_ABS: {
-            DEC::ExecuteABS(cpu, mem);
+            DEC::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_DEC_ABS - 1;
@@ -915,7 +916,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_DEC_ABSX: {
-            DEC::ExecuteABSX(cpu, mem);
+            DEC::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_DEC_ABSX - 1;
@@ -923,7 +924,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_IM: {
-            ADC::ExecuteImmediate(cpu, mem);
+            ADC::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_IM - 1;
@@ -931,7 +932,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_ZP: {
-            ADC::ExecuteZP(cpu, mem);
+            ADC::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_ZP - 1;
@@ -939,7 +940,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_ZPX: {
-            ADC::ExecuteZPX(cpu, mem);
+            ADC::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_ZPX - 1;
@@ -947,7 +948,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_ABS: {
-            ADC::ExecuteABS(cpu, mem);
+            ADC::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_ABS - 1;
@@ -955,7 +956,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_ABSX: {
-            ADC::ExecuteABSX(cpu, mem);
+            ADC::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_ABSX - 1;
@@ -963,7 +964,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_ABSY: {
-            ADC::ExecuteABSY(cpu, mem);
+            ADC::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_ABSY - 1;
@@ -971,7 +972,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_INDX: {
-            ADC::ExecuteINDX(cpu, mem);
+            ADC::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_INDX - 1;
@@ -979,7 +980,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_INDY: {
-            ADC::ExecuteINDY(cpu, mem);
+            ADC::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_INDY - 1;
@@ -987,7 +988,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ADC_IND_ZP: {
-            ADC::ExecuteIND_ZP(cpu, mem);
+            ADC::ExecuteIND_ZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ADC_IND_ZP - 1;
@@ -995,7 +996,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_IM: {
-            SBC::ExecuteImmediate(cpu, mem);
+            SBC::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_IM - 1;
@@ -1003,7 +1004,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_ZP: {
-            SBC::ExecuteZP(cpu, mem);
+            SBC::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_ZP - 1;
@@ -1011,7 +1012,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_ZPX: {
-            SBC::ExecuteZPX(cpu, mem);
+            SBC::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_ZPX - 1;
@@ -1019,7 +1020,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_ABS: {
-            SBC::ExecuteABS(cpu, mem);
+            SBC::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_ABS - 1;
@@ -1027,7 +1028,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_ABSX: {
-            SBC::ExecuteABSX(cpu, mem);
+            SBC::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_ABSX - 1;
@@ -1035,7 +1036,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_ABSY: {
-            SBC::ExecuteABSY(cpu, mem);
+            SBC::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_ABSY - 1;
@@ -1043,7 +1044,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_INDX: {
-            SBC::ExecuteINDX(cpu, mem);
+            SBC::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_INDX - 1;
@@ -1051,7 +1052,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_INDY: {
-            SBC::ExecuteINDY(cpu, mem);
+            SBC::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_INDY - 1;
@@ -1059,7 +1060,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SBC_IND_ZP: {
-            SBC::ExecuteIND_ZP(cpu, mem);
+            SBC::ExecuteIND_ZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SBC_IND_ZP - 1;
@@ -1067,7 +1068,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_IM: {
-            CMP::ExecuteImmediate(cpu, mem);
+            CMP::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_IM - 1;
@@ -1075,7 +1076,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_ZP: {
-            CMP::ExecuteZP(cpu, mem);
+            CMP::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_ZP - 1;
@@ -1083,7 +1084,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_ZPX: {
-            CMP::ExecuteZPX(cpu, mem);
+            CMP::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_ZPX - 1;
@@ -1091,7 +1092,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_ABS: {
-            CMP::ExecuteABS(cpu, mem);
+            CMP::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_ABS - 1;
@@ -1099,7 +1100,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_ABSX: {
-            CMP::ExecuteABSX(cpu, mem);
+            CMP::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_ABSX - 1;
@@ -1107,7 +1108,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_ABSY: {
-            CMP::ExecuteABSY(cpu, mem);
+            CMP::ExecuteABSY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_ABSY - 1;
@@ -1115,7 +1116,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_INDX: {
-            CMP::ExecuteINDX(cpu, mem);
+            CMP::ExecuteINDX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_INDX - 1;
@@ -1123,7 +1124,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_INDY: {
-            CMP::ExecuteINDY(cpu, mem);
+            CMP::ExecuteINDY(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_INDY - 1;
@@ -1131,7 +1132,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CMP_IND_ZP: {
-            CMP::ExecuteIND_ZP(cpu, mem);
+            CMP::ExecuteIND_ZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CMP_IND_ZP - 1;
@@ -1139,7 +1140,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CPX_IM: {
-            CPX::ExecuteImmediate(cpu, mem);
+            CPX::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CPX_IM - 1;
@@ -1147,7 +1148,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CPX_ZP: {
-            CPX::ExecuteZP(cpu, mem);
+            CPX::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CPX_ZP - 1;
@@ -1155,7 +1156,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CPX_ABS: {
-            CPX::ExecuteABS(cpu, mem);
+            CPX::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CPX_ABS - 1;
@@ -1163,7 +1164,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CPY_IM: {
-            CPY::ExecuteImmediate(cpu, mem);
+            CPY::ExecuteImmediate(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CPY_IM - 1;
@@ -1171,7 +1172,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CPY_ZP: {
-            CPY::ExecuteZP(cpu, mem);
+            CPY::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CPY_ZP - 1;
@@ -1179,7 +1180,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CPY_ABS: {
-            CPY::ExecuteABS(cpu, mem);
+            CPY::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CPY_ABS - 1;
@@ -1187,7 +1188,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ASL_A: {
-            ASL::ExecuteAccumulator(cpu, mem);
+            ASL::ExecuteAccumulator(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ASL_A - 1;
@@ -1195,7 +1196,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ASL_ZP: {
-            ASL::ExecuteZP(cpu, mem);
+            ASL::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ASL_ZP - 1;
@@ -1203,7 +1204,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ASL_ZPX: {
-            ASL::ExecuteZPX(cpu, mem);
+            ASL::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ASL_ZPX - 1;
@@ -1211,7 +1212,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ASL_ABS: {
-            ASL::ExecuteABS(cpu, mem);
+            ASL::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ASL_ABS - 1;
@@ -1219,7 +1220,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ASL_ABSX: {
-            ASL::ExecuteABSX(cpu, mem);
+            ASL::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ASL_ABSX - 1;
@@ -1227,7 +1228,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LSR_A: {
-            LSR::ExecuteAccumulator(cpu, mem);
+            LSR::ExecuteAccumulator(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LSR_A - 1;
@@ -1235,7 +1236,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LSR_ZP: {
-            LSR::ExecuteZP(cpu, mem);
+            LSR::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LSR_ZP - 1;
@@ -1243,7 +1244,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LSR_ZPX: {
-            LSR::ExecuteZPX(cpu, mem);
+            LSR::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LSR_ZPX - 1;
@@ -1251,7 +1252,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LSR_ABS: {
-            LSR::ExecuteABS(cpu, mem);
+            LSR::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LSR_ABS - 1;
@@ -1259,7 +1260,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_LSR_ABSX: {
-            LSR::ExecuteABSX(cpu, mem);
+            LSR::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_LSR_ABSX - 1;
@@ -1267,7 +1268,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROL_A: {
-            ROL::ExecuteAccumulator(cpu, mem);
+            ROL::ExecuteAccumulator(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROL_A - 1;
@@ -1275,7 +1276,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROL_ZP: {
-            ROL::ExecuteZP(cpu, mem);
+            ROL::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROL_ZP - 1;
@@ -1283,7 +1284,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROL_ZPX: {
-            ROL::ExecuteZPX(cpu, mem);
+            ROL::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROL_ZPX - 1;
@@ -1291,7 +1292,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROL_ABS: {
-            ROL::ExecuteABS(cpu, mem);
+            ROL::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROL_ABS - 1;
@@ -1299,7 +1300,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROL_ABSX: {
-            ROL::ExecuteABSX(cpu, mem);
+            ROL::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROL_ABSX - 1;
@@ -1307,7 +1308,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROR_A: {
-            ROR::ExecuteAccumulator(cpu, mem);
+            ROR::ExecuteAccumulator(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROR_A - 1;
@@ -1315,7 +1316,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROR_ZP: {
-            ROR::ExecuteZP(cpu, mem);
+            ROR::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROR_ZP - 1;
@@ -1323,7 +1324,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROR_ZPX: {
-            ROR::ExecuteZPX(cpu, mem);
+            ROR::ExecuteZPX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROR_ZPX - 1;
@@ -1331,7 +1332,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROR_ABS: {
-            ROR::ExecuteABS(cpu, mem);
+            ROR::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROR_ABS - 1;
@@ -1339,7 +1340,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_ROR_ABSX: {
-            ROR::ExecuteABSX(cpu, mem);
+            ROR::ExecuteABSX(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_ROR_ABSX - 1;
@@ -1347,7 +1348,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BCC: {
-            BCC::Execute(cpu, mem);
+            BCC::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BCC - 1;
@@ -1355,7 +1356,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BRK: {
-            BRK::Execute(cpu, mem);
+            BRK::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BRK - 1;
@@ -1363,7 +1364,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BCS: {
-            BCS::Execute(cpu, mem);
+            BCS::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BCS - 1;
@@ -1371,7 +1372,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BNE: {
-            BNE::Execute(cpu, mem);
+            BNE::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BNE - 1;
@@ -1379,7 +1380,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BEQ: {
-            BEQ::Execute(cpu, mem);
+            BEQ::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BEQ - 1;
@@ -1387,7 +1388,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BMI: {
-            BMI::Execute(cpu, mem);
+            BMI::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BMI - 1;
@@ -1395,7 +1396,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BPL: {
-            BPL::Execute(cpu, mem);
+            BPL::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BPL - 1;
@@ -1403,7 +1404,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BVS: {
-            BVS::Execute(cpu, mem);
+            BVS::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BVS - 1;
@@ -1411,7 +1412,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BVC: {
-            BVC::Execute(cpu, mem);
+            BVC::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BVC - 1;
@@ -1419,7 +1420,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CLC: {
-            CLC::Execute(cpu, mem);
+            CLC::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CLC - 1;
@@ -1427,7 +1428,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CLI: {
-            CLI::Execute(cpu, mem);
+            CLI::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CLI - 1;
@@ -1435,7 +1436,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CLD: {
-            CLD::Execute(cpu, mem);
+            CLD::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CLD - 1;
@@ -1443,7 +1444,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SEC: {
-            SEC::Execute(cpu, mem);
+            SEC::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SEC - 1;
@@ -1451,7 +1452,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SEI: {
-            SEI::Execute(cpu, mem);
+            SEI::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SEI - 1;
@@ -1459,7 +1460,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SED: {
-            SED::Execute(cpu, mem);
+            SED::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SED - 1;
@@ -1467,7 +1468,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_CLV: {
-            CLV::Execute(cpu, mem);
+            CLV::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_CLV - 1;
@@ -1475,7 +1476,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RTI: {
-            RTI::Execute(cpu, mem);
+            RTI::Execute(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RTI - 1;
@@ -1483,7 +1484,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB0: {
-            RMB::Execute0(cpu, mem);
+            RMB::Execute0(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB0 - 1;
@@ -1491,7 +1492,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB1: {
-            RMB::Execute1(cpu, mem);
+            RMB::Execute1(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB1 - 1;
@@ -1499,7 +1500,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB2: {
-            RMB::Execute2(cpu, mem);
+            RMB::Execute2(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB2 - 1;
@@ -1507,7 +1508,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB3: {
-            RMB::Execute3(cpu, mem);
+            RMB::Execute3(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB3 - 1;
@@ -1515,7 +1516,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB4: {
-            RMB::Execute4(cpu, mem);
+            RMB::Execute4(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB4 - 1;
@@ -1523,7 +1524,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB5: {
-            RMB::Execute5(cpu, mem);
+            RMB::Execute5(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB5 - 1;
@@ -1531,7 +1532,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB6: {
-            RMB::Execute6(cpu, mem);
+            RMB::Execute6(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB6 - 1;
@@ -1539,7 +1540,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_RMB7: {
-            RMB::Execute7(cpu, mem);
+            RMB::Execute7(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_RMB7 - 1;
@@ -1547,7 +1548,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB0: {
-            SMB::Execute0(cpu, mem);
+            SMB::Execute0(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB0 - 1;
@@ -1555,7 +1556,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB1: {
-            SMB::Execute1(cpu, mem);
+            SMB::Execute1(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB1 - 1;
@@ -1563,7 +1564,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB2: {
-            SMB::Execute2(cpu, mem);
+            SMB::Execute2(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB2 - 1;
@@ -1571,7 +1572,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB3: {
-            SMB::Execute3(cpu, mem);
+            SMB::Execute3(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB3 - 1;
@@ -1579,7 +1580,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB4: {
-            SMB::Execute4(cpu, mem);
+            SMB::Execute4(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB4 - 1;
@@ -1587,7 +1588,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB5: {
-            SMB::Execute5(cpu, mem);
+            SMB::Execute5(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB5 - 1;
@@ -1595,7 +1596,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB6: {
-            SMB::Execute6(cpu, mem);
+            SMB::Execute6(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB6 - 1;
@@ -1603,7 +1604,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_SMB7: {
-            SMB::Execute7(cpu, mem);
+            SMB::Execute7(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_SMB7 - 1;
@@ -1611,7 +1612,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR0: {
-            BBR::Execute0(cpu, mem);
+            BBR::Execute0(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR0 - 1;
@@ -1619,7 +1620,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR1: {
-            BBR::Execute1(cpu, mem);
+            BBR::Execute1(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR1 - 1;
@@ -1627,7 +1628,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR2: {
-            BBR::Execute2(cpu, mem);
+            BBR::Execute2(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR2 - 1;
@@ -1635,7 +1636,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR3: {
-            BBR::Execute3(cpu, mem);
+            BBR::Execute3(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR3 - 1;
@@ -1643,7 +1644,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR4: {
-            BBR::Execute4(cpu, mem);
+            BBR::Execute4(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR4 - 1;
@@ -1651,7 +1652,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR5: {
-            BBR::Execute5(cpu, mem);
+            BBR::Execute5(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR5 - 1;
@@ -1659,7 +1660,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR6: {
-            BBR::Execute6(cpu, mem);
+            BBR::Execute6(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR6 - 1;
@@ -1667,7 +1668,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBR7: {
-            BBR::Execute7(cpu, mem);
+            BBR::Execute7(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBR7 - 1;
@@ -1675,7 +1676,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS0: {
-            BBS::Execute0(cpu, mem);
+            BBS::Execute0(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS0 - 1;
@@ -1683,7 +1684,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS1: {
-            BBS::Execute1(cpu, mem);
+            BBS::Execute1(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS1 - 1;
@@ -1691,7 +1692,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS2: {
-            BBS::Execute2(cpu, mem);
+            BBS::Execute2(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS2 - 1;
@@ -1699,7 +1700,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS3: {
-            BBS::Execute3(cpu, mem);
+            BBS::Execute3(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS3 - 1;
@@ -1707,7 +1708,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS4: {
-            BBS::Execute4(cpu, mem);
+            BBS::Execute4(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS4 - 1;
@@ -1715,7 +1716,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS5: {
-            BBS::Execute5(cpu, mem);
+            BBS::Execute5(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS5 - 1;
@@ -1723,7 +1724,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS6: {
-            BBS::Execute6(cpu, mem);
+            BBS::Execute6(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS6 - 1;
@@ -1731,7 +1732,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_BBS7: {
-            BBS::Execute7(cpu, mem);
+            BBS::Execute7(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_BBS7 - 1;
@@ -1739,7 +1740,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TRB_ZP: {
-            TRB::ExecuteZP(cpu, mem);
+            TRB::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TRB_ZP - 1;
@@ -1747,7 +1748,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TRB_ABS: {
-            TRB::ExecuteABS(cpu, mem);
+            TRB::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TRB_ABS - 1;
@@ -1755,7 +1756,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TSB_ZP: {
-            TSB::ExecuteZP(cpu, mem);
+            TSB::ExecuteZP(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TSB_ZP - 1;
@@ -1763,7 +1764,7 @@ int Dispatch(CPU& cpu, Mem& mem) {
             break;
         }
         case INS_TSB_ABS: {
-            TSB::ExecuteABS(cpu, mem);
+            TSB::ExecuteABS(cpu, bus);
 
             if (cpu.cycleAccurate) {
                 cpu.remainingCycles = CYC_INS_TSB_ABS - 1;

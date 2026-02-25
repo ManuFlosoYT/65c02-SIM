@@ -6,6 +6,7 @@
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebuggerWindow.h"
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
+#include "Frontend/GUI/Debugger/MemoryLayoutWindow.h"
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
 
 namespace GUI {
@@ -30,13 +31,14 @@ void DrawDebugMenu(Control::AppState& state) {
     }
 
     // Left sidebar
-    const char* modes[] = {"Disassembly", "Profiler", "Debugger"};
+    const char* modes[] = {"Disassembly", "Profiler", "Debugger",
+                           "Memory Layout"};
     const float sidebarWidth = 140.0f;
     ImGui::BeginChild("DebugSidebar", ImVec2(sidebarWidth, 0), false,
                       ImGuiWindowFlags_NoScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2));
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
         bool selected = (state.debuggerMode == i);
         if (selected) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(
@@ -89,7 +91,7 @@ void DrawDebugMenu(Control::AppState& state) {
         bool wasRunning = !state.emulator.IsPaused();
         if (wasRunning) state.emulator.Pause();
         Console::Clear();
-        state.emulator.GetGPU().Init();
+        state.emulator.GetGPU().Reset();
         state.emulator.ClearProfiler();
         if (state.romLoaded) {
             std::string errorMsg;
@@ -137,8 +139,10 @@ void DrawDebugMenu(Control::AppState& state) {
         DrawDisassemblerContent(state);
     } else if (state.debuggerMode == 1) {  // Profiler
         DrawProfilerWindow(state);
-    } else {  // Debugger
+    } else if (state.debuggerMode == 2) {  // Debugger
         DrawDebuggerWindow(state);
+    } else {  // Memory Layout
+        DrawMemoryLayoutWindow(state);
     }
     ImGui::EndChild();
 

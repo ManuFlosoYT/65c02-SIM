@@ -1,16 +1,21 @@
 #include <gtest/gtest.h>
 
-#include "../../Hardware/CPU.h"
-#include "../../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class LDA_AbsoluteY_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -24,13 +29,13 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY) {
     // Y register: 0x02
     // Dirección: 0x4480 + 0x02 = 0x4482
     // 0x4482: 0x37 (Valor a cargar)
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_LDA_ABSY);
-    mem.Write(0x4001, 0x80);
-    mem.Write(0x4002, 0x44);
-    mem.Write(0x4482, 0x37);
-    mem.Write(0x4003, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_LDA_ABSY);
+    bus.Write(0x4001, 0x80);
+    bus.Write(0x4002, 0x44);
+    bus.Write(0x4482, 0x37);
+    bus.Write(0x4003, INS_JAM);
 
     // Ciclo 1:
     //    Lee LDA (ABSY) en 0xFFFC -> PC=FFFD
@@ -43,7 +48,7 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY) {
     //    Lee valor (0x37) en 0x4482
     //    Carga 0x37 en A
     //    Opcode desconocido -> Retorna
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4004);
     EXPECT_EQ(cpu.A, 0x37);
@@ -55,15 +60,15 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY_ZeroFlag) {
     cpu.Y = 0x02;
     cpu.Z = 0;
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_LDA_ABSY);
-    mem.Write(0x4001, 0x80);
-    mem.Write(0x4002, 0x44);
-    mem.Write(0x4482, 0x00);
-    mem.Write(0x4003, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_LDA_ABSY);
+    bus.Write(0x4001, 0x80);
+    bus.Write(0x4002, 0x44);
+    bus.Write(0x4482, 0x00);
+    bus.Write(0x4003, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
@@ -74,15 +79,15 @@ TEST_F(LDA_AbsoluteY_Test, LDA_AbsoluteY_NegativeFlag) {
     cpu.Y = 0x02;
     cpu.N = 0;
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_LDA_ABSY);
-    mem.Write(0x4001, 0x80);
-    mem.Write(0x4002, 0x44);
-    mem.Write(0x4482, 0x90);
-    mem.Write(0x4003, INS_JAM);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_LDA_ABSY);
+    bus.Write(0x4001, 0x80);
+    bus.Write(0x4002, 0x44);
+    bus.Write(0x4482, 0x90);
+    bus.Write(0x4003, INS_JAM);
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x90);
     EXPECT_FALSE(cpu.Z);

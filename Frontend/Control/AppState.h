@@ -6,7 +6,7 @@
 #include <string>
 
 #include "Frontend/GUI/Video/CRTFilter.h"
-#include "Hardware/Emulator.h"
+#include "Hardware/Core/Emulator.h"
 
 namespace Control {
 
@@ -24,13 +24,14 @@ struct AppState {
     int instructionsPerFrame = 1000000;
     float ipsLogScale = 6.0f;
     bool gpuEnabled = false;
-    bool cycleAccurate = true;  // Enabled by default
+    bool cycleAccurate = true;
     bool ignoreSaveStateHash = false;
     bool autoReload = true;
 
     // Debugger
     bool debuggerOpen = false;
-    int debuggerMode = 0;  // 0=Debugger, 1=Disassembly, 2=Profiler
+    // 0=Disassembly, 1=Profiler, 2=Debugger, 3=Memory Layout
+    int debuggerMode = 0;
 
     // Update
     std::atomic<bool> updateAvailable{false};
@@ -39,6 +40,7 @@ struct AppState {
     // VRAM texture (OpenGL)
     GLuint vramTexture = 0;
     GLuint profilerTexture = 0;
+    GLuint layoutTexture = 0;
 
     // CRT filters - The Essentials
     bool crtScanlines = true;

@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void SEI::Execute(CPU& cpu, Mem& mem) {
+void SEI::Execute(CPU& cpu, Bus& bus) {
     cpu.I = 1;
 }
 

@@ -1,15 +1,20 @@
 #include <gtest/gtest.h>
 
-#include "../../Hardware/CPU.h"
-#include "../../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class Ampliados_Multiplicacion : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
-    Mem mem;
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -25,58 +30,58 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
     Byte ADDR_MUL2 = 0x02;
 
     // Init valores en memoria
-    mem.Write(ADDR_RES, 0x00);
-    mem.Write(ADDR_MUL1, 10);
-    mem.Write(ADDR_MUL2, 5);
+    bus.Write(ADDR_RES, 0x00);
+    bus.Write(ADDR_MUL1, 10);
+    bus.Write(ADDR_MUL2, 5);
 
     // Codigo en 0x1000
     Word CODE_START = 0x1000;
     Word PC = CODE_START;
 
     // LDA 0x00 (Init Accumulator con 0 para el resultado)
-    mem.Write(PC++, INS_LDA_IM);
-    mem.Write(PC++, 0x00);
+    bus.Write(PC++, INS_LDA_IM);
+    bus.Write(PC++, 0x00);
 
     // LDX ADDR_MUL2 (Cargar X con el multiplicador, contador del bucle)
-    mem.Write(PC++, INS_LDX_ZP);
-    mem.Write(PC++, ADDR_MUL2);
+    bus.Write(PC++, INS_LDX_ZP);
+    bus.Write(PC++, ADDR_MUL2);
 
     // Bucle:
     // CLC (Limpiar carry antes de sumar)
     Word LOOP_START = PC;
-    mem.Write(PC++, INS_CLC);
+    bus.Write(PC++, INS_CLC);
 
     // ADC ADDR_MUL1 (Sumar multiplicando al acumulador)
-    mem.Write(PC++, INS_ADC_ZP);
-    mem.Write(PC++, ADDR_MUL1);
+    bus.Write(PC++, INS_ADC_ZP);
+    bus.Write(PC++, ADDR_MUL1);
 
     // DEX (Decrementar contador)
-    mem.Write(PC++, INS_DEX);
+    bus.Write(PC++, INS_DEX);
 
     // BNE LOOP_START (Si X != 0, volver al inicio del bucle)
     // Salto relativo: PC actual esta apuntando a la siguiente instruccion.
     // BNE toma un offset signed. Destino = PC_next + offset -> offset = Destino
     // - PC_next Aqui PC ya se ha incrementado por el BNE (2 bytes). offset =
     // LOOP_START - (PC + 2)
-    mem.Write(PC++, INS_BNE);
+    bus.Write(PC++, INS_BNE);
     int8_t offset = LOOP_START - (PC + 1);
-    mem.Write(PC++, (Byte)offset);
+    bus.Write(PC++, (Byte)offset);
 
     // STA ADDR_RES (Guardar resultado)
-    mem.Write(PC++, INS_STA_ZP);
-    mem.Write(PC++, ADDR_RES);
+    bus.Write(PC++, INS_STA_ZP);
+    bus.Write(PC++, ADDR_RES);
 
     // Fin (Stop)
-    mem.Write(PC++, INS_JAM);  // Instruccion de parada custom en los tests
+    bus.Write(PC++, INS_JAM);  // Instruccion de parada custom en los tests
 
     // Execute
     cpu.PC = CODE_START;
     cpu.isInit = true;  // Previen3 Reset
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    cpu.Execute(mem);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    cpu.Execute(bus);
 
     // Verificaciones
-    EXPECT_EQ(mem[ADDR_RES], 50);  // 10 * 5 = 50
+    EXPECT_EQ(bus.ReadDirect(ADDR_RES), 50);  // 10 * 5 = 50
     EXPECT_EQ(cpu.X, 0);           // Loop debe terminar en 0
 }

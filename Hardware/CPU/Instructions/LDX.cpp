@@ -7,44 +7,44 @@ static void SetFlags(CPU& cpu) {
     cpu.N = (cpu.X & 0b10000000) > 0;
 }
 
-void LDX::ExecuteImmediate(CPU& cpu, Mem& mem) {
-    Byte dato = cpu.FetchByte(mem);
+void LDX::ExecuteImmediate(CPU& cpu, Bus& bus) {
+    Byte dato = cpu.FetchByte(bus);
     cpu.X = dato;
 
     SetFlags(cpu);
 }
 
-void LDX::ExecuteZP(CPU& cpu, Mem& mem) {
-    Byte ZP_Dir = cpu.FetchByte(mem);
+void LDX::ExecuteZP(CPU& cpu, Bus& bus) {
+    Byte ZP_Dir = cpu.FetchByte(bus);
 
-    cpu.X = cpu.ReadByte(ZP_Dir, mem);
+    cpu.X = cpu.ReadByte(ZP_Dir, bus);
     SetFlags(cpu);
 }
 
-void LDX::ExecuteZPY(CPU& cpu, Mem& mem) {
-    Byte ZP_Dir = cpu.FetchByte(mem);
+void LDX::ExecuteZPY(CPU& cpu, Bus& bus) {
+    Byte ZP_Dir = cpu.FetchByte(bus);
     ZP_Dir += cpu.Y;
 
-    cpu.X = cpu.ReadByte(ZP_Dir, mem);
+    cpu.X = cpu.ReadByte(ZP_Dir, bus);
     SetFlags(cpu);
 }
 
-void LDX::ExecuteABS(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
+void LDX::ExecuteABS(CPU& cpu, Bus& bus) {
+    Word Dir = cpu.FetchWord(bus);
 
-    cpu.X = cpu.ReadByte(Dir, mem);
+    cpu.X = cpu.ReadByte(Dir, bus);
     SetFlags(cpu);
 }
 
-void LDX::ExecuteABSY(CPU& cpu, Mem& mem) {
-    Word baseAddr = cpu.FetchWord(mem);
+void LDX::ExecuteABSY(CPU& cpu, Bus& bus) {
+    Word baseAddr = cpu.FetchWord(bus);
     Word effectiveAddr = baseAddr + cpu.Y;
 
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
 
     Word Dir = effectiveAddr;
 
-    cpu.X = cpu.ReadByte(Dir, mem);
+    cpu.X = cpu.ReadByte(Dir, bus);
     SetFlags(cpu);
 }
 

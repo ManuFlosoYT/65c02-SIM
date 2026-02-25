@@ -2,8 +2,8 @@
 
 namespace Hardware::Instructions {
 
-void PLY::Execute(CPU& cpu, Mem& mem) {
-    cpu.Y = cpu.PopByte(mem);
+void PLY::Execute(CPU& cpu, Bus& bus) {
+    cpu.Y = cpu.PopByte(bus);
     cpu.Z = (cpu.Y == 0);
     cpu.N = (cpu.Y & 0b10000000) > 0;
 }

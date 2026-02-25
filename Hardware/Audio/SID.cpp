@@ -1,4 +1,4 @@
-#include "SID.h"
+#include "Hardware/Audio/SID.h"
 
 #include <SDL3/SDL.h>
 
@@ -104,12 +104,12 @@ void SID::UpdateAudioState() {
     }
 }
 
-uint8_t SID::Read(uint16_t addr) {
+Byte SID::Read(Word addr) {
     std::lock_guard<std::mutex> lock(sidMutex);
     return registers[addr & 0x1F];
 }
 
-void SID::Write(uint16_t addr, uint8_t data) {
+void SID::Write(Word addr, Byte data) {
     std::lock_guard<std::mutex> lock(sidMutex);
     uint8_t reg = addr & 0x1F;
     registers[reg] = data;

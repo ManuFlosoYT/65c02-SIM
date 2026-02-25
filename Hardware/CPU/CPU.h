@@ -2,8 +2,7 @@
 #include <cstdint>
 #include <iostream>
 
-#include "CPU/Instructions/InstructionSet.h"
-#include "Mem.h"
+#include "Hardware/Core/Bus.h"
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -12,7 +11,7 @@ namespace Hardware {
 
 class CPU;
 namespace CPUDispatch {
-int Dispatch(CPU& cpu, Mem& mem);
+int Dispatch(CPU& cpu, Bus& bus);
 }
 
 class CPU {
@@ -46,14 +45,12 @@ public:
 
     inline void Reset() {
         PC = 0xFFFC;
-        SP = 0x01FF;  // Top of Stack
+        SP = 0x01FF;
 
-        // Reset registers
         A = 0;
         X = 0;
         Y = 0;
 
-        // Reset flags
         C = 0;
         Z = 0;
         I = 0;
@@ -66,51 +63,49 @@ public:
         remainingCycles = 0;
     }
 
-    inline int Execute(Mem& mem) {
+    inline int Execute(Bus& bus) {
         while (true) {
-            int res = Step(mem);
+            int res = Step(bus);
             if (res != 0) return res;
         }
         return 0;
     }
 
-    inline int Step(Mem& mem) {
+    inline int Step(Bus& bus) {
         if (!isInit) {
-            PC = ReadWord(0xFFFC, mem);
+            PC = ReadWord(0xFFFC, bus);
             isInit = true;
         }
 
-        // Check interrupts
         if (waiting) {
-            if ((mem.memory[ACIA_STATUS] & 0x80) != 0) {
+            if ((bus.Read(ACIA_STATUS) & 0x80) != 0) {
                 waiting = false;
             } else {
                 return 0;
             }
         }
 
-        // In cycle-accurate mode, consume remaining cycles
         if (cycleAccurate && remainingCycles > 0) {
             remainingCycles--;
             return 0;
         }
 
-        return Dispatch(mem);
+        return Dispatch(bus);
     }
 
-    inline void IRQ(Mem& mem) {
+    inline void IRQ(Bus& bus) {
         waiting = false;
         if (!I) {
-            PushWord(PC, mem);
+            PushWord(PC, bus);
             B = 0;
-            PushByte(GetStatus(), mem);
+            PushByte(GetStatus(), bus);
             I = 1;
-            D = 0;  // 65C02 clears Decimal flag in IRQ
-            PC = ReadWord(0xFFFE, mem);
+            D = 0;
+            PC = ReadWord(0xFFFE, bus);
         }
     }
 
-    inline int Dispatch(Mem& mem) { return CPUDispatch::Dispatch(*this, mem); }
+    inline int Dispatch(Bus& bus) { return CPUDispatch::Dispatch(*this, bus); }
 
     inline const Byte GetStatus() const {
         Byte status = 0;
@@ -138,7 +133,6 @@ public:
     void SetCycleAccurate(bool enabled) { cycleAccurate = enabled; }
     int GetRemainingCycles() const { return remainingCycles; }
 
-    // Helper to add penalty cycle for page boundary crossing
     inline void AddPageCrossPenalty(Word baseAddr, Word effectiveAddr) {
         if (cycleAccurate &&
             ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))) {
@@ -146,51 +140,49 @@ public:
         }
     }
 
-    // Reads and advances PC
-    inline const Byte FetchByte(const Mem& mem) {
-        Byte dato = mem[PC];
+    inline const Byte FetchByte(Bus& bus) {
+        Byte dato = bus.Read(PC);
         PC++;
         return dato;
     }
 
-    inline const Word FetchWord(const Mem& mem) {
-        Word dato = mem[PC];
-        dato |= (mem[PC + 1] << 8);
+    inline const Word FetchWord(Bus& bus) {
+        Word dato = bus.Read(PC);
+        dato |= (bus.Read(PC + 1) << 8);
         PC += 2;
         return dato;
     }
 
-    // Reads without advancing PC
-    inline const Byte ReadByte(const Word addr, Mem& mem) {
-        return mem.Read(addr);
+    inline const Byte ReadByte(const Word addr, Bus& bus) {
+        return bus.Read(addr);
     }
 
-    inline const Word ReadWord(const Word addr, Mem& mem) {
-        Word dato = mem.Read(addr);
-        dato |= (mem.Read(addr + 1) << 8);
+    inline const Word ReadWord(const Word addr, Bus& bus) {
+        Word dato = bus.Read(addr);
+        dato |= (bus.Read(addr + 1) << 8);
         return dato;
     }
 
-    inline void PushByte(Byte val, Mem& mem) {
-        mem.Write(SP, val);
+    inline void PushByte(Byte val, Bus& bus) {
+        bus.Write(SP, val);
         SP--;
-        if (SP < 0x0100) SP = 0x01FF;  // Wrap to the top of the stack
+        if (SP < 0x0100) SP = 0x01FF;
     }
 
-    inline Byte PopByte(Mem& mem) {
+    inline Byte PopByte(Bus& bus) {
         SP++;
-        if (SP > 0x01FF) SP = 0x0100;  // Wrap to the bottom of the stack
-        return mem.Read(SP);
+        if (SP > 0x01FF) SP = 0x0100;
+        return bus.Read(SP);
     }
 
-    inline void PushWord(Word val, Mem& mem) {
-        PushByte((val >> 8) & 0xFF, mem);
-        PushByte(val & 0xFF, mem);
+    inline void PushWord(Word val, Bus& bus) {
+        PushByte((val >> 8) & 0xFF, bus);
+        PushByte(val & 0xFF, bus);
     }
 
-    inline Word PopWord(Mem& mem) {
-        Word Low = PopByte(mem);
-        Word High = PopByte(mem);
+    inline Word PopWord(Bus& bus) {
+        Word Low = PopByte(bus);
+        Word High = PopByte(bus);
         return (High << 8) | Low;
     }
 };

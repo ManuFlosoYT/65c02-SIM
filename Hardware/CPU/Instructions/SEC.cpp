@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void SEC::Execute(CPU& cpu, Mem& mem) {
+void SEC::Execute(CPU& cpu, Bus& bus) {
     cpu.C = 1;
 }
 

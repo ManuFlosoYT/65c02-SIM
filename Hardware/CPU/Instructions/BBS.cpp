@@ -2,8 +2,8 @@
 
 namespace Hardware::Instructions {
 
-void BBS::Execute0(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute0(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b00000001) != 0) {
@@ -11,8 +11,8 @@ void BBS::Execute0(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Execute1(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute1(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b00000010) != 0) {
@@ -20,8 +20,8 @@ void BBS::Execute1(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Execute2(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute2(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b00000100) != 0) {
@@ -29,8 +29,8 @@ void BBS::Execute2(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Execute3(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute3(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b00001000) != 0) {
@@ -38,8 +38,8 @@ void BBS::Execute3(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Execute4(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute4(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b00010000) != 0) {
@@ -47,8 +47,8 @@ void BBS::Execute4(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Execute5(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute5(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b00100000) != 0) {
@@ -56,8 +56,8 @@ void BBS::Execute5(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Execute6(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute6(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b01000000) != 0) {
@@ -65,8 +65,8 @@ void BBS::Execute6(CPU& cpu, Mem& mem) {
     }
 }
 
-void BBS::Execute7(CPU& cpu, Mem& mem) {
-    int8_t offset = cpu.FetchByte(mem);
+void BBS::Execute7(CPU& cpu, Bus& bus) {
+    int8_t offset = cpu.FetchByte(bus);
     Word dir = cpu.PC + offset;
 
     if ((cpu.A & 0b10000000) != 0) {

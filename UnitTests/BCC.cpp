@@ -1,16 +1,21 @@
 #include <gtest/gtest.h>
 
-#include "../Hardware/CPU.h"
-#include "../Hardware/CPU/Instructions/InstructionSet.h"
-#include "../Hardware/Mem.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
+#include "Hardware/Core/Bus.h"
+#include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;
 
 class BCC_Test : public ::testing::Test {
 protected:
-    void SetUp() override { cpu.Reset(); }
+    void SetUp() override {
+        bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        cpu.Reset();
+    }
 
-    Mem mem;
+    Bus bus;
+    RAM ram{0x10000};
     CPU cpu;
 };
 
@@ -22,13 +27,13 @@ TEST_F(BCC_Test, BCC_NoBranch_CarrySet) {
     cpu.PC = 0xFFFC;
 
     // BCC +0x5 (0x05)
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x40);
-    mem.Write(0x4000, INS_BCC);
-    mem.Write(0x4001, 0x05);
-    mem.Write(0x4002, INS_JAM);  // Stop instruction
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_BCC);
+    bus.Write(0x4001, 0x05);
+    bus.Write(0x4002, INS_JAM);  // Stop instruction
 
-    cpu.Execute(mem);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4003);
 }
@@ -47,13 +52,13 @@ TEST_F(BCC_Test, BCC_Branch_CarryClear) {
 
     cpu.PC = 0x1000;
 
-    mem.Write(0x1000, INS_BCC);
-    mem.Write(0x1001, 0x05);
-    mem.Write(0x1007, INS_JAM);
+    bus.Write(0x1000, INS_BCC);
+    bus.Write(0x1001, 0x05);
+    bus.Write(0x1007, INS_JAM);
 
-    mem.WriteROM(0xFFFC, 0x00);
-    mem.WriteROM(0xFFFD, 0x10);
-    cpu.Execute(mem);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x10);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x1008);
 }
@@ -63,13 +68,13 @@ TEST_F(BCC_Test, BCC_Branch_Backward) {
     cpu.C = 0;
     cpu.PC = 0x1010;
 
-    mem.Write(0x1010, INS_BCC);
-    mem.Write(0x1011, 0xFB);  // -5
-    mem.Write(0x100D, INS_JAM);
+    bus.Write(0x1010, INS_BCC);
+    bus.Write(0x1011, 0xFB);  // -5
+    bus.Write(0x100D, INS_JAM);
 
-    mem.WriteROM(0xFFFC, 0x10);
-    mem.WriteROM(0xFFFD, 0x10);
-    cpu.Execute(mem);
+    bus.WriteDirect(0xFFFC, 0x10);
+    bus.WriteDirect(0xFFFD, 0x10);
+    cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x100E);
 }

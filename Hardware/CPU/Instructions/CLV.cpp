@@ -2,7 +2,7 @@
 
 namespace Hardware::Instructions {
 
-void CLV::Execute(CPU& cpu, Mem& mem) {
+void CLV::Execute(CPU& cpu, Bus& bus) {
     cpu.V = 0;
 }
 

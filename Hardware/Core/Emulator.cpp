@@ -1,4 +1,4 @@
-#include "Emulator.h"
+#include "Hardware/Core/Emulator.h"
 
 #include <picosha2.h>
 
@@ -7,7 +7,6 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
-#include <iomanip>
 #include <iostream>
 #include <sstream>
 
@@ -17,71 +16,34 @@ using namespace Hardware;
 
 namespace Core {
 
-Emulator::Emulator() : mem(), cpu(), lcd(), acia(), via() {}
-
-void Emulator::PrintState() {
-    std::cerr << "PC: 0x" << std::hex << std::uppercase << std::setw(4)
-              << std::setfill('0') << (int)cpu.PC << " OP: 0x" << std::setw(2)
-              << (int)mem.memory[cpu.PC] << " SP: 0x" << std::setw(4)
-              << (int)cpu.SP << " A: 0x" << std::setw(2) << (int)cpu.A
-              << " X: 0x" << std::setw(2) << (int)cpu.X << " Y: 0x"
-              << std::setw(2) << (int)cpu.Y << " Flags: 0x" << std::setw(2)
-              << (int)cpu.GetStatus() << "\r" << std::dec << std::endl;
-}
+Emulator::Emulator() : bus(), cpu(), lcd(), ram(), rom(), acia(), via() {}
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::lock_guard<std::mutex> lock(emulationMutex);
-    mem.Init();
+    bus.Init();
     cpu.Reset();
-    lcd.Init(mem);
-    acia.Init(mem);
-    via.Init(mem);
 
-    // Connect VIA Port B Output to LCD Input
-    via.SetPortBCallback([this](Byte val) { lcd.Update(val); });
-
-    // Set up GPU VRAM write hook for RAM addresses 0x2000-0x3FFF (3 MSB = 001)
-    for (Word addr = 0x2000; addr < 0x4000; addr++) {
-        mem.SetWriteHook(
-            addr,
-            [](void* context, Word a, Byte val) {
-                auto self = static_cast<Emulator*>(context);
-                self->mem.memory[a] = val;
-                if (self->gpuEnabled) {
-                    self->gpu.Write(a - 0x2000, val);
-                }
-            },
-            this);
+    if (bus.GetRegisteredDevices().empty()) {
+        bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
+        bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
+        bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
+        bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
+        bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
+        bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
     }
 
-    // Reset SID state
+    acia.Reset();
+    via.Reset();
     sid.Reset();
+    gpu.Reset();
+    lcd.Reset();
 
-    // Map SID to 0x4800 - 0x481F
-    for (Word addr = 0x4800; addr <= 0x481F; addr++) {
-        mem.SetWriteHook(
-            addr,
-            [](void* context, Word a, Byte val) {
-                auto self = static_cast<Emulator*>(context);
-                self->sid.Write(a - 0x4800, val);
-                self->mem.memory[a] = val;
-            },
-            this);
-
-        mem.SetReadHook(
-            addr,
-            [](void* context, Word a) {
-                return static_cast<Emulator*>(context)->sid.Read(a - 0x4800);
-            },
-            this);
-    }
+    via.SetPortBCallback([this](Byte val) { lcd.Update(val); });
 
     std::string path = bin;
 
-    // Try opening as is
     FILE* file = fopen(path.c_str(), "rb");
 
-    // If fail, try appending .bin
     if (file == nullptr && path.find(".bin") == std::string::npos) {
         std::string tryBin = path + ".bin";
         file = fopen(tryBin.c_str(), "rb");
@@ -94,28 +56,30 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
         return false;
     }
 
-    // ensure bin has correct size
     fseek(file, 0, SEEK_END);
     long fileSize = ftell(file);
-    if (fileSize != mem.ROM_SIZE) {
+    if (fileSize != ROM_SIZE) {
         errorMsg = "Error: The file " + path + " does not have size " +
-                   std::to_string(mem.ROM_SIZE);
+                   std::to_string(ROM_SIZE);
         fclose(file);
         return false;
     }
     fseek(file, 0, SEEK_SET);
 
-    // read bin into memory (0x8000-0xFFFF)
-    size_t bytesRead = fread(mem.memory + 0x8000, 1, mem.ROM_SIZE, file);
+    std::vector<Byte> buffer(ROM_SIZE);
+    size_t bytesRead = fread(buffer.data(), 1, ROM_SIZE, file);
     if (bytesRead == 0) {
         errorMsg = "Error reading file " + path;
         fclose(file);
         return false;
     }
 
+    for (Word i = 0; i < bytesRead; ++i) {
+        rom.WriteDirect(i, buffer[i]);
+    }
+
     fclose(file);
 
-    // Save current binary info for auto-reload
     currentBinPath = path;
     try {
         if (std::filesystem::exists(path)) {
@@ -133,9 +97,10 @@ bool Emulator::SaveState(const std::string& filename) {
 
     std::stringstream ss;
 
-    // Save state of all components
-    if (!mem.SaveState(ss)) return false;
+    if (!bus.SaveState(ss)) return false;
     if (!cpu.SaveState(ss)) return false;
+    if (!ram.SaveState(ss)) return false;
+    if (!rom.SaveState(ss)) return false;
     if (!via.SaveState(ss)) return false;
     if (!sid.SaveState(ss)) return false;
     if (!acia.SaveState(ss)) return false;
@@ -145,20 +110,15 @@ bool Emulator::SaveState(const std::string& filename) {
 
     std::string payload = ss.str();
 
-    // Compute SHA256 hash
     std::string hashHex = picosha2::hash256_hex_string(payload);
 
     std::ofstream out(filename, std::ios::binary);
     if (!out.is_open()) return false;
 
-    // Write magic header
     const char magic[] = "SIM65C02SST";
-    out.write(magic, sizeof(magic) - 1);  // Exclude null terminator
+    out.write(magic, sizeof(magic) - 1);
 
-    // Write payload
     out.write(payload.c_str(), payload.size());
-
-    // Write hash
     out.write(hashHex.c_str(), hashHex.size());
 
     return out.good();
@@ -175,11 +135,10 @@ bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
 
     const char magic[] = "SIM65C02SST";
     size_t magicLen = sizeof(magic) - 1;
-    size_t hashLen = 64;  // SHA256 hex string length is 64
+    size_t hashLen = 64;
 
     if (size < (std::streamsize)(magicLen + hashLen)) return false;
 
-    // Verify magic header
     char fileMagic[11];
     in.read(fileMagic, magicLen);
     if (strncmp(fileMagic, magic, magicLen) != 0) {
@@ -193,7 +152,6 @@ bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
     char fileHash[64];
     in.read(fileHash, hashLen);
 
-    // Verify hash
     if (!ignoreHash) {
         std::string computedHash = picosha2::hash256_hex_string(payload);
         if (strncmp(fileHash, computedHash.c_str(), hashLen) != 0) {
@@ -206,8 +164,10 @@ bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
 
     std::stringstream ss(payload);
 
-    if (!mem.LoadState(ss)) return false;
+    if (!bus.LoadState(ss)) return false;
     if (!cpu.LoadState(ss)) return false;
+    if (!ram.LoadState(ss)) return false;
+    if (!rom.LoadState(ss)) return false;
     if (!via.LoadState(ss)) return false;
     if (!sid.LoadState(ss)) return false;
     if (!acia.LoadState(ss)) return false;
@@ -215,9 +175,8 @@ bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
     if (!gpu.LoadState(ss)) return false;
     if (!Console::LoadState(ss)) return false;
 
-    // Sync VRAM to recreate Write Hooks
     for (Word addr = 0x2000; addr < 0x4000; addr++) {
-        gpu.Write(addr - 0x2000, mem.memory[addr]);
+        gpu.Write(addr - 0x2000, bus.ReadDirect(addr));
     }
 
     return ss.good() || ss.eof();
@@ -226,59 +185,47 @@ bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
 int Emulator::Step() {
     int res = 0;
 
-    // Clock the GPU first to advance pixel counters
     if (gpuEnabled) {
         gpu.Clock();
-
-        // CPU only executes during blanking interval
-        // During drawing time, GPU has control of the bus
         if (gpu.IsInBlankingInterval()) {
-            res = cpu.Step(mem);
+            res = cpu.Step(bus);
         }
     } else {
-        // If GPU is disabled, CPU runs normally
-        // PrintState(); // Debugging
-        res = cpu.Step(mem);
-        // PrintState();
-        // if (cpu.PC > 0x8000) PrintState();  // Log only ROM execution
+        res = cpu.Step(bus);
     }
 
     if (baudDelay > 0) baudDelay--;
 
-    // Check ACIA IRQ
-    if ((mem.memory[ACIA_STATUS] & 0x80) != 0) {
-        cpu.IRQ(mem);
+    if ((bus.ReadDirect(ACIA_STATUS) & 0x80) != 0) {
+        cpu.IRQ(bus);
     }
 
-    // Clock VIA and check IRQ
     via.Clock();
     if (via.isIRQAsserted()) {
-        cpu.IRQ(mem);
+        cpu.IRQ(bus);
     }
 
-    // If waiting (WAI), check if there is a pending interrupt
     if (cpu.waiting) {
-        if ((mem.memory[ACIA_STATUS] & 0x80) != 0 || via.isIRQAsserted()) {
+        if ((bus.ReadDirect(ACIA_STATUS) & 0x80) != 0 || via.isIRQAsserted()) {
             cpu.waiting = false;
         } else {
             return 0;
         }
     }
 
-    // Process input buffer if ACIA is ready
     if (hasInput.load(std::memory_order_relaxed)) {
         std::lock_guard<std::mutex> lock(bufferMutex);
-        if (!inputBuffer.empty() && (mem.memory[ACIA_STATUS] & 0x80) == 0 &&
+        if (!inputBuffer.empty() && (bus.ReadDirect(ACIA_STATUS) & 0x80) == 0 &&
             (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
             char c = inputBuffer.front();
             inputBuffer.pop_front();
 
-            // Simulate ACIA: Write data and trigger IRQ
-            mem.memory[ACIA_DATA] = c;
-            mem.memory[ACIA_STATUS] |= 0x80;  // Bit 7: Data Register Full / IRQ
-            cpu.IRQ(mem);
+            bus.WriteDirect(ACIA_DATA, c);
+            bus.WriteDirect(ACIA_STATUS,
+                            bus.ReadDirect(ACIA_STATUS) |
+                                0x80);
+            cpu.IRQ(bus);
 
-            // Set delay (2000 clock cycles)
             baudDelay = 2000;
         }
         if (inputBuffer.empty()) {
@@ -301,13 +248,13 @@ void Emulator::SetOutputCallback(std::function<void(char)> cb) {
 void Emulator::Start() {
     if (running) return;
     running = true;
-    paused = true;  // Start paused
+    paused = true;
     emulatorThread = std::thread(&Emulator::ThreadLoop, this);
 }
 
 void Emulator::Stop() {
     running = false;
-    Resume();  // Unpause to let thread finish
+    Resume();
     if (emulatorThread.joinable()) {
         emulatorThread.join();
     }
@@ -342,7 +289,6 @@ void Emulator::ThreadLoop() {
         int currentTarget = targetIPS.load();
         if (currentTarget <= 0) currentTarget = 1;
 
-        // Execute in 10ms slices
         int sliceDurationMs = 10;
         double targetPerSlice =
             (double)currentTarget / (1000.0 / sliceDurationMs);
@@ -353,8 +299,6 @@ void Emulator::ThreadLoop() {
 
         auto sliceStartTime = high_resolution_clock::now();
 
-        // Lock emulation mutex for the entire slice to prevent race with
-        // Reset/Init
         {
             std::lock_guard<std::mutex> lock(emulationMutex);
             for (int i = 0; i < instructionsPerSlice; ++i) {
@@ -379,16 +323,12 @@ void Emulator::ThreadLoop() {
 
         nextSliceTime += milliseconds(sliceDurationMs);
 
-        // Sleep until next slice time
         std::this_thread::sleep_until(nextSliceTime);
 
-        // If we are lagging behind (processing took longer than slice
-        // duration), reset the schedule to avoid running too fast to catch up.
         if (high_resolution_clock::now() > nextSliceTime) {
             nextSliceTime = high_resolution_clock::now();
         }
 
-        // Check for binary file modification for auto-reload
         if (autoReloadRequested.load() && !currentBinPath.empty()) {
             auto now = high_resolution_clock::now();
             if (duration_cast<milliseconds>(now - lastWatchCheck).count() >=
@@ -411,8 +351,7 @@ void Emulator::ThreadLoop() {
                         }
                     }
                 } catch (...) {
-                    // Ignore transient filesystem errors (like if the file is
-                    // being written to)
+                    // Ignore filesystem errors
                 }
             }
         }

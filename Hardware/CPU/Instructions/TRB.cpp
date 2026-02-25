@@ -2,26 +2,26 @@
 
 namespace Hardware::Instructions {
 
-void TRB::ExecuteZP(CPU& cpu, Mem& mem) {
-    Byte ZP_Dir = cpu.FetchByte(mem);
-    Byte dato = cpu.ReadByte(ZP_Dir, mem);
+void TRB::ExecuteZP(CPU& cpu, Bus& bus) {
+    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte dato = cpu.ReadByte(ZP_Dir, bus);
     Byte res = cpu.A & dato;
 
     cpu.Z = (res == 0);
 
     Byte res2 = (~cpu.A) & dato;
-    mem.Write(ZP_Dir, res2);
+    bus.Write(ZP_Dir, res2);
 }
 
-void TRB::ExecuteABS(CPU& cpu, Mem& mem) {
-    Word Dir = cpu.FetchWord(mem);
-    Byte dato = cpu.ReadByte(Dir, mem);
+void TRB::ExecuteABS(CPU& cpu, Bus& bus) {
+    Word Dir = cpu.FetchWord(bus);
+    Byte dato = cpu.ReadByte(Dir, bus);
     Byte res = cpu.A & dato;
 
     cpu.Z = (res == 0);
 
     Byte res2 = (~cpu.A) & dato;
-    mem.Write(Dir, res2);
+    bus.Write(Dir, res2);
 }
 
 }  // namespace Hardware::Instructions

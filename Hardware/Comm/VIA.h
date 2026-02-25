@@ -3,15 +3,19 @@
 #include <functional>
 #include <iostream>
 
-#include "Mem.h"
+#include "Hardware/Core/IBusDevice.h"
 
 namespace Hardware {
 
-class VIA {
+class VIA : public IBusDevice {
 public:
     VIA();
-    void Init(Mem& mem);
-    void Reset();
+    void Reset() override;
+
+    // IBusDevice implementation
+    Byte Read(Word address) override;
+    void Write(Word address, Byte data) override;
+    std::string GetName() const override { return "VIA"; }
 
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& in);
@@ -143,19 +147,12 @@ public:
 
             switch (sr_mode) {
                 case 2:  // Shift In (PHI2)
+                case 4:  // Shift Out (Free Run / T2)
                 case 6:  // Shift Out (PHI2)
                 {
                     shift = true;
                     break;
                 }
-                case 4:  // Shift Out (Free Run / T2)
-                    // Assuming T2 free run logic or just simple PHI2 for now if
-                    // T2 not strictly modeled for this Spec says Free Run uses
-                    // T2 low order byte for rate. Simplified: Shift every cycle
-                    // for this task or check T2. Let's implement basics: Shift
-                    // every call for PHI2 modes.
-                    shift = true;
-                    break;
                 default:
                     break;
             }
