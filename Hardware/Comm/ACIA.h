@@ -23,6 +23,8 @@ public:
 
     void SetOutputCallback(std::function<void(char)> cb);
 
+    inline bool HasIRQ() const { return (STATUS & 0x80) != 0; }
+
 private:
     Byte DATA;
     Byte STATUS;

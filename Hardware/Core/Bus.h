@@ -97,6 +97,8 @@ private:
     std::vector<DeviceRegistration> registeredDevices;
     std::vector<BusWriteHook> globalWriteHooks;
     std::vector<BusReadHook> globalReadHooks;
+    bool hasWriteHooks = false;
+    bool hasReadHooks = false;
 
     bool profilingEnabled = false;
     uint32_t profilerCounts[BUS_SIZE]{0};

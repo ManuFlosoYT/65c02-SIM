@@ -274,7 +274,7 @@ int Emulator::Step() {
 
     if (baudDelay > 0) baudDelay--;
 
-    if ((bus.ReadDirect(ACIA_STATUS) & 0x80) != 0) {
+    if (acia.HasIRQ()) {
         cpu.IRQ(bus);
     }
 
@@ -284,7 +284,7 @@ int Emulator::Step() {
     }
 
     if (cpu.waiting) {
-        if ((bus.ReadDirect(ACIA_STATUS) & 0x80) != 0 || via.isIRQAsserted()) {
+        if (acia.HasIRQ() || via.isIRQAsserted()) {
             cpu.waiting = false;
         } else {
             return 0;
@@ -298,8 +298,7 @@ int Emulator::Step() {
         inputCheckCounter = 0;
         if (hasInput.load(std::memory_order_relaxed)) {
             std::lock_guard<std::mutex> lock(bufferMutex);
-            if (!inputBuffer.empty() &&
-                (bus.ReadDirect(ACIA_STATUS) & 0x80) == 0 &&
+            if (!inputBuffer.empty() && !acia.HasIRQ() &&
                 (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
                 char c = inputBuffer.front();
                 inputBuffer.pop_front();

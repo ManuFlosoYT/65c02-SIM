@@ -132,8 +132,10 @@ void Bus::Write(Word address, Byte data) {
         slot.device->Write(slot.offset, data);
     }
 
-    for (auto& hook : globalWriteHooks) {
-        hook(address, data);
+    if (hasWriteHooks) {
+        for (auto& hook : globalWriteHooks) {
+            hook(address, data);
+        }
     }
 }
 
@@ -146,10 +148,12 @@ void Bus::WriteDirect(Word address, Byte data) {
 
 void Bus::AddGlobalWriteHook(BusWriteHook hook) {
     globalWriteHooks.push_back(hook);
+    hasWriteHooks = !globalWriteHooks.empty();
 }
 
 void Bus::AddGlobalReadHook(BusReadHook hook) {
     globalReadHooks.push_back(hook);
+    hasReadHooks = !globalReadHooks.empty();
 }
 
 void Bus::ClearProfiler() {

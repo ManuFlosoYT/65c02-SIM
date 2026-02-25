@@ -19,8 +19,10 @@ inline Byte Bus::Read(Word address) {
         data = slot.device->Read(slot.offset);
     }
 
-    for (auto& hook : globalReadHooks) {
-        hook(address, data);
+    if (hasReadHooks) {
+        for (auto& hook : globalReadHooks) {
+            hook(address, data);
+        }
     }
     return data;
 }
