@@ -107,6 +107,14 @@ bool Emulator::SaveState(const std::string& filename) {
     if (!gpu.SaveState(ss)) return false;
     if (!Console::SaveState(ss)) return false;
 
+    // Internal Emulator state
+    ss.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));
+    size_t qSize = inputBuffer.size();
+    ss.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));
+    for (char c : inputBuffer) {
+        ss.write(&c, 1);
+    }
+
     std::string payload = ss.str();
     std::string payloadHash = picosha2::hash256_hex_string(payload);
 
@@ -214,6 +222,20 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     if (structuralSuccess && !lcd.LoadState(ss)) structuralSuccess = false;
     if (structuralSuccess && !gpu.LoadState(ss)) structuralSuccess = false;
     if (structuralSuccess && !Console::LoadState(ss)) structuralSuccess = false;
+
+    if (structuralSuccess) {
+        ss.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));
+        size_t qSize = 0;
+        ss.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));
+        std::lock_guard<std::mutex> lock(bufferMutex);
+        inputBuffer.clear();
+        for (size_t i = 0; i < qSize; ++i) {
+            char c;
+            ss.read(&c, 1);
+            inputBuffer.push_back(c);
+        }
+        hasInput.store(!inputBuffer.empty());
+    }
 
     if (!structuralSuccess || (!ss.good() && !ss.eof())) {
         lastLoadResult = SavestateLoadResult::StructuralError;

@@ -253,7 +253,11 @@ double Oscillator::Next(int sampleRate) {
     double output = 0.0;
 
     if (control & 0x80) {  // Noise
-        output = static_cast<double>(fast_rand()) / 0xFFFFFFFF * 2.0 - 1.0;
+        // Xorshift32
+        noiseShift ^= noiseShift << 13;
+        noiseShift ^= noiseShift >> 17;
+        noiseShift ^= noiseShift << 5;
+        output = static_cast<double>(noiseShift) / 0xFFFFFFFF * 2.0 - 1.0;
     } else if (control & 0x10) {  // Triangle
         uint32_t temp = accumulator;
         if (temp & 0x800000) temp ^= 0xFFFFFF;

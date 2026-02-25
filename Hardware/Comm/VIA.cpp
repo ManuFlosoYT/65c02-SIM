@@ -447,6 +447,7 @@ bool VIA::LoadState(std::istream& in) {
     in.read(reinterpret_cast<char*>(&sr_cnt), sizeof(sr_cnt));
     in.read(reinterpret_cast<char*>(&sr_active), sizeof(sr_active));
     in.read(reinterpret_cast<char*>(&sr_out_cb2), sizeof(sr_out_cb2));
+    UpdateIRQ();
     return in.good();
 }
 
