@@ -1,12 +1,16 @@
 // VIA.inl — Inline implementations for Hardware::VIA
 
-inline std::string Hardware::VIA::GetName() const { return "VIA"; }
+namespace Hardware {
 
-inline void Hardware::VIA::SetPortBCallback(std::function<void(Byte)> cb) {
+inline std::string VIA::GetName() const { return "VIA"; }
+
+inline void VIA::SetPortBCallback(std::function<void(Byte)> cb) {
     port_b_callback = cb;
 }
 
-inline void Hardware::VIA::Clock() {
+inline bool VIA::isIRQAsserted() const { return (ifr & 0x80) != 0; }
+
+inline void VIA::Clock() {
     // Timer 1
     if (t1_active) {
         t1c--;
@@ -108,3 +112,5 @@ inline void Hardware::VIA::Clock() {
         }
     }
 }
+
+}  // namespace Hardware

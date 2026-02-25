@@ -291,20 +291,27 @@ int Emulator::Step() {
         }
     }
 
-    if (hasInput.load(std::memory_order_relaxed)) {
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        if (!inputBuffer.empty() && (bus.ReadDirect(ACIA_STATUS) & 0x80) == 0 &&
-            (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
-            char c = inputBuffer.front();
-            inputBuffer.pop_front();
+    // Check input atomically only every ~10,000 steps (roughly 0.1s at 100K
+    // IPS)
+    static int inputCheckCounter = 0;
+    if (++inputCheckCounter >= 10000) {
+        inputCheckCounter = 0;
+        if (hasInput.load(std::memory_order_relaxed)) {
+            std::lock_guard<std::mutex> lock(bufferMutex);
+            if (!inputBuffer.empty() &&
+                (bus.ReadDirect(ACIA_STATUS) & 0x80) == 0 &&
+                (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
+                char c = inputBuffer.front();
+                inputBuffer.pop_front();
 
-            acia.ReceiveData(c);
-            cpu.IRQ(bus);
+                acia.ReceiveData(c);
+                cpu.IRQ(bus);
 
-            baudDelay = 2000;
-        }
-        if (inputBuffer.empty()) {
-            hasInput.store(false, std::memory_order_relaxed);
+                baudDelay = 2000;
+            }
+            if (inputBuffer.empty()) {
+                hasInput.store(false, std::memory_order_relaxed);
+            }
         }
     }
     return res;
@@ -312,6 +319,7 @@ int Emulator::Step() {
 
 void Emulator::InjectKey(char c) {
     if (c == '\n') c = '\r';
+
     std::lock_guard<std::mutex> lock(bufferMutex);
     inputBuffer.push_back(c);
     hasInput.store(true, std::memory_order_relaxed);

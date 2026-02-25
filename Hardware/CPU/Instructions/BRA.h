@@ -1,7 +1,10 @@
 #pragma once
 
-#include "Hardware/CPU/CPU.h"
-#include "Hardware/Core/Bus.h"
+namespace Hardware {
+class CPU;
+class Bus;
+}
+
 
 namespace Hardware::Instructions {
 

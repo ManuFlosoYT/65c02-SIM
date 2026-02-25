@@ -1,4 +1,5 @@
 // CPU.inl — Inline implementations for Hardware::CPU
+#include "Hardware/CPU/Dispatch.h"
 
 inline void Hardware::CPU::Reset() {
     PC = 0xFFFC;

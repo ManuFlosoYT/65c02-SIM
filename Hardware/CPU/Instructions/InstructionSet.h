@@ -2,10 +2,12 @@
 
 #include <cstdint>
 
+namespace Hardware {
+class CPU;
+class Bus;
+
 using Byte = uint8_t;
 using Word = uint16_t;
-
-namespace Hardware {
 
 constexpr static Byte INS_WAI = 0xCB;  // WAI
 constexpr static Byte INS_STP = 0xDB;  // STP

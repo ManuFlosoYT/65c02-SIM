@@ -29,22 +29,22 @@ public:
     bool LoadState(std::istream& in) override;
 
     // Clock the GPU to advance pixel counters
-    void Clock();
+    inline void Clock();
 
     // Get current pixel position (14-bit values)
-    Word GetPixelX() const;
-    Word GetPixelY() const;
+    inline Word GetPixelX() const;
+    inline Word GetPixelY() const;
 
     // Bus control status
-    bool IsInDrawingInterval() const;
-    bool IsInBlankingInterval() const;
+    inline bool IsInDrawingInterval() const;
+    inline bool IsInBlankingInterval() const;
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
-    Byte operator[](Word addr) const;
+    inline Byte operator[](Word addr) const;
 
     void Write(Word addr, Byte val) override;
     Byte Read(Word addr) override;
-    std::string GetName() const override;
+    inline std::string GetName() const override;
 
 private:
     // Pixel counters (14-bit values)

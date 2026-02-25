@@ -1,4 +1,7 @@
 #include "LDY.h"
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Core/Bus.h"
+#include "InstructionSet.h"
 
 namespace Hardware::Instructions {
 

@@ -1,5 +1,4 @@
-#include "Dispatch.h"
-
+// Dispatch.inl — Inline implementations for Hardware::CPUDispatch
 #include <iostream>
 
 #include "Hardware/CPU/CPU.h"
@@ -78,7 +77,7 @@ using namespace Hardware::Instructions;
 namespace Hardware {
 namespace CPUDispatch {
 
-int Dispatch(CPU& cpu, Bus& bus) {
+inline int Dispatch(CPU& cpu, Bus& bus) {
     Byte opcode = cpu.FetchByte(bus);
     switch (opcode) {
         case INS_WAI: {

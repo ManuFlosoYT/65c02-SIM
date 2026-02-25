@@ -11,7 +11,7 @@ namespace Hardware {
 
 class CPU;
 namespace CPUDispatch {
-int Dispatch(CPU& cpu, Bus& bus);
+inline int Dispatch(CPU& cpu, Bus& bus);
 }
 
 class CPU {

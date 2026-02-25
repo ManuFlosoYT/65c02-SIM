@@ -15,7 +15,7 @@ public:
     // IBusDevice implementation
     Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
-    std::string GetName() const override;
+    inline std::string GetName() const override;
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& in) override;
@@ -25,7 +25,7 @@ public:
     void SetPortA(Byte val);
     void SetPortB(Byte val);
 
-    void SetPortBCallback(std::function<void(Byte)> cb);
+    inline void SetPortBCallback(std::function<void(Byte)> cb);
 
     Byte GetDDRB() const;
     void SetDDRB(Byte val);
@@ -77,8 +77,8 @@ public:
     void SetCB1(bool val);
     void SetCB2(bool val);
 
-    void Clock();
-    bool isIRQAsserted() const;
+    inline void Clock();
+    inline bool isIRQAsserted() const;
 
 private:
     Byte orb;     // 0x00 Output Register B

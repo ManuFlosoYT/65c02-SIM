@@ -124,21 +124,6 @@ void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart,
     RebuildDeviceMap();
 }
 
-Byte Bus::Read(Word address) {
-    if (profilingEnabled) profilerCounts[address]++;
-    Byte data = 0;
-
-    if (deviceMap[address].device != nullptr) {
-        data = deviceMap[address].device->Read(address -
-                                               deviceMap[address].baseAddress);
-    }
-
-    for (auto& hook : globalReadHooks) {
-        hook(address, data);
-    }
-    return data;
-}
-
 void Bus::Write(Word address, Byte data) {
     if (profilingEnabled) profilerCounts[address]++;
 
@@ -157,14 +142,6 @@ void Bus::WriteDirect(Word address, Byte data) {
         deviceMap[address].device->Write(
             address - deviceMap[address].baseAddress, data);
     }
-}
-
-Byte Bus::ReadDirect(Word address) const {
-    if (deviceMap[address].device != nullptr) {
-        return deviceMap[address].device->Read(address -
-                                               deviceMap[address].baseAddress);
-    }
-    return 0;
 }
 
 void Bus::AddGlobalWriteHook(BusWriteHook hook) {
@@ -210,6 +187,24 @@ void Bus::RebuildDeviceMap() {
                 deviceMap[i].device = reg.device;
                 deviceMap[i].baseAddress = reg.startAddress;
             }
+        }
+    }
+
+    UpdateCache();
+}
+
+void Bus::UpdateCache() {
+    for (int i = 0; i < BUS_SIZE; ++i) {
+        if (deviceMap[i].device != nullptr) {
+            // Unbind the device and its correct address offset into a fast
+            // lambda
+            auto* dev = deviceMap[i].device;
+            Word offset = i - deviceMap[i].baseAddress;
+            readCache[i] = [dev, offset]() -> Byte {
+                return dev->Read(offset);
+            };
+        } else {
+            readCache[i] = nullptr;
         }
     }
 }

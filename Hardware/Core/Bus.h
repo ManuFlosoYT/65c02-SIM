@@ -66,24 +66,27 @@ public:
                                   Word newEnd, bool enabled,
                                   bool ignoreCollision);
 
-    Byte Read(Word address);
+    inline Byte Read(Word address);
     void Write(Word address, Byte data);
 
     void WriteDirect(Word address, Byte data);
-    Byte ReadDirect(Word address) const;
+    inline Byte ReadDirect(Word address) const;
 
     void AddGlobalWriteHook(BusWriteHook hook);
     void AddGlobalReadHook(BusReadHook hook);
 
-    void SetProfilingEnabled(bool enabled);
+    inline void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
-    uint32_t* GetProfilerCounts();
+    inline uint32_t* GetProfilerCounts();
 
     const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
     void RebuildDeviceMap();
 
 private:
+    void UpdateCache();
+
     BusSlot deviceMap[BUS_SIZE];
+    std::function<Byte()> readCache[BUS_SIZE];
 
     std::vector<DeviceRegistration> registeredDevices;
     std::vector<BusWriteHook> globalWriteHooks;

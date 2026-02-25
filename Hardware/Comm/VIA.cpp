@@ -222,8 +222,6 @@ void VIA::UpdateIRQ() {
     }
 }
 
-bool VIA::isIRQAsserted() const { return (ifr & 0x80) != 0; }
-
 Byte VIA::GetPortA() const { return (ira & ~ddra) | (ora & ddra); }
 Byte VIA::GetPortB() const { return (irb & ~ddrb) | (orb & ddrb); }
 
