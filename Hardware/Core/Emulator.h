@@ -31,7 +31,7 @@ public:
     bool Init(const std::string& binPath, std::string& errorMsg);
 
     bool SaveState(const std::string& filename);
-    bool LoadState(const std::string& filename, bool ignoreHash = false);
+    bool LoadState(const std::string& filename, bool forceLoad = false);
 
     int Step();
     void InjectKey(char c);

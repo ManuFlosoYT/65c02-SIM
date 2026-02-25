@@ -67,8 +67,8 @@ public:
         return voices[index % MAX_SID_VOICES];
     }
 
-    bool SaveState(std::ostream& out);
-    bool LoadState(std::istream& in);
+    bool SaveState(std::ostream& out) const override;
+    bool LoadState(std::istream& in) override;
 
 private:
     uint8_t registers[0x20];

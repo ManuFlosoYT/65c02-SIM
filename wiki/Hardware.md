@@ -4,7 +4,7 @@
 
 `Core::Emulator` is the **central orchestrator** of the simulator. It coordinates all hardware components, manages the emulation thread, and exposes a clean API for the graphical interface.
 
-**File:** `Hardware/Emulator.h` / `Hardware/Emulator.cpp`
+**File:** `Hardware/Core/Emulator.h` / `Hardware/Core/Emulator.cpp`
 
 ### Instantiation and lifecycle
 
@@ -24,15 +24,17 @@ emulator.Stop();         // Stops the thread
 
 ### Internal components
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `mem` | `Hardware::Mem` | Memory system (RAM + ROM + hooks) |
-| `cpu` | `Hardware::CPU` | 65c02 processor core |
-| `lcd` | `Hardware::LCD` | 2×16 LCD display |
-| `acia` | `Hardware::ACIA` | Serial interface (6551) |
-| `gpu` | `Hardware::GPU` | Graphics processor + VRAM |
-| `sid` | `Hardware::SID` | Sound chip |
-| `via` | `Hardware::VIA` | Versatile I/O interface (6522) |
+| Field  | Type             | Description                             |
+| ------ | ---------------- | --------------------------------------- |
+| `bus`  | `Hardware::Bus`  | Memory bus (RAM + ROM + Device mapping) |
+| `cpu`  | `Hardware::CPU`  | 65c02 processor core                    |
+| `ram`  | `Hardware::RAM`  | 32 KB RAM                               |
+| `rom`  | `Hardware::ROM`  | 32 KB ROM                               |
+| `lcd`  | `Hardware::LCD`  | 2×16 LCD display                        |
+| `acia` | `Hardware::ACIA` | Serial interface (6551)                 |
+| `gpu`  | `Hardware::GPU`  | Graphics processor + VRAM               |
+| `sid`  | `Hardware::SID`  | Sound chip                              |
+| `via`  | `Hardware::VIA`  | Versatile I/O interface (6522)          |
 
 ### Emulation thread
 
@@ -44,9 +46,10 @@ int actual = emulator.GetActualIPS();
 ```
 
 Thread synchronization between the emulation thread and the GUI uses:
+
 - `std::atomic<bool>` for `running` and `paused`
 - `std::condition_variable` (`pauseCV`) for efficient wait during pause
-- `std::mutex emulationMutex` for atomic reset/step operations
+- `std::mutex emulationMutex` for synchronization during state changes (reset/step/saveload)
 
 ### Step-by-step mode
 
@@ -78,11 +81,28 @@ emulator.SetLCDOutputCallback([](char c) {
 
 ---
 
-## `Mem` class — Memory system
+## `Bus` class — Memory system and Device Orchestration
 
-**File:** `Hardware/Mem.h` / `Hardware/Mem.cpp`
+The `Bus` class (formerly `Mem`) manages the 64KB address space and handles communication between the CPU and all connected peripherals.
 
-### Memory map
+**File:** `Hardware/Core/Bus.h` / `Hardware/Core/Bus.cpp`
+
+### IBusDevice Interface
+
+All hardware components connected to the bus must implement the `IBusDevice` interface. This ensures a consistent way to handle memory mapping and state serialization.
+
+```cpp
+class IBusDevice {
+public:
+    virtual std::string GetName() const = 0;
+
+    // Savestate support
+    virtual bool SaveState(std::ostream& out) const = 0;
+    virtual bool LoadState(std::istream& in) = 0;
+};
+```
+
+### Memory map (Default)
 
 ```
 0x0000 – 0x7FFF   RAM (32 KB)
@@ -98,14 +118,14 @@ emulator.SetLCDOutputCallback([](char c) {
 
 ### Read/write hooks
 
-The memory system supports per-address *hooks*, allowing peripherals (ACIA, VIA, GPU) to intercept accesses:
+The bus supports per-address _hooks_ or _device registration_, allowing peripherals (ACIA, VIA, GPU) to intercept accesses:
 
 ```cpp
-mem.SetWriteHook(0x5000, myWriteHook, contextPtr);
-mem.SetReadHook(0x5001, myReadHook, contextPtr);
+bus.RegisterDevice(myDevice, 0x5000, 0x5003);
 ```
 
 Hook types:
+
 ```cpp
 using WriteHook = void (*)(void*, Word, Byte);
 using ReadHook  = Byte (*)(void*, Word);
@@ -113,24 +133,24 @@ using ReadHook  = Byte (*)(void*, Word);
 
 ### Memory-mapped peripheral registers
 
-| Address | Register | Peripheral |
-|---------|----------|------------|
-| `0x5000` | `ACIA_DATA` | ACIA — serial data |
-| `0x5001` | `ACIA_STATUS` | ACIA — status |
-| `0x5002` | `ACIA_CMD` | ACIA — command |
-| `0x5003` | `ACIA_CTRL` | ACIA — control |
-| `0x6000` | `PORTB` | VIA — Port B |
-| `0x6001` | `PORTA` | VIA — Port A |
-| `0x6002` | `DDRB` | VIA — Data Direction B |
-| `0x6003` | `DDRA` | VIA — Data Direction A |
-| `0x6004`–`0x6009` | `T1C/T2C` | VIA — Timers |
-| `0x600A`–`0x600F` | `SR/ACR/PCR/IFR/IER` | VIA — Control |
+| Address           | Register             | Peripheral             |
+| ----------------- | -------------------- | ---------------------- |
+| `0x5000`          | `ACIA_DATA`          | ACIA — serial data     |
+| `0x5001`          | `ACIA_STATUS`        | ACIA — status          |
+| `0x5002`          | `ACIA_CMD`           | ACIA — command         |
+| `0x5003`          | `ACIA_CTRL`          | ACIA — control         |
+| `0x6000`          | `PORTB`              | VIA — Port B           |
+| `0x6001`          | `PORTA`              | VIA — Port A           |
+| `0x6002`          | `DDRB`               | VIA — Data Direction B |
+| `0x6003`          | `DDRA`               | VIA — Data Direction A |
+| `0x6004`–`0x6009` | `T1C/T2C`            | VIA — Timers           |
+| `0x600A`–`0x600F` | `SR/ACR/PCR/IFR/IER` | VIA — Control          |
 
 ### Low-level API
 
 ```cpp
-Byte val = mem.Read(0x0200);
-mem.Write(0x0200, 0x42);
-mem.WriteWord(0x1234, 0x0300);   // Write word in little-endian
-mem.WriteROM(0x8000, 0xEA);      // For unit tests only
+Byte val = bus.Read(0x0200);
+bus.Write(0x0200, 0x42);
+bus.WriteWord(0x1234, 0x0300);   // Write word in little-endian
+bus.WriteROM(0x8000, 0xEA);      // For unit tests only
 ```

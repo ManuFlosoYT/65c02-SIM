@@ -17,8 +17,8 @@ public:
     void Write(Word address, Byte data) override;
     std::string GetName() const override { return "VIA"; }
 
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool SaveState(std::ostream& out) const override;
+    bool LoadState(std::istream& in) override;
 
     Byte GetPortA() const;
     Byte GetPortB() const;

@@ -98,6 +98,12 @@ bool Emulator::SaveState(const std::string& filename) {
     std::stringstream ss;
 
     if (!bus.SaveState(ss)) return false;
+
+    std::string version = PROJECT_VERSION;
+    uint32_t versionLen = static_cast<uint32_t>(version.length());
+    ss.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));
+    ss.write(version.c_str(), versionLen);
+
     if (!cpu.SaveState(ss)) return false;
     if (!ram.SaveState(ss)) return false;
     if (!rom.SaveState(ss)) return false;
@@ -124,7 +130,7 @@ bool Emulator::SaveState(const std::string& filename) {
     return out.good();
 }
 
-bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
+bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     std::lock_guard<std::mutex> lock(emulationMutex);
 
     std::ifstream in(filename, std::ios::binary | std::ios::ate);
@@ -152,7 +158,7 @@ bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
     char fileHash[64];
     in.read(fileHash, hashLen);
 
-    if (!ignoreHash) {
+    if (!forceLoad) {
         std::string computedHash = picosha2::hash256_hex_string(payload);
         if (strncmp(fileHash, computedHash.c_str(), hashLen) != 0) {
             std::cerr << "Save state hash mismatch! Computed: " << computedHash
@@ -164,22 +170,45 @@ bool Emulator::LoadState(const std::string& filename, bool ignoreHash) {
 
     std::stringstream ss(payload);
 
-    if (!bus.LoadState(ss)) return false;
-    if (!cpu.LoadState(ss)) return false;
-    if (!ram.LoadState(ss)) return false;
-    if (!rom.LoadState(ss)) return false;
-    if (!via.LoadState(ss)) return false;
-    if (!sid.LoadState(ss)) return false;
-    if (!acia.LoadState(ss)) return false;
-    if (!lcd.LoadState(ss)) return false;
-    if (!gpu.LoadState(ss)) return false;
-    if (!Console::LoadState(ss)) return false;
+    if (!bus.LoadState(ss) && !forceLoad) return false;
+
+    uint32_t versionLen = 0;
+    ss.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));
+    std::string version(versionLen, '\0');
+    ss.read(&version[0], versionLen);
+
+    bool versionMismatch = (version != PROJECT_VERSION);
+    if (versionMismatch) {
+        std::cerr << "Warning: Savestate version mismatch! File: " << version
+                  << " Current: " << PROJECT_VERSION << std::endl;
+    }
+
+    bool success = true;
+    if (!cpu.LoadState(ss)) success = false;
+    if (success && !ram.LoadState(ss)) success = false;
+    if (success && !rom.LoadState(ss)) success = false;
+    if (success && !via.LoadState(ss)) success = false;
+    if (success && !sid.LoadState(ss)) success = false;
+    if (success && !acia.LoadState(ss)) success = false;
+    if (success && !lcd.LoadState(ss)) success = false;
+    if (success && !gpu.LoadState(ss)) success = false;
+    if (success && !Console::LoadState(ss)) success = false;
+
+    if (!success || (!ss.good() && !ss.eof())) {
+        if (!forceLoad) {
+            if (versionMismatch) {
+                std::cerr << "Error: Savestate version " << version
+                          << " is not compatible." << std::endl;
+            }
+            return false;
+        }
+    }
 
     for (Word addr = 0x2000; addr < 0x4000; addr++) {
         gpu.Write(addr - 0x2000, bus.ReadDirect(addr));
     }
 
-    return ss.good() || ss.eof();
+    return forceLoad || (success && (ss.good() || ss.eof()));
 }
 
 int Emulator::Step() {

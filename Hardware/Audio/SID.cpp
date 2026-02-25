@@ -313,7 +313,7 @@ bool Oscillator::LoadState(std::istream& in) {
     return in.good();
 }
 
-bool SID::SaveState(std::ostream& out) {
+bool SID::SaveState(std::ostream& out) const {
     std::lock_guard<std::mutex> lock(sidMutex);
     out.write(reinterpret_cast<const char*>(registers), sizeof(registers));
     for (int i = 0; i < MAX_SID_VOICES; ++i) {

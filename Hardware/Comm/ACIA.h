@@ -18,8 +18,8 @@ public:
     void Write(Word address, Byte data) override;
     std::string GetName() const override { return "ACIA"; }
 
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool SaveState(std::ostream& out) const override;
+    bool LoadState(std::istream& in) override;
 
     void SetOutputCallback(std::function<void(char)> cb) {
         outputCallback = cb;

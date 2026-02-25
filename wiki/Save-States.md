@@ -19,19 +19,23 @@ The components serialized include:
 
 The save operation happens synchronously with the `emulationMutex` locked, making it completely thread-safe and guaranteeing absolute consistency across components.
 
-## Integrity and Validation (SHA-256)
+## Integrity and Validation (Versioned)
 
 To protect against corrupted, truncated, or incompatible save state files, the emulator implements a strict integrity validation mechanism.
 
 1.  **Magic Header**: The save file always begins with the static magic sequence `"SIM65C02SST"`.
-2.  **Payload Data**: The raw binary data representing the emulator state payload.
-3.  **Hash Verification**: During serialization, the emulator uses the **PicoSHA2** library to compute a **SHA-256** cryptographic hash representation of the payload. This 64-character hexadecimal hash string is appended to the very end of the save file.
+2.  **Metadata Layer**:
+    - **Build Version**: The `PROJECT_VERSION` (git tag/commit) is embedded at the start of the payload.
+    - **Memory Map**: A snapshot of the registered hardware devices and their address ranges.
+3.  **Hash Verification**: During serialization, the emulator computes a **SHA-256** cryptographic hash of the payload. This 64-character hexadecimal hash string is appended to the very end of the file.
 
-When you load a state file (via **Settings -> Load State**), the emulator recalculates the hash of the data it reads and compares it directly against the hash signature at the end of the file.
+When loading:
 
-If the file has been modified externally, downloaded incompletely, or corrupted in any way, the calculated hash will diverge, and the emulator will refuse to load the state, preventing potentially dangerous undefined behavior or crashes.
+1. The emulator checks the hash.
+2. It attempts to load all components even if there is a version mismatch (printing a warning).
+3. If the load fails and a version mismatch was detected, it reports an incompatibility error.
 
-### Ignoring Hash Validation
+### Force Load Savestate
 
-If you intentionally modify the internal bits of a save state for memory hacking or debugging purposes, you can forcefully bypass the security check.
-Simply toggle on the **"Ignore Save State Hash"** option in the **Settings Menu** before clicking **Load State**.
+If you intentionally modify the internal bits of a save state or wish to ignore version/hash warnings, you can use the **"Force load savestate"** option in the **Settings Menu**.
+When enabled, the emulator will ignore hash mismatches, version discrepancies, and stream errors, attempting to restore the machine state as completely as possible.

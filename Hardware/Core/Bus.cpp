@@ -25,10 +25,70 @@ void Bus::ClearDevices() {
 }
 
 bool Bus::SaveState(std::ostream& out) const {
+    uint32_t deviceCount = static_cast<uint32_t>(registeredDevices.size());
+    out.write(reinterpret_cast<const char*>(&deviceCount), sizeof(deviceCount));
+
+    for (const auto& reg : registeredDevices) {
+        out.write(reinterpret_cast<const char*>(&reg.startAddress),
+                  sizeof(reg.startAddress));
+        out.write(reinterpret_cast<const char*>(&reg.endAddress),
+                  sizeof(reg.endAddress));
+        out.write(reinterpret_cast<const char*>(&reg.enabled),
+                  sizeof(reg.enabled));
+        out.write(reinterpret_cast<const char*>(&reg.ignoreCollision),
+                  sizeof(reg.ignoreCollision));
+
+        std::string name = reg.device->GetName();
+        uint32_t nameLen = static_cast<uint32_t>(name.length());
+        out.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
+        out.write(name.c_str(), nameLen);
+    }
     return out.good();
 }
 
 bool Bus::LoadState(std::istream& in) {
+    uint32_t deviceCount = 0;
+    in.read(reinterpret_cast<char*>(&deviceCount), sizeof(deviceCount));
+
+    for (uint32_t i = 0; i < deviceCount; ++i) {
+        Word startAddress, endAddress;
+        bool enabled, ignoreCollision;
+        in.read(reinterpret_cast<char*>(&startAddress), sizeof(startAddress));
+        in.read(reinterpret_cast<char*>(&endAddress), sizeof(endAddress));
+        in.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));
+        in.read(reinterpret_cast<char*>(&ignoreCollision),
+                sizeof(ignoreCollision));
+
+        uint32_t nameLen = 0;
+        in.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
+        std::string name(nameLen, '\0');
+        in.read(&name[0], nameLen);
+
+        if (i < registeredDevices.size()) {
+            const auto& reg = registeredDevices[i];
+            if (reg.device->GetName() != name ||
+                reg.startAddress != startAddress ||
+                reg.endAddress != endAddress) {
+                std::cerr << "Memory map mismatch! Savestate: " << name
+                          << " [0x" << std::hex << startAddress << "-0x"
+                          << endAddress
+                          << "], Current: " << reg.device->GetName() << " [0x"
+                          << reg.startAddress << "-0x" << reg.endAddress << "]"
+                          << std::dec << std::endl;
+            }
+        } else {
+            std::cerr << "Memory map mismatch! Savestate has more devices ("
+                      << deviceCount << ") than current configuration ("
+                      << registeredDevices.size() << ")" << std::endl;
+        }
+    }
+
+    if (deviceCount != registeredDevices.size()) {
+        std::cerr << "Memory map count mismatch! Savestate: " << deviceCount
+                  << ", Current: " << registeredDevices.size() << std::endl;
+        return false;
+    }
+
     return in.good();
 }
 
@@ -39,8 +99,7 @@ void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
             if (deviceMap[i].device != nullptr) {
                 throw std::runtime_error(
                     "Memory collision detected while registering device: " +
-                    device->GetName() + " at address 0x" +
-                    std::to_string(i));
+                    device->GetName() + " at address 0x" + std::to_string(i));
             }
         }
     }

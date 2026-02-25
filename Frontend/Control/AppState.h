@@ -25,7 +25,7 @@ struct AppState {
     float ipsLogScale = 6.0f;
     bool gpuEnabled = false;
     bool cycleAccurate = true;
-    bool ignoreSaveStateHash = false;
+    bool forceLoadSaveState = false;
     bool autoReload = true;
 
     // Debugger

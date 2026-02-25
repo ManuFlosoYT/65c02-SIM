@@ -14,8 +14,8 @@ public:
     void Write(Word address, Byte data) override;
     std::string GetName() const override { return "ROM"; }
     void Reset() override {}
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool SaveState(std::ostream& out) const override;
+    bool LoadState(std::istream& in) override;
 
     void Load(const std::vector<Byte>& buffer, Word offset = 0);
     void WriteDirect(Word address, Byte data);

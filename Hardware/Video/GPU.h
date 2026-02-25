@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-#include "Hardware/Core/Bus.h"
 #include "Hardware/Core/IBusDevice.h"
 
 namespace Hardware {
@@ -26,8 +25,8 @@ public:
 
     Byte vram[VRAM_HEIGHT][VRAM_WIDTH]{};
 
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool SaveState(std::ostream& out) const override;
+    bool LoadState(std::istream& in) override;
 
     // Clock the GPU to advance pixel counters
     inline void Clock() {

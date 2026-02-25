@@ -94,7 +94,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         if (ImGui::Checkbox("Cycle-Accurate", &state.cycleAccurate)) {
             state.emulator.SetCycleAccurate(state.cycleAccurate);
         }
-        ImGui::Checkbox("Ignore Save State Hash", &state.ignoreSaveStateHash);
+        ImGui::Checkbox("Force load savestate", &state.forceLoadSaveState);
         if (ImGui::Checkbox("Auto-Reload Bin", &state.autoReload)) {
             state.emulator.SetAutoReload(state.autoReload);
         }

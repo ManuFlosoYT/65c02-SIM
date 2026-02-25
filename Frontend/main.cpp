@@ -226,7 +226,7 @@ int main(int argc, char* argv[]) {
                     ImGuiFileDialog::Instance()->GetFilePathName();
                 state.emulator.Pause();
                 if (!state.emulator.LoadState(filePathName,
-                                              state.ignoreSaveStateHash)) {
+                                              state.forceLoadSaveState)) {
                     ImGui::OpenPopup("ErrorLoadingState");
                 }
             }
