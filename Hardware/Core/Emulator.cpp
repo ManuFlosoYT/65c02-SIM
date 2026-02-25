@@ -274,21 +274,16 @@ int Emulator::Step() {
 
     if (baudDelay > 0) baudDelay--;
 
-    if (acia.HasIRQ()) {
-        cpu.IRQ(bus);
-    }
-
     via.Clock();
-    if (via.isIRQAsserted()) {
-        cpu.IRQ(bus);
-    }
 
-    if (cpu.waiting) {
-        if (acia.HasIRQ() || via.isIRQAsserted()) {
-            cpu.waiting = false;
-        } else {
-            return 0;
+    bool irq = acia.HasIRQ() || via.isIRQAsserted();
+    if (irq) {
+        if (cpu.I == 0) {
+            cpu.IRQ(bus);
         }
+        cpu.waiting = false;
+    } else if (cpu.waiting) {
+        return 0;
     }
 
     // Check input atomically only every ~10,000 steps (roughly 0.1s at 100K
