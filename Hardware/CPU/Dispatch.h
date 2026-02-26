@@ -26,14 +26,14 @@ inline int Dispatch(CPU& cpu, Bus& bus);
 
 }  // namespace Hardware
 
-#include "Hardware/CPU/Dispatch.h"
-#pragma once
 #include <array>
-#include "Hardware/CPU/Dispatch.h"
-#include "Hardware/CPU/Instructions/InstructionSet.h"
+
+#include "Hardware/CPU/CPU.h"
 #include "Hardware/CPU/Instructions/ADC.h"
 #include "Hardware/CPU/Instructions/AND.h"
 #include "Hardware/CPU/Instructions/ASL.h"
+#include "Hardware/CPU/Instructions/BBR.h"
+#include "Hardware/CPU/Instructions/BBS.h"
 #include "Hardware/CPU/Instructions/BCC.h"
 #include "Hardware/CPU/Instructions/BCS.h"
 #include "Hardware/CPU/Instructions/BEQ.h"
@@ -59,6 +59,7 @@ inline int Dispatch(CPU& cpu, Bus& bus);
 #include "Hardware/CPU/Instructions/INC.h"
 #include "Hardware/CPU/Instructions/INX.h"
 #include "Hardware/CPU/Instructions/INY.h"
+#include "Hardware/CPU/Instructions/InstructionSet.h"
 #include "Hardware/CPU/Instructions/JMP.h"
 #include "Hardware/CPU/Instructions/JSR.h"
 #include "Hardware/CPU/Instructions/LDA.h"
@@ -75,6 +76,7 @@ inline int Dispatch(CPU& cpu, Bus& bus);
 #include "Hardware/CPU/Instructions/PLP.h"
 #include "Hardware/CPU/Instructions/PLX.h"
 #include "Hardware/CPU/Instructions/PLY.h"
+#include "Hardware/CPU/Instructions/RMB.h"
 #include "Hardware/CPU/Instructions/ROL.h"
 #include "Hardware/CPU/Instructions/ROR.h"
 #include "Hardware/CPU/Instructions/RTI.h"
@@ -83,27 +85,23 @@ inline int Dispatch(CPU& cpu, Bus& bus);
 #include "Hardware/CPU/Instructions/SEC.h"
 #include "Hardware/CPU/Instructions/SED.h"
 #include "Hardware/CPU/Instructions/SEI.h"
+#include "Hardware/CPU/Instructions/SMB.h"
 #include "Hardware/CPU/Instructions/STA.h"
 #include "Hardware/CPU/Instructions/STX.h"
 #include "Hardware/CPU/Instructions/STY.h"
 #include "Hardware/CPU/Instructions/STZ.h"
 #include "Hardware/CPU/Instructions/TAX.h"
 #include "Hardware/CPU/Instructions/TAY.h"
+#include "Hardware/CPU/Instructions/TRB.h"
+#include "Hardware/CPU/Instructions/TSB.h"
 #include "Hardware/CPU/Instructions/TSX.h"
 #include "Hardware/CPU/Instructions/TXA.h"
 #include "Hardware/CPU/Instructions/TXS.h"
 #include "Hardware/CPU/Instructions/TYA.h"
-#include "Hardware/CPU/Instructions/BBR.h"
-#include "Hardware/CPU/Instructions/BBS.h"
-#include "Hardware/CPU/Instructions/RMB.h"
-#include "Hardware/CPU/Instructions/SMB.h"
-#include "Hardware/CPU/Instructions/TRB.h"
-#include "Hardware/CPU/Instructions/TSB.h"
 
 using namespace Hardware::Instructions;
 
-namespace Hardware {
-namespace CPUDispatch {
+namespace Hardware::CPUDispatch {
 
 template <bool Debug>
 constexpr std::array<OpcodeEntry<Debug>, 256> BuildDispatchTable() {
@@ -332,16 +330,14 @@ constexpr std::array<OpcodeEntry<Debug>, 256> BuildDispatchTable() {
 template <bool Debug>
 constexpr std::array<OpcodeEntry<Debug>, 256> dispatchTable = BuildDispatchTable<Debug>();
 
-} // namespace CPUDispatch
-} // namespace Hardware
+}  // namespace Hardware::CPUDispatch
 
-namespace Hardware {
-namespace CPUDispatch {
+namespace Hardware::CPUDispatch {
 
 template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus) {
     Byte opcode = cpu.FetchByte<Debug>(bus);
-    const OpcodeEntry<Debug>& entry = dispatchTable<Debug>[opcode];
+    const OpcodeEntry<Debug>& entry = dispatchTable<Debug>.at(opcode);
 
     // Execute instruction
     if (entry.executor) {
@@ -355,13 +351,11 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
 
     // Error handling
     if (entry.exitCode == -1) {
-        std::cerr << "Unknown opcode: 0x" << std::hex
-                  << static_cast<int>(opcode) << " PC: 0x" << cpu.PC << std::dec
-                  << " execution cancelled." << std::endl;
+        std::cerr << "Unknown opcode: 0x" << std::hex << static_cast<int>(opcode) << " PC: 0x" << cpu.PC << std::dec
+                  << " execution cancelled.\n";
     }
 
     return entry.exitCode;
 }
 
-}  // namespace CPUDispatch
-}  // namespace Hardware
+}  // namespace Hardware::CPUDispatch
