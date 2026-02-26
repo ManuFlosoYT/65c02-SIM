@@ -1,6 +1,4 @@
 compile_commands.json
-.clang-format
-.clang-tidy
 
 /.cache
 /build
