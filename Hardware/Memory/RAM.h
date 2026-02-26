@@ -26,4 +26,5 @@ private:
 
 }  // namespace Hardware
 
-#include "Hardware/Memory/RAM.inl"
+
+inline std::string Hardware::RAM::GetName() const { return "RAM"; }

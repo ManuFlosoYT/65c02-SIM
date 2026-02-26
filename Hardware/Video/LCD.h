@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <functional>
 #include <iostream>
 
@@ -8,7 +9,7 @@
 namespace Hardware {
 
 class LCD : public IBusDevice {
-public:
+   public:
     LCD();
     void Reset() override;
 
@@ -24,7 +25,7 @@ public:
 
     void SetOutputCallback(std::function<void(char)> cb);
 
-    const char (&GetScreen() const)[2][16];
+    const std::array<std::array<char, 16>, 2>& GetScreen() const;
 
     bool IsInitialized() const;
 
@@ -33,7 +34,7 @@ public:
     int GetCursorX() const;
     int GetCursorY() const;
 
-private:
+   private:
     Byte PORTB_DATA;
     Byte DDRB_DATA;
 
@@ -45,7 +46,7 @@ private:
     bool is_init = false;
 
     // Display State
-    char screen[2][16];
+    std::array<std::array<char, 16>, 2> screen;
     int cursorX = 0;
     int cursorY = 0;
 
@@ -61,4 +62,12 @@ private:
 
 }  // namespace Hardware
 
-#include "Hardware/Video/LCD.inl"
+
+inline std::string Hardware::LCD::GetName() const { return "LCD"; }
+inline void Hardware::LCD::SetOutputCallback(std::function<void(char)> cb) { onChar = cb; }
+inline const std::array<std::array<char, 16>, 2>& Hardware::LCD::GetScreen() const { return screen; }
+inline bool Hardware::LCD::IsInitialized() const { return is_init; }
+inline bool Hardware::LCD::IsDisplayOn() const { return display_on; }
+inline bool Hardware::LCD::IsCursorOn() const { return cursor_on; }
+inline int Hardware::LCD::GetCursorX() const { return cursorX; }
+inline int Hardware::LCD::GetCursorY() const { return cursorY; }

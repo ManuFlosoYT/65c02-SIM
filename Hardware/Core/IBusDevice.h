@@ -30,4 +30,5 @@ public:
 
 }  // namespace Hardware
 
-#include "Hardware/Core/IBusDevice.inl"
+
+inline void Hardware::IBusDevice::Reset() {}

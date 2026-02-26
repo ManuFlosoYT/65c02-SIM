@@ -30,4 +30,6 @@ private:
 
 }  // namespace Hardware
 
-#include "Hardware/Memory/ROM.inl"
+
+inline std::string Hardware::ROM::GetName() const { return "ROM"; }
+inline void Hardware::ROM::Reset() {}
