@@ -1,9 +1,3 @@
-.DS_Store
-.vscode
-.clang-format
-compile_commands.json
-SDK.zip
-
 /.cache
 /build
 /build_win
