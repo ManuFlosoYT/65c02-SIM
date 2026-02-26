@@ -1,45 +1,48 @@
 #!/bin/bash
 set -e
 
-# Default BUILD_TYPE
 BUILD_TYPE="Release"
 CMAKE_OPTS=""
-
-# Handle arguments
+DO_CLEAN=false
 for arg in "$@"; do
     if [[ "$arg" == "--clean" ]]; then
-        echo "Cleaning build directory..."
-        rm -rf build_win
+        DO_CLEAN=true
     elif [[ "$arg" == "--debug" ]]; then
-        echo "Enabling debug symbols..."
         BUILD_TYPE="Debug"
     fi
 done
 
-# Detect ccache
+if [[ "$BUILD_TYPE" == "Debug" ]]; then
+    BUILD_DIR="build_win/debug"
+else
+    BUILD_DIR="build_win/release"
+fi
+
+if [ "$DO_CLEAN" = true ]; then
+    echo "Cleaning build directory ($BUILD_DIR)..."
+    rm -rf "$BUILD_DIR"
+fi
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache found, enabling..."
     CMAKE_OPTS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-    ccache -z # Zero stats
+    ccache -z
 fi
 
-# Detect Ninja (optional for Windows cross-compile, but usually preferred if available)
 if command -v ninja >/dev/null 2>&1; then
     echo "Ninja found, using it as generator..."
     export CMAKE_GENERATOR=Ninja
-    # Check for generator mismatch in existing cache
-    if [ -f build_win/CMakeCache.txt ]; then
-        if grep -q "CMAKE_GENERATOR:INTERNAL=Unix Makefiles" build_win/CMakeCache.txt; then
+    
+    if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+        if grep -q "CMAKE_GENERATOR:INTERNAL=Unix Makefiles" "$BUILD_DIR/CMakeCache.txt"; then
             echo "Generator mismatch detected (Unix Makefiles -> Ninja). Cleaning build directory..."
-            rm -rf build_win
+            rm -rf "$BUILD_DIR"
         fi
     fi
 fi
 
-# Windows Build (Cross-compile)
-echo "Compiling for Windows (MinGW)..."
-cmake -S . -B build_win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
-cmake --build build_win -j$(nproc)
+echo "Compiling for Windows (MinGW) in $BUILD_TYPE mode..."
+cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
+cmake --build "$BUILD_DIR" -j$(nproc)
 
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache statistics:"
@@ -47,16 +50,14 @@ if command -v ccache >/dev/null 2>&1; then
 fi
 
 echo "Running unit tests (Windows/Wine)..."
-# Check if wine is installed
 if command -v wine >/dev/null 2>&1; then
-    wine ./build_win/unit_tests.exe
+    wine "./$BUILD_DIR/unit_tests.exe"
 else
     echo "Wine not found, skipping unit tests."
 fi
 
-# Copy Output
 mkdir -p output
-cp build_win/SIM_65C02.exe output/ 2>/dev/null || true
+cp "$BUILD_DIR/SIM_65C02.exe" output/ 2>/dev/null || true
 
-echo "Windows build completed in output"
+echo "Cross-compilation for Windows ($BUILD_TYPE) completed in output"
 exit 0
