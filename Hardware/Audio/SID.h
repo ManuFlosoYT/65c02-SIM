@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <mutex>
@@ -11,21 +12,21 @@
 namespace Hardware {
 
 struct ADSREnvelope {
-    enum State { IDLE, ATTACK, DECAY, SUSTAIN, RELEASE };
+    enum State : std::uint8_t { IDLE, ATTACK, DECAY, SUSTAIN, RELEASE };
     State state = IDLE;
     double level = 0.0;
 
     // Parameters from registers
-    int attackRate;
-    int decayRate;
-    double sustainLevel;
-    int releaseRate;
+    int attackRate = 0;
+    int decayRate = 0;
+    double sustainLevel = 0.0;
+    int releaseRate = 0;
 
     void Update(bool gate, int sampleRate = 44100);
     double Next();
 
     bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool LoadState(std::istream& inStream);
 };
 
 struct Oscillator {
@@ -42,20 +43,25 @@ struct Oscillator {
     double Next(int sampleRate = 44100);
 
     bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool LoadState(std::istream& inStream);
 };
 
 class SID : public IBusDevice {
-public:
-#define MAX_SID_VOICES 3
+   public:
+    static constexpr int MAX_SID_VOICES = 3;
+    
     SID();
-    ~SID();
+    ~SID() override;
+    SID(const SID&) = delete;
+    SID& operator=(const SID&) = delete;
+    SID(SID&&) = delete;
+    SID& operator=(SID&&) = delete;
 
     void Init(int sampleRate = 44100);
     void Close();
     void Reset() override;
     Byte Read(Word addr) override;
-    void Write(Word addr, Byte data) override;
+    void Write(Word addr, Byte data) override;  // NOLINT(bugprone-easily-swappable-parameters)
     std::string GetName() const override;
 
     void EnableSound(bool enable);
@@ -66,12 +72,12 @@ public:
     const Oscillator& GetVoice(int index) const;
 
     bool SaveState(std::ostream& out) const override;
-    bool LoadState(std::istream& in) override;
+    bool LoadState(std::istream& inStream) override;
 
-private:
-    uint8_t registers[0x20];
-    Oscillator voices[MAX_SID_VOICES];
-    uint8_t volumeRegister;
+   private:
+    std::array<std::uint8_t, 0x20> registers{};
+    std::array<Oscillator, MAX_SID_VOICES> voices{};
+    std::uint8_t volumeRegister{0};
     bool soundEnabled = false;
     bool emulationPaused = false;
 
@@ -80,17 +86,16 @@ private:
     int sampleRate = 44100;
     mutable std::mutex sidMutex;
 
-    static void AudioCallback(void* userdata, SDL_AudioStream* stream,
-                              int additional_amount, int total_amount);
+    static void AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
+                              int total_amount);  // NOLINT(bugprone-easily-swappable-parameters)
     void GenerateAudio(int16_t* buffer, int length);
     void UpdateAudioState();
 };
 
 }  // namespace Hardware
 
-
 inline std::string Hardware::SID::GetName() const { return "SID"; }
 inline bool Hardware::SID::IsSoundEnabled() const { return soundEnabled; }
 inline const Hardware::Oscillator& Hardware::SID::GetVoice(int index) const {
-    return voices[index % MAX_SID_VOICES];
+    return voices.at(index % MAX_SID_VOICES);
 }
