@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 namespace Hardware {
@@ -518,7 +519,7 @@ constexpr static Byte CYC_INS_TRB_ZP = 5;
 constexpr static Byte CYC_INS_TSB_ABS = 6;
 constexpr static Byte CYC_INS_TSB_ZP = 5;
 
-enum class AddressingMode {
+enum class AddressingMode : std::uint8_t {
     Implied,
     Immediate,
     ZeroPage,
@@ -542,263 +543,263 @@ struct InstructionInfo {
     AddressingMode mode;
 };
 
-static const InstructionInfo OpcodeTable[256] = {
-    {"BRK", AddressingMode::Implied},                  // 0x00
-    {"ORA", AddressingMode::IndirectX},                // 0x01
-    {"JAM", AddressingMode::Implied},                  // 0x02
-    {"???", AddressingMode::Implied},                  // 0x03
-    {"TSB", AddressingMode::ZeroPage},                 // 0x04
-    {"ORA", AddressingMode::ZeroPage},                 // 0x05
-    {"ASL", AddressingMode::ZeroPage},                 // 0x06
-    {"RMB0", AddressingMode::ZeroPage},                // 0x07
-    {"PHP", AddressingMode::Implied},                  // 0x08
-    {"ORA", AddressingMode::Immediate},                // 0x09
-    {"ASL", AddressingMode::Accumulator},              // 0x0a
-    {"???", AddressingMode::Implied},                  // 0x0b
-    {"TSB", AddressingMode::Absolute},                 // 0x0c
-    {"ORA", AddressingMode::Absolute},                 // 0x0d
-    {"ASL", AddressingMode::Absolute},                 // 0x0e
-    {"BBR0", AddressingMode::ZeroPageRelative},        // 0x0f
-    {"BPL", AddressingMode::Relative},                 // 0x10
-    {"ORA", AddressingMode::IndirectY},                // 0x11
-    {"ORA", AddressingMode::ZeroPageIndirect},         // 0x12
-    {"???", AddressingMode::Implied},                  // 0x13
-    {"TRB", AddressingMode::ZeroPage},                 // 0x14
-    {"ORA", AddressingMode::ZeroPageX},                // 0x15
-    {"ASL", AddressingMode::ZeroPageX},                // 0x16
-    {"RMB1", AddressingMode::ZeroPage},                // 0x17
-    {"CLC", AddressingMode::Implied},                  // 0x18
-    {"ORA", AddressingMode::AbsoluteY},                // 0x19
-    {"INC", AddressingMode::Accumulator},              // 0x1a
-    {"???", AddressingMode::Implied},                  // 0x1b
-    {"TRB", AddressingMode::Absolute},                 // 0x1c
-    {"ORA", AddressingMode::AbsoluteX},                // 0x1d
-    {"ASL", AddressingMode::AbsoluteX},                // 0x1e
-    {"BBR1", AddressingMode::ZeroPageRelative},        // 0x1f
-    {"JSR", AddressingMode::Absolute},                 // 0x20
-    {"AND", AddressingMode::IndirectX},                // 0x21
-    {"???", AddressingMode::Implied},                  // 0x22
-    {"???", AddressingMode::Implied},                  // 0x23
-    {"BIT", AddressingMode::ZeroPage},                 // 0x24
-    {"AND", AddressingMode::ZeroPage},                 // 0x25
-    {"ROL", AddressingMode::ZeroPage},                 // 0x26
-    {"RMB2", AddressingMode::ZeroPage},                // 0x27
-    {"PLP", AddressingMode::Implied},                  // 0x28
-    {"AND", AddressingMode::Immediate},                // 0x29
-    {"ROL", AddressingMode::Accumulator},              // 0x2a
-    {"???", AddressingMode::Implied},                  // 0x2b
-    {"BIT", AddressingMode::Absolute},                 // 0x2c
-    {"AND", AddressingMode::Absolute},                 // 0x2d
-    {"ROL", AddressingMode::Absolute},                 // 0x2e
-    {"BBR2", AddressingMode::ZeroPageRelative},        // 0x2f
-    {"BMI", AddressingMode::Relative},                 // 0x30
-    {"AND", AddressingMode::IndirectY},                // 0x31
-    {"AND", AddressingMode::ZeroPageIndirect},         // 0x32
-    {"???", AddressingMode::Implied},                  // 0x33
-    {"BIT", AddressingMode::ZeroPageX},                // 0x34
-    {"AND", AddressingMode::ZeroPageX},                // 0x35
-    {"ROL", AddressingMode::ZeroPageX},                // 0x36
-    {"RMB3", AddressingMode::ZeroPage},                // 0x37
-    {"SEC", AddressingMode::Implied},                  // 0x38
-    {"AND", AddressingMode::AbsoluteY},                // 0x39
-    {"DEC", AddressingMode::Accumulator},              // 0x3a
-    {"???", AddressingMode::Implied},                  // 0x3b
-    {"BIT", AddressingMode::AbsoluteX},                // 0x3c
-    {"AND", AddressingMode::AbsoluteX},                // 0x3d
-    {"ROL", AddressingMode::AbsoluteX},                // 0x3e
-    {"BBR3", AddressingMode::ZeroPageRelative},        // 0x3f
-    {"RTI", AddressingMode::Implied},                  // 0x40
-    {"EOR", AddressingMode::IndirectX},                // 0x41
-    {"???", AddressingMode::Implied},                  // 0x42
-    {"???", AddressingMode::Implied},                  // 0x43
-    {"???", AddressingMode::Implied},                  // 0x44
-    {"EOR", AddressingMode::ZeroPage},                 // 0x45
-    {"LSR", AddressingMode::ZeroPage},                 // 0x46
-    {"RMB4", AddressingMode::ZeroPage},                // 0x47
-    {"PHA", AddressingMode::Implied},                  // 0x48
-    {"EOR", AddressingMode::Immediate},                // 0x49
-    {"LSR", AddressingMode::Accumulator},              // 0x4a
-    {"???", AddressingMode::Implied},                  // 0x4b
-    {"JMP", AddressingMode::Absolute},                 // 0x4c
-    {"EOR", AddressingMode::Absolute},                 // 0x4d
-    {"LSR", AddressingMode::Absolute},                 // 0x4e
-    {"BBR4", AddressingMode::ZeroPageRelative},        // 0x4f
-    {"BVC", AddressingMode::Relative},                 // 0x50
-    {"EOR", AddressingMode::IndirectY},                // 0x51
-    {"EOR", AddressingMode::ZeroPageIndirect},         // 0x52
-    {"???", AddressingMode::Implied},                  // 0x53
-    {"???", AddressingMode::Implied},                  // 0x54
-    {"EOR", AddressingMode::ZeroPageX},                // 0x55
-    {"LSR", AddressingMode::ZeroPageX},                // 0x56
-    {"RMB5", AddressingMode::ZeroPage},                // 0x57
-    {"CLI", AddressingMode::Implied},                  // 0x58
-    {"EOR", AddressingMode::AbsoluteY},                // 0x59
-    {"PHY", AddressingMode::Implied},                  // 0x5a
-    {"???", AddressingMode::Implied},                  // 0x5b
-    {"???", AddressingMode::Implied},                  // 0x5c
-    {"EOR", AddressingMode::AbsoluteX},                // 0x5d
-    {"LSR", AddressingMode::AbsoluteX},                // 0x5e
-    {"BBR5", AddressingMode::ZeroPageRelative},        // 0x5f
-    {"RTS", AddressingMode::Implied},                  // 0x60
-    {"ADC", AddressingMode::IndirectX},                // 0x61
-    {"???", AddressingMode::Implied},                  // 0x62
-    {"???", AddressingMode::Implied},                  // 0x63
-    {"STZ", AddressingMode::ZeroPage},                 // 0x64
-    {"ADC", AddressingMode::ZeroPage},                 // 0x65
-    {"ROR", AddressingMode::ZeroPage},                 // 0x66
-    {"RMB6", AddressingMode::ZeroPage},                // 0x67
-    {"PLA", AddressingMode::Implied},                  // 0x68
-    {"ADC", AddressingMode::Immediate},                // 0x69
-    {"ROR", AddressingMode::Accumulator},              // 0x6a
-    {"???", AddressingMode::Implied},                  // 0x6b
-    {"JMP", AddressingMode::Indirect},                 // 0x6c
-    {"ADC", AddressingMode::Absolute},                 // 0x6d
-    {"ROR", AddressingMode::Absolute},                 // 0x6e
-    {"BBR6", AddressingMode::ZeroPageRelative},        // 0x6f
-    {"BVS", AddressingMode::Relative},                 // 0x70
-    {"ADC", AddressingMode::IndirectY},                // 0x71
-    {"ADC", AddressingMode::ZeroPageIndirect},         // 0x72
-    {"???", AddressingMode::Implied},                  // 0x73
-    {"STZ", AddressingMode::ZeroPageX},                // 0x74
-    {"ADC", AddressingMode::ZeroPageX},                // 0x75
-    {"ROR", AddressingMode::ZeroPageX},                // 0x76
-    {"RMB7", AddressingMode::ZeroPage},                // 0x77
-    {"SEI", AddressingMode::Implied},                  // 0x78
-    {"ADC", AddressingMode::AbsoluteY},                // 0x79
-    {"PLY", AddressingMode::Implied},                  // 0x7a
-    {"???", AddressingMode::Implied},                  // 0x7b
-    {"JMP", AddressingMode::AbsoluteIndexedIndirect},  // 0x7c
-    {"ADC", AddressingMode::AbsoluteX},                // 0x7d
-    {"ROR", AddressingMode::AbsoluteX},                // 0x7e
-    {"BBR7", AddressingMode::ZeroPageRelative},        // 0x7f
-    {"BRA", AddressingMode::Relative},                 // 0x80
-    {"STA", AddressingMode::IndirectX},                // 0x81
-    {"???", AddressingMode::Implied},                  // 0x82
-    {"???", AddressingMode::Implied},                  // 0x83
-    {"STY", AddressingMode::ZeroPage},                 // 0x84
-    {"STA", AddressingMode::ZeroPage},                 // 0x85
-    {"STX", AddressingMode::ZeroPage},                 // 0x86
-    {"SMB0", AddressingMode::ZeroPage},                // 0x87
-    {"DEY", AddressingMode::Implied},                  // 0x88
-    {"BIT", AddressingMode::Immediate},                // 0x89
-    {"TXA", AddressingMode::Implied},                  // 0x8a
-    {"???", AddressingMode::Implied},                  // 0x8b
-    {"STY", AddressingMode::Absolute},                 // 0x8c
-    {"STA", AddressingMode::Absolute},                 // 0x8d
-    {"STX", AddressingMode::Absolute},                 // 0x8e
-    {"BBS0", AddressingMode::ZeroPageRelative},        // 0x8f
-    {"BCC", AddressingMode::Relative},                 // 0x90
-    {"STA", AddressingMode::IndirectY},                // 0x91
-    {"STA", AddressingMode::ZeroPageIndirect},         // 0x92
-    {"???", AddressingMode::Implied},                  // 0x93
-    {"STY", AddressingMode::ZeroPageX},                // 0x94
-    {"STA", AddressingMode::ZeroPageX},                // 0x95
-    {"STX", AddressingMode::ZeroPageY},                // 0x96
-    {"SMB1", AddressingMode::ZeroPage},                // 0x97
-    {"TYA", AddressingMode::Implied},                  // 0x98
-    {"STA", AddressingMode::AbsoluteY},                // 0x99
-    {"TXS", AddressingMode::Implied},                  // 0x9a
-    {"???", AddressingMode::Implied},                  // 0x9b
-    {"STZ", AddressingMode::Absolute},                 // 0x9c
-    {"STA", AddressingMode::AbsoluteX},                // 0x9d
-    {"STZ", AddressingMode::AbsoluteX},                // 0x9e
-    {"BBS1", AddressingMode::ZeroPageRelative},        // 0x9f
-    {"LDY", AddressingMode::Immediate},                // 0xa0
-    {"LDA", AddressingMode::IndirectX},                // 0xa1
-    {"LDX", AddressingMode::Immediate},                // 0xa2
-    {"???", AddressingMode::Implied},                  // 0xa3
-    {"LDY", AddressingMode::ZeroPage},                 // 0xa4
-    {"LDA", AddressingMode::ZeroPage},                 // 0xa5
-    {"LDX", AddressingMode::ZeroPage},                 // 0xa6
-    {"SMB2", AddressingMode::ZeroPage},                // 0xa7
-    {"TAY", AddressingMode::Implied},                  // 0xa8
-    {"LDA", AddressingMode::Immediate},                // 0xa9
-    {"TAX", AddressingMode::Implied},                  // 0xaa
-    {"???", AddressingMode::Implied},                  // 0xab
-    {"LDY", AddressingMode::Absolute},                 // 0xac
-    {"LDA", AddressingMode::Absolute},                 // 0xad
-    {"LDX", AddressingMode::Absolute},                 // 0xae
-    {"BBS2", AddressingMode::ZeroPageRelative},        // 0xaf
-    {"BCS", AddressingMode::Relative},                 // 0xb0
-    {"LDA", AddressingMode::IndirectY},                // 0xb1
-    {"LDA", AddressingMode::ZeroPageIndirect},         // 0xb2
-    {"???", AddressingMode::Implied},                  // 0xb3
-    {"LDY", AddressingMode::ZeroPageX},                // 0xb4
-    {"LDA", AddressingMode::ZeroPageX},                // 0xb5
-    {"LDX", AddressingMode::ZeroPageY},                // 0xb6
-    {"SMB3", AddressingMode::ZeroPage},                // 0xb7
-    {"CLV", AddressingMode::Implied},                  // 0xb8
-    {"LDA", AddressingMode::AbsoluteY},                // 0xb9
-    {"TSX", AddressingMode::Implied},                  // 0xba
-    {"???", AddressingMode::Implied},                  // 0xbb
-    {"LDY", AddressingMode::AbsoluteX},                // 0xbc
-    {"LDA", AddressingMode::AbsoluteX},                // 0xbd
-    {"LDX", AddressingMode::AbsoluteY},                // 0xbe
-    {"BBS3", AddressingMode::ZeroPageRelative},        // 0xbf
-    {"CPY", AddressingMode::Immediate},                // 0xc0
-    {"CMP", AddressingMode::IndirectX},                // 0xc1
-    {"???", AddressingMode::Implied},                  // 0xc2
-    {"???", AddressingMode::Implied},                  // 0xc3
-    {"CPY", AddressingMode::ZeroPage},                 // 0xc4
-    {"CMP", AddressingMode::ZeroPage},                 // 0xc5
-    {"DEC", AddressingMode::ZeroPage},                 // 0xc6
-    {"SMB4", AddressingMode::ZeroPage},                // 0xc7
-    {"INY", AddressingMode::Implied},                  // 0xc8
-    {"CMP", AddressingMode::Immediate},                // 0xc9
-    {"DEX", AddressingMode::Implied},                  // 0xca
-    {"WAI", AddressingMode::Implied},                  // 0xcb
-    {"CPY", AddressingMode::Absolute},                 // 0xcc
-    {"CMP", AddressingMode::Absolute},                 // 0xcd
-    {"DEC", AddressingMode::Absolute},                 // 0xce
-    {"BBS4", AddressingMode::ZeroPageRelative},        // 0xcf
-    {"BNE", AddressingMode::Relative},                 // 0xd0
-    {"CMP", AddressingMode::IndirectY},                // 0xd1
-    {"CMP", AddressingMode::ZeroPageIndirect},         // 0xd2
-    {"???", AddressingMode::Implied},                  // 0xd3
-    {"???", AddressingMode::Implied},                  // 0xd4
-    {"CMP", AddressingMode::ZeroPageX},                // 0xd5
-    {"DEC", AddressingMode::ZeroPageX},                // 0xd6
-    {"SMB5", AddressingMode::ZeroPage},                // 0xd7
-    {"CLD", AddressingMode::Implied},                  // 0xd8
-    {"CMP", AddressingMode::AbsoluteY},                // 0xd9
-    {"PHX", AddressingMode::Implied},                  // 0xda
-    {"STP", AddressingMode::Implied},                  // 0xdb
-    {"???", AddressingMode::Implied},                  // 0xdc
-    {"CMP", AddressingMode::AbsoluteX},                // 0xdd
-    {"DEC", AddressingMode::AbsoluteX},                // 0xde
-    {"BBS5", AddressingMode::ZeroPageRelative},        // 0xdf
-    {"CPX", AddressingMode::Immediate},                // 0xe0
-    {"SBC", AddressingMode::IndirectX},                // 0xe1
-    {"???", AddressingMode::Implied},                  // 0xe2
-    {"???", AddressingMode::Implied},                  // 0xe3
-    {"CPX", AddressingMode::ZeroPage},                 // 0xe4
-    {"SBC", AddressingMode::ZeroPage},                 // 0xe5
-    {"INC", AddressingMode::ZeroPage},                 // 0xe6
-    {"SMB6", AddressingMode::ZeroPage},                // 0xe7
-    {"INX", AddressingMode::Implied},                  // 0xe8
-    {"SBC", AddressingMode::Immediate},                // 0xe9
-    {"NOP", AddressingMode::Implied},                  // 0xea
-    {"???", AddressingMode::Implied},                  // 0xeb
-    {"CPX", AddressingMode::Absolute},                 // 0xec
-    {"SBC", AddressingMode::Absolute},                 // 0xed
-    {"INC", AddressingMode::Absolute},                 // 0xee
-    {"BBS6", AddressingMode::ZeroPageRelative},        // 0xef
-    {"BEQ", AddressingMode::Relative},                 // 0xf0
-    {"SBC", AddressingMode::IndirectY},                // 0xf1
-    {"SBC", AddressingMode::ZeroPageIndirect},         // 0xf2
-    {"???", AddressingMode::Implied},                  // 0xf3
-    {"???", AddressingMode::Implied},                  // 0xf4
-    {"SBC", AddressingMode::ZeroPageX},                // 0xf5
-    {"INC", AddressingMode::ZeroPageX},                // 0xf6
-    {"SMB7", AddressingMode::ZeroPage},                // 0xf7
-    {"SED", AddressingMode::Implied},                  // 0xf8
-    {"SBC", AddressingMode::AbsoluteY},                // 0xf9
-    {"PLX", AddressingMode::Implied},                  // 0xfa
-    {"???", AddressingMode::Implied},                  // 0xfb
-    {"???", AddressingMode::Implied},                  // 0xfc
-    {"SBC", AddressingMode::AbsoluteX},                // 0xfd
-    {"INC", AddressingMode::AbsoluteX},                // 0xfe
-    {"BBS7", AddressingMode::ZeroPageRelative}         // 0xff
-};
+constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
+    {.mnemonic = "BRK", .mode = AddressingMode::Implied},                  // 0x00
+    {.mnemonic = "ORA", .mode = AddressingMode::IndirectX},                // 0x01
+    {.mnemonic = "JAM", .mode = AddressingMode::Implied},                  // 0x02
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x03
+    {.mnemonic = "TSB", .mode = AddressingMode::ZeroPage},                 // 0x04
+    {.mnemonic = "ORA", .mode = AddressingMode::ZeroPage},                 // 0x05
+    {.mnemonic = "ASL", .mode = AddressingMode::ZeroPage},                 // 0x06
+    {.mnemonic = "RMB0", .mode = AddressingMode::ZeroPage},                // 0x07
+    {.mnemonic = "PHP", .mode = AddressingMode::Implied},                  // 0x08
+    {.mnemonic = "ORA", .mode = AddressingMode::Immediate},                // 0x09
+    {.mnemonic = "ASL", .mode = AddressingMode::Accumulator},              // 0x0a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x0b
+    {.mnemonic = "TSB", .mode = AddressingMode::Absolute},                 // 0x0c
+    {.mnemonic = "ORA", .mode = AddressingMode::Absolute},                 // 0x0d
+    {.mnemonic = "ASL", .mode = AddressingMode::Absolute},                 // 0x0e
+    {.mnemonic = "BBR0", .mode = AddressingMode::ZeroPageRelative},        // 0x0f
+    {.mnemonic = "BPL", .mode = AddressingMode::Relative},                 // 0x10
+    {.mnemonic = "ORA", .mode = AddressingMode::IndirectY},                // 0x11
+    {.mnemonic = "ORA", .mode = AddressingMode::ZeroPageIndirect},         // 0x12
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x13
+    {.mnemonic = "TRB", .mode = AddressingMode::ZeroPage},                 // 0x14
+    {.mnemonic = "ORA", .mode = AddressingMode::ZeroPageX},                // 0x15
+    {.mnemonic = "ASL", .mode = AddressingMode::ZeroPageX},                // 0x16
+    {.mnemonic = "RMB1", .mode = AddressingMode::ZeroPage},                // 0x17
+    {.mnemonic = "CLC", .mode = AddressingMode::Implied},                  // 0x18
+    {.mnemonic = "ORA", .mode = AddressingMode::AbsoluteY},                // 0x19
+    {.mnemonic = "INC", .mode = AddressingMode::Accumulator},              // 0x1a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x1b
+    {.mnemonic = "TRB", .mode = AddressingMode::Absolute},                 // 0x1c
+    {.mnemonic = "ORA", .mode = AddressingMode::AbsoluteX},                // 0x1d
+    {.mnemonic = "ASL", .mode = AddressingMode::AbsoluteX},                // 0x1e
+    {.mnemonic = "BBR1", .mode = AddressingMode::ZeroPageRelative},        // 0x1f
+    {.mnemonic = "JSR", .mode = AddressingMode::Absolute},                 // 0x20
+    {.mnemonic = "AND", .mode = AddressingMode::IndirectX},                // 0x21
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x22
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x23
+    {.mnemonic = "BIT", .mode = AddressingMode::ZeroPage},                 // 0x24
+    {.mnemonic = "AND", .mode = AddressingMode::ZeroPage},                 // 0x25
+    {.mnemonic = "ROL", .mode = AddressingMode::ZeroPage},                 // 0x26
+    {.mnemonic = "RMB2", .mode = AddressingMode::ZeroPage},                // 0x27
+    {.mnemonic = "PLP", .mode = AddressingMode::Implied},                  // 0x28
+    {.mnemonic = "AND", .mode = AddressingMode::Immediate},                // 0x29
+    {.mnemonic = "ROL", .mode = AddressingMode::Accumulator},              // 0x2a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x2b
+    {.mnemonic = "BIT", .mode = AddressingMode::Absolute},                 // 0x2c
+    {.mnemonic = "AND", .mode = AddressingMode::Absolute},                 // 0x2d
+    {.mnemonic = "ROL", .mode = AddressingMode::Absolute},                 // 0x2e
+    {.mnemonic = "BBR2", .mode = AddressingMode::ZeroPageRelative},        // 0x2f
+    {.mnemonic = "BMI", .mode = AddressingMode::Relative},                 // 0x30
+    {.mnemonic = "AND", .mode = AddressingMode::IndirectY},                // 0x31
+    {.mnemonic = "AND", .mode = AddressingMode::ZeroPageIndirect},         // 0x32
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x33
+    {.mnemonic = "BIT", .mode = AddressingMode::ZeroPageX},                // 0x34
+    {.mnemonic = "AND", .mode = AddressingMode::ZeroPageX},                // 0x35
+    {.mnemonic = "ROL", .mode = AddressingMode::ZeroPageX},                // 0x36
+    {.mnemonic = "RMB3", .mode = AddressingMode::ZeroPage},                // 0x37
+    {.mnemonic = "SEC", .mode = AddressingMode::Implied},                  // 0x38
+    {.mnemonic = "AND", .mode = AddressingMode::AbsoluteY},                // 0x39
+    {.mnemonic = "DEC", .mode = AddressingMode::Accumulator},              // 0x3a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x3b
+    {.mnemonic = "BIT", .mode = AddressingMode::AbsoluteX},                // 0x3c
+    {.mnemonic = "AND", .mode = AddressingMode::AbsoluteX},                // 0x3d
+    {.mnemonic = "ROL", .mode = AddressingMode::AbsoluteX},                // 0x3e
+    {.mnemonic = "BBR3", .mode = AddressingMode::ZeroPageRelative},        // 0x3f
+    {.mnemonic = "RTI", .mode = AddressingMode::Implied},                  // 0x40
+    {.mnemonic = "EOR", .mode = AddressingMode::IndirectX},                // 0x41
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x42
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x43
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x44
+    {.mnemonic = "EOR", .mode = AddressingMode::ZeroPage},                 // 0x45
+    {.mnemonic = "LSR", .mode = AddressingMode::ZeroPage},                 // 0x46
+    {.mnemonic = "RMB4", .mode = AddressingMode::ZeroPage},                // 0x47
+    {.mnemonic = "PHA", .mode = AddressingMode::Implied},                  // 0x48
+    {.mnemonic = "EOR", .mode = AddressingMode::Immediate},                // 0x49
+    {.mnemonic = "LSR", .mode = AddressingMode::Accumulator},              // 0x4a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x4b
+    {.mnemonic = "JMP", .mode = AddressingMode::Absolute},                 // 0x4c
+    {.mnemonic = "EOR", .mode = AddressingMode::Absolute},                 // 0x4d
+    {.mnemonic = "LSR", .mode = AddressingMode::Absolute},                 // 0x4e
+    {.mnemonic = "BBR4", .mode = AddressingMode::ZeroPageRelative},        // 0x4f
+    {.mnemonic = "BVC", .mode = AddressingMode::Relative},                 // 0x50
+    {.mnemonic = "EOR", .mode = AddressingMode::IndirectY},                // 0x51
+    {.mnemonic = "EOR", .mode = AddressingMode::ZeroPageIndirect},         // 0x52
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x53
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x54
+    {.mnemonic = "EOR", .mode = AddressingMode::ZeroPageX},                // 0x55
+    {.mnemonic = "LSR", .mode = AddressingMode::ZeroPageX},                // 0x56
+    {.mnemonic = "RMB5", .mode = AddressingMode::ZeroPage},                // 0x57
+    {.mnemonic = "CLI", .mode = AddressingMode::Implied},                  // 0x58
+    {.mnemonic = "EOR", .mode = AddressingMode::AbsoluteY},                // 0x59
+    {.mnemonic = "PHY", .mode = AddressingMode::Implied},                  // 0x5a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x5b
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x5c
+    {.mnemonic = "EOR", .mode = AddressingMode::AbsoluteX},                // 0x5d
+    {.mnemonic = "LSR", .mode = AddressingMode::AbsoluteX},                // 0x5e
+    {.mnemonic = "BBR5", .mode = AddressingMode::ZeroPageRelative},        // 0x5f
+    {.mnemonic = "RTS", .mode = AddressingMode::Implied},                  // 0x60
+    {.mnemonic = "ADC", .mode = AddressingMode::IndirectX},                // 0x61
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x62
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x63
+    {.mnemonic = "STZ", .mode = AddressingMode::ZeroPage},                 // 0x64
+    {.mnemonic = "ADC", .mode = AddressingMode::ZeroPage},                 // 0x65
+    {.mnemonic = "ROR", .mode = AddressingMode::ZeroPage},                 // 0x66
+    {.mnemonic = "RMB6", .mode = AddressingMode::ZeroPage},                // 0x67
+    {.mnemonic = "PLA", .mode = AddressingMode::Implied},                  // 0x68
+    {.mnemonic = "ADC", .mode = AddressingMode::Immediate},                // 0x69
+    {.mnemonic = "ROR", .mode = AddressingMode::Accumulator},              // 0x6a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x6b
+    {.mnemonic = "JMP", .mode = AddressingMode::Indirect},                 // 0x6c
+    {.mnemonic = "ADC", .mode = AddressingMode::Absolute},                 // 0x6d
+    {.mnemonic = "ROR", .mode = AddressingMode::Absolute},                 // 0x6e
+    {.mnemonic = "BBR6", .mode = AddressingMode::ZeroPageRelative},        // 0x6f
+    {.mnemonic = "BVS", .mode = AddressingMode::Relative},                 // 0x70
+    {.mnemonic = "ADC", .mode = AddressingMode::IndirectY},                // 0x71
+    {.mnemonic = "ADC", .mode = AddressingMode::ZeroPageIndirect},         // 0x72
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x73
+    {.mnemonic = "STZ", .mode = AddressingMode::ZeroPageX},                // 0x74
+    {.mnemonic = "ADC", .mode = AddressingMode::ZeroPageX},                // 0x75
+    {.mnemonic = "ROR", .mode = AddressingMode::ZeroPageX},                // 0x76
+    {.mnemonic = "RMB7", .mode = AddressingMode::ZeroPage},                // 0x77
+    {.mnemonic = "SEI", .mode = AddressingMode::Implied},                  // 0x78
+    {.mnemonic = "ADC", .mode = AddressingMode::AbsoluteY},                // 0x79
+    {.mnemonic = "PLY", .mode = AddressingMode::Implied},                  // 0x7a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x7b
+    {.mnemonic = "JMP", .mode = AddressingMode::AbsoluteIndexedIndirect},  // 0x7c
+    {.mnemonic = "ADC", .mode = AddressingMode::AbsoluteX},                // 0x7d
+    {.mnemonic = "ROR", .mode = AddressingMode::AbsoluteX},                // 0x7e
+    {.mnemonic = "BBR7", .mode = AddressingMode::ZeroPageRelative},        // 0x7f
+    {.mnemonic = "BRA", .mode = AddressingMode::Relative},                 // 0x80
+    {.mnemonic = "STA", .mode = AddressingMode::IndirectX},                // 0x81
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x82
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x83
+    {.mnemonic = "STY", .mode = AddressingMode::ZeroPage},                 // 0x84
+    {.mnemonic = "STA", .mode = AddressingMode::ZeroPage},                 // 0x85
+    {.mnemonic = "STX", .mode = AddressingMode::ZeroPage},                 // 0x86
+    {.mnemonic = "SMB0", .mode = AddressingMode::ZeroPage},                // 0x87
+    {.mnemonic = "DEY", .mode = AddressingMode::Implied},                  // 0x88
+    {.mnemonic = "BIT", .mode = AddressingMode::Immediate},                // 0x89
+    {.mnemonic = "TXA", .mode = AddressingMode::Implied},                  // 0x8a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x8b
+    {.mnemonic = "STY", .mode = AddressingMode::Absolute},                 // 0x8c
+    {.mnemonic = "STA", .mode = AddressingMode::Absolute},                 // 0x8d
+    {.mnemonic = "STX", .mode = AddressingMode::Absolute},                 // 0x8e
+    {.mnemonic = "BBS0", .mode = AddressingMode::ZeroPageRelative},        // 0x8f
+    {.mnemonic = "BCC", .mode = AddressingMode::Relative},                 // 0x90
+    {.mnemonic = "STA", .mode = AddressingMode::IndirectY},                // 0x91
+    {.mnemonic = "STA", .mode = AddressingMode::ZeroPageIndirect},         // 0x92
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x93
+    {.mnemonic = "STY", .mode = AddressingMode::ZeroPageX},                // 0x94
+    {.mnemonic = "STA", .mode = AddressingMode::ZeroPageX},                // 0x95
+    {.mnemonic = "STX", .mode = AddressingMode::ZeroPageY},                // 0x96
+    {.mnemonic = "SMB1", .mode = AddressingMode::ZeroPage},                // 0x97
+    {.mnemonic = "TYA", .mode = AddressingMode::Implied},                  // 0x98
+    {.mnemonic = "STA", .mode = AddressingMode::AbsoluteY},                // 0x99
+    {.mnemonic = "TXS", .mode = AddressingMode::Implied},                  // 0x9a
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x9b
+    {.mnemonic = "STZ", .mode = AddressingMode::Absolute},                 // 0x9c
+    {.mnemonic = "STA", .mode = AddressingMode::AbsoluteX},                // 0x9d
+    {.mnemonic = "STZ", .mode = AddressingMode::AbsoluteX},                // 0x9e
+    {.mnemonic = "BBS1", .mode = AddressingMode::ZeroPageRelative},        // 0x9f
+    {.mnemonic = "LDY", .mode = AddressingMode::Immediate},                // 0xa0
+    {.mnemonic = "LDA", .mode = AddressingMode::IndirectX},                // 0xa1
+    {.mnemonic = "LDX", .mode = AddressingMode::Immediate},                // 0xa2
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xa3
+    {.mnemonic = "LDY", .mode = AddressingMode::ZeroPage},                 // 0xa4
+    {.mnemonic = "LDA", .mode = AddressingMode::ZeroPage},                 // 0xa5
+    {.mnemonic = "LDX", .mode = AddressingMode::ZeroPage},                 // 0xa6
+    {.mnemonic = "SMB2", .mode = AddressingMode::ZeroPage},                // 0xa7
+    {.mnemonic = "TAY", .mode = AddressingMode::Implied},                  // 0xa8
+    {.mnemonic = "LDA", .mode = AddressingMode::Immediate},                // 0xa9
+    {.mnemonic = "TAX", .mode = AddressingMode::Implied},                  // 0xaa
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xab
+    {.mnemonic = "LDY", .mode = AddressingMode::Absolute},                 // 0xac
+    {.mnemonic = "LDA", .mode = AddressingMode::Absolute},                 // 0xad
+    {.mnemonic = "LDX", .mode = AddressingMode::Absolute},                 // 0xae
+    {.mnemonic = "BBS2", .mode = AddressingMode::ZeroPageRelative},        // 0xaf
+    {.mnemonic = "BCS", .mode = AddressingMode::Relative},                 // 0xb0
+    {.mnemonic = "LDA", .mode = AddressingMode::IndirectY},                // 0xb1
+    {.mnemonic = "LDA", .mode = AddressingMode::ZeroPageIndirect},         // 0xb2
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xb3
+    {.mnemonic = "LDY", .mode = AddressingMode::ZeroPageX},                // 0xb4
+    {.mnemonic = "LDA", .mode = AddressingMode::ZeroPageX},                // 0xb5
+    {.mnemonic = "LDX", .mode = AddressingMode::ZeroPageY},                // 0xb6
+    {.mnemonic = "SMB3", .mode = AddressingMode::ZeroPage},                // 0xb7
+    {.mnemonic = "CLV", .mode = AddressingMode::Implied},                  // 0xb8
+    {.mnemonic = "LDA", .mode = AddressingMode::AbsoluteY},                // 0xb9
+    {.mnemonic = "TSX", .mode = AddressingMode::Implied},                  // 0xba
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xbb
+    {.mnemonic = "LDY", .mode = AddressingMode::AbsoluteX},                // 0xbc
+    {.mnemonic = "LDA", .mode = AddressingMode::AbsoluteX},                // 0xbd
+    {.mnemonic = "LDX", .mode = AddressingMode::AbsoluteY},                // 0xbe
+    {.mnemonic = "BBS3", .mode = AddressingMode::ZeroPageRelative},        // 0xbf
+    {.mnemonic = "CPY", .mode = AddressingMode::Immediate},                // 0xc0
+    {.mnemonic = "CMP", .mode = AddressingMode::IndirectX},                // 0xc1
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xc2
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xc3
+    {.mnemonic = "CPY", .mode = AddressingMode::ZeroPage},                 // 0xc4
+    {.mnemonic = "CMP", .mode = AddressingMode::ZeroPage},                 // 0xc5
+    {.mnemonic = "DEC", .mode = AddressingMode::ZeroPage},                 // 0xc6
+    {.mnemonic = "SMB4", .mode = AddressingMode::ZeroPage},                // 0xc7
+    {.mnemonic = "INY", .mode = AddressingMode::Implied},                  // 0xc8
+    {.mnemonic = "CMP", .mode = AddressingMode::Immediate},                // 0xc9
+    {.mnemonic = "DEX", .mode = AddressingMode::Implied},                  // 0xca
+    {.mnemonic = "WAI", .mode = AddressingMode::Implied},                  // 0xcb
+    {.mnemonic = "CPY", .mode = AddressingMode::Absolute},                 // 0xcc
+    {.mnemonic = "CMP", .mode = AddressingMode::Absolute},                 // 0xcd
+    {.mnemonic = "DEC", .mode = AddressingMode::Absolute},                 // 0xce
+    {.mnemonic = "BBS4", .mode = AddressingMode::ZeroPageRelative},        // 0xcf
+    {.mnemonic = "BNE", .mode = AddressingMode::Relative},                 // 0xd0
+    {.mnemonic = "CMP", .mode = AddressingMode::IndirectY},                // 0xd1
+    {.mnemonic = "CMP", .mode = AddressingMode::ZeroPageIndirect},         // 0xd2
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xd3
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xd4
+    {.mnemonic = "CMP", .mode = AddressingMode::ZeroPageX},                // 0xd5
+    {.mnemonic = "DEC", .mode = AddressingMode::ZeroPageX},                // 0xd6
+    {.mnemonic = "SMB5", .mode = AddressingMode::ZeroPage},                // 0xd7
+    {.mnemonic = "CLD", .mode = AddressingMode::Implied},                  // 0xd8
+    {.mnemonic = "CMP", .mode = AddressingMode::AbsoluteY},                // 0xd9
+    {.mnemonic = "PHX", .mode = AddressingMode::Implied},                  // 0xda
+    {.mnemonic = "STP", .mode = AddressingMode::Implied},                  // 0xdb
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xdc
+    {.mnemonic = "CMP", .mode = AddressingMode::AbsoluteX},                // 0xdd
+    {.mnemonic = "DEC", .mode = AddressingMode::AbsoluteX},                // 0xde
+    {.mnemonic = "BBS5", .mode = AddressingMode::ZeroPageRelative},        // 0xdf
+    {.mnemonic = "CPX", .mode = AddressingMode::Immediate},                // 0xe0
+    {.mnemonic = "SBC", .mode = AddressingMode::IndirectX},                // 0xe1
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xe2
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xe3
+    {.mnemonic = "CPX", .mode = AddressingMode::ZeroPage},                 // 0xe4
+    {.mnemonic = "SBC", .mode = AddressingMode::ZeroPage},                 // 0xe5
+    {.mnemonic = "INC", .mode = AddressingMode::ZeroPage},                 // 0xe6
+    {.mnemonic = "SMB6", .mode = AddressingMode::ZeroPage},                // 0xe7
+    {.mnemonic = "INX", .mode = AddressingMode::Implied},                  // 0xe8
+    {.mnemonic = "SBC", .mode = AddressingMode::Immediate},                // 0xe9
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xea
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xeb
+    {.mnemonic = "CPX", .mode = AddressingMode::Absolute},                 // 0xec
+    {.mnemonic = "SBC", .mode = AddressingMode::Absolute},                 // 0xed
+    {.mnemonic = "INC", .mode = AddressingMode::Absolute},                 // 0xee
+    {.mnemonic = "BBS6", .mode = AddressingMode::ZeroPageRelative},        // 0xef
+    {.mnemonic = "BEQ", .mode = AddressingMode::Relative},                 // 0xf0
+    {.mnemonic = "SBC", .mode = AddressingMode::IndirectY},                // 0xf1
+    {.mnemonic = "SBC", .mode = AddressingMode::ZeroPageIndirect},         // 0xf2
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xf3
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xf4
+    {.mnemonic = "SBC", .mode = AddressingMode::ZeroPageX},                // 0xf5
+    {.mnemonic = "INC", .mode = AddressingMode::ZeroPageX},                // 0xf6
+    {.mnemonic = "SMB7", .mode = AddressingMode::ZeroPage},                // 0xf7
+    {.mnemonic = "SED", .mode = AddressingMode::Implied},                  // 0xf8
+    {.mnemonic = "SBC", .mode = AddressingMode::AbsoluteY},                // 0xf9
+    {.mnemonic = "PLX", .mode = AddressingMode::Implied},                  // 0xfa
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xfb
+    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xfc
+    {.mnemonic = "SBC", .mode = AddressingMode::AbsoluteX},                // 0xfd
+    {.mnemonic = "INC", .mode = AddressingMode::AbsoluteX},                // 0xfe
+    {.mnemonic = "BBS7", .mode = AddressingMode::ZeroPageRelative}         // 0xff
+}};
 
 }  // namespace Hardware
