@@ -8,18 +8,21 @@ namespace Hardware::Instructions {
 void JMP::ExecuteABS(CPU& cpu, Bus& bus) {
     Word dir = cpu.FetchWord(bus);
     cpu.PC = dir;
+    cpu.UpdatePagePtr(bus);
 }
 
 void JMP::ExecuteABSX(CPU& cpu, Bus& bus) {
     Word dir = cpu.FetchWord(bus);
     dir += cpu.X;
     cpu.PC = dir;
+    cpu.UpdatePagePtr(bus);
 }
 
 void JMP::ExecuteIND(CPU& cpu, Bus& bus) {
     Word dirIND = cpu.FetchWord(bus);
     Word dir = cpu.ReadWord(dirIND, bus);
     cpu.PC = dir;
+    cpu.UpdatePagePtr(bus);
 }
 
 }  // namespace Hardware::Instructions

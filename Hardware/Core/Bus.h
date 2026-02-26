@@ -82,6 +82,8 @@ public:
     const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
     void RebuildDeviceMap();
 
+    inline Byte* GetPageReadPtr(Word page) const;
+
 private:
     void UpdateCache();
 

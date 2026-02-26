@@ -9,6 +9,7 @@ void BNE::Execute(CPU& cpu, Bus& bus) {
     int8_t dir = cpu.FetchByte(bus);
     if(cpu.Z == 0) {
         cpu.PC += dir;
+        cpu.UpdatePagePtr(bus);
     }
 }
 

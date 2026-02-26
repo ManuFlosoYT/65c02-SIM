@@ -9,6 +9,7 @@ void RTI::Execute(CPU& cpu, Bus& bus) {
     Byte status = cpu.PopByte(bus);
     cpu.SetStatus(status);
     cpu.PC = cpu.PopWord(bus);
+    cpu.UpdatePagePtr(bus);
 }
 
 }  // namespace Hardware::Instructions

@@ -70,4 +70,6 @@ inline void Bus::WriteDirect(Word address, Byte data) {
     }
 }
 
+inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap[page]; }
+
 }  // namespace Hardware

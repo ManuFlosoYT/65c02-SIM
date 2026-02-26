@@ -11,6 +11,7 @@ void BRK::Execute(CPU& cpu, Bus& bus) {
     Byte PS = cpu.GetStatus();
     cpu.PushByte(PS, bus);
     cpu.PC = cpu.ReadWord(0xFFFE, bus);
+    cpu.UpdatePagePtr(bus);
 }
 
 }  // namespace Hardware::Instructions

@@ -24,6 +24,8 @@ public:
     Word PC{};  // Program Counter
     Word SP{};  // Stack Pointer
 
+    const Byte* current_page_ptr = nullptr;
+
     Byte A{}, X{}, Y{};  // Registros
 
     Byte C : 1;  // Carry Flag
@@ -61,6 +63,8 @@ public:
     int GetRemainingCycles() const;
 
     void AddPageCrossPenalty(Word baseAddr, Word effectiveAddr);
+
+    inline void UpdatePagePtr(Bus& bus);
 
     const Byte FetchByte(Bus& bus);
     const Word FetchWord(Bus& bus);

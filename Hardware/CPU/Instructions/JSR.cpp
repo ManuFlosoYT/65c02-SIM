@@ -12,6 +12,7 @@ void JSR::Execute(CPU& cpu, Bus& bus) {
     cpu.PushWord(RetDir, bus);
 
     cpu.PC = Dir;
+    cpu.UpdatePagePtr(bus);
 }
 
 }  // namespace Hardware::Instructions

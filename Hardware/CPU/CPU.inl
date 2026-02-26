@@ -32,6 +32,7 @@ inline int Hardware::CPU::Execute(Bus& bus) {
 inline int Hardware::CPU::Step(Bus& bus) {
     if (!isInit) {
         PC = ReadWord(0xFFFC, bus);
+        UpdatePagePtr(bus);
         isInit = true;
     }
 
@@ -60,6 +61,7 @@ inline void Hardware::CPU::IRQ(Bus& bus) {
         I = 1;
         D = 0;
         PC = ReadWord(0xFFFE, bus);
+        UpdatePagePtr(bus);
     }
 }
 
@@ -102,16 +104,27 @@ inline void Hardware::CPU::AddPageCrossPenalty(Word baseAddr,
     }
 }
 
+inline void Hardware::CPU::UpdatePagePtr(Bus& bus) {
+    Byte* memoryBase = bus.GetPageReadPtr(PC >> 8);
+    if (memoryBase) {
+        current_page_ptr = memoryBase + PC;
+    } else {
+        current_page_ptr = nullptr;
+    }
+}
+
 inline const Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
-    Byte dato = bus.Read(PC);
+    Byte dato = current_page_ptr ? *current_page_ptr++ : bus.Read(PC);
     PC++;
+    if ((PC & 0xFF) == 0) {
+        UpdatePagePtr(bus);
+    }
     return dato;
 }
 
 inline const Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
-    Word dato = bus.Read(PC);
-    dato |= (bus.Read(PC + 1) << 8);
-    PC += 2;
+    Word dato = FetchByte(bus);
+    dato |= (FetchByte(bus) << 8);
     return dato;
 }
 
