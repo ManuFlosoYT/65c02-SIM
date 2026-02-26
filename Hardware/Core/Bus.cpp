@@ -1,6 +1,5 @@
 #include "Hardware/Core/Bus.h"
 
-#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -10,14 +9,9 @@ namespace Hardware {
 Bus::Bus() { Init(); }
 
 void Bus::Init() {
-    for (int i = 0; i < BUS_SIZE; ++i) {
-        deviceMap[i].device = nullptr;
-        deviceMap[i].offset = 0;
-    }
-    for (int i = 0; i < 256; ++i) {
-        pageReadMap[i] = nullptr;
-        pageWriteMap[i] = nullptr;
-    }
+    deviceMap.fill({nullptr, 0});
+    pageReadMap.fill(nullptr);
+    pageWriteMap.fill(nullptr);
     hasWriteHooks = false;
     hasReadHooks = false;
     globalWriteHooks.clear();
@@ -31,93 +25,84 @@ void Bus::ClearDevices() {
 }
 
 bool Bus::SaveState(std::ostream& out) const {
-    uint32_t deviceCount = static_cast<uint32_t>(registeredDevices.size());
-    out.write(reinterpret_cast<const char*>(&deviceCount), sizeof(deviceCount));
+    auto deviceCount = static_cast<uint32_t>(registeredDevices.size());
+    out.write(reinterpret_cast<const char*>(&deviceCount), sizeof(deviceCount));  // NOLINT
 
     for (const auto& reg : registeredDevices) {
-        out.write(reinterpret_cast<const char*>(&reg.startAddress),
+        out.write(reinterpret_cast<const char*>(&reg.startAddress),  // NOLINT
                   sizeof(reg.startAddress));
-        out.write(reinterpret_cast<const char*>(&reg.endAddress),
+        out.write(reinterpret_cast<const char*>(&reg.endAddress),  // NOLINT
                   sizeof(reg.endAddress));
-        out.write(reinterpret_cast<const char*>(&reg.enabled),
+        out.write(reinterpret_cast<const char*>(&reg.enabled),  // NOLINT
                   sizeof(reg.enabled));
-        out.write(reinterpret_cast<const char*>(&reg.ignoreCollision),
+        out.write(reinterpret_cast<const char*>(&reg.ignoreCollision),  // NOLINT
                   sizeof(reg.ignoreCollision));
 
         std::string name = reg.device->GetName();
-        uint32_t nameLen = static_cast<uint32_t>(name.length());
-        out.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
+        auto nameLen = static_cast<uint32_t>(name.length());
+        out.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));  // NOLINT
         out.write(name.c_str(), nameLen);
     }
     return out.good();
 }
 
-bool Bus::LoadState(std::istream& in) {
+bool Bus::LoadState(std::istream& inStream) {
     uint32_t deviceCount = 0;
-    in.read(reinterpret_cast<char*>(&deviceCount), sizeof(deviceCount));
+    inStream.read(reinterpret_cast<char*>(&deviceCount), sizeof(deviceCount));  // NOLINT
 
     for (uint32_t i = 0; i < deviceCount; ++i) {
-        Word startAddress, endAddress;
-        bool enabled, ignoreCollision;
-        in.read(reinterpret_cast<char*>(&startAddress), sizeof(startAddress));
-        in.read(reinterpret_cast<char*>(&endAddress), sizeof(endAddress));
-        in.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));
-        in.read(reinterpret_cast<char*>(&ignoreCollision),
-                sizeof(ignoreCollision));
+        Word startAddress = 0;
+        Word endAddress = 0;
+        bool enabled = false;
+        bool ignoreCollision = false;
+        inStream.read(reinterpret_cast<char*>(&startAddress), sizeof(startAddress));  // NOLINT
+        inStream.read(reinterpret_cast<char*>(&endAddress), sizeof(endAddress));      // NOLINT
+        inStream.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));            // NOLINT
+        inStream.read(reinterpret_cast<char*>(&ignoreCollision),                      // NOLINT
+                      sizeof(ignoreCollision));
 
         uint32_t nameLen = 0;
-        in.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
+        inStream.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));  // NOLINT
         std::string name(nameLen, '\0');
-        in.read(&name[0], nameLen);
+        inStream.read(name.data(), nameLen);
 
         if (i < registeredDevices.size()) {
-            const auto& reg = registeredDevices[i];
-            if (reg.device->GetName() != name ||
-                reg.startAddress != startAddress ||
-                reg.endAddress != endAddress) {
-                std::cerr << "Memory map mismatch! Savestate: " << name
-                          << " [0x" << std::hex << startAddress << "-0x"
-                          << endAddress
-                          << "], Current: " << reg.device->GetName() << " [0x"
-                          << reg.startAddress << "-0x" << reg.endAddress << "]"
-                          << std::dec << std::endl;
+            const auto& reg = registeredDevices.at(i);
+            if (reg.device->GetName() != name || reg.startAddress != startAddress || reg.endAddress != endAddress) {
+                std::cerr << "Memory map mismatch! Savestate: " << name << " [0x" << std::hex << startAddress << "-0x"
+                          << endAddress << "], Current: " << reg.device->GetName() << " [0x" << reg.startAddress
+                          << "-0x" << reg.endAddress << "]" << std::dec << '\n';
             }
         } else {
-            std::cerr << "Memory map mismatch! Savestate has more devices ("
-                      << deviceCount << ") than current configuration ("
-                      << registeredDevices.size() << ")" << std::endl;
+            std::cerr << "Memory map mismatch! Savestate has more devices (" << deviceCount
+                      << ") than current configuration (" << registeredDevices.size() << ")" << '\n';
         }
     }
 
     if (deviceCount != registeredDevices.size()) {
         std::cerr << "Memory map count mismatch! Savestate: " << deviceCount
-                  << ", Current: " << registeredDevices.size() << std::endl;
+                  << ", Current: " << registeredDevices.size() << '\n';
         return false;
     }
 
-    return in.good();
+    return inStream.good();
 }
 
-void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
-                         bool enabled, bool ignoreCollision) {
+void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device, bool enabled, bool ignoreCollision) {
     if (enabled && !ignoreCollision) {
         for (int i = startAddress; i <= (int)endAddress; ++i) {
-            if (deviceMap[i].device != nullptr) {
-                throw std::runtime_error(
-                    "Memory collision detected while registering device: " +
-                    device->GetName() + " at address 0x" + std::to_string(i));
+            if (deviceMap.at(i).device != nullptr) {
+                throw std::runtime_error("Memory collision detected while registering device: " + device->GetName() +
+                                         " at address 0x" + std::to_string(i));
             }
         }
     }
 
-    registeredDevices.push_back(
-        {startAddress, endAddress, device, enabled, ignoreCollision});
+    registeredDevices.push_back({startAddress, endAddress, device, enabled, ignoreCollision});
     RebuildDeviceMap();
 }
 
-void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart,
-                                   Word newEnd, bool enabled,
-                                   bool ignoreCollision) {
+void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart, Word newEnd, bool enabled, bool ignoreCollision) {
     for (auto& reg : registeredDevices) {
         if (reg.device == device) {
             reg.startAddress = newStart;
@@ -130,41 +115,34 @@ void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart,
     RebuildDeviceMap();
 }
 
-void Bus::AddGlobalWriteHook(BusWriteHook hook) {
+void Bus::AddGlobalWriteHook(const BusWriteHook& hook) {
     globalWriteHooks.push_back(hook);
     hasWriteHooks = !globalWriteHooks.empty();
 }
 
-void Bus::AddGlobalReadHook(BusReadHook hook) {
+void Bus::AddGlobalReadHook(const BusReadHook& hook) {
     globalReadHooks.push_back(hook);
     hasReadHooks = !globalReadHooks.empty();
 }
 
-void Bus::ClearProfiler() {
-    std::memset(profilerCounts, 0, sizeof(profilerCounts));
-}
+void Bus::ClearProfiler() { profilerCounts.fill(0); }
 
-const std::vector<DeviceRegistration>& Bus::GetRegisteredDevices() const {
-    return registeredDevices;
-}
+const std::vector<DeviceRegistration>& Bus::GetRegisteredDevices() const { return registeredDevices; }
 
 void Bus::RebuildDeviceMap() {
-    for (int i = 0; i < BUS_SIZE; ++i) {
-        deviceMap[i].device = nullptr;
-        deviceMap[i].offset = 0;
-    }
+    deviceMap.fill({nullptr, 0});
 
     for (const auto& reg : registeredDevices) {
         if (reg.enabled && !reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
-                if (deviceMap[i].device != nullptr) {
+                if (deviceMap.at(i).device != nullptr) {
                     throw std::runtime_error(
                         "Memory collision detected during "
                         "RebuildDeviceMap for: " +
                         reg.device->GetName());
                 }
-                deviceMap[i].device = reg.device;
-                deviceMap[i].offset = i - reg.startAddress;
+                deviceMap.at(i).device = reg.device;
+                deviceMap.at(i).offset = i - reg.startAddress;
             }
         }
     }
@@ -172,8 +150,8 @@ void Bus::RebuildDeviceMap() {
     for (const auto& reg : registeredDevices) {
         if (reg.enabled && reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
-                deviceMap[i].device = reg.device;
-                deviceMap[i].offset = i - reg.startAddress;
+                deviceMap.at(i).device = reg.device;
+                deviceMap.at(i).offset = i - reg.startAddress;
             }
         }
     }
@@ -182,23 +160,23 @@ void Bus::RebuildDeviceMap() {
 }
 
 void Bus::UpdateCache() {
-    for (int p = 0; p < 256; ++p) {
-        pageReadMap[p] = nullptr;
-        pageWriteMap[p] = nullptr;
+    for (int page = 0; page < 256; ++page) {
+        pageReadMap.at(page) = nullptr;
+        pageWriteMap.at(page) = nullptr;
 
         bool pageIsUniform = true;
-        IBusDevice* firstDevice = deviceMap[p << 8].device;
-        if (!firstDevice || !firstDevice->GetRawMemory()) {
+        IBusDevice* firstDevice = deviceMap.at(page << 8).device;
+        if (firstDevice == nullptr || firstDevice->GetRawMemory() == nullptr) {
             pageIsUniform = false;
         } else {
-            Word expectedOffset = deviceMap[p << 8].offset;
+            Word expectedOffset = deviceMap.at(page << 8).offset;
             for (int i = 0; i < 256; ++i) {
-                Word addr = (p << 8) | i;
-                if (deviceMap[addr].device != firstDevice) {
+                Word addr = (page << 8) | i;
+                if (deviceMap.at(addr).device != firstDevice) {
                     pageIsUniform = false;
                     break;
                 }
-                if (deviceMap[addr].offset != expectedOffset + i) {
+                if (deviceMap.at(addr).offset != expectedOffset + i) {
                     pageIsUniform = false;
                     break;
                 }
@@ -207,11 +185,12 @@ void Bus::UpdateCache() {
 
         if (pageIsUniform) {
             Byte* rawPtr = firstDevice->GetRawMemory();
-            Byte* memoryBase = rawPtr + deviceMap[p << 8].offset - (p << 8);
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            Byte* memoryBase = rawPtr + deviceMap.at(page << 8).offset - (page << 8);
 
-            pageReadMap[p] = memoryBase;
+            pageReadMap.at(page) = memoryBase;
             if (!firstDevice->IsReadOnly()) {
-                pageWriteMap[p] = memoryBase;
+                pageWriteMap.at(page) = memoryBase;
             }
         }
     }

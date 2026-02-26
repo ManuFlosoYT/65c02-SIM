@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <functional>
 #include <vector>
 
@@ -7,35 +8,34 @@
 namespace Hardware {
 
 using BusWriteHook = std::function<void(Word /* address */, Byte /* data */)>;
-using BusReadHook =
-    std::function<void(Word /* address */, Byte /* data_read */)>;
+using BusReadHook = std::function<void(Word /* address */, Byte /* data_read */)>;
 
 constexpr Word MAX_ADDR = 0xFFFF;
 constexpr uint32_t BUS_SIZE = (uint32_t)MAX_ADDR + 1;
 constexpr Word ROM_SIZE = 0x8000;
 
-#define ACIA_DATA 0x5000
-#define ACIA_STATUS 0x5001
-#define ACIA_CMD 0x5002
-#define ACIA_CTRL 0x5003
+constexpr Word ACIA_DATA = 0x5000;
+constexpr Word ACIA_STATUS = 0x5001;
+constexpr Word ACIA_CMD = 0x5002;
+constexpr Word ACIA_CTRL = 0x5003;
 
 // VIA Registers
-#define PORTB 0x6000
-#define PORTA 0x6001
-#define DDRB 0x6002
-#define DDRA 0x6003
-#define T1C_L 0x6004
-#define T1C_H 0x6005
-#define T1L_L 0x6006
-#define T1L_H 0x6007
-#define T2C_L 0x6008
-#define T2C_H 0x6009
-#define SR 0x600A
-#define ACR 0x600B
-#define PCR 0x600C
-#define IFR 0x600D
-#define IER 0x600E
-#define ORA_NH 0x600F
+constexpr Word PORTB = 0x6000;
+constexpr Word PORTA = 0x6001;
+constexpr Word DDRB = 0x6002;
+constexpr Word DDRA = 0x6003;
+constexpr Word T1C_L = 0x6004;
+constexpr Word T1C_H = 0x6005;
+constexpr Word T1L_L = 0x6006;
+constexpr Word T1L_H = 0x6007;
+constexpr Word T2C_L = 0x6008;
+constexpr Word T2C_H = 0x6009;
+constexpr Word SR = 0x600A;  // NOLINT
+constexpr Word ACR = 0x600B;
+constexpr Word PCR = 0x600C;
+constexpr Word IFR = 0x600D;
+constexpr Word IER = 0x600E;
+constexpr Word ORA_NH = 0x600F;
 
 struct DeviceRegistration {
     Word startAddress;
@@ -51,22 +51,20 @@ struct BusSlot {
 };
 
 class Bus {
-public:
+   public:
     Bus();
     void Init();
     void ClearDevices();
 
     bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool LoadState(std::istream& inStream);
 
-    inline bool HasActiveHooks() const;
+    [[nodiscard]] inline bool HasActiveHooks() const;
 
-    void RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
-                        bool enabled = true, bool ignoreCollision = false);
+    void RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device, bool enabled = true,
+                        bool ignoreCollision = false);
 
-    void UpdateDeviceRegistration(IBusDevice* device, Word newStart,
-                                  Word newEnd, bool enabled,
-                                  bool ignoreCollision);
+    void UpdateDeviceRegistration(IBusDevice* device, Word newStart, Word newEnd, bool enabled, bool ignoreCollision);
 
     template <bool Debug>
     inline Byte Read(Word address);
@@ -77,26 +75,26 @@ public:
     inline void Write(Word address, Byte data);
 
     inline void WriteDirect(Word address, Byte data);
-    inline Byte ReadDirect(Word address) const;
+    [[nodiscard]] inline Byte ReadDirect(Word address) const;
 
-    void AddGlobalWriteHook(BusWriteHook hook);
-    void AddGlobalReadHook(BusReadHook hook);
+    void AddGlobalWriteHook(const BusWriteHook& hook);
+    void AddGlobalReadHook(const BusReadHook& hook);
 
     inline void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
     inline uint32_t* GetProfilerCounts();
 
-    const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
+    [[nodiscard]] const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
     void RebuildDeviceMap();
 
-    inline Byte* GetPageReadPtr(Word page) const;
+    [[nodiscard]] inline Byte* GetPageReadPtr(Word page) const;
 
-private:
+   private:
     void UpdateCache();
 
-    BusSlot deviceMap[BUS_SIZE];
-    Byte* pageReadMap[256];
-    Byte* pageWriteMap[256];
+    std::array<BusSlot, BUS_SIZE> deviceMap{};
+    std::array<Byte*, 256> pageReadMap{};
+    std::array<Byte*, 256> pageWriteMap{};
 
     std::vector<DeviceRegistration> registeredDevices;
     std::vector<BusWriteHook> globalWriteHooks;
@@ -105,36 +103,33 @@ private:
     bool hasReadHooks = false;
 
     bool profilingEnabled = false;
-    uint32_t profilerCounts[BUS_SIZE]{0};
+    std::array<uint32_t, BUS_SIZE> profilerCounts{};
 };
 
 }  // namespace Hardware
 
-
 namespace Hardware {
 
-inline void Bus::SetProfilingEnabled(bool enabled) {
-    profilingEnabled = enabled;
-}
+inline void Bus::SetProfilingEnabled(bool enabled) { profilingEnabled = enabled; }
 
-inline uint32_t* Bus::GetProfilerCounts() { return profilerCounts; }
+inline uint32_t* Bus::GetProfilerCounts() { return profilerCounts.data(); }
 
-inline bool Bus::HasActiveHooks() const {
-    return profilingEnabled || hasReadHooks || hasWriteHooks;
-}
+inline bool Bus::HasActiveHooks() const { return profilingEnabled || hasReadHooks || hasWriteHooks; }
 
 template <bool Debug>
 inline Byte Bus::Read(Word address) {
     if constexpr (Debug) {
-        if (profilingEnabled) profilerCounts[address]++;
+        if (profilingEnabled) {
+            profilerCounts[address]++;  // NOLINT
+        }
     }
     Byte data = 0;
 
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {
-        data = memoryBase[address];
+    if (Byte* memoryBase = pageReadMap[address >> 8]) {  // NOLINT
+        data = memoryBase[address];                      // NOLINT
     } else {
-        const auto& slot = deviceMap[address];
-        if (slot.device) {
+        const auto& slot = deviceMap[address];  // NOLINT
+        if (slot.device != nullptr) {
             data = slot.device->Read(slot.offset);
         }
     }
@@ -150,11 +145,11 @@ inline Byte Bus::Read(Word address) {
 }
 
 inline Byte Bus::ReadDirect(Word address) const {
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {
-        return memoryBase[address];
+    if (Byte* memoryBase = pageReadMap[address >> 8]) {  // NOLINT
+        return memoryBase[address];                      // NOLINT
     }
-    const auto& slot = deviceMap[address];
-    if (slot.device) {
+    const auto& slot = deviceMap[address];  // NOLINT
+    if (slot.device != nullptr) {
         return slot.device->Read(slot.offset);
     }
     return 0;
@@ -163,14 +158,16 @@ inline Byte Bus::ReadDirect(Word address) const {
 template <bool Debug>
 inline void Bus::Write(Word address, Byte data) {
     if constexpr (Debug) {
-        if (profilingEnabled) profilerCounts[address]++;
+        if (profilingEnabled) {
+            profilerCounts[address]++;  // NOLINT
+        }
     }
 
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
-        memoryBase[address] = data;
+    if (Byte* memoryBase = pageWriteMap[address >> 8]) {  // NOLINT
+        memoryBase[address] = data;                       // NOLINT
     } else {
-        const auto& slot = deviceMap[address];
-        if (slot.device) {
+        const auto& slot = deviceMap[address];  // NOLINT
+        if (slot.device != nullptr) {
             slot.device->Write(slot.offset, data);
         }
     }
@@ -185,24 +182,23 @@ inline void Bus::Write(Word address, Byte data) {
 }
 
 inline void Bus::WriteDirect(Word address, Byte data) {
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
-        memoryBase[address] = data;
+    if (Byte* memoryBase = pageWriteMap[address >> 8]) {  // NOLINT
+        memoryBase[address] = data;                       // NOLINT
     } else {
-        const auto& slot = deviceMap[address];
-        if (slot.device) {
+        const auto& slot = deviceMap[address];  // NOLINT
+        if (slot.device != nullptr) {
             slot.device->Write(slot.offset, data);
         }
     }
 }
 
-inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap[page]; }
+inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap[page]; }  // NOLINT
 
 inline Byte Bus::Read(Word address) {
     if (HasActiveHooks()) {
         return Read<true>(address);
-    } else {
-        return Read<false>(address);
     }
+    return Read<false>(address);
 }
 
 inline void Bus::Write(Word address, Byte data) {
