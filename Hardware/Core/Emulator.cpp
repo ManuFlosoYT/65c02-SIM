@@ -367,12 +367,12 @@ void Emulator::ThreadLoop() {
     double instructionAccumulator = 0.0;
     auto lastWatchCheck = high_resolution_clock::now();
 
-    while (running) {
-        {
+    while (running.load(std::memory_order_relaxed)) {
+        if (paused.load(std::memory_order_relaxed)) {
             std::unique_lock<std::mutex> lock(threadMutex);
             pauseCV.wait(lock, [this] { return !paused || !running; });
         }
-        if (!running) break;
+        if (!running.load(std::memory_order_relaxed)) break;
 
         int currentTarget = targetIPS.load();
         if (currentTarget <= 0) currentTarget = 1;
@@ -424,10 +424,11 @@ void Emulator::ThreadLoop() {
 
         nextSliceTime += milliseconds(sliceDurationMs);
 
-        std::this_thread::sleep_until(nextSliceTime);
-
-        if (high_resolution_clock::now() > nextSliceTime) {
-            nextSliceTime = high_resolution_clock::now();
+        auto sleepCheckTime = high_resolution_clock::now();
+        if (sleepCheckTime < nextSliceTime) {
+            std::this_thread::sleep_until(nextSliceTime);
+        } else {
+            nextSliceTime = sleepCheckTime;
         }
 
         if (autoReloadRequested.load() && !currentBinPath.empty()) {
