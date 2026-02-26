@@ -24,11 +24,11 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 
     std::string path = bin;
 
-    FILE* file = fopen(path.c_str(), "rb");
+    FILE* file = fopen(path.c_str(), "rb");  // NOLINT
 
     if (file == nullptr && path.find(".bin") == std::string::npos) {
         std::string tryBin = path + ".bin";
-        file = fopen(tryBin.c_str(), "rb");
+        file = fopen(tryBin.c_str(), "rb");  // NOLINT
         if (file != nullptr) {
             path = tryBin;
         }
@@ -38,20 +38,20 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
         return false;
     }
 
-    fseek(file, 0, SEEK_END);
+    (void)fseek(file, 0, SEEK_END);
     long fileSize = ftell(file);
     if (fileSize != ROM_SIZE) {
         errorMsg = "Error: The file " + path + " does not have size " + std::to_string(ROM_SIZE);
-        fclose(file);
+        (void)fclose(file);  // NOLINT
         return false;
     }
-    fseek(file, 0, SEEK_SET);
+    (void)fseek(file, 0, SEEK_SET);
 
     std::vector<Byte> buffer(ROM_SIZE);
     size_t bytesRead = fread(buffer.data(), 1, ROM_SIZE, file);
     if (bytesRead == 0) {
         errorMsg = "Error reading file " + path;
-        fclose(file);
+        (void)fclose(file);  // NOLINT
         return false;
     }
 
@@ -59,7 +59,7 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
         rom.WriteDirect(static_cast<Word>(i), buffer[i]);
     }
 
-    fclose(file);
+    (void)fclose(file);  // NOLINT
 
     currentBinPath = path;
     try {
@@ -110,36 +110,36 @@ bool Emulator::SaveState(const std::string& filename) {
     }
 
     // Internal Emulator state
-    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));
+    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
 
     bool gpuE = gpuEnabled;
-    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));
+    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));  // NOLINT
 
     int tIPS = targetIPS.load();
-    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));
+    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));  // NOLINT
 
     size_t qSize = inputBuffer.size();
-    stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));
+    stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
     for (char chr : inputBuffer) {
         stateStream.write(&chr, 1);
     }
 
     size_t binPathLen = currentBinPath.length();
-    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));
+    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
     stateStream.write(currentBinPath.c_str(), static_cast<std::streamsize>(binPathLen));
 
     bool autoReload = autoReloadRequested.load();
-    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));
+    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));  // NOLINT
 
     std::string payload = stateStream.str();
     std::string payloadHash = picosha2::hash256_hex_string(payload);
 
     std::string version = PROJECT_VERSION;
-    uint32_t versionLen = static_cast<uint32_t>(version.length());
-    const char magic[] = "SIM65C02SST";
+    auto versionLen = static_cast<uint32_t>(version.length());
+    std::array<char, 12> magic{"SIM65C02SST"};  // NOLINT
 
     // Metadata hash (Magic + Version)
-    std::string metadata = std::string(magic) + version;
+    std::string metadata = std::string(magic.data()) + version;
     std::string metadataHash = picosha2::hash256_hex_string(metadata);
 
     std::ofstream out(filename, std::ios::binary);
@@ -147,8 +147,8 @@ bool Emulator::SaveState(const std::string& filename) {
         return false;
     }
 
-    out.write(magic, sizeof(magic) - 1);
-    out.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));
+    out.write(magic.data(), magic.size() - 1);
+    out.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));  // NOLINT
     out.write(version.c_str(), static_cast<std::streamsize>(versionLen));
     out.write(payload.c_str(), static_cast<std::streamsize>(payload.size()));
     out.write(payloadHash.c_str(), static_cast<std::streamsize>(payloadHash.size()));
@@ -169,43 +169,43 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     std::streamsize size = inFile.tellg();
     inFile.seekg(0, std::ios::beg);
 
-    const char magic[] = "SIM65C02SST";
-    size_t magicLen = sizeof(magic) - 1;
+    std::array<char, 12> magic{"SIM65C02SST"};  // NOLINT
+    size_t magicLen = magic.size() - 1;
     size_t hashLen = 64;
 
     if (size < (std::streamsize)(magicLen + sizeof(uint32_t) + (hashLen * 2))) {
         return false;
     }
 
-    char fileMagic[16] = {0};
-    inFile.read(fileMagic, static_cast<std::streamsize>(magicLen));
-    if (strncmp(fileMagic, magic, magicLen) != 0) {
+    std::array<char, 16> fileMagic{};
+    inFile.read(fileMagic.data(), static_cast<std::streamsize>(magicLen));
+    if (strncmp(fileMagic.data(), magic.data(), magicLen) != 0) {
         return false;
     }
 
     uint32_t versionLen = 0;
-    inFile.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));
+    inFile.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));  // NOLINT
     lastLoadVersion.assign(versionLen, '\0');
     inFile.read(lastLoadVersion.data(), static_cast<std::streamsize>(versionLen));
 
     // Calculate metadata hash for verification (Magic + Version)
-    std::string metadata = std::string(magic) + lastLoadVersion;
+    std::string metadata = std::string(magic.data()) + lastLoadVersion;
     std::string computedMetadataHash = picosha2::hash256_hex_string(metadata);
 
     size_t payloadSize = size - (magicLen + sizeof(versionLen) + versionLen + (hashLen * 2));
     std::string payload(payloadSize, '\0');
     inFile.read(payload.data(), static_cast<std::streamsize>(payloadSize));
 
-    char filePayloadHash[64];
-    inFile.read(filePayloadHash, static_cast<std::streamsize>(hashLen));
+    std::array<char, 64> filePayloadHash{};
+    inFile.read(filePayloadHash.data(), static_cast<std::streamsize>(hashLen));
 
-    char fileMetadataHash[64];
-    inFile.read(fileMetadataHash, static_cast<std::streamsize>(hashLen));
+    std::array<char, 64> fileMetadataHash{};
+    inFile.read(fileMetadataHash.data(), static_cast<std::streamsize>(hashLen));
 
     lastLoadResult = SavestateLoadResult::Success;
 
     // 1. Verify Metadata Hash
-    if (strncmp(fileMetadataHash, computedMetadataHash.c_str(), hashLen) != 0) {
+    if (strncmp(fileMetadataHash.data(), computedMetadataHash.c_str(), hashLen) != 0) {
         std::cerr << "Error: Savestate metadata corruption detected!\n";
         lastLoadResult = SavestateLoadResult::GenericError;
         if (!forceLoad) {
@@ -215,7 +215,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
 
     // 2. Verify Payload Hash
     std::string computedPayloadHash = picosha2::hash256_hex_string(payload);
-    if (strncmp(filePayloadHash, computedPayloadHash.c_str(), hashLen) != 0) {
+    if (strncmp(filePayloadHash.data(), computedPayloadHash.c_str(), hashLen) != 0) {
         lastLoadResult = SavestateLoadResult::HashMismatch;
         std::cerr << "Warning: Savestate payload hash mismatch!\n";
     }
@@ -231,69 +231,10 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
 
     std::stringstream stateStream(payload);
 
-    // Load components
-    bool structuralSuccess = true;
-    if (!bus.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !cpu.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !ram.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !rom.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !via.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !sid.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !acia.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !lcd.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !gpu.LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
-    if (structuralSuccess && !Console::LoadState(stateStream)) {
-        structuralSuccess = false;
-    }
+    bool structuralSuccess = LoadComponentsState(stateStream);
 
     if (structuralSuccess) {
-        stateStream.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));
-
-        bool gpuE;
-        stateStream.read(reinterpret_cast<char*>(&gpuE), sizeof(gpuE));
-        gpuEnabled = gpuE;
-
-        int tIPS;
-        stateStream.read(reinterpret_cast<char*>(&tIPS), sizeof(tIPS));
-        targetIPS.store(tIPS);
-
-        size_t qSize = 0;
-        stateStream.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        inputBuffer.clear();
-        for (size_t i = 0; i < qSize; ++i) {
-            char chr;
-            stateStream.read(&chr, 1);
-            inputBuffer.push_back(chr);
-        }
-        hasInput.store(!inputBuffer.empty());
-
-        size_t binPathLen = 0;
-        stateStream.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));
-        currentBinPath.assign(binPathLen, '\0');
-        stateStream.read(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
-
-        bool autoReload;
-        stateStream.read(reinterpret_cast<char*>(&autoReload), sizeof(autoReload));
-        autoReloadRequested.store(autoReload);
+        LoadInternalState(stateStream);
     }
 
     if (!structuralSuccess || (!stateStream.good() && !stateStream.eof())) {
@@ -304,6 +245,72 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     }
 
     return true;
+}
+
+bool Emulator::LoadComponentsState(std::istream& stateStream) {
+    if (!bus.LoadState(stateStream)) {
+        return false;
+    }
+    if (!cpu.LoadState(stateStream)) {
+        return false;
+    }
+    if (!ram.LoadState(stateStream)) {
+        return false;
+    }
+    if (!rom.LoadState(stateStream)) {
+        return false;
+    }
+    if (!via.LoadState(stateStream)) {
+        return false;
+    }
+    if (!sid.LoadState(stateStream)) {
+        return false;
+    }
+    if (!acia.LoadState(stateStream)) {
+        return false;
+    }
+    if (!lcd.LoadState(stateStream)) {
+        return false;
+    }
+    if (!gpu.LoadState(stateStream)) {
+        return false;
+    }
+    if (!Console::LoadState(stateStream)) {
+        return false;
+    }
+    return true;
+}
+
+void Emulator::LoadInternalState(std::istream& stateStream) {
+    stateStream.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
+
+    bool gpuE = false;
+    stateStream.read(reinterpret_cast<char*>(&gpuE), sizeof(gpuE));  // NOLINT
+    gpuEnabled = gpuE;
+
+    int tIPS = 0;
+    stateStream.read(reinterpret_cast<char*>(&tIPS), sizeof(tIPS));  // NOLINT
+    targetIPS.store(tIPS);
+
+    size_t qSize = 0;
+    stateStream.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));  // NOLINT
+    std::lock_guard<std::mutex> lock(bufferMutex);
+    inputBuffer.clear();
+    for (size_t i = 0; i < qSize; ++i) {
+        char chr = '\0';
+        stateStream.read(&chr, 1);
+        inputBuffer.push_back(chr);
+    }
+    hasInput.store(!inputBuffer.empty());
+
+    size_t binPathLen = 0;
+    stateStream.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
+    currentBinPath.assign(binPathLen, '\0');
+    stateStream.read(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
+
+    bool autoReload = false;
+    stateStream.read(reinterpret_cast<char*>(&autoReload), sizeof(autoReload));  // NOLINT
+    autoReloadRequested.store(autoReload);
 }
 
 int Emulator::Step() {
@@ -342,8 +349,7 @@ int Emulator::Step() {
         return 0;
     }
 
-    // Check input atomically only every ~10,000 steps (roughly 0.1s at 100K
-    // IPS)
+    // Check input atomically only every ~10,000 steps (roughly 0.1s at 100K IPS)
     static int inputCheckCounter = 0;
     if (++inputCheckCounter >= 10000) {
         inputCheckCounter = 0;
@@ -436,31 +442,7 @@ void Emulator::ThreadLoop() {
         int instructionsPerSlice = (int)instructionAccumulator;
         instructionAccumulator -= instructionsPerSlice;
 
-        auto sliceStartTime = high_resolution_clock::now();
-
-        {
-            bool hooks = bus.HasActiveHooks();
-            std::lock_guard<std::mutex> lock(emulationMutex);
-            if (hooks) {
-                for (int i = 0; i < instructionsPerSlice; ++i) {
-                    int res = Step<true>();
-                    if (res != 0) {
-                        paused = true;
-                        std::cerr << "Emulator stopped with code: " << res << '\n';
-                        break;
-                    }
-                }
-            } else {
-                for (int i = 0; i < instructionsPerSlice; ++i) {
-                    int res = Step<false>();
-                    if (res != 0) {
-                        paused = true;
-                        std::cerr << "Emulator stopped with code: " << res << '\n';
-                        break;
-                    }
-                }
-            }
-        }
+        EmulateSlice(instructionsPerSlice);
 
         instructionsThisSecond += instructionsPerSlice;
 
@@ -480,27 +462,56 @@ void Emulator::ThreadLoop() {
             nextSliceTime = sleepCheckTime;
         }
 
-        if (autoReloadRequested.load() && !currentBinPath.empty()) {
-            auto now = high_resolution_clock::now();
-            if (duration_cast<milliseconds>(now - lastWatchCheck).count() >= 500) {
-                lastWatchCheck = now;
-                try {
-                    if (std::filesystem::exists(currentBinPath)) {
-                        auto latestTime = std::filesystem::last_write_time(currentBinPath);
-                        if (latestTime > lastBinModificationTime) {
-                            std::string errorMsg;
-                            std::cerr << "Auto-reloading: " << currentBinPath << '\n';
-                            if (Init(currentBinPath, errorMsg)) {
-                                Console::Clear();
-                            } else {
-                                std::cerr << "Auto-reload failed: " << errorMsg << '\n';
-                            }
+        CheckAutoReload(lastWatchCheck);
+    }
+}
+
+void Emulator::EmulateSlice(int instructionsPerSlice) {
+    bool hooks = bus.HasActiveHooks();
+    std::lock_guard<std::mutex> lock(emulationMutex);
+    if (hooks) {
+        for (int i = 0; i < instructionsPerSlice; ++i) {
+            int res = Step<true>();
+            if (res != 0) {
+                paused = true;
+                std::cerr << "Emulator stopped with code: " << res << '\n';
+                break;
+            }
+        }
+    } else {
+        for (int i = 0; i < instructionsPerSlice; ++i) {
+            int res = Step<false>();
+            if (res != 0) {
+                paused = true;
+                std::cerr << "Emulator stopped with code: " << res << '\n';
+                break;
+            }
+        }
+    }
+}
+
+void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck) {
+    using namespace std::chrono;
+    if (autoReloadRequested.load() && !currentBinPath.empty()) {
+        auto now = high_resolution_clock::now();
+        if (duration_cast<milliseconds>(now - lastWatchCheck).count() >= 500) {
+            lastWatchCheck = now;
+            try {
+                if (std::filesystem::exists(currentBinPath)) {
+                    auto latestTime = std::filesystem::last_write_time(currentBinPath);
+                    if (latestTime > lastBinModificationTime) {
+                        std::string errorMsg;
+                        std::cerr << "Auto-reloading: " << currentBinPath << '\n';
+                        if (Init(currentBinPath, errorMsg)) {
+                            Console::Clear();
+                        } else {
+                            std::cerr << "Auto-reload failed: " << errorMsg << '\n';
                         }
                     }
-                } catch (...) {
-                    // Ignore filesystem errors
-                    (void)0;
                 }
+            } catch (...) {
+                // Ignore filesystem errors
+                (void)0;
             }
         }
     }

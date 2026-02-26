@@ -31,6 +31,11 @@ class Emulator {
     Emulator();
     ~Emulator() = default;
 
+    Emulator(const Emulator&) = delete;
+    Emulator& operator=(const Emulator&) = delete;
+    Emulator(Emulator&&) = delete;
+    Emulator& operator=(Emulator&&) = delete;
+
     bool Init(const std::string& binPath, std::string& errorMsg);
 
     bool SaveState(const std::string& filename);
@@ -89,6 +94,12 @@ class Emulator {
     void ThreadLoop();
     void SetupHardware();
 
+    bool LoadComponentsState(std::istream& stateStream);
+    void LoadInternalState(std::istream& stateStream);
+
+    void EmulateSlice(int instructionsPerSlice);
+    void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
+
     // Components
     Bus bus;
     CPU cpu;
@@ -126,7 +137,6 @@ class Emulator {
 };
 
 }  // namespace Core
-
 
 inline void Core::Emulator::SetLCDOutputCallback(std::function<void(char)> callback) {
     lcd.SetOutputCallback(std::move(callback));
