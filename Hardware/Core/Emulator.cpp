@@ -261,15 +261,24 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
 }
 
 int Emulator::Step() {
+    if (bus.HasActiveHooks()) {
+        return Step<true>();
+    } else {
+        return Step<false>();
+    }
+}
+
+template <bool Debug>
+int Emulator::Step() {
     int res = 0;
 
     if (gpuEnabled) {
         gpu.Clock();
         if (gpu.IsInBlankingInterval()) {
-            res = cpu.Step(bus);
+            res = cpu.Step<Debug>(bus);
         }
     } else {
-        res = cpu.Step(bus);
+        res = cpu.Step<Debug>(bus);
     }
 
     if (baudDelay > 0) baudDelay--;
@@ -279,7 +288,7 @@ int Emulator::Step() {
     bool irq = acia.HasIRQ() || via.isIRQAsserted();
     if (irq) {
         if (cpu.I == 0) {
-            cpu.IRQ(bus);
+            cpu.IRQ<Debug>(bus);
         }
         cpu.waiting = false;
     } else if (cpu.waiting) {
@@ -299,7 +308,7 @@ int Emulator::Step() {
                 inputBuffer.pop_front();
 
                 acia.ReceiveData(c);
-                cpu.IRQ(bus);
+                cpu.IRQ<Debug>(bus);
 
                 baudDelay = 2000;
             }
@@ -310,6 +319,8 @@ int Emulator::Step() {
     }
     return res;
 }
+template int Emulator::Step<true>();
+template int Emulator::Step<false>();
 
 void Emulator::InjectKey(char c) {
     if (c == '\n') c = '\r';
@@ -377,14 +388,27 @@ void Emulator::ThreadLoop() {
         auto sliceStartTime = high_resolution_clock::now();
 
         {
+            bool hooks = bus.HasActiveHooks();
             std::lock_guard<std::mutex> lock(emulationMutex);
-            for (int i = 0; i < instructionsPerSlice; ++i) {
-                int res = Step();
-                if (res != 0) {
-                    paused = true;
-                    std::cerr << "Emulator stopped with code: " << res
-                              << std::endl;
-                    break;
+            if (hooks) {
+                for (int i = 0; i < instructionsPerSlice; ++i) {
+                    int res = Step<true>();
+                    if (res != 0) {
+                        paused = true;
+                        std::cerr << "Emulator stopped with code: " << res
+                                  << std::endl;
+                        break;
+                    }
+                }
+            } else {
+                for (int i = 0; i < instructionsPerSlice; ++i) {
+                    int res = Step<false>();
+                    if (res != 0) {
+                        paused = true;
+                        std::cerr << "Emulator stopped with code: " << res
+                                  << std::endl;
+                        break;
+                    }
                 }
             }
         }

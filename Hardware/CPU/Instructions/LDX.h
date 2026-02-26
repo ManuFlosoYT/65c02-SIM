@@ -10,10 +10,20 @@ namespace Hardware::Instructions {
 
 class LDX {
 public:
+    template <bool Debug>
+
     static void ExecuteImmediate(CPU& cpu, Bus& bus);
+    template <bool Debug>
+
     static void ExecuteZP(CPU& cpu, Bus& bus);
+    template <bool Debug>
+
     static void ExecuteZPY(CPU& cpu, Bus& bus);
+    template <bool Debug>
+
     static void ExecuteABS(CPU& cpu, Bus& bus);
+    template <bool Debug>
+
     static void ExecuteABSY(CPU& cpu, Bus& bus);
 };
 

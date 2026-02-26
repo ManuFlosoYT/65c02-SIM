@@ -10,43 +10,59 @@ static void SetFlags(CPU& cpu, Byte val) {
     cpu.N = (val & 0b10000000) > 0;
 }
 
+template <bool Debug>
 void DEC::ExecuteAccumulator(CPU& cpu, Bus& bus) {
     cpu.A--;
     SetFlags(cpu, cpu.A);
 }
 
+template <bool Debug>
 void DEC::ExecuteZP(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
-    Byte dato = cpu.ReadByte(ZP_Dir, bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
+    Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
     dato--;
-    bus.Write(ZP_Dir, dato);
+    bus.Write<Debug>(ZP_Dir, dato);
     SetFlags(cpu, dato);
 }
 
+template <bool Debug>
 void DEC::ExecuteZPX(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
-    Byte dato = cpu.ReadByte(ZP_Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
     dato--;
-    bus.Write(ZP_Dir, dato);
+    bus.Write<Debug>(ZP_Dir, dato);
     SetFlags(cpu, dato);
 }
 
+template <bool Debug>
 void DEC::ExecuteABS(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord(bus);
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Word Dir = cpu.FetchWord<Debug>(bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     dato--;
-    bus.Write(Dir, dato);
+    bus.Write<Debug>(Dir, dato);
     SetFlags(cpu, dato);
 }
 
+template <bool Debug>
 void DEC::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord(bus);
+    Word Dir = cpu.FetchWord<Debug>(bus);
     Dir += cpu.X;
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     dato--;
-    bus.Write(Dir, dato);
+    bus.Write<Debug>(Dir, dato);
     SetFlags(cpu, dato);
 }
+
+template void DEC::ExecuteAccumulator<true>(CPU&, Bus&);
+template void DEC::ExecuteAccumulator<false>(CPU&, Bus&);
+template void DEC::ExecuteZP<true>(CPU&, Bus&);
+template void DEC::ExecuteZP<false>(CPU&, Bus&);
+template void DEC::ExecuteZPX<true>(CPU&, Bus&);
+template void DEC::ExecuteZPX<false>(CPU&, Bus&);
+template void DEC::ExecuteABS<true>(CPU&, Bus&);
+template void DEC::ExecuteABS<false>(CPU&, Bus&);
+template void DEC::ExecuteABSX<true>(CPU&, Bus&);
+template void DEC::ExecuteABSX<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

@@ -4,9 +4,10 @@
 namespace Hardware {
 namespace CPUDispatch {
 
+template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus) {
-    Byte opcode = cpu.FetchByte(bus);
-    const OpcodeEntry& entry = dispatchTable[opcode];
+    Byte opcode = cpu.FetchByte<Debug>(bus);
+    const OpcodeEntry<Debug>& entry = dispatchTable<Debug>[opcode];
 
     // Execute instruction
     if (entry.executor) {

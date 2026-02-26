@@ -5,8 +5,12 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void CLC::Execute(CPU& cpu, Bus& bus) {
     cpu.C = 0;
 }
+
+template void CLC::Execute<true>(CPU&, Bus&);
+template void CLC::Execute<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

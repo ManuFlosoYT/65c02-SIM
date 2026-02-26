@@ -5,13 +5,17 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void BRK::Execute(CPU& cpu, Bus& bus) {
     cpu.B = true;
-    cpu.PushWord(cpu.PC + 1, bus);
+    cpu.PushWord<Debug>(cpu.PC + 1, bus);
     Byte PS = cpu.GetStatus();
-    cpu.PushByte(PS, bus);
-    cpu.PC = cpu.ReadWord(0xFFFE, bus);
+    cpu.PushByte<Debug>(PS, bus);
+    cpu.PC = cpu.ReadWord<Debug>(0xFFFE, bus);
     cpu.UpdatePagePtr(bus);
 }
+
+template void BRK::Execute<true>(CPU&, Bus&);
+template void BRK::Execute<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

@@ -5,26 +5,33 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void TSB::ExecuteZP(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
-    Byte dato = cpu.ReadByte(ZP_Dir, bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
+    Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
     Byte res = cpu.A & dato;
 
     cpu.Z = (res == 0);
 
     Byte res2 = cpu.A | dato;
-    bus.Write(ZP_Dir, res2);
+    bus.Write<Debug>(ZP_Dir, res2);
 }
 
+template <bool Debug>
 void TSB::ExecuteABS(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord(bus);
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Word Dir = cpu.FetchWord<Debug>(bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Byte res = cpu.A & dato;
 
     cpu.Z = (res == 0);
 
     Byte res2 = cpu.A | dato;
-    bus.Write(Dir, res2);
+    bus.Write<Debug>(Dir, res2);
 }
+
+template void TSB::ExecuteZP<true>(CPU&, Bus&);
+template void TSB::ExecuteZP<false>(CPU&, Bus&);
+template void TSB::ExecuteABS<true>(CPU&, Bus&);
+template void TSB::ExecuteABS<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

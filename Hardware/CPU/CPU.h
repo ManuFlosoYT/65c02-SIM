@@ -11,6 +11,7 @@ namespace Hardware {
 
 class CPU;
 namespace CPUDispatch {
+template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus);
 }
 
@@ -49,10 +50,15 @@ public:
 
     int Execute(Bus& bus);
 
+    template <bool Debug>
+    int Step(Bus& bus);
     int Step(Bus& bus);
 
+    template <bool Debug>
+    void IRQ(Bus& bus);
     void IRQ(Bus& bus);
 
+    template <bool Debug>
     int Dispatch(Bus& bus);
 
     const Byte GetStatus() const;
@@ -66,14 +72,30 @@ public:
 
     inline void UpdatePagePtr(Bus& bus);
 
+    template <bool Debug>
     const Byte FetchByte(Bus& bus);
+    const Byte FetchByte(Bus& bus);
+    template <bool Debug>
     const Word FetchWord(Bus& bus);
+    const Word FetchWord(Bus& bus);
+    template <bool Debug>
     const Byte ReadByte(const Word addr, Bus& bus);
+    const Byte ReadByte(const Word addr, Bus& bus);
+    template <bool Debug>
+    const Word ReadWord(const Word addr, Bus& bus);
     const Word ReadWord(const Word addr, Bus& bus);
 
+    template <bool Debug>
     void PushByte(Byte val, Bus& bus);
+    void PushByte(Byte val, Bus& bus);
+    template <bool Debug>
     Byte PopByte(Bus& bus);
+    Byte PopByte(Bus& bus);
+    template <bool Debug>
     void PushWord(Word val, Bus& bus);
+    void PushWord(Word val, Bus& bus);
+    template <bool Debug>
+    Word PopWord(Bus& bus);
     Word PopWord(Bus& bus);
 };
 

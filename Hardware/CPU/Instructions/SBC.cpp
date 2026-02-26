@@ -45,8 +45,9 @@ static Word SBC_Decimal(CPU& cpu, Byte dato) {
     return resultadoFinal;
 }
 
+template <bool Debug>
 void SBC::ExecuteImmediate(CPU& cpu, Bus& bus) {
-    Byte dato = cpu.FetchByte(bus);
+    Byte dato = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
     Word res;
@@ -66,11 +67,12 @@ void SBC::ExecuteImmediate(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteZP(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.ReadByte(ZP_Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -88,12 +90,13 @@ void SBC::ExecuteZP(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteZPX(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.ReadByte(ZP_Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -111,11 +114,12 @@ void SBC::ExecuteZPX(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteABS(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord(bus);
+    Word Dir = cpu.FetchWord<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -133,8 +137,9 @@ void SBC::ExecuteABS(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word baseAddr = cpu.FetchWord(bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
     Word effectiveAddr = baseAddr + cpu.X;
 
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
@@ -142,7 +147,7 @@ void SBC::ExecuteABSX(CPU& cpu, Bus& bus) {
     Word Dir = effectiveAddr;
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -160,8 +165,9 @@ void SBC::ExecuteABSX(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteABSY(CPU& cpu, Bus& bus) {
-    Word baseAddr = cpu.FetchWord(bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
     Word effectiveAddr = baseAddr + cpu.Y;
 
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
@@ -169,7 +175,7 @@ void SBC::ExecuteABSY(CPU& cpu, Bus& bus) {
     Word Dir = effectiveAddr;
     Byte oldA = cpu.A;
 
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -187,14 +193,15 @@ void SBC::ExecuteABSY(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteINDX(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
     Byte oldA = cpu.A;
 
-    Word Dir = cpu.ReadWord(ZP_Dir, bus);
+    Word Dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
 
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -212,17 +219,18 @@ void SBC::ExecuteINDX(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteINDY(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
     Word baseAddr;
 
     if (ZP_Dir != 0xFF) {
-        baseAddr = cpu.ReadWord(ZP_Dir, bus);
+        baseAddr = cpu.ReadWord<Debug>(ZP_Dir, bus);
     } else {
-        Byte low = cpu.ReadByte(0xFF, bus);
-        Byte high = cpu.ReadByte(0x00, bus);
+        Byte low = cpu.ReadByte<Debug>(0xFF, bus);
+        Byte high = cpu.ReadByte<Debug>(0x00, bus);
         baseAddr = (high << 8) | low;
     }
 
@@ -230,7 +238,7 @@ void SBC::ExecuteINDY(CPU& cpu, Bus& bus) {
 
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
 
-    Byte dato = cpu.ReadByte(effectiveAddr, bus);
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -248,21 +256,22 @@ void SBC::ExecuteINDY(CPU& cpu, Bus& bus) {
     }
 }
 
+template <bool Debug>
 void SBC::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
     Word dir;
 
     if (ZP_Dir != 0xFF) {
-        dir = cpu.ReadWord(ZP_Dir, bus);
+        dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
     } else {
-        Byte low = cpu.ReadByte(0xFF, bus);
-        Byte high = cpu.ReadByte(0x00, bus);
+        Byte low = cpu.ReadByte<Debug>(0xFF, bus);
+        Byte high = cpu.ReadByte<Debug>(0x00, bus);
         dir = (high << 8) | low;
     }
 
-    Byte dato = cpu.ReadByte(dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(dir, bus);
     Word res;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
@@ -279,5 +288,24 @@ void SBC::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
         SetFlagsBCD(cpu, binaryRes, dato, oldA);
     }
 }
+
+template void SBC::ExecuteImmediate<true>(CPU&, Bus&);
+template void SBC::ExecuteImmediate<false>(CPU&, Bus&);
+template void SBC::ExecuteZP<true>(CPU&, Bus&);
+template void SBC::ExecuteZP<false>(CPU&, Bus&);
+template void SBC::ExecuteZPX<true>(CPU&, Bus&);
+template void SBC::ExecuteZPX<false>(CPU&, Bus&);
+template void SBC::ExecuteABS<true>(CPU&, Bus&);
+template void SBC::ExecuteABS<false>(CPU&, Bus&);
+template void SBC::ExecuteABSX<true>(CPU&, Bus&);
+template void SBC::ExecuteABSX<false>(CPU&, Bus&);
+template void SBC::ExecuteABSY<true>(CPU&, Bus&);
+template void SBC::ExecuteABSY<false>(CPU&, Bus&);
+template void SBC::ExecuteINDX<true>(CPU&, Bus&);
+template void SBC::ExecuteINDX<false>(CPU&, Bus&);
+template void SBC::ExecuteINDY<true>(CPU&, Bus&);
+template void SBC::ExecuteINDY<false>(CPU&, Bus&);
+template void SBC::ExecuteIND_ZP<true>(CPU&, Bus&);
+template void SBC::ExecuteIND_ZP<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

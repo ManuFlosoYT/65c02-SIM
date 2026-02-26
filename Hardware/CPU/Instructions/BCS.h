@@ -10,6 +10,8 @@ namespace Hardware::Instructions {
 
 class BCS {
 public:
+    template <bool Debug>
+
     static void Execute(CPU& cpu, Bus& bus);
 };
 

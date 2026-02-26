@@ -5,20 +5,30 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void STX::ExecuteZP(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
-    bus.Write(ZP_Dir, cpu.X);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
+    bus.Write<Debug>(ZP_Dir, cpu.X);
 }
 
+template <bool Debug>
 void STX::ExecuteZPY(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.Y;
-    bus.Write(ZP_Dir, cpu.X);
+    bus.Write<Debug>(ZP_Dir, cpu.X);
 }
 
+template <bool Debug>
 void STX::ExecuteABS(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord(bus);
-    bus.Write(Dir, cpu.X);
+    Word Dir = cpu.FetchWord<Debug>(bus);
+    bus.Write<Debug>(Dir, cpu.X);
 }
+
+template void STX::ExecuteZP<true>(CPU&, Bus&);
+template void STX::ExecuteZP<false>(CPU&, Bus&);
+template void STX::ExecuteZPY<true>(CPU&, Bus&);
+template void STX::ExecuteZPY<false>(CPU&, Bus&);
+template void STX::ExecuteABS<true>(CPU&, Bus&);
+template void STX::ExecuteABS<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

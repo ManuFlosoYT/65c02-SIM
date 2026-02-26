@@ -5,10 +5,14 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void TAY::Execute(CPU& cpu, Bus& bus) {
     cpu.Y = cpu.A;
     cpu.Z = (cpu.Y == 0);
     cpu.N = (cpu.Y & 0b10000000) > 0;
 }
+
+template void TAY::Execute<true>(CPU&, Bus&);
+template void TAY::Execute<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

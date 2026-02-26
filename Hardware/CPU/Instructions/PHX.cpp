@@ -5,8 +5,12 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void PHX::Execute(CPU& cpu, Bus& bus) {
-    cpu.PushByte(cpu.X, bus);
+    cpu.PushByte<Debug>(cpu.X, bus);
 }
+
+template void PHX::Execute<true>(CPU&, Bus&);
+template void PHX::Execute<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

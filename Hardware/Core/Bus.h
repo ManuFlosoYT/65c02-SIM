@@ -59,6 +59,8 @@ public:
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& in);
 
+    inline bool HasActiveHooks() const;
+
     void RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
                         bool enabled = true, bool ignoreCollision = false);
 
@@ -66,7 +68,12 @@ public:
                                   Word newEnd, bool enabled,
                                   bool ignoreCollision);
 
+    template <bool Debug>
     inline Byte Read(Word address);
+    inline Byte Read(Word address);
+
+    template <bool Debug>
+    inline void Write(Word address, Byte data);
     inline void Write(Word address, Byte data);
 
     inline void WriteDirect(Word address, Byte data);

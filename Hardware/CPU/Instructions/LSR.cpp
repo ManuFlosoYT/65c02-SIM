@@ -11,6 +11,7 @@ static void SetFlags(CPU& cpu, Byte val, Byte A) {
     cpu.C = (A & 0b00000001) > 0;
 }
 
+template <bool Debug>
 void LSR::ExecuteAccumulator(CPU& cpu, Bus& bus) {
     
     Byte A = cpu.A;
@@ -19,42 +20,57 @@ void LSR::ExecuteAccumulator(CPU& cpu, Bus& bus) {
     SetFlags(cpu, cpu.A, A);
 }
 
+template <bool Debug>
 void LSR::ExecuteZP(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
-    Byte dato = cpu.ReadByte(ZP_Dir, bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
+    Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
     Byte A = dato;
     dato >>= 1;
-    bus.Write(ZP_Dir, dato);
+    bus.Write<Debug>(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
+template <bool Debug>
 void LSR::ExecuteZPX(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte(bus);
+    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
-    Byte dato = cpu.ReadByte(ZP_Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
     Byte A = dato;
     dato >>= 1;
-    bus.Write(ZP_Dir, dato);
+    bus.Write<Debug>(ZP_Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
+template <bool Debug>
 void LSR::ExecuteABS(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord(bus);
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Word Dir = cpu.FetchWord<Debug>(bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Byte A = dato;
     dato >>= 1;
-    bus.Write(Dir, dato);
+    bus.Write<Debug>(Dir, dato);
     SetFlags(cpu, dato, A);
 }
 
+template <bool Debug>
 void LSR::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord(bus);
+    Word Dir = cpu.FetchWord<Debug>(bus);
     Dir += cpu.X;
-    Byte dato = cpu.ReadByte(Dir, bus);
+    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Byte A = dato;
     dato >>= 1;
-    bus.Write(Dir, dato);
+    bus.Write<Debug>(Dir, dato);
     SetFlags(cpu, dato, A);
 }
+
+template void LSR::ExecuteAccumulator<true>(CPU&, Bus&);
+template void LSR::ExecuteAccumulator<false>(CPU&, Bus&);
+template void LSR::ExecuteZP<true>(CPU&, Bus&);
+template void LSR::ExecuteZP<false>(CPU&, Bus&);
+template void LSR::ExecuteZPX<true>(CPU&, Bus&);
+template void LSR::ExecuteZPX<false>(CPU&, Bus&);
+template void LSR::ExecuteABS<true>(CPU&, Bus&);
+template void LSR::ExecuteABS<false>(CPU&, Bus&);
+template void LSR::ExecuteABSX<true>(CPU&, Bus&);
+template void LSR::ExecuteABSX<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

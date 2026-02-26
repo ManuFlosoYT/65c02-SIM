@@ -5,8 +5,12 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void PHP::Execute(CPU& cpu, Bus& bus) {    
-    cpu.PushByte(cpu.GetStatus(), bus);
+    cpu.PushByte<Debug>(cpu.GetStatus(), bus);
 }
+
+template void PHP::Execute<true>(CPU&, Bus&);
+template void PHP::Execute<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

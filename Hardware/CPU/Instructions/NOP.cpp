@@ -5,8 +5,12 @@
 
 namespace Hardware::Instructions {
 
+template <bool Debug>
 void NOP::Execute(CPU& cpu, Bus& bus) {
     // Bruh, you really thought NOP would do something lmao 😂😂😂😂
 }
+
+template void NOP::Execute<true>(CPU&, Bus&);
+template void NOP::Execute<false>(CPU&, Bus&);
 
 }  // namespace Hardware::Instructions

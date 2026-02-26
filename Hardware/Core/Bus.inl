@@ -8,8 +8,15 @@ inline void Bus::SetProfilingEnabled(bool enabled) {
 
 inline uint32_t* Bus::GetProfilerCounts() { return profilerCounts; }
 
+inline bool Bus::HasActiveHooks() const {
+    return profilingEnabled || hasReadHooks || hasWriteHooks;
+}
+
+template <bool Debug>
 inline Byte Bus::Read(Word address) {
-    if (profilingEnabled) profilerCounts[address]++;
+    if constexpr (Debug) {
+        if (profilingEnabled) profilerCounts[address]++;
+    }
     Byte data = 0;
 
     if (Byte* memoryBase = pageReadMap[address >> 8]) {
@@ -21,9 +28,11 @@ inline Byte Bus::Read(Word address) {
         }
     }
 
-    if (hasReadHooks) {
-        for (auto& hook : globalReadHooks) {
-            hook(address, data);
+    if constexpr (Debug) {
+        if (hasReadHooks) {
+            for (auto& hook : globalReadHooks) {
+                hook(address, data);
+            }
         }
     }
     return data;
@@ -40,8 +49,11 @@ inline Byte Bus::ReadDirect(Word address) const {
     return 0;
 }
 
+template <bool Debug>
 inline void Bus::Write(Word address, Byte data) {
-    if (profilingEnabled) profilerCounts[address]++;
+    if constexpr (Debug) {
+        if (profilingEnabled) profilerCounts[address]++;
+    }
 
     if (Byte* memoryBase = pageWriteMap[address >> 8]) {
         memoryBase[address] = data;
@@ -52,9 +64,11 @@ inline void Bus::Write(Word address, Byte data) {
         }
     }
 
-    if (hasWriteHooks) {
-        for (auto& hook : globalWriteHooks) {
-            hook(address, data);
+    if constexpr (Debug) {
+        if (hasWriteHooks) {
+            for (auto& hook : globalWriteHooks) {
+                hook(address, data);
+            }
         }
     }
 }
@@ -71,5 +85,21 @@ inline void Bus::WriteDirect(Word address, Byte data) {
 }
 
 inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap[page]; }
+
+inline Byte Bus::Read(Word address) {
+    if (HasActiveHooks()) {
+        return Read<true>(address);
+    } else {
+        return Read<false>(address);
+    }
+}
+
+inline void Bus::Write(Word address, Byte data) {
+    if (HasActiveHooks()) {
+        Write<true>(address, data);
+    } else {
+        Write<false>(address, data);
+    }
+}
 
 }  // namespace Hardware

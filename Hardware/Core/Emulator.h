@@ -41,6 +41,8 @@ public:
     bool LoadState(const std::string& filename, bool forceLoad = false);
 
     int Step();
+    template <bool Debug>
+    int Step();
     void InjectKey(char c);
 
     void SetOutputCallback(std::function<void(char)> cb);
