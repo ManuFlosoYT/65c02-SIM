@@ -8,7 +8,7 @@
 namespace Hardware {
 
 class ACIA : public IBusDevice {
-public:
+   public:
     ACIA();
     void Reset() override;
     void ReceiveData(Byte data);
@@ -16,16 +16,16 @@ public:
     // IBusDevice implementation
     inline Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
-    inline std::string GetName() const override;
+    [[nodiscard]] inline std::string GetName() const override;
 
     bool SaveState(std::ostream& out) const override;
-    bool LoadState(std::istream& in) override;
+    bool LoadState(std::istream& inStream) override;
 
-    void SetOutputCallback(std::function<void(char)> cb);
+    void SetOutputCallback(std::function<void(char)> callback);
 
-    inline bool HasIRQ() const { return (STATUS & 0x80) != 0; }
+    [[nodiscard]] bool HasIRQ() const { return (STATUS & 0x80) != 0; }
 
-private:
+   private:
     Byte DATA;
     Byte STATUS;
     Byte CMD;
@@ -36,16 +36,13 @@ private:
 
 }  // namespace Hardware
 
-
 #include "Hardware/Core/Bus.h"
 
 namespace Hardware {
 
 inline std::string ACIA::GetName() const { return "ACIA"; }
 
-inline void ACIA::SetOutputCallback(std::function<void(char)> cb) {
-    outputCallback = cb;
-}
+inline void ACIA::SetOutputCallback(std::function<void(char)> callback) { outputCallback = std::move(callback); }
 
 inline Byte ACIA::Read(Word address) {
     switch (address & 0x03) {
