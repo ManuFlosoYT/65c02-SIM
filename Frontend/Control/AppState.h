@@ -22,7 +22,7 @@ struct AppState {
 
     // Emulation
     int instructionsPerFrame = 1000000;
-    float ipsLogScale = 6.0f;
+    float ipsLogScale = 6.0F;
     bool gpuEnabled = false;
     bool cycleAccurate = true;
     bool forceLoadSaveState = false;
@@ -64,7 +64,7 @@ struct AppState {
     // CRT filters - Lighting
     bool crtBloom = true;
 
-    float crtTime = 0.0f;
+    float crtTime = 0.0F;
     GUI::CRTFilter crtFilter;
 
     // Last rendered display texture (post-CRT) for capture
