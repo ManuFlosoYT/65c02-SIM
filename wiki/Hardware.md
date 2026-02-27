@@ -35,6 +35,7 @@ emulator.Stop();         // Stops the thread
 | `gpu`  | `Hardware::GPU`  | Graphics processor + VRAM               |
 | `sid`  | `Hardware::SID`  | Sound chip                              |
 | `via`  | `Hardware::VIA`  | Versatile I/O interface (6522)          |
+| `sd`   | `Hardware::SDCard` | SD Card emulation (SPI)                 |
 
 ### Emulation thread
 
