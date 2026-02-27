@@ -1,5 +1,7 @@
 #include "Frontend/GUI/RegistersWindow.h"
 
+#include <iomanip>
+#include <sstream>
 using namespace Control;
 using namespace Core;
 using namespace Hardware;
@@ -12,15 +14,34 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.20F, top_section_height), ImGuiCond_Always);
     ImGui::Begin("Registers", nullptr, window_flags);
     const auto& cpu = state.emulator.GetCPU();
-    ImGui::Text("PC: %04X", cpu.PC);
-    ImGui::Text("SP: %04X", cpu.SP);
-    ImGui::Text("A:  %02X", cpu.A);
-    ImGui::Text("X:  %02X", cpu.X);
-    ImGui::Text("Y:  %02X", cpu.Y);
+    auto printHex16 = [](const char* prefix, uint16_t val) {
+        std::ostringstream oss;
+        oss << prefix << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << val;
+        ImGui::TextUnformatted(oss.str().c_str());
+    };
+    auto printHex8 = [](const char* prefix, uint8_t val) {
+        std::ostringstream oss;
+        oss << prefix << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(val);
+        ImGui::TextUnformatted(oss.str().c_str());
+    };
+
+    printHex16("PC: ", cpu.PC);
+    printHex16("SP: ", cpu.SP);
+    printHex8("A:  ", cpu.A);
+    printHex8("X:  ", cpu.X);
+    printHex8("Y:  ", cpu.Y);
     ImGui::Separator();
-    ImGui::Text("Flags: %02X", cpu.GetStatus());
-    ImGui::Text("N: %d V: %d B: %d D: %d", cpu.N, cpu.V, cpu.B, cpu.D);
-    ImGui::Text("I: %d Z: %d C: %d", cpu.I, cpu.Z, cpu.C);
+    printHex8("Flags: ", cpu.GetStatus());
+
+    std::ostringstream flagsStr1;
+    flagsStr1 << "N: " << static_cast<int>(cpu.N) << " V: " << static_cast<int>(cpu.V)
+              << " B: " << static_cast<int>(cpu.B) << " D: " << static_cast<int>(cpu.D);
+    ImGui::TextUnformatted(flagsStr1.str().c_str());
+
+    std::ostringstream flagsStr2;
+    flagsStr2 << "I: " << static_cast<int>(cpu.I) << " Z: " << static_cast<int>(cpu.Z)
+              << " C: " << static_cast<int>(cpu.C);
+    ImGui::TextUnformatted(flagsStr2.str().c_str());
     ImGui::End();
 }
 
