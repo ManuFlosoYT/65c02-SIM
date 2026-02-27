@@ -6,13 +6,10 @@ using namespace Hardware;
 
 namespace GUI {
 
-void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
-                         float top_section_height,
+void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                          ImGuiWindowFlags window_flags) {
-    ImGui::SetNextWindowPos(
-        ImVec2(work_pos.x + work_size.x * 0.80f, work_pos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.20f, top_section_height),
-                             ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(work_pos.x + (work_size.x * 0.80F), work_pos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.20F, top_section_height), ImGuiCond_Always);
     ImGui::Begin("Registers", nullptr, window_flags);
     const auto& cpu = state.emulator.GetCPU();
     ImGui::Text("PC: %04X", cpu.PC);
