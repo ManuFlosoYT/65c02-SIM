@@ -43,11 +43,28 @@ static void HandleConsoleInput(AppState& state) {
                 state.emulator.InjectKey((char)chr);
             }
         }
+
+        /* Handle special keys not in characters queue */
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            state.emulator.InjectKey(0x1B);
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Tab)) {
+            state.emulator.InjectKey(0x09);
+        }
         if (ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
             state.emulator.InjectKey(0x7F);
         }
         if (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)) {
             state.emulator.InjectKey('\r');
+        }
+
+        /* Handle Ctrl + A-Z */
+        if (imgui_io.KeyCtrl) {
+            for (int key = ImGuiKey_A; key <= ImGuiKey_Z; key++) {
+                if (ImGui::IsKeyPressed((ImGuiKey)key)) {
+                    state.emulator.InjectKey((char)(1 + (key - ImGuiKey_A)));
+                }
+            }
         }
     }
 }
