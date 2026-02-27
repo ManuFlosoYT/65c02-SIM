@@ -50,7 +50,7 @@ void STA::ExecuteINDX(CPU& cpu, Bus& bus) {
 template <bool Debug>
 void STA::ExecuteINDY(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Word dir;
+    Word dir = 0;
 
     if (ZP_Dir != 0xFF) {
         dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
@@ -68,7 +68,7 @@ void STA::ExecuteINDY(CPU& cpu, Bus& bus) {
 template <bool Debug>
 void STA::ExecuteINDZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Word dir;
+    Word dir = 0;
 
     if (ZP_Dir != 0xFF) {
         dir = cpu.ReadWord<Debug>(ZP_Dir, bus);

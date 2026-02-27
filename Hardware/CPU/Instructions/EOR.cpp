@@ -1,4 +1,5 @@
 #include "EOR.h"
+
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
 #include "InstructionSet.h"
@@ -84,7 +85,7 @@ template <bool Debug>
 void EOR::ExecuteINDY(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
 
-    Word baseAddr;
+    Word baseAddr = 0;
 
     if (ZP_Dir != 0xFF) {
         baseAddr = cpu.ReadWord<Debug>(ZP_Dir, bus);
@@ -106,7 +107,7 @@ template <bool Debug>
 void EOR::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
 
-    Word dir;
+    Word dir = 0;
 
     if (ZP_Dir != 0xFF) {
         dir = cpu.ReadWord<Debug>(ZP_Dir, bus);

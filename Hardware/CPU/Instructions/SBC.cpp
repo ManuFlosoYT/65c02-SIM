@@ -1,4 +1,5 @@
 #include "SBC.h"
+
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
 #include "InstructionSet.h"
@@ -21,14 +22,12 @@ static void SetFlagsBCD(CPU& cpu, Word binaryRes, Byte dato, Byte oldA) {
 static Word SBC_Decimal(CPU& cpu, Byte dato) {
     bool acarreoPrevio = cpu.C;
 
-    Word diferenciaBinariaCompleta =
-        cpu.A - dato - (1 - (acarreoPrevio ? 1 : 0));
+    Word diferenciaBinariaCompleta = cpu.A - dato - (1 - (acarreoPrevio ? 1 : 0));
 
     bool noHuboPrestamo = !(diferenciaBinariaCompleta > 0xFF);
     cpu.C = noHuboPrestamo;
 
-    int diferenciaNibbleBajo =
-        (cpu.A & 0x0F) - (dato & 0x0F) - (1 - (acarreoPrevio ? 1 : 0));
+    int diferenciaNibbleBajo = (cpu.A & 0x0F) - (dato & 0x0F) - (1 - (acarreoPrevio ? 1 : 0));
     int diferenciaNibbleAlto = (cpu.A >> 4) - (dato >> 4);
 
     if (diferenciaNibbleBajo < 0) {
@@ -40,8 +39,7 @@ static Word SBC_Decimal(CPU& cpu, Byte dato) {
         diferenciaNibbleAlto -= 6;
     }
 
-    Word resultadoFinal =
-        ((diferenciaNibbleAlto & 0x0F) << 4) | (diferenciaNibbleBajo & 0x0F);
+    Word resultadoFinal = ((diferenciaNibbleAlto & 0x0F) << 4) | (diferenciaNibbleBajo & 0x0F);
     return resultadoFinal;
 }
 
@@ -50,7 +48,7 @@ void SBC::ExecuteImmediate(CPU& cpu, Bus& bus) {
     Byte dato = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -73,7 +71,7 @@ void SBC::ExecuteZP(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -97,7 +95,7 @@ void SBC::ExecuteZPX(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -120,7 +118,7 @@ void SBC::ExecuteABS(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -148,7 +146,7 @@ void SBC::ExecuteABSX(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -176,7 +174,7 @@ void SBC::ExecuteABSY(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -202,7 +200,7 @@ void SBC::ExecuteINDX(CPU& cpu, Bus& bus) {
     Word Dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -224,7 +222,7 @@ void SBC::ExecuteINDY(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Word baseAddr;
+    Word baseAddr = 0;
 
     if (ZP_Dir != 0xFF) {
         baseAddr = cpu.ReadWord<Debug>(ZP_Dir, bus);
@@ -239,7 +237,7 @@ void SBC::ExecuteINDY(CPU& cpu, Bus& bus) {
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
 
     Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;
@@ -261,7 +259,7 @@ void SBC::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Word dir;
+    Word dir = 0;
 
     if (ZP_Dir != 0xFF) {
         dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
@@ -272,7 +270,7 @@ void SBC::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
     }
 
     Byte dato = cpu.ReadByte<Debug>(dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A - dato - (1 - cpu.C);
         cpu.A = res;

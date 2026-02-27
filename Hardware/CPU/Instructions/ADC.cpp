@@ -1,4 +1,5 @@
 #include "ADC.h"
+
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
 #include "InstructionSet.h"
@@ -39,7 +40,7 @@ void ADC::ExecuteImmediate(CPU& cpu, Bus& bus) {
     Byte dato = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -63,7 +64,7 @@ void ADC::ExecuteZP(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -88,7 +89,7 @@ void ADC::ExecuteZPX(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -112,7 +113,7 @@ void ADC::ExecuteABS(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -141,7 +142,7 @@ void ADC::ExecuteABSX(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -169,7 +170,7 @@ void ADC::ExecuteABSY(CPU& cpu, Bus& bus) {
     Byte oldA = cpu.A;
 
     Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -196,7 +197,7 @@ void ADC::ExecuteINDX(CPU& cpu, Bus& bus) {
     Word Dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -219,7 +220,7 @@ void ADC::ExecuteINDY(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Word baseAddr;
+    Word baseAddr = 0;
 
     if (ZP_Dir != 0xFF) {
         baseAddr = cpu.ReadWord<Debug>(ZP_Dir, bus);
@@ -234,7 +235,7 @@ void ADC::ExecuteINDY(CPU& cpu, Bus& bus) {
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
 
     Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
@@ -257,7 +258,7 @@ void ADC::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte oldA = cpu.A;
 
-    Word dir;
+    Word dir = 0;
 
     if (ZP_Dir != 0xFF) {
         dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
@@ -268,7 +269,7 @@ void ADC::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
     }
 
     Byte dato = cpu.ReadByte<Debug>(dir, bus);
-    Word res;
+    Word res = 0;
     if (cpu.D == 0) {
         res = cpu.A + dato + cpu.C;
         cpu.A = res;
