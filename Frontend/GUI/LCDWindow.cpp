@@ -43,7 +43,7 @@ void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top
             draw_list->AddRectFilled(cell_min, cell_max, cellColor);
 
             if (lcd.IsDisplayOn()) {
-                char charChar = screen[row][col];
+                char charChar = screen.at(row).at(col);
                 if (charChar != 0) {
                     std::array<char, 2> str = {charChar, 0};
 
