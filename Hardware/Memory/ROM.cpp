@@ -13,7 +13,7 @@ Byte ROM::Read(Word address) {
     return 0;
 }
 
-void ROM::Write(Word address, Byte value) {
+void ROM::Write(Word address, Byte data) {
     // ROM is Read-Only via Bus
 }
 
@@ -23,20 +23,22 @@ void ROM::Load(const std::vector<Byte>& buffer, Word offset) {
     }
 }
 
-void ROM::WriteDirect(Word address, Byte value) {
+void ROM::WriteDirect(Word address, Byte data) {
     if (address < size) {
-        data[address] = value;
+        this->data[address] = data;
     }
 }
 
 bool ROM::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(data.data()), data.size());
+    out.write(reinterpret_cast<const char*>(data.data()),  // NOLINT
+              static_cast<std::streamsize>(data.size()));
     return out.good();
 }
 
-bool ROM::LoadState(std::istream& in) {
-    in.read(reinterpret_cast<char*>(data.data()), data.size());
-    return in.good();
+bool ROM::LoadState(std::istream& inputStream) {
+    inputStream.read(reinterpret_cast<char*>(data.data()),  // NOLINT
+                     static_cast<std::streamsize>(data.size()));
+    return inputStream.good();
 }
 
 }  // namespace Hardware
