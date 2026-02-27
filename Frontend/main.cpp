@@ -25,18 +25,13 @@ using namespace Core;
 using namespace Frontend;
 using namespace Hardware;
 
-int main(int argc, char* argv[]) {
-    // Setup SDL
+static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
         std::cerr << "Error: " << SDL_GetError() << '\n';
-        return -1;
+        return false;
     }
 
-    AppState state;
-    state.emulator.GetSID().Init();
-
     // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -48,24 +43,16 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     auto window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY |
                                           SDL_WINDOW_MAXIMIZED);
-    SDL_Window* window = SDL_CreateWindow("65C02 Simulator " PROJECT_VERSION, 1920, 1080, window_flags);
+    window = SDL_CreateWindow("65C02 Simulator " PROJECT_VERSION, 1920, 1080, window_flags);
     if (window == nullptr) {
         std::cerr << "Failed to create window: " << SDL_GetError() << '\n';
-        return -1;
+        return false;
     }
 
-    // Check for updates
-    UpdateChecker::CheckForUpdates(PROJECT_VERSION, [&state](bool available, const std::string& version) {
-        if (available) {
-            state.latestVersionTag = version;
-            state.updateAvailable = true;
-        }
-    });
-
-    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    gl_context = SDL_GL_CreateContext(window);
     if (gl_context == nullptr) {
         std::cerr << "Failed to create GL context: " << SDL_GetError() << '\n';
-        return -1;
+        return false;
     }
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1);  // Enable vsync
@@ -74,10 +61,13 @@ int main(int argc, char* argv[]) {
     int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
     if (version == 0) {
         std::cerr << "Failed to initialize OpenGL loader (gladLoadGL)!\n";
-        return 1;
+        return false;
     }
 
-    // Create OpenGL texture for VRAM display
+    return true;
+}
+
+static void InitializeTextures(AppState& state) {
     glGenTextures(1, &state.vramTexture);
     glBindTexture(GL_TEXTURE_2D, state.vramTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -103,8 +93,9 @@ int main(int argc, char* argv[]) {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     state.crtFilter.Init(GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT);
+}
 
-    // Setup Dear ImGui context
+static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const char* glsl_version) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& imgui_io = ImGui::GetIO();
@@ -123,6 +114,169 @@ int main(int argc, char* argv[]) {
     ImGui::GetStyle().ScaleAllSizes(1.0F / dpi_scale);
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
+}
+
+static void HandleSDLEvents(bool& done, SDL_Window* window) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL3_ProcessEvent(&event);
+        if (event.type == SDL_EVENT_QUIT) {
+            done = true;
+        }
+        if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window)) {
+            done = true;
+        }
+    }
+}
+
+static void HandleDialogs(AppState& state) {
+    // File Dialog
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.emulator.Pause();
+            std::string errorMsg;
+            if (state.emulator.Init(filePathName, errorMsg)) {
+                state.bin = filePathName;
+                state.romLoaded = true;
+                state.emulator.SetGPUEnabled(state.gpuEnabled);
+                state.emulator.ClearProfiler();
+            } else {
+                ImGui::OpenPopup("ErrorLoadingROM");
+            }
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // Save State Dialog
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGuiFileDialog::Instance()->Display("SaveStateDlgKey")) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.emulator.Pause();
+            if (!state.emulator.SaveState(filePathName)) {
+                ImGui::OpenPopup("ErrorSavingState");
+            }
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // Load State Dialog
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGuiFileDialog::Instance()->Display("LoadStateDlgKey")) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.emulator.Pause();
+            state.emulator.LoadState(filePathName, state.forceLoadSaveState);
+            auto loadResult = state.emulator.GetLastLoadResult();
+            bool loadedOk = loadResult == SavestateLoadResult::Success ||
+                            loadResult == SavestateLoadResult::VersionMismatch ||
+                            loadResult == SavestateLoadResult::HashMismatch;
+
+            if (loadedOk) {
+                state.romLoaded = true;
+                state.gpuEnabled = state.emulator.IsGPUEnabled();
+                state.instructionsPerFrame = state.emulator.GetTargetIPS();
+                state.cycleAccurate = state.emulator.IsCycleAccurate();
+                state.autoReload = state.emulator.IsAutoReloadEnabled();
+                state.bin = state.emulator.GetCurrentBinPath();
+            }
+
+            if (loadResult != SavestateLoadResult::Success) {
+                ImGui::OpenPopup("SavestateFeedback");
+            }
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+}
+
+static void DrawPopups(AppState& state) {
+    if (ImGui::BeginPopupModal("ErrorLoadingROM", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Error loading ROM. Please check the file.");
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginPopupModal("ErrorSavingState", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Error saving state. Please check your permissions.");
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        auto result = state.emulator.GetLastLoadResult();
+        if (result == SavestateLoadResult::VersionMismatch || result == SavestateLoadResult::HashMismatch) {
+            ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.0F, 1.0F), "Warning: Savestate compatibility issue");  // NOLINT
+            if (result == SavestateLoadResult::VersionMismatch) {
+                ImGui::TextUnformatted("Version mismatch detected:");
+                ImGui::BulletText("Saved: %s", state.emulator.GetLastLoadVersion().c_str());  // NOLINT
+                ImGui::BulletText("Current: %s", PROJECT_VERSION);                            // NOLINT
+            } else {
+                ImGui::TextUnformatted(
+                    "Hash mismatch. The data might be modified or "
+                    "corrupt.");
+            }
+            ImGui::TextUnformatted(
+                "The state was loaded, but some things might not work "
+                "correctly.");
+        } else if (result == SavestateLoadResult::StructuralError) {
+            ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "Error: Failed to load state");  // NOLINT
+            ImGui::TextUnformatted("The data is structurally incompatible or corrupted.");
+        } else {
+            ImGui::TextUnformatted("An unknown error occurred while loading the state.");
+        }
+
+        ImGui::Spacing();
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
+    state.emulator.Stop();
+    state.emulator.GetSID().Close();
+    state.crtFilter.Destroy();
+    glDeleteTextures(1, &state.vramTexture);
+    glDeleteTextures(1, &state.profilerTexture);
+    glDeleteTextures(1, &state.layoutTexture);
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
+    SDL_GL_DestroyContext(gl_context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+}
+
+int main(int argc, char* argv[]) {
+    SDL_Window* window = nullptr;
+    SDL_GLContext gl_context = nullptr;
+    if (!InitializeSDL(window, gl_context)) {
+        return -1;
+    }
+
+    AppState state;
+    state.emulator.GetSID().Init();
+
+    // Check for updates
+    UpdateChecker::CheckForUpdates(PROJECT_VERSION, [&state](bool available, const std::string& version) {
+        if (available) {
+            state.latestVersionTag = version;
+            state.updateAvailable = true;
+        }
+    });
+
+    InitializeTextures(state);
+
+    const char* glsl_version = "#version 130";
+    InitializeImGui(window, gl_context, glsl_version);
 
     if (argc > 1) {
         state.bin = argv[1];  // NOLINT
@@ -148,16 +302,7 @@ int main(int argc, char* argv[]) {
     while (!done) {
         frameStart = SDL_GetTicks();
 
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT) {
-                done = true;
-            }
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window)) {
-                done = true;
-            }
-        }
+        HandleSDLEvents(done, window);
 
         if (!state.emulator.IsPaused()) {
             state.instructionsPerFrame = state.emulator.GetTargetIPS();
@@ -177,111 +322,8 @@ int main(int argc, char* argv[]) {
         const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                              ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-        // File Dialog
-        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-        if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                state.emulator.Pause();
-                std::string errorMsg;
-                if (state.emulator.Init(filePathName, errorMsg)) {
-                    state.bin = filePathName;
-                    state.romLoaded = true;
-                    state.emulator.SetGPUEnabled(state.gpuEnabled);
-                    state.emulator.ClearProfiler();
-                } else {
-                    ImGui::OpenPopup("ErrorLoadingROM");
-                }
-            }
-            ImGuiFileDialog::Instance()->Close();
-        }
-
-        // Save State Dialog
-        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-        if (ImGuiFileDialog::Instance()->Display("SaveStateDlgKey")) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                state.emulator.Pause();
-                if (!state.emulator.SaveState(filePathName)) {
-                    ImGui::OpenPopup("ErrorSavingState");
-                }
-            }
-            ImGuiFileDialog::Instance()->Close();
-        }
-
-        // Load State Dialog
-        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-        if (ImGuiFileDialog::Instance()->Display("LoadStateDlgKey")) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                state.emulator.Pause();
-                state.emulator.LoadState(filePathName, state.forceLoadSaveState);
-                auto loadResult = state.emulator.GetLastLoadResult();
-                bool loadedOk = loadResult == SavestateLoadResult::Success ||
-                                loadResult == SavestateLoadResult::VersionMismatch ||
-                                loadResult == SavestateLoadResult::HashMismatch;
-
-                if (loadedOk) {
-                    state.romLoaded = true;
-                    state.gpuEnabled = state.emulator.IsGPUEnabled();
-                    state.instructionsPerFrame = state.emulator.GetTargetIPS();
-                    state.cycleAccurate = state.emulator.IsCycleAccurate();
-                    state.autoReload = state.emulator.IsAutoReloadEnabled();
-                    state.bin = state.emulator.GetCurrentBinPath();
-                }
-
-                if (loadResult != SavestateLoadResult::Success) {
-                    ImGui::OpenPopup("SavestateFeedback");
-                }
-            }
-            ImGuiFileDialog::Instance()->Close();
-        }
-
-        if (ImGui::BeginPopupModal("ErrorLoadingROM", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextUnformatted("Error loading ROM. Please check the file.");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
-        if (ImGui::BeginPopupModal("ErrorSavingState", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextUnformatted("Error saving state. Please check your permissions.");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
-        if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            auto result = state.emulator.GetLastLoadResult();
-            if (result == SavestateLoadResult::VersionMismatch || result == SavestateLoadResult::HashMismatch) {
-                ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.0F, 1.0F), "Warning: Savestate compatibility issue");  // NOLINT
-                if (result == SavestateLoadResult::VersionMismatch) {
-                    ImGui::TextUnformatted("Version mismatch detected:");
-                    ImGui::BulletText("Saved: %s", state.emulator.GetLastLoadVersion().c_str());  // NOLINT
-                    ImGui::BulletText("Current: %s", PROJECT_VERSION);                            // NOLINT
-                } else {
-                    ImGui::TextUnformatted(
-                        "Hash mismatch. The data might be modified or "
-                        "corrupt.");
-                }
-                ImGui::TextUnformatted(
-                    "The state was loaded, but some things might not work "
-                    "correctly.");
-            } else if (result == SavestateLoadResult::StructuralError) {
-                ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "Error: Failed to load state");  // NOLINT
-                ImGui::TextUnformatted("The data is structurally incompatible or corrupted.");
-            } else {
-                ImGui::TextUnformatted("An unknown error occurred while loading the state.");
-            }
-
-            ImGui::Spacing();
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
+        HandleDialogs(state);
+        DrawPopups(state);
 
         // Draw all windows
         GUI::DrawUpdatePopup(state);
@@ -294,6 +336,7 @@ int main(int argc, char* argv[]) {
         GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
 
         ImGui::Render();
+        ImGuiIO& imgui_io = ImGui::GetIO();
         glViewport(0, 0, (int)imgui_io.DisplaySize.x, (int)imgui_io.DisplaySize.y);
         glClearColor(0.0F, 0.0F, 0.0F, 1.00F);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -306,20 +349,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Cleanup
-    state.emulator.Stop();
-    state.emulator.GetSID().Close();
-    state.crtFilter.Destroy();
-    glDeleteTextures(1, &state.vramTexture);
-    glDeleteTextures(1, &state.profilerTexture);
-    glDeleteTextures(1, &state.layoutTexture);
-
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
-    ImGui::DestroyContext();
-    SDL_GL_DestroyContext(gl_context);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    Cleanup(state, window, gl_context);
 
     return 0;
 }
