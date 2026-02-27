@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 
 #include "Hardware/Core/Bus.h"
 
@@ -16,7 +17,7 @@ inline int Dispatch(CPU& cpu, Bus& bus);
 }
 
 class CPU {
-public:
+   public:
     // RETURNS:
     // 0: OK
     // 1: STOP/JAM
@@ -44,7 +45,7 @@ public:
     bool cycleAccurate = true;
 
     bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& in);
+    bool LoadState(std::istream& inputStream);
 
     void Reset();
 
@@ -61,29 +62,29 @@ public:
     template <bool Debug>
     int Dispatch(Bus& bus);
 
-    const Byte GetStatus() const;
+    [[nodiscard]] Byte GetStatus() const;
     void SetStatus(Byte status);
 
-    bool IsCycleAccurate() const;
+    [[nodiscard]] bool IsCycleAccurate() const;
     void SetCycleAccurate(bool enabled);
-    int GetRemainingCycles() const;
+    [[nodiscard]] int GetRemainingCycles() const;
 
     void AddPageCrossPenalty(Word baseAddr, Word effectiveAddr);
 
     inline void UpdatePagePtr(Bus& bus);
 
     template <bool Debug>
-    const Byte FetchByte(Bus& bus);
-    const Byte FetchByte(Bus& bus);
+    Byte FetchByte(Bus& bus);
+    Byte FetchByte(Bus& bus);
     template <bool Debug>
-    const Word FetchWord(Bus& bus);
-    const Word FetchWord(Bus& bus);
+    Word FetchWord(Bus& bus);
+    Word FetchWord(Bus& bus);
     template <bool Debug>
-    const Byte ReadByte(const Word addr, Bus& bus);
-    const Byte ReadByte(const Word addr, Bus& bus);
+    Byte ReadByte(Word addr, Bus& bus);
+    Byte ReadByte(Word addr, Bus& bus);
     template <bool Debug>
-    const Word ReadWord(const Word addr, Bus& bus);
-    const Word ReadWord(const Word addr, Bus& bus);
+    Word ReadWord(Word addr, Bus& bus);
+    Word ReadWord(Word addr, Bus& bus);
 
     template <bool Debug>
     void PushByte(Byte val, Bus& bus);
@@ -127,12 +128,16 @@ inline int Hardware::CPU::Execute(Bus& bus) {
     if (bus.HasActiveHooks()) {
         while (true) {
             int res = Step<true>(bus);
-            if (res != 0) return res;
+            if (res != 0) {
+                return res;
+            }
         }
     } else {
         while (true) {
             int res = Step<false>(bus);
-            if (res != 0) return res;
+            if (res != 0) {
+                return res;
+            }
         }
     }
     return 0;
@@ -181,7 +186,7 @@ inline int Hardware::CPU::Dispatch(Bus& bus) {
     return CPUDispatch::Dispatch<Debug>(*this, bus);
 }
 
-inline const Hardware::Byte Hardware::CPU::GetStatus() const {
+inline Hardware::Byte Hardware::CPU::GetStatus() const {
     Byte status = 0;
     status |= C;
     status |= Z << 1;
@@ -204,13 +209,10 @@ inline void Hardware::CPU::SetStatus(Byte status) {
 }
 
 inline bool Hardware::CPU::IsCycleAccurate() const { return cycleAccurate; }
-inline void Hardware::CPU::SetCycleAccurate(bool enabled) {
-    cycleAccurate = enabled;
-}
+inline void Hardware::CPU::SetCycleAccurate(bool enabled) { cycleAccurate = enabled; }
 inline int Hardware::CPU::GetRemainingCycles() const { return remainingCycles; }
 
-inline void Hardware::CPU::AddPageCrossPenalty(Word baseAddr,
-                                               Word effectiveAddr) {
+inline void Hardware::CPU::AddPageCrossPenalty(Word baseAddr, Word effectiveAddr) {
     if (cycleAccurate && ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))) {
         remainingCycles++;
     }
@@ -218,16 +220,22 @@ inline void Hardware::CPU::AddPageCrossPenalty(Word baseAddr,
 
 inline void Hardware::CPU::UpdatePagePtr(Bus& bus) {
     Byte* memoryBase = bus.GetPageReadPtr(PC >> 8);
-    if (memoryBase) {
-        current_page_ptr = memoryBase + PC;
+    if (memoryBase != nullptr) {
+        current_page_ptr = std::next(memoryBase, PC);
     } else {
         current_page_ptr = nullptr;
     }
 }
 
 template <bool Debug>
-inline const Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
-    Byte dato = current_page_ptr ? *current_page_ptr++ : bus.Read<Debug>(PC);
+inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
+    Byte dato = 0;
+    if (current_page_ptr != nullptr) {
+        dato = *current_page_ptr;
+        current_page_ptr = std::next(current_page_ptr);
+    } else {
+        dato = bus.Read<Debug>(PC);
+    }
     PC++;
     if ((PC & 0xFF) == 0) {
         UpdatePagePtr(bus);
@@ -236,19 +244,19 @@ inline const Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
 }
 
 template <bool Debug>
-inline const Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
+inline Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
     Word dato = FetchByte<Debug>(bus);
     dato |= (FetchByte<Debug>(bus) << 8);
     return dato;
 }
 
 template <bool Debug>
-inline const Hardware::Byte Hardware::CPU::ReadByte(const Word addr, Bus& bus) {
+inline Hardware::Byte Hardware::CPU::ReadByte(Word addr, Bus& bus) {
     return bus.Read<Debug>(addr);
 }
 
 template <bool Debug>
-inline const Hardware::Word Hardware::CPU::ReadWord(const Word addr, Bus& bus) {
+inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
     Word dato = bus.Read<Debug>(addr);
     dato |= (bus.Read<Debug>(addr + 1) << 8);
     return dato;
@@ -258,13 +266,17 @@ template <bool Debug>
 inline void Hardware::CPU::PushByte(Byte val, Bus& bus) {
     bus.Write<Debug>(SP, val);
     SP--;
-    if (SP < 0x0100) SP = 0x01FF;
+    if (SP < 0x0100) {
+        SP = 0x01FF;
+    }
 }
 
 template <bool Debug>
 inline Hardware::Byte Hardware::CPU::PopByte(Bus& bus) {
     SP++;
-    if (SP > 0x01FF) SP = 0x0100;
+    if (SP > 0x01FF) {
+        SP = 0x0100;
+    }
     return bus.Read<Debug>(SP);
 }
 
@@ -281,45 +293,68 @@ inline Hardware::Word Hardware::CPU::PopWord(Bus& bus) {
     return (High << 8) | Low;
 }
 
-inline const Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
-    if (bus.HasActiveHooks()) return FetchByte<true>(bus);
+inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        return FetchByte<true>(bus);
+    }
     return FetchByte<false>(bus);
 }
-inline const Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
-    if (bus.HasActiveHooks()) return FetchWord<true>(bus);
+inline Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        return FetchWord<true>(bus);
+    }
     return FetchWord<false>(bus);
 }
-inline const Hardware::Byte Hardware::CPU::ReadByte(const Word addr, Bus& bus) {
-    if (bus.HasActiveHooks()) return ReadByte<true>(addr, bus);
+inline Hardware::Byte Hardware::CPU::ReadByte(Word addr, Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        return ReadByte<true>(addr, bus);
+    }
     return ReadByte<false>(addr, bus);
 }
-inline const Hardware::Word Hardware::CPU::ReadWord(const Word addr, Bus& bus) {
-    if (bus.HasActiveHooks()) return ReadWord<true>(addr, bus);
+inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        return ReadWord<true>(addr, bus);
+    }
     return ReadWord<false>(addr, bus);
 }
-inline void Hardware::CPU::PushByte(const Byte val, Bus& bus) {
-    if (bus.HasActiveHooks()) return PushByte<true>(val, bus);
+inline void Hardware::CPU::PushByte(Byte val, Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        PushByte<true>(val, bus);
+        return;
+    }
     PushByte<false>(val, bus);
 }
-inline void Hardware::CPU::PushWord(const Word val, Bus& bus) {
-    if (bus.HasActiveHooks()) return PushWord<true>(val, bus);
+inline void Hardware::CPU::PushWord(Word val, Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        PushWord<true>(val, bus);
+        return;
+    }
     PushWord<false>(val, bus);
 }
 inline Hardware::Byte Hardware::CPU::PopByte(Bus& bus) {
-    if (bus.HasActiveHooks()) return PopByte<true>(bus);
+    if (bus.HasActiveHooks()) {
+        return PopByte<true>(bus);
+    }
     return PopByte<false>(bus);
 }
 inline Hardware::Word Hardware::CPU::PopWord(Bus& bus) {
-    if (bus.HasActiveHooks()) return PopWord<true>(bus);
+    if (bus.HasActiveHooks()) {
+        return PopWord<true>(bus);
+    }
     return PopWord<false>(bus);
 }
 
 inline int Hardware::CPU::Step(Bus& bus) {
-    if (bus.HasActiveHooks()) return Step<true>(bus);
+    if (bus.HasActiveHooks()) {
+        return Step<true>(bus);
+    }
     return Step<false>(bus);
 }
 
 inline void Hardware::CPU::IRQ(Bus& bus) {
-    if (bus.HasActiveHooks()) return IRQ<true>(bus);
+    if (bus.HasActiveHooks()) {
+        IRQ<true>(bus);
+        return;
+    }
     IRQ<false>(bus);
 }
