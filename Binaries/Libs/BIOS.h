@@ -31,6 +31,11 @@ void print_str(const char* s) {
     }
 }
 
+void println(const char* s) {
+    print_str(s);
+    bios_putchar('\n');
+}
+
 /* Function to read a string from the keyboard */
 void read_line(char* buffer, int max_len) {
     char c;

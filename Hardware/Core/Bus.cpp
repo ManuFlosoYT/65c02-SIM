@@ -98,8 +98,14 @@ void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
         }
     }
 
-    registeredDevices.push_back({startAddress, endAddress, device, enabled, ignoreCollision});
+    registeredDevices.push_back({startAddress, endAddress, device, enabled, ignoreCollision, false});
     RebuildDeviceMap();
+}
+
+void Bus::RegisterVirtualDevice(IBusDevice* device, bool enabled) {
+    // Virtual devices are UI-only: no bus address, no collision check, never mapped.
+    registeredDevices.push_back({0, 0, device, enabled, false, true});
+    // No RebuildDeviceMap needed — deviceMap is unaffected.
 }
 
 void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart, Word newEnd, bool enabled, bool ignoreCollision) {
@@ -133,6 +139,7 @@ void Bus::RebuildDeviceMap() {
     deviceMap.fill({nullptr, 0});
 
     for (const auto& reg : registeredDevices) {
+        if (reg.isVirtual) continue;
         if (reg.enabled && !reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
                 if (deviceMap.at(i).device != nullptr) {
@@ -148,6 +155,7 @@ void Bus::RebuildDeviceMap() {
     }
 
     for (const auto& reg : registeredDevices) {
+        if (reg.isVirtual) continue;
         if (reg.enabled && reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
                 deviceMap.at(i).device = reg.device;

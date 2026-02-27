@@ -42,7 +42,7 @@ void UpdateMemoryLayoutTexture(AppState& state, const std::vector<DeviceRegistra
     pixels.fill(0);
 
     for (const auto& reg : devices) {
-        if (!reg.enabled) {
+        if (!reg.enabled || reg.isVirtual) {
             continue;
         }
 
@@ -116,6 +116,10 @@ void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
 
         int devIdx = 0;
         for (auto& reg : devices) {
+            if (reg.isVirtual) {
+                devIdx++;
+                continue;
+            }
             ImGui::PushID(devIdx);
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -152,6 +156,43 @@ void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
             devIdx++;
         }
         ImGui::EndTable();
+    }
+
+    // --- Virtual devices (callback-driven, no bus address) ---
+    bool hasVirtual = false;
+    for (const auto& reg : devices) {
+        if (reg.isVirtual) {
+            hasVirtual = true;
+            break;
+        }
+    }
+    if (hasVirtual) {
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Virtual Devices");
+        ImGui::Separator();
+
+        if (ImGui::BeginTable("VirtualDeviceTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 55);
+            ImGui::TableHeadersRow();
+
+            int devIdx = 0;
+            for (auto& reg : devices) {
+                if (!reg.isVirtual) {
+                    devIdx++;
+                    continue;
+                }
+                ImGui::PushID(1000 + devIdx);
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(reg.device->GetName().c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Checkbox("##en", &reg.enabled);
+                ImGui::PopID();
+                devIdx++;
+            }
+            ImGui::EndTable();
+        }
     }
 }
 

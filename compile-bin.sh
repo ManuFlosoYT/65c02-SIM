@@ -81,11 +81,25 @@ elif [ -f "Binaries/$NAME.c" ]; then
         LINKER_CFG="Linker/C-Runtime.cfg"
     fi
 
+    # FatFs: if the program uses SD.h, compile ff.c and diskio.c
+    EXTRA_OBJS=""
+    if grep -q '#include "Libs/SD.h"' "Binaries/$NAME.c"; then
+        echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
+        cl65 -O --cpu 65C02 -t none -S \
+            -o Binaries/build/ff.s Binaries/Libs/fatfs/ff.c
+        cl65 -O --cpu 65C02 -t none -S \
+            -o Binaries/build/diskio.s Binaries/Libs/fatfs/diskio.c
+        cl65 -O --cpu 65C02 -t none -S \
+            -o Binaries/build/sd.s Binaries/Libs/SD.c
+        EXTRA_OBJS="Binaries/build/ff.s Binaries/build/diskio.s Binaries/build/sd.s"
+    fi
+
     cl65 --cpu 65C02 -t none -C "$LINKER_CFG" \
         -o "Binaries/build/$NAME.bin" \
         -m "Binaries/build/$NAME.map" \
         -l "Binaries/build/$NAME.lst" \
-        Linker/bios.s Linker/C-Runtime.s "Binaries/build/$NAME.s"
+        Linker/bios.s Linker/C-Runtime.s "Binaries/build/$NAME.s" \
+        $EXTRA_OBJS
     mv "Binaries/$NAME.o" "Binaries/build/$NAME.o" 2>/dev/null || true
     mkdir -p output/rom
     cp "Binaries/build/$NAME.bin" "output/rom/$NAME.bin"

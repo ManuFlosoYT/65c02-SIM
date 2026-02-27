@@ -13,6 +13,7 @@
 #include "Hardware/Audio/SID.h"
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Comm/ACIA.h"
+#include "Hardware/Comm/SDCard.h"
 #include "Hardware/Comm/VIA.h"
 #include "Hardware/Core/Bus.h"
 #include "Hardware/Memory/RAM.h"
@@ -60,8 +61,9 @@ class Emulator {
     bool IsGPUEnabled() const;
 
     SID& GetSID();
-    VIA& GetVIA();
-    ROM& GetROM();
+    Hardware::VIA& GetVIA();
+    Hardware::ROM& GetROM();
+    Hardware::SDCard& GetSDCard();
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
@@ -109,8 +111,9 @@ class Emulator {
     ROM rom;
     ACIA acia;
     GPU gpu;
-    SID sid;
-    VIA via;
+    Hardware::SID sid;
+    Hardware::VIA via;
+    Hardware::SDCard sdcard;
 
     // Input buffer
     std::deque<char> inputBuffer;
@@ -135,6 +138,13 @@ class Emulator {
 
     SavestateLoadResult lastLoadResult = SavestateLoadResult::Success;
     std::string lastLoadVersion;
+
+    // SPI bit-bang state (shared between VIA callback and Reset)
+    bool spi_last_clk = false;
+    uint8_t spi_byte_in = 0;
+    int spi_bit_count = 0;
+    uint8_t spi_miso_byte = 0xFF;
+    int spi_miso_bit_idx = 0;
 };
 
 }  // namespace Core
@@ -156,6 +166,7 @@ inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
 inline Hardware::SID& Core::Emulator::GetSID() { return sid; }
 inline Hardware::VIA& Core::Emulator::GetVIA() { return via; }
 inline Hardware::ROM& Core::Emulator::GetROM() { return rom; }
+inline Hardware::SDCard& Core::Emulator::GetSDCard() { return sdcard; }
 
 inline void Core::Emulator::SetCycleAccurate(bool enabled) { cpu.SetCycleAccurate(enabled); }
 inline bool Core::Emulator::IsCycleAccurate() const { return cpu.IsCycleAccurate(); }

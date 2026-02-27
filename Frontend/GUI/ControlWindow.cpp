@@ -1,22 +1,148 @@
 #include "Frontend/GUI/ControlWindow.h"
 
 #include <ImGuiFileDialog.h>
+#include <imgui.h>
 
-#include <chrono>
-#include <ctime>
-#include <filesystem>
-#include <iomanip>
-#include <iostream>
+#include <algorithm>
+#include <array>
+#include <chrono>   // NOLINT
+#include <cstdint>  // NOLINT
+#include <ctime>    // NOLINT
+#include <fstream>
+#include <iomanip>  // NOLINT
 #include <sstream>
+#include <string_view>
 
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
+#include "Hardware/Comm/SDCard.h"
 
 using namespace Control;
 using namespace Core;
 using namespace Hardware;
 
 namespace GUI {
+
+// Creates a blank FAT16 disk image (32 MB) in pure C++ — no host tools required.
+static bool CreateFAT16Image(const std::string& path) {
+    // Geometry for a 32 MB image
+    static constexpr uint32_t BYTES_PER_SECTOR = 512;
+    static constexpr uint32_t SECTORS_PER_CLUSTER = 8;
+    static constexpr uint32_t RESERVED_SECTORS = 4;
+    static constexpr uint32_t NUM_FATS = 2;
+    static constexpr uint32_t ROOT_ENTRIES = 512;
+    static constexpr uint32_t TOTAL_SECTORS = 65536;  // 32 MB
+    static constexpr uint32_t FAT_SECTORS = 32;       // ceil(8192 clusters * 2 bytes / 512)
+    static constexpr uint32_t ROOT_SECTORS = (ROOT_ENTRIES * 32) / BYTES_PER_SECTOR;
+
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    if (!file) {
+        return false;
+    }
+
+    // Pre-fill with zeros
+    std::string zero(BYTES_PER_SECTOR, '\0');
+    for (uint32_t i = 0; i < TOTAL_SECTORS; i++) {
+        file.write(zero.data(), BYTES_PER_SECTOR);
+    }
+    file.seekp(0, std::ios::beg);
+
+    // --- Boot sector (BPB) ---
+    std::array<char, BYTES_PER_SECTOR> boot{};
+    // Jump + NOP
+    boot[0] = static_cast<char>(0xEB);
+    boot[1] = static_cast<char>(0x3C);
+    boot[2] = static_cast<char>(0x90);
+    // OEM Name
+    std::string_view oem = "MSDOS5.0";
+    for (size_t i = 0; i < oem.length(); i++) {
+        boot.at(3 + i) = static_cast<char>(oem.at(i));
+    }
+    // Bytes per sector (512)
+    boot[11] = static_cast<char>(0x00);
+    boot[12] = static_cast<char>(0x02);
+    // Sectors per cluster
+    boot[13] = static_cast<char>(SECTORS_PER_CLUSTER);
+    // Reserved sectors
+    boot[14] = static_cast<char>(RESERVED_SECTORS & 0xFF);
+    boot[15] = static_cast<char>(RESERVED_SECTORS >> 8);
+    // Number of FATs
+    boot[16] = static_cast<char>(NUM_FATS);
+    // Root entry count
+    boot[17] = static_cast<char>(ROOT_ENTRIES & 0xFF);
+    boot[18] = static_cast<char>(ROOT_ENTRIES >> 8);
+    // Total sectors 16
+    boot[19] = static_cast<char>(0x00);
+    boot[20] = static_cast<char>(0x00);  // use 32-bit field
+    // Media type (fixed disk)
+    boot[21] = static_cast<char>(0xF8);
+    // FAT size in sectors
+    boot[22] = static_cast<char>(FAT_SECTORS & 0xFF);
+    boot[23] = static_cast<char>(FAT_SECTORS >> 8);
+    // Sectors per track / heads (63 / 255)
+    boot[24] = static_cast<char>(63);
+    boot[25] = static_cast<char>(0);
+    boot[26] = static_cast<char>(255);
+    boot[27] = static_cast<char>(0);
+    // Hidden sectors
+    boot[28] = boot[29] = boot[30] = boot[31] = static_cast<char>(0);
+    // Total sectors 32
+    boot[32] = static_cast<char>(TOTAL_SECTORS & 0xFF);
+    boot[33] = static_cast<char>((TOTAL_SECTORS >> 8) & 0xFF);
+    boot[34] = static_cast<char>((TOTAL_SECTORS >> 16) & 0xFF);
+    boot[35] = static_cast<char>((TOTAL_SECTORS >> 24) & 0xFF);
+    // Drive number, reserved, boot sig
+    boot[36] = static_cast<char>(0x80);
+    boot[37] = static_cast<char>(0x00);
+    boot[38] = static_cast<char>(0x29);
+    // Volume ID (arbitrary)
+    boot[39] = static_cast<char>(0xDE);
+    boot[40] = static_cast<char>(0xAD);
+    boot[41] = static_cast<char>(0xBE);
+    boot[42] = static_cast<char>(0xEF);
+    // Volume label
+    std::string_view label = "SD IMAGE   ";
+    for (size_t i = 0; i < label.length(); i++) {
+        boot.at(43 + i) = static_cast<char>(label.at(i));
+    }
+    // FS type string
+    std::string_view fstype = "FAT16   ";
+    for (size_t i = 0; i < fstype.length(); i++) {
+        boot.at(54 + i) = static_cast<char>(fstype.at(i));
+    }
+    // Boot signature
+    boot[510] = static_cast<char>(0x55);
+    boot[511] = static_cast<char>(0xAA);
+    file.write(boot.data(), BYTES_PER_SECTOR);
+
+    // --- FAT sectors (two copies) ---
+    // First two entries are reserved: 0xFFF8 (media) and 0xFFFF
+    std::array<char, BYTES_PER_SECTOR> fatSector{};
+    fatSector[0] = static_cast<char>(0xF8);
+    fatSector[1] = static_cast<char>(0xFF);  // FAT entry 0 (media)
+    fatSector[2] = static_cast<char>(0xFF);
+    fatSector[3] = static_cast<char>(0xFF);  // FAT entry 1
+
+    // Seek to first FAT
+    file.seekp(static_cast<std::streamoff>(RESERVED_SECTORS) * BYTES_PER_SECTOR, std::ios::beg);
+    file.write(fatSector.data(), BYTES_PER_SECTOR);
+    // Remaining FAT sectors already zero
+    std::array<char, BYTES_PER_SECTOR> zeroBuf{};
+    for (uint32_t size = 1; size < FAT_SECTORS; size++) {
+        file.write(zeroBuf.data(), BYTES_PER_SECTOR);
+    }
+
+    // Second FAT copy
+    file.write(fatSector.data(), BYTES_PER_SECTOR);
+    for (uint32_t size = 1; size < FAT_SECTORS; size++) {
+        file.write(zeroBuf.data(), BYTES_PER_SECTOR);
+    }
+
+    // Root directory is already zero-filled from the pre-fill step.
+    (void)ROOT_SECTORS;
+
+    return file.good();
+}
 
 static void DrawControlButtonBar(AppState& state) {
     if (ImGui::Button("Settings")) {
@@ -92,6 +218,32 @@ static void DrawSettingsBasic(AppState& state) {
     if (ImGui::Checkbox("Auto-Reload Bin", &state.autoReload)) {
         state.emulator.SetAutoReload(state.autoReload);
     }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("SD Card Emulation");
+
+    // We only show SD Card state, but user must explicitly mount via file dialog.
+    bool sdMounted = state.emulator.GetSDCard().IsMounted();
+    if (sdMounted) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("SD Card Mounted");
+        ImGui::PopStyleColor();
+        if (ImGui::Button("Unmount SD Card")) {
+            state.emulator.GetSDCard().Unmount();
+        }
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("SD Card Not Mounted");
+        ImGui::PopStyleColor();
+        if (ImGui::Button("Create New SD Image...")) {
+            ImGuiFileDialog::Instance()->OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        }
+        if (ImGui::Button("Mount Image (IMG)")) {
+            ImGuiFileDialog::Instance()->OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_None);
+        }
+    }
 }
 
 static void DrawSettingsSaveState(AppState& state) {
@@ -109,7 +261,8 @@ static void DrawSettingsSaveState(AppState& state) {
                 << (timeStruct->tm_mday < 10 ? "0" : "") << timeStruct->tm_mday << "_"
                 << (timeStruct->tm_hour < 10 ? "0" : "") << timeStruct->tm_hour << (timeStruct->tm_min < 10 ? "0" : "")
                 << timeStruct->tm_min << (timeStruct->tm_sec < 10 ? "0" : "") << timeStruct->tm_sec;
-        std::string defaultName = "SIM65C02SST_" + binName + "_" + dateStr.str();
+        std::string dateOutput = dateStr.str();
+        std::string defaultName = "SIM65C02SST_" + binName + "_" + dateOutput;
         ImGuiFileDialog::Instance()->OpenDialog("SaveStateDlgKey", "Save State", ".savestate", ".", defaultName);
         ImGui::CloseCurrentPopup();
     }
@@ -222,6 +375,30 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     DrawSettingsPopup(state);
     DrawDebugMenu(state);
     DrawIPSSection(state, mainColWidth);
+
+    // Handle SD Card create dialog
+    if (ImGuiFileDialog::Instance()->Display("CreateSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            // Ensure .img extension
+            if (filePath.size() < 4 || filePath.substr(filePath.size() - 4) != ".img") {
+                filePath += ".img";
+            }
+            if (CreateFAT16Image(filePath)) {
+                state.emulator.GetSDCard().Mount(filePath);
+            }
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // Handle SD Card mount dialog
+    if (ImGuiFileDialog::Instance()->Display("MountSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.emulator.GetSDCard().Mount(filePath);
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
 
     ImGui::SetScrollHereY(1.0F);
     ImGui::End();

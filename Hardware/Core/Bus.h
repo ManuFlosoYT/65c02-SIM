@@ -43,6 +43,7 @@ struct DeviceRegistration {
     IBusDevice* device;
     bool enabled;
     bool ignoreCollision;
+    bool isVirtual = false;  // If true: UI-only, never mapped to deviceMap
 };
 
 struct BusSlot {
@@ -63,6 +64,11 @@ class Bus {
 
     void RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device, bool enabled = true,
                         bool ignoreCollision = false);
+
+    // Registers a device as UI-only (no bus address, no collision). Useful for
+    // hardware driven by callbacks (LCD, SDCard) that still need to appear in
+    // the Memory Layout debug window and have their 'enabled' flag queried.
+    void RegisterVirtualDevice(IBusDevice* device, bool enabled = true);
 
     void UpdateDeviceRegistration(IBusDevice* device, Word newStart, Word newEnd, bool enabled, bool ignoreCollision);
 
