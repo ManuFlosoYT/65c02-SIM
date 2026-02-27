@@ -19,12 +19,11 @@ void DrawUpdatePopup(AppState& state) {
 
     // Always center the modal
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
 
-    if (ImGui::BeginPopupModal("Update Available", NULL,
-                               ImGuiWindowFlags_AlwaysAutoResize |
-                                   ImGuiWindowFlags_NoMove |
-                                   ImGuiWindowFlags_NoResize)) {
+    if (ImGui::BeginPopupModal(
+            "Update Available", nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
         ImGui::Text("A new version of SIM_65C02 is available!");
         ImGui::Text("Latest Version: %s", state.latestVersionTag.c_str());
         ImGui::Text("Current Version: %s", PROJECT_VERSION);
@@ -33,11 +32,10 @@ void DrawUpdatePopup(AppState& state) {
         ImGui::NewLine();
 
         float availWidth = ImGui::GetContentRegionAvail().x;
-        float btnWidth = (availWidth - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+        float btnWidth = (availWidth - ImGui::GetStyle().ItemSpacing.x) * 0.5F;
 
         if (ImGui::Button("Download", ImVec2(btnWidth, 0))) {
-            std::string url =
-                "https://github.com/ManuFlosoYT/65c02-SIM/releases/latest";
+            std::string url = "https://github.com/ManuFlosoYT/65c02-SIM/releases/latest";
             SDL_OpenURL(url.c_str());
         }
         ImGui::SameLine();
