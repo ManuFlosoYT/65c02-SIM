@@ -28,7 +28,7 @@ using namespace Hardware;
 int main(int argc, char* argv[]) {
     // Setup SDL
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
-        std::cerr << "Error: " << SDL_GetError() << std::endl;
+        std::cerr << "Error: " << SDL_GetError() << '\n';
         return -1;
     }
 
@@ -38,8 +38,7 @@ int main(int argc, char* argv[]) {
     // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                        SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
@@ -47,29 +46,25 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_WindowFlags window_flags =
-        (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
-                          SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_MAXIMIZED);
-    SDL_Window* window = SDL_CreateWindow("65C02 Simulator " PROJECT_VERSION,
-                                          1920, 1080, window_flags);
-    if (!window) {
-        std::cerr << "Failed to create window: " << SDL_GetError() << std::endl;
+    auto window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY |
+                                          SDL_WINDOW_MAXIMIZED);
+    SDL_Window* window = SDL_CreateWindow("65C02 Simulator " PROJECT_VERSION, 1920, 1080, window_flags);
+    if (window == nullptr) {
+        std::cerr << "Failed to create window: " << SDL_GetError() << '\n';
         return -1;
     }
 
     // Check for updates
-    UpdateChecker::CheckForUpdates(
-        PROJECT_VERSION, [&state](bool available, const std::string& version) {
-            if (available) {
-                state.latestVersionTag = version;
-                state.updateAvailable = true;
-            }
-        });
+    UpdateChecker::CheckForUpdates(PROJECT_VERSION, [&state](bool available, const std::string& version) {
+        if (available) {
+            state.latestVersionTag = version;
+            state.updateAvailable = true;
+        }
+    });
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    if (!gl_context) {
-        std::cerr << "Failed to create GL context: " << SDL_GetError()
-                  << std::endl;
+    if (gl_context == nullptr) {
+        std::cerr << "Failed to create GL context: " << SDL_GetError() << '\n';
         return -1;
     }
     SDL_GL_MakeCurrent(window, gl_context);
@@ -78,8 +73,7 @@ int main(int argc, char* argv[]) {
     // Initialize OpenGL loader
     int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
     if (version == 0) {
-        std::cerr << "Failed to initialize OpenGL loader (gladLoadGL)!"
-                  << std::endl;
+        std::cerr << "Failed to initialize OpenGL loader (gladLoadGL)!\n";
         return 1;
     }
 
@@ -90,23 +84,21 @@ int main(int argc, char* argv[]) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    unsigned char emptyPixels[GPU::VRAM_HEIGHT * GPU::VRAM_WIDTH * 3] = {0};
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, 0,
-                 GL_RGB, GL_UNSIGNED_BYTE, emptyPixels);
+    std::array<unsigned char, static_cast<std::size_t>(GPU::VRAM_HEIGHT) * GPU::VRAM_WIDTH * 3> emptyPixels{};
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 emptyPixels.data());
 
     glGenTextures(1, &state.profilerTexture);
     glBindTexture(GL_TEXTURE_2D, state.profilerTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB,
-                 GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
     glGenTextures(1, &state.layoutTexture);
     glBindTexture(GL_TEXTURE_2D, state.layoutTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB,
-                 GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -115,30 +107,31 @@ int main(int argc, char* argv[]) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.IniFilename = nullptr;
+    ImGuiIO& imgui_io = ImGui::GetIO();
+    (void)imgui_io;
+    imgui_io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    imgui_io.IniFilename = nullptr;
 
     float dpi_scale = SDL_GetWindowDisplayScale(window);
-    if (dpi_scale <= 0.0f) dpi_scale = 1.0f;
+    if (dpi_scale <= 0.0F) {
+        dpi_scale = 1.0F;
+    }
 
-    io.FontGlobalScale = 1.5f / dpi_scale;
+    imgui_io.FontGlobalScale = 1.5F / dpi_scale;
 
     ImGui::StyleColorsDark();
-    ImGui::GetStyle().ScaleAllSizes(1.0f / dpi_scale);
+    ImGui::GetStyle().ScaleAllSizes(1.0F / dpi_scale);
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     if (argc > 1) {
-        state.bin = argv[1];
+        state.bin = argv[1];  // NOLINT
         std::string errorMsg;
         if (state.emulator.Init(state.bin, errorMsg)) {
             state.romLoaded = true;
             state.emulator.ClearProfiler();
         } else {
-            std::cerr << "Failed to load ROM from args: " << errorMsg
-                      << std::endl;
+            std::cerr << "Failed to load ROM from args: " << errorMsg << '\n';
         }
     }
     state.emulator.SetOutputCallback(Console::OutputCallback);
@@ -149,8 +142,8 @@ int main(int argc, char* argv[]) {
 
     const int FPS = 60;
     const int frameDelay = 1000 / FPS;
-    Uint64 frameStart;
-    int frameTime;
+    Uint64 frameStart = 0;
+    int frameTime = 0;
 
     while (!done) {
         frameStart = SDL_GetTicks();
@@ -158,10 +151,12 @@ int main(int argc, char* argv[]) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT) done = true;
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
-                event.window.windowID == SDL_GetWindowID(window))
+            if (event.type == SDL_EVENT_QUIT) {
                 done = true;
+            }
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window)) {
+                done = true;
+            }
         }
 
         if (!state.emulator.IsPaused()) {
@@ -177,19 +172,16 @@ int main(int argc, char* argv[]) {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos;
         ImVec2 work_size = viewport->WorkSize;
-        float top_section_height = work_size.y * 0.25f;
+        float top_section_height = work_size.y * 0.25F;
 
-        const ImGuiWindowFlags wf = ImGuiWindowFlags_NoResize |
-                                    ImGuiWindowFlags_NoMove |
-                                    ImGuiWindowFlags_NoCollapse |
-                                    ImGuiWindowFlags_NoBringToFrontOnFocus;
+        const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         // File Dialog
         ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string filePathName =
-                    ImGuiFileDialog::Instance()->GetFilePathName();
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 state.emulator.Pause();
                 std::string errorMsg;
                 if (state.emulator.Init(filePathName, errorMsg)) {
@@ -208,8 +200,7 @@ int main(int argc, char* argv[]) {
         ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
         if (ImGuiFileDialog::Instance()->Display("SaveStateDlgKey")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string filePathName =
-                    ImGuiFileDialog::Instance()->GetFilePathName();
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 state.emulator.Pause();
                 if (!state.emulator.SaveState(filePathName)) {
                     ImGui::OpenPopup("ErrorSavingState");
@@ -222,16 +213,13 @@ int main(int argc, char* argv[]) {
         ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
         if (ImGuiFileDialog::Instance()->Display("LoadStateDlgKey")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string filePathName =
-                    ImGuiFileDialog::Instance()->GetFilePathName();
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 state.emulator.Pause();
-                state.emulator.LoadState(filePathName,
-                                         state.forceLoadSaveState);
+                state.emulator.LoadState(filePathName, state.forceLoadSaveState);
                 auto loadResult = state.emulator.GetLastLoadResult();
-                bool loadedOk =
-                    loadResult == SavestateLoadResult::Success ||
-                    loadResult == SavestateLoadResult::VersionMismatch ||
-                    loadResult == SavestateLoadResult::HashMismatch;
+                bool loadedOk = loadResult == SavestateLoadResult::Success ||
+                                loadResult == SavestateLoadResult::VersionMismatch ||
+                                loadResult == SavestateLoadResult::HashMismatch;
 
                 if (loadedOk) {
                     state.romLoaded = true;
@@ -249,53 +237,43 @@ int main(int argc, char* argv[]) {
             ImGuiFileDialog::Instance()->Close();
         }
 
-        if (ImGui::BeginPopupModal("ErrorLoadingROM", NULL,
-                                   ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("Error loading ROM. Please check the file.");
+        if (ImGui::BeginPopupModal("ErrorLoadingROM", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Error loading ROM. Please check the file.");
             if (ImGui::Button("OK", ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
         }
 
-        if (ImGui::BeginPopupModal("ErrorSavingState", NULL,
-                                   ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("Error saving state. Please check your permissions.");
+        if (ImGui::BeginPopupModal("ErrorSavingState", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Error saving state. Please check your permissions.");
             if (ImGui::Button("OK", ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
         }
 
-        if (ImGui::BeginPopupModal("SavestateFeedback", NULL,
-                                   ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             auto result = state.emulator.GetLastLoadResult();
-            if (result == SavestateLoadResult::VersionMismatch ||
-                result == SavestateLoadResult::HashMismatch) {
-                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
-                                   "Warning: Savestate compatibility issue");
+            if (result == SavestateLoadResult::VersionMismatch || result == SavestateLoadResult::HashMismatch) {
+                ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.0F, 1.0F), "Warning: Savestate compatibility issue");  // NOLINT
                 if (result == SavestateLoadResult::VersionMismatch) {
-                    ImGui::Text("Version mismatch detected:");
-                    ImGui::BulletText(
-                        "Saved: %s",
-                        state.emulator.GetLastLoadVersion().c_str());
-                    ImGui::BulletText("Current: %s", PROJECT_VERSION);
+                    ImGui::TextUnformatted("Version mismatch detected:");
+                    ImGui::BulletText("Saved: %s", state.emulator.GetLastLoadVersion().c_str());  // NOLINT
+                    ImGui::BulletText("Current: %s", PROJECT_VERSION);                            // NOLINT
                 } else {
-                    ImGui::Text(
+                    ImGui::TextUnformatted(
                         "Hash mismatch. The data might be modified or "
                         "corrupt.");
                 }
-                ImGui::Text(
+                ImGui::TextUnformatted(
                     "The state was loaded, but some things might not work "
                     "correctly.");
             } else if (result == SavestateLoadResult::StructuralError) {
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                                   "Error: Failed to load state");
-                ImGui::Text(
-                    "The data is structurally incompatible or corrupted.");
+                ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "Error: Failed to load state");  // NOLINT
+                ImGui::TextUnformatted("The data is structurally incompatible or corrupted.");
             } else {
-                ImGui::Text(
-                    "An unknown error occurred while loading the state.");
+                ImGui::TextUnformatted("An unknown error occurred while loading the state.");
             }
 
             ImGui::Spacing();
@@ -307,22 +285,17 @@ int main(int argc, char* argv[]) {
 
         // Draw all windows
         GUI::DrawUpdatePopup(state);
-        GUI::DrawControlWindow(state, work_pos, work_size, top_section_height,
-                               wf);
-        GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, wf);
-        GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height,
-                                 wf);
-        GUI::DrawRegistersWindow(state, work_pos, work_size, top_section_height,
-                                 wf);
-        GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height,
-                               wf);
-        state.crtTime = SDL_GetTicks() / 1000.0f;
-        GUI::DrawVRAMViewerWindow(state, work_pos, work_size,
-                                  top_section_height, wf);
+        GUI::DrawControlWindow(state, work_pos, work_size, top_section_height, windowFlags);
+        GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, windowFlags);
+        GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
+        GUI::DrawRegistersWindow(state, work_pos, work_size, top_section_height, windowFlags);
+        GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
+        state.crtTime = static_cast<float>(SDL_GetTicks()) / 1000.0F;
+        GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
 
         ImGui::Render();
-        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.00f);
+        glViewport(0, 0, (int)imgui_io.DisplaySize.x, (int)imgui_io.DisplaySize.y);
+        glClearColor(0.0F, 0.0F, 0.0F, 1.00F);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
