@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <functional>
+#include <string>
 
 namespace Frontend {
 
@@ -16,12 +16,12 @@ struct Version {
 };
 
 class UpdateChecker {
-public:
+   public:
     using UpdateCallback = std::function<void(bool updateAvailable, const std::string& latestVersion)>;
 
-    static void CheckForUpdates(const std::string& currentVersion, UpdateCallback callback);
+    static void CheckForUpdates(const std::string& currentVersion, const UpdateCallback& callback);
 
-private:
+   private:
     static std::string FetchLatestReleaseTag();
 };
 
