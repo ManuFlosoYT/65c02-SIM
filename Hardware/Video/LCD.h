@@ -16,23 +16,23 @@ class LCD : public IBusDevice {
     // IBusDevice implementation
     Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
-    std::string GetName() const override;
+    [[nodiscard]] std::string GetName() const override;
 
     void Update(Byte portBVal);
 
     bool SaveState(std::ostream& out) const override;
-    bool LoadState(std::istream& in) override;
+    bool LoadState(std::istream& inputStream) override;
 
-    void SetOutputCallback(std::function<void(char)> cb);
+    void SetOutputCallback(std::function<void(char)> callback);
 
-    const std::array<std::array<char, 16>, 2>& GetScreen() const;
+    [[nodiscard]] const std::array<std::array<char, 16>, 2>& GetScreen() const;
 
-    bool IsInitialized() const;
+    [[nodiscard]] bool IsInitialized() const;
 
-    bool IsDisplayOn() const;
-    bool IsCursorOn() const;
-    int GetCursorX() const;
-    int GetCursorY() const;
+    [[nodiscard]] bool IsDisplayOn() const;
+    [[nodiscard]] bool IsCursorOn() const;
+    [[nodiscard]] int GetCursorX() const;
+    [[nodiscard]] int GetCursorY() const;
 
    private:
     Byte PORTB_DATA;
@@ -56,15 +56,14 @@ class LCD : public IBusDevice {
 
     std::function<void(char)> onChar;
 
-    void WriteCharToScreen(char c);
+    void WriteCharToScreen(char character);
     void HandleCommand(Byte cmd);
 };
 
 }  // namespace Hardware
 
-
 inline std::string Hardware::LCD::GetName() const { return "LCD"; }
-inline void Hardware::LCD::SetOutputCallback(std::function<void(char)> cb) { onChar = cb; }
+inline void Hardware::LCD::SetOutputCallback(std::function<void(char)> callback) { onChar = std::move(callback); }
 inline const std::array<std::array<char, 16>, 2>& Hardware::LCD::GetScreen() const { return screen; }
 inline bool Hardware::LCD::IsInitialized() const { return is_init; }
 inline bool Hardware::LCD::IsDisplayOn() const { return display_on; }
