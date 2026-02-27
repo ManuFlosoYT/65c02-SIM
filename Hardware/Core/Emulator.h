@@ -61,6 +61,7 @@ class Emulator {
 
     SID& GetSID();
     VIA& GetVIA();
+    ROM& GetROM();
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
@@ -154,6 +155,7 @@ inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
 
 inline Hardware::SID& Core::Emulator::GetSID() { return sid; }
 inline Hardware::VIA& Core::Emulator::GetVIA() { return via; }
+inline Hardware::ROM& Core::Emulator::GetROM() { return rom; }
 
 inline void Core::Emulator::SetCycleAccurate(bool enabled) { cpu.SetCycleAccurate(enabled); }
 inline bool Core::Emulator::IsCycleAccurate() const { return cpu.IsCycleAccurate(); }

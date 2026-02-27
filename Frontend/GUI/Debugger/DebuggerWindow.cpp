@@ -49,7 +49,40 @@ void DrawCPURegisters(Hardware::CPU& cpu) {
     ImGui::PopItemWidth();
 }
 
-void DrawMemoryEditor(Hardware::Bus& bus) {
+void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row) {
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+
+    std::ostringstream rowBuf;
+    rowBuf << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << (row * 16);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::TextUnformatted(rowBuf.str().c_str());
+    ImGui::PopStyleColor();
+
+    for (int col = 0; col < 16; col++) {
+        ImGui::TableNextColumn();
+        Word addr = static_cast<Word>((row * 16) + col);
+        Byte val = bus.ReadDirect(addr);
+
+        std::ostringstream labelBuf;
+        labelBuf << "##m" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << addr;
+        std::string labelStr = labelBuf.str();
+
+        ImGui::PushItemWidth(22.0F);
+        if (ImGui::InputScalar(labelStr.c_str(), ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
+                               ImGuiInputTextFlags_CharsHexadecimal)) {
+            if (addr >= 0x8000) {
+                emulator.GetROM().WriteDirect(addr - 0x8000, val);
+            } else {
+                bus.WriteDirect(addr, val);
+            }
+        }
+        ImGui::PopItemWidth();
+    }
+}
+
+void DrawMemoryEditor(Core::Emulator& emulator) {
+    Hardware::Bus& bus = emulator.GetMem();
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("Memory Editor (0x0000-0xFFFF)");
     ImGui::PopStyleColor();
@@ -70,31 +103,7 @@ void DrawMemoryEditor(Hardware::Bus& bus) {
             clipper.Begin((0xFFFF + 1) / 16);
             while (clipper.Step()) {
                 for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-
-                    std::ostringstream rowBuf;
-                    rowBuf << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << (row * 16);
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-                    ImGui::TextUnformatted(rowBuf.str().c_str());
-                    ImGui::PopStyleColor();
-
-                    for (int col = 0; col < 16; col++) {
-                        ImGui::TableNextColumn();
-                        Word addr = static_cast<Word>((row * 16) + col);
-                        Byte val = bus.ReadDirect(addr);
-
-                        std::ostringstream labelBuf;
-                        labelBuf << "##m" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << addr;
-                        std::string labelStr = labelBuf.str();
-
-                        ImGui::PushItemWidth(22.0F);
-                        if (ImGui::InputScalar(labelStr.c_str(), ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
-                                               ImGuiInputTextFlags_CharsHexadecimal)) {
-                            bus.WriteDirect(addr, val);
-                        }
-                        ImGui::PopItemWidth();
-                    }
+                    DrawMemoryRow(emulator, bus, row);
                 }
             }
             ImGui::EndTable();
@@ -103,7 +112,8 @@ void DrawMemoryEditor(Hardware::Bus& bus) {
     ImGui::EndChild();
 }
 
-void DrawTools(Hardware::Bus& bus) {
+void DrawTools(Core::Emulator& emulator) {
+    Hardware::Bus& bus = emulator.GetMem();
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("Tools");
     ImGui::PopStyleColor();
@@ -123,7 +133,13 @@ void DrawTools(Hardware::Bus& bus) {
         std::mt19937 rng(std::random_device{}());
         std::uniform_int_distribution<int> dist(0, 255);
         for (int i = startAddr; i <= static_cast<int>(endAddr); i++) {
-            bus.WriteDirect(static_cast<Word>(i), static_cast<Byte>(dist(rng)));
+            Byte val = static_cast<Byte>(dist(rng));
+            Word addr = static_cast<Word>(i);
+            if (addr >= 0x8000) {
+                emulator.GetROM().WriteDirect(addr - 0x8000, val);
+            } else {
+                bus.WriteDirect(addr, val);
+            }
         }
     }
 }
@@ -139,12 +155,12 @@ void DrawDebuggerWindow(Control::AppState& state) {
     ImGui::Separator();
     ImGui::Spacing();
 
-    DrawMemoryEditor(bus);
+    DrawMemoryEditor(state.emulator);
 
     ImGui::Separator();
     ImGui::Spacing();
 
-    DrawTools(bus);
+    DrawTools(state.emulator);
 }
 
 }  // namespace GUI
