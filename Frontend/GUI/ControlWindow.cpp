@@ -5,6 +5,7 @@
 #include <chrono>
 #include <ctime>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 
@@ -17,17 +18,7 @@ using namespace Hardware;
 
 namespace GUI {
 
-void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
-                       float top_section_height,
-                       ImGuiWindowFlags window_flags) {
-    float mainColWidth = work_size.x * 0.47f;
-
-    ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(mainColWidth, top_section_height * 0.4f),
-                             ImGuiCond_Always);
-    ImGui::Begin("Control", nullptr,
-                 window_flags | ImGuiWindowFlags_NoScrollbar |
-                     ImGuiWindowFlags_NoScrollWithMouse);
+static void DrawControlButtonBar(AppState& state) {
     if (ImGui::Button("Settings")) {
         ImGui::OpenPopup("SettingsMenu");
     }
@@ -38,7 +29,9 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
         bool wasRunning = !state.emulator.IsPaused();
-        if (wasRunning) state.emulator.Pause();
+        if (wasRunning) {
+            state.emulator.Pause();
+        }
 
         Console::Clear();
         state.emulator.GetGPU().Reset();
@@ -47,10 +40,9 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
         if (state.romLoaded) {
             std::string errorMsg;
             if (!state.emulator.Init(state.bin, errorMsg)) {
-                std::cerr << "Error resetting ROM: " << errorMsg << std::endl;
+                std::cerr << "Error resetting ROM: " << errorMsg << '\n';
                 state.romLoaded = false;
-                ImGuiFileDialog::Instance()->OpenDialog(
-                    "ChooseFileDlgKey", "Choose File", ".bin", ".");
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
             } else {
                 state.emulator.SetGPUEnabled(state.gpuEnabled);
             }
@@ -65,10 +57,11 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     ImGui::SameLine();
     ImGui::BeginDisabled(!state.romLoaded);
     if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
-        if (state.emulator.IsPaused())
+        if (state.emulator.IsPaused()) {
             state.emulator.Resume();
-        else
+        } else {
             state.emulator.Pause();
+        }
         state.emulator.GetSID().SetEmulationPaused(state.emulator.IsPaused());
     }
     ImGui::SameLine();
@@ -89,121 +82,148 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size,
     if (ImGui::Checkbox("SID", &soundEnabled)) {
         state.emulator.GetSID().EnableSound(soundEnabled);
     }
+}
 
+static void DrawSettingsBasic(AppState& state) {
+    if (ImGui::Checkbox("Cycle-Accurate", &state.cycleAccurate)) {
+        state.emulator.SetCycleAccurate(state.cycleAccurate);
+    }
+    ImGui::Checkbox("Force load savestate", &state.forceLoadSaveState);
+    if (ImGui::Checkbox("Auto-Reload Bin", &state.autoReload)) {
+        state.emulator.SetAutoReload(state.autoReload);
+    }
+}
+
+static void DrawSettingsSaveState(AppState& state) {
+    if (ImGui::Button("Save State")) {
+        // Build default filename: SIM65C02SST_<bin>_<date>.savestate
+        std::string binName = "unknown";
+        if (!state.bin.empty()) {
+            binName = std::filesystem::path(state.bin).stem().string();
+        }
+        auto now = std::chrono::system_clock::now();
+        std::time_t timeValue = std::chrono::system_clock::to_time_t(now);
+        std::tm* timeStruct = std::localtime(&timeValue);
+        std::ostringstream dateStr;
+        dateStr << (timeStruct->tm_year + 1900) << (timeStruct->tm_mon + 1 < 10 ? "0" : "") << (timeStruct->tm_mon + 1)
+                << (timeStruct->tm_mday < 10 ? "0" : "") << timeStruct->tm_mday << "_"
+                << (timeStruct->tm_hour < 10 ? "0" : "") << timeStruct->tm_hour << (timeStruct->tm_min < 10 ? "0" : "")
+                << timeStruct->tm_min << (timeStruct->tm_sec < 10 ? "0" : "") << timeStruct->tm_sec;
+        std::string defaultName = "SIM65C02SST_" + binName + "_" + dateStr.str();
+        ImGuiFileDialog::Instance()->OpenDialog("SaveStateDlgKey", "Save State", ".savestate", ".", defaultName);
+        ImGui::CloseCurrentPopup();
+    }
+    if (ImGui::Button("Load State")) {
+        ImGuiFileDialog::Instance()->OpenDialog("LoadStateDlgKey", "Load State", ".savestate", ".");
+        ImGui::CloseCurrentPopup();
+    }
+}
+
+static void DrawSettingsCRT(AppState& state) {
+    ImGui::TextUnformatted("CRT Filters (GPU)");
+    auto setCRTAll = [&](bool val) {
+        state.crtScanlines = state.crtInterlacing = state.crtCurvature = state.crtChromatic = state.crtBlur =
+            state.crtShadowMask = state.crtVignette = state.crtCornerRounding = state.crtGlassGlare =
+                state.crtColorBleeding = state.crtNoise = state.crtVSyncJitter = state.crtPhosphorDecay =
+                    state.crtBloom = val;
+    };
+    if (ImGui::Button("All On")) {
+        setCRTAll(true);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("All Off")) {
+        setCRTAll(false);
+    }
+    ImGui::TextUnformatted("Essentials");
+    ImGui::Checkbox("Scanlines", &state.crtScanlines);
+    ImGui::Checkbox("Interlacing", &state.crtInterlacing);
+    ImGui::Checkbox("Screen Curvature", &state.crtCurvature);
+    ImGui::Checkbox("Chromatic Aberration", &state.crtChromatic);
+    ImGui::Checkbox("Phosphor Blur", &state.crtBlur);
+    ImGui::TextUnformatted("Screen Physicality");
+    ImGui::Checkbox("Shadow Mask", &state.crtShadowMask);
+    ImGui::Checkbox("Vignette", &state.crtVignette);
+    ImGui::Checkbox("Corner Rounding", &state.crtCornerRounding);
+    ImGui::Checkbox("Glass Glare", &state.crtGlassGlare);
+    ImGui::TextUnformatted("Signal & Analog");
+    ImGui::Checkbox("Color Bleeding", &state.crtColorBleeding);
+    ImGui::Checkbox("RF Noise", &state.crtNoise);
+    ImGui::Checkbox("VSync Jitter", &state.crtVSyncJitter);
+    ImGui::Checkbox("Phosphor Decay", &state.crtPhosphorDecay);
+    ImGui::TextUnformatted("Lighting");
+    ImGui::Checkbox("Bloom", &state.crtBloom);
+}
+
+static void DrawSettingsPopup(AppState& state) {
     if (ImGui::BeginPopup("SettingsMenu")) {
-        if (ImGui::Checkbox("Cycle-Accurate", &state.cycleAccurate)) {
-            state.emulator.SetCycleAccurate(state.cycleAccurate);
-        }
-        ImGui::Checkbox("Force load savestate", &state.forceLoadSaveState);
-        if (ImGui::Checkbox("Auto-Reload Bin", &state.autoReload)) {
-            state.emulator.SetAutoReload(state.autoReload);
-        }
-
+        DrawSettingsBasic(state);
         ImGui::Separator();
-
-        if (ImGui::Button("Save State")) {
-            // Build default filename: SIM65C02SST_<bin>_<date>.savestate
-            std::string binName = "unknown";
-            if (!state.bin.empty()) {
-                binName = std::filesystem::path(state.bin).stem().string();
-            }
-            auto now = std::chrono::system_clock::now();
-            std::time_t t = std::chrono::system_clock::to_time_t(now);
-            std::tm* tm = std::localtime(&t);
-            std::ostringstream dateStr;
-            dateStr << (tm->tm_year + 1900) << (tm->tm_mon + 1 < 10 ? "0" : "")
-                    << (tm->tm_mon + 1) << (tm->tm_mday < 10 ? "0" : "")
-                    << tm->tm_mday << "_" << (tm->tm_hour < 10 ? "0" : "")
-                    << tm->tm_hour << (tm->tm_min < 10 ? "0" : "") << tm->tm_min
-                    << (tm->tm_sec < 10 ? "0" : "") << tm->tm_sec;
-            std::string defaultName =
-                "SIM65C02SST_" + binName + "_" + dateStr.str();
-            ImGuiFileDialog::Instance()->OpenDialog("SaveStateDlgKey",
-                                                    "Save State", ".savestate",
-                                                    ".", defaultName);
-            ImGui::CloseCurrentPopup();
-        }
-        if (ImGui::Button("Load State")) {
-            ImGuiFileDialog::Instance()->OpenDialog(
-                "LoadStateDlgKey", "Load State", ".savestate", ".");
-            ImGui::CloseCurrentPopup();
-        }
-
+        DrawSettingsSaveState(state);
         ImGui::Separator();
-        ImGui::Text("CRT Filters (GPU)");
-        auto setCRTAll = [&](bool v) {
-            state.crtScanlines = state.crtInterlacing = state.crtCurvature =
-                state.crtChromatic = state.crtBlur = state.crtShadowMask =
-                    state.crtVignette = state.crtCornerRounding =
-                        state.crtGlassGlare = state.crtColorBleeding =
-                            state.crtNoise = state.crtVSyncJitter =
-                                state.crtPhosphorDecay = state.crtBloom = v;
-        };
-        if (ImGui::Button("All On")) setCRTAll(true);
-        ImGui::SameLine();
-        if (ImGui::Button("All Off")) setCRTAll(false);
-        ImGui::Text("Essentials");
-        ImGui::Checkbox("Scanlines", &state.crtScanlines);
-        ImGui::Checkbox("Interlacing", &state.crtInterlacing);
-        ImGui::Checkbox("Screen Curvature", &state.crtCurvature);
-        ImGui::Checkbox("Chromatic Aberration", &state.crtChromatic);
-        ImGui::Checkbox("Phosphor Blur", &state.crtBlur);
-        ImGui::Text("Screen Physicality");
-        ImGui::Checkbox("Shadow Mask", &state.crtShadowMask);
-        ImGui::Checkbox("Vignette", &state.crtVignette);
-        ImGui::Checkbox("Corner Rounding", &state.crtCornerRounding);
-        ImGui::Checkbox("Glass Glare", &state.crtGlassGlare);
-        ImGui::Text("Signal & Analog");
-        ImGui::Checkbox("Color Bleeding", &state.crtColorBleeding);
-        ImGui::Checkbox("RF Noise", &state.crtNoise);
-        ImGui::Checkbox("VSync Jitter", &state.crtVSyncJitter);
-        ImGui::Checkbox("Phosphor Decay", &state.crtPhosphorDecay);
-        ImGui::Text("Lighting");
-        ImGui::Checkbox("Bloom", &state.crtBloom);
+        DrawSettingsCRT(state);
 
         ImGui::EndPopup();
     }
+}
 
-    DrawDebugMenu(state);
-
+static void DrawIPSSection(AppState& state, float mainColWidth) {
     int tempIPS = state.instructionsPerFrame;
-    char targetLabel[32];
-    snprintf(targetLabel, sizeof(targetLabel), "Target %s",
-             state.cycleAccurate ? "Hz" : "IPS");
+    std::string targetLabel = "Target ";
+    targetLabel += (state.cycleAccurate ? "Hz" : "IPS");
 
-    ImGui::SetNextItemWidth(mainColWidth * 0.5f);
-    if (ImGui::InputInt(targetLabel, &tempIPS, 100000, 100000)) {
-        if (state.instructionsPerFrame == 1 && tempIPS == 100001)
+    ImGui::SetNextItemWidth(mainColWidth * 0.5F);
+    if (ImGui::InputInt(targetLabel.c_str(), &tempIPS, 100000, 100000)) {
+        if (state.instructionsPerFrame == 1 && tempIPS == 100001) {
             tempIPS = 100000;
+        }
 
-        if (tempIPS < 1) tempIPS = 1;
+        tempIPS = std::max(1, tempIPS);
         state.instructionsPerFrame = tempIPS;
         state.emulator.SetTargetIPS(state.instructionsPerFrame);
     }
 
     ImGui::SameLine();
-    ImGui::Text(" || ");
+    ImGui::TextUnformatted(" || ");
 
     ImGui::SameLine();
     {
         int actualIPS = state.emulator.GetActualIPS();
+        std::ostringstream oss;
         if (state.cycleAccurate) {
-            if (actualIPS >= 1000000)
-                ImGui::Text("Sim: %.2f MHz", actualIPS / 1000000.0f);
-            else if (actualIPS >= 1000)
-                ImGui::Text("Sim: %.2f KHz", actualIPS / 1000.0f);
-            else
-                ImGui::Text("Sim: %d Hz", actualIPS);
+            if (actualIPS >= 1000000) {
+                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000000.0F) << " MHz";
+            } else if (actualIPS >= 1000) {
+                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000.0F) << " KHz";
+            } else {
+                oss << "Sim: " << actualIPS << " Hz";
+            }
         } else {
-            if (actualIPS >= 1000000)
-                ImGui::Text("Sim: %.2f MIPS", actualIPS / 1000000.0f);
-            else if (actualIPS >= 1000)
-                ImGui::Text("Sim: %.2f KIPS", actualIPS / 1000.0f);
-            else
-                ImGui::Text("Sim: %d IPS", actualIPS);
+            if (actualIPS >= 1000000) {
+                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000000.0F) << " MIPS";
+            } else if (actualIPS >= 1000) {
+                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000.0F) << " KIPS";
+            } else {
+                oss << "Sim: " << actualIPS << " IPS";
+            }
         }
+        ImGui::TextUnformatted(oss.str().c_str());
     }
-    ImGui::SetScrollHereY(1.0f);
+}
+
+void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
+                       ImGuiWindowFlags window_flags) {
+    float mainColWidth = work_size.x * 0.47F;
+
+    ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(mainColWidth, top_section_height * 0.4F), ImGuiCond_Always);
+    ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+    DrawControlButtonBar(state);
+    DrawSettingsPopup(state);
+    DrawDebugMenu(state);
+    DrawIPSSection(state, mainColWidth);
+
+    ImGui::SetScrollHereY(1.0F);
     ImGui::End();
 }
 
