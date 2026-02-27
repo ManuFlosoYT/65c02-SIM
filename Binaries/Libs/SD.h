@@ -52,5 +52,6 @@ int sd_remove(const char* path);
 int sd_rename(const char* old_path, const char* new_path);
 int sd_mkdir(const char* path);
 int sd_chdir(const char* path);
+int sd_getcwd(char* buf, uint16_t len);
 
 #endif /* SD_H */

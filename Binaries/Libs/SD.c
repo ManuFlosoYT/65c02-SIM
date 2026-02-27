@@ -87,3 +87,4 @@ int sd_rename(const char* old_path, const char* new_path) { return (f_rename(old
 int sd_mkdir(const char* path) { return (f_mkdir(path) == FR_OK); }
 
 int sd_chdir(const char* path) { return (f_chdir(path) == FR_OK); }
+int sd_getcwd(char* buf, uint16_t len) { return (f_getcwd(buf, len) == FR_OK); }

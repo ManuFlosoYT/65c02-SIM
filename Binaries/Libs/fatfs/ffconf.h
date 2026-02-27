@@ -23,7 +23,7 @@
 #define FF_LFN_UNICODE 0
 #define FF_LFN_BUF 255
 #define FF_SFN_BUF 12
-#define FF_FS_RPATH 1
+#define FF_FS_RPATH 2
 
 /* --- Drive/Volume Config --- */
 #define FF_VOLUMES 1
