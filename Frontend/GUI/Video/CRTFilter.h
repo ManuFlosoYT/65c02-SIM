@@ -28,18 +28,18 @@ struct CRTParams {
     bool bloom = false;
 
     // Animated effects time source
-    float time = 0.0f;
+    float time = 0.0F;
 };
 
 class CRTFilter {
-public:
-    void Init(int w, int h);
+   public:
+    void Init(int width, int height);
     void Destroy();
 
     // Renders inputTex through the CRT shader and returns the output texture.
-    GLuint Apply(GLuint inputTex, int w, int h, const CRTParams& p);
+    GLuint Apply(GLuint inputTex, int width, int height, const CRTParams& params);
 
-private:
+   private:
     GLuint m_fbo = 0;
     GLuint m_outputTex = 0;
     GLuint m_shader = 0;
@@ -48,8 +48,8 @@ private:
     int m_w = 0;
     int m_h = 0;
 
-    void CreateFBO(int w, int h);
-    void Resize(int w, int h);
+    void CreateFBO(int width, int height);
+    void Resize(int width, int height);
     static GLuint CompileShader(const char* vertSrc, const char* fragSrc);
 };
 
