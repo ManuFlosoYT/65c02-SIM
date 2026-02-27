@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <iostream>
 
 #include "Hardware/Core/IBusDevice.h"
@@ -7,7 +8,7 @@
 namespace Hardware {
 
 class GPU : public IBusDevice {
-public:
+   public:
     // VRAM dimensions (visible area)
     const static Byte VRAM_WIDTH = 100;
     const static Byte VRAM_HEIGHT = 75;
@@ -23,30 +24,33 @@ public:
     GPU();
     void Reset() override;
 
-    Byte vram[VRAM_HEIGHT][VRAM_WIDTH]{};
-
     bool SaveState(std::ostream& out) const override;
-    bool LoadState(std::istream& in) override;
+    bool LoadState(std::istream& inputStream) override;
 
     // Clock the GPU to advance pixel counters
     inline void Clock();
 
     // Get current pixel position (14-bit values)
-    inline Word GetPixelX() const;
-    inline Word GetPixelY() const;
+    [[nodiscard]] inline Word GetPixelX() const;
+    [[nodiscard]] inline Word GetPixelY() const;
 
     // Bus control status
-    inline bool IsInDrawingInterval() const;
-    inline bool IsInBlankingInterval() const;
+    [[nodiscard]] inline bool IsInDrawingInterval() const;
+    [[nodiscard]] inline bool IsInBlankingInterval() const;
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
     inline Byte operator[](Word addr) const;
 
     inline void Write(Word addr, Byte val) override;
     inline Byte Read(Word addr) override;
-    inline std::string GetName() const override;
+    [[nodiscard]] inline std::string GetName() const override;
 
-private:
+    [[nodiscard]] const std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT>& GetVRAM() const { return vram; }
+    [[nodiscard]] std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT>& GetVRAM() { return vram; }
+
+   private:
+    std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT> vram{};
+
     // Pixel counters (32-bit native to prevent partial register stalls on x86)
     uint32_t pixelX = 0;  // 0-131 (132 total)
     uint32_t pixelY = 0;  // 0-77 (78 total)
@@ -58,7 +62,6 @@ private:
 };
 
 }  // namespace Hardware
-
 
 namespace Hardware {
 
@@ -99,27 +102,27 @@ inline bool GPU::IsInDrawingInterval() const { return !isBlanking; }
 inline bool GPU::IsInBlankingInterval() const { return isBlanking; }
 
 inline Byte GPU::operator[](Word addr) const {
-    Byte x = addr & 0x7F;         // bits 0-6
-    Byte y = (addr >> 7) & 0x7F;  // bits 7-13
-    if (x < VRAM_WIDTH && y < VRAM_HEIGHT) {
-        return vram[y][x];
+    Byte pixelXAddr = addr & 0x7F;         // bits 0-6
+    Byte pixelYAddr = (addr >> 7) & 0x7F;  // bits 7-13
+    if (pixelXAddr < VRAM_WIDTH && pixelYAddr < VRAM_HEIGHT) {
+        return vram.at(pixelYAddr).at(pixelXAddr);
     }
     return 0;
 }
 
 inline void GPU::Write(Word addr, Byte val) {
-    Byte x = addr & 0x7F;
-    Byte y = (addr >> 7) & 0x7F;
-    if (x < VRAM_WIDTH && y < VRAM_HEIGHT) {
-        vram[y][x] = val;
+    Byte pixelXAddr = addr & 0x7F;
+    Byte pixelYAddr = (addr >> 7) & 0x7F;
+    if (pixelXAddr < VRAM_WIDTH && pixelYAddr < VRAM_HEIGHT) {
+        vram.at(pixelYAddr).at(pixelXAddr) = val;
     }
 }
 
 inline Byte GPU::Read(Word addr) {
-    Byte x = addr & 0x7F;
-    Byte y = (addr >> 7) & 0x7F;
-    if (x < VRAM_WIDTH && y < VRAM_HEIGHT) {
-        return vram[y][x];
+    Byte pixelXAddr = addr & 0x7F;
+    Byte pixelYAddr = (addr >> 7) & 0x7F;
+    if (pixelXAddr < VRAM_WIDTH && pixelYAddr < VRAM_HEIGHT) {
+        return vram.at(pixelYAddr).at(pixelXAddr);
     }
     return 0;
 }

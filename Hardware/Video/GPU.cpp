@@ -1,7 +1,5 @@
 #include "Hardware/Video/GPU.h"
 
-#include <cstring>
-
 namespace Hardware {
 
 void GPU::Reset() {
@@ -10,26 +8,29 @@ void GPU::Reset() {
     isYDrawing = true;
     isBlanking = false;
     ticksToNextEvent = VRAM_WIDTH;
-    std::memset(vram, 0, sizeof(vram));
+    for (auto& row : vram) {
+        row.fill(0);
+    }
 }
 
 bool GPU::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&vram), sizeof(vram));
-    Word px = pixelX;
-    Word py = pixelY;
-    out.write(reinterpret_cast<const char*>(&px), sizeof(px));
-    out.write(reinterpret_cast<const char*>(&py), sizeof(py));
+    out.write(reinterpret_cast<const char*>(vram.data()), sizeof(vram));  // NOLINT
+    Word currPixelX = pixelX;
+    Word currPixelY = pixelY;
+    out.write(reinterpret_cast<const char*>(&currPixelX), sizeof(currPixelX));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&currPixelY), sizeof(currPixelY));  // NOLINT
     return out.good();
 }
 
-bool GPU::LoadState(std::istream& in) {
-    in.read(reinterpret_cast<char*>(&vram), sizeof(vram));
+bool GPU::LoadState(std::istream& inputStream) {
+    inputStream.read(reinterpret_cast<char*>(vram.data()), sizeof(vram));  // NOLINT
 
-    Word px, py;
-    in.read(reinterpret_cast<char*>(&px), sizeof(px));
-    in.read(reinterpret_cast<char*>(&py), sizeof(py));
-    pixelX = px;
-    pixelY = py;
+    Word currPixelX = 0;
+    Word currPixelY = 0;
+    inputStream.read(reinterpret_cast<char*>(&currPixelX), sizeof(currPixelX));  // NOLINT
+    inputStream.read(reinterpret_cast<char*>(&currPixelY), sizeof(currPixelY));  // NOLINT
+    pixelX = currPixelX;
+    pixelY = currPixelY;
 
     isYDrawing = (pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU);
 
@@ -46,7 +47,7 @@ bool GPU::LoadState(std::istream& in) {
         }
     }
 
-    return in.good();
+    return inputStream.good();
 }
 
 }  // namespace Hardware
