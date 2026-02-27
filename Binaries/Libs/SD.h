@@ -51,5 +51,6 @@ int sd_exists(const char* path);
 int sd_remove(const char* path);
 int sd_rename(const char* old_path, const char* new_path);
 int sd_mkdir(const char* path);
+int sd_chdir(const char* path);
 
 #endif /* SD_H */
