@@ -37,7 +37,7 @@ jobs:
       - name: Cache CMake dependencies
         uses: actions/cache@v4
         with:
-          path: build/_deps
+          path: build/release/_deps
           key: deps-linux-${{ hashFiles('CMakeLists.txt') }}
 
       - name: Build Linux
@@ -79,7 +79,7 @@ jobs:
       - name: Cache CMake dependencies
         uses: actions/cache@v4
         with:
-          path: build_win/_deps
+          path: build_win/release/_deps
           key: deps-windows-${{ hashFiles('CMakeLists.txt') }}
 
       - name: Build Windows
@@ -97,7 +97,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-unit-tests
-          path: build_win/unit_tests.exe
+          path: build_win/release/unit_tests.exe
 
   test-windows:
     needs: build-windows
