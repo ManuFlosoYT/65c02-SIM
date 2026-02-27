@@ -24,9 +24,9 @@ void DrawUpdatePopup(AppState& state) {
     if (ImGui::BeginPopupModal(
             "Update Available", nullptr,
             ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
-        ImGui::Text("A new version of SIM_65C02 is available!");
-        ImGui::Text("Latest Version: %s", state.latestVersionTag.c_str());
-        ImGui::Text("Current Version: %s", PROJECT_VERSION);
+        ImGui::TextUnformatted("A new version of SIM_65C02 is available!");
+        ImGui::TextUnformatted(("Latest Version: " + state.latestVersionTag).c_str());
+        ImGui::TextUnformatted(("Current Version: " + std::string(PROJECT_VERSION)).c_str());
         ImGui::Separator();
 
         ImGui::NewLine();
