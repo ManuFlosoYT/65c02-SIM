@@ -14,22 +14,24 @@ Byte RAM::Read(Word address) {
     return 0;
 }
 
-void RAM::Write(Word address, Byte value) {
+void RAM::Write(Word address, Byte data) {
     if (address < size) {
-        data[address] = value;
+        this->data[address] = data;
     }
 }
 
-void RAM::Reset() { std::fill(data.begin(), data.end(), 0); }
+void RAM::Reset() { std::ranges::fill(data, 0); }
 
 bool RAM::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(data.data()), data.size());
+    out.write(reinterpret_cast<const char*>(data.data()),  // NOLINT
+              static_cast<std::streamsize>(data.size()));
     return out.good();
 }
 
-bool RAM::LoadState(std::istream& in) {
-    in.read(reinterpret_cast<char*>(data.data()), data.size());
-    return in.good();
+bool RAM::LoadState(std::istream& inputStream) {
+    inputStream.read(reinterpret_cast<char*>(data.data()),  // NOLINT
+                     static_cast<std::streamsize>(data.size()));
+    return inputStream.good();
 }
 
 }  // namespace Hardware
