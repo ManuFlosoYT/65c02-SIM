@@ -100,7 +100,6 @@ static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const 
     ImGui::CreateContext();
     ImGuiIO& imgui_io = ImGui::GetIO();
     (void)imgui_io;
-    imgui_io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     imgui_io.IniFilename = nullptr;
 
     float dpi_scale = SDL_GetWindowDisplayScale(window);
