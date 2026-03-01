@@ -23,6 +23,17 @@ using namespace Hardware;
 
 namespace GUI {
 
+static bool IsSDCardEnabled(AppState& state) {
+    auto& bus = state.emulator.GetMem();
+    const auto& devices = bus.GetRegisteredDevices();
+    for (const auto& reg : devices) {
+        if (reg.device == static_cast<IBusDevice*>(&state.emulator.GetSDCard())) {
+            return reg.enabled;
+        }
+    }
+    return false;
+}
+
 // Creates a blank FAT16 disk image (32 MB) in pure C++ — no host tools required.
 static bool CreateFAT16Image(const std::string& path) {
     // Geometry for a 32 MB image
@@ -385,7 +396,11 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
                 filePath += ".img";
             }
             if (CreateFAT16Image(filePath)) {
-                state.emulator.GetSDCard().Mount(filePath);
+                if (IsSDCardEnabled(state)) {
+                    state.emulator.GetSDCard().Mount(filePath);
+                } else {
+                    state.sdCardDisabledPopup = true;
+                }
             }
         }
         ImGuiFileDialog::Instance()->Close();
@@ -395,7 +410,11 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     if (ImGuiFileDialog::Instance()->Display("MountSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-            state.emulator.GetSDCard().Mount(filePath);
+            if (IsSDCardEnabled(state)) {
+                state.emulator.GetSDCard().Mount(filePath);
+            } else {
+                state.sdCardDisabledPopup = true;
+            }
         }
         ImGuiFileDialog::Instance()->Close();
     }

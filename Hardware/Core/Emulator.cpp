@@ -566,9 +566,9 @@ void Emulator::SetupHardware() {
         if (is_lcd_enabled) {
             lcd.Update(val);
         } else if (is_sd_enabled) {
-            bool mosi_bit = (val & 0x01u) != 0;
-            bool clk = (val & 0x04u) != 0;
-            bool cs_pin = (val & 0x08u) != 0;
+            bool mosi_bit = (val & 0x01U) != 0;
+            bool clk = (val & 0x04U) != 0;
+            bool cs_pin = (val & 0x08U) != 0;
 
             sdcard.SetCS(cs_pin);
 
@@ -578,13 +578,13 @@ void Emulator::SetupHardware() {
                 spi_miso_bit_idx = 0;
                 spi_byte_in = 0;
                 spi_miso_byte = 0xFF;  // Default idle output
-                via.SetInputB(0x02u);  // MISO Pull-up
+                via.SetInputB(0x02U);  // MISO Pull-up
             } else {
                 // CS is Low (Active).
                 if (clk && !spi_last_clk) {  // Rising edge
                     // 1. Accumulate the incoming MOSI bit. (PB0 = MOSI)
-                    bool mosi_bit = (val & 0x01u) != 0;
-                    spi_byte_in = static_cast<uint8_t>((spi_byte_in << 1u) | (mosi_bit ? 1u : 0u));
+                    bool mosi_bit = (val & 0x01U) != 0;
+                    spi_byte_in = static_cast<uint8_t>((spi_byte_in << 1U) | (mosi_bit ? 1U : 0U));
                     spi_bit_count++;
 
                     // 2. Full byte received — exchange with the SD card.
@@ -601,8 +601,8 @@ void Emulator::SetupHardware() {
 
                 // 3. Drive the CURRENT bit of MISO onto PB1.
                 // We do this on every callback to ensure it's stable when the CPU reads it.
-                bool miso_out = ((spi_miso_byte >> (7 - spi_miso_bit_idx)) & 0x01u) != 0;
-                via.SetInputB(static_cast<Byte>(miso_out ? 0x02u : 0x00u));
+                bool miso_out = ((spi_miso_byte >> (7 - spi_miso_bit_idx)) & 0x01U) != 0;
+                via.SetInputB(static_cast<Byte>(miso_out ? 0x02U : 0x00U));
             }
             spi_last_clk = clk;
         }

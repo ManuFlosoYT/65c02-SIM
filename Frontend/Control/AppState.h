@@ -71,6 +71,8 @@ struct AppState {
     GLuint lastDisplayTex = 0;
     int lastDisplayW = 0;
     int lastDisplayH = 0;
+
+    bool sdCardDisabledPopup = false;
 };
 
 }  // namespace Control

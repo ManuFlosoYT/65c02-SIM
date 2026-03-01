@@ -231,6 +231,22 @@ static void DrawPopups(AppState& state) {
         }
 
         ImGui::Spacing();
+        ImGui::SetNextWindowSize(ImVec2(120, 0));
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (state.sdCardDisabledPopup) {
+        ImGui::OpenPopup("SD Card Disabled");
+        state.sdCardDisabledPopup = false;
+    }
+
+    if (ImGui::BeginPopupModal("SD Card Disabled", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("The SD Card device is currently disabled in the Memory Layout.");
+        ImGui::TextUnformatted("Please enable it in the Memory Layout (Debugger -> Memory Layout) to use it.");
+        ImGui::Spacing();
         if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
         }
