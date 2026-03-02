@@ -128,7 +128,7 @@ void DrawTools(Core::Emulator& emulator) {
     ImGui::InputScalar("End", ImGuiDataType_U16, &endAddr, nullptr, nullptr, "%04X",
                        ImGuiInputTextFlags_CharsHexadecimal);
     ImGui::PopItemWidth();
-
+    ImGui::SameLine();
     if (ImGui::Button("Fill Random Junk")) {
         std::mt19937 rng(std::random_device{}());
         std::uniform_int_distribution<int> dist(0, 255);
@@ -140,6 +140,21 @@ void DrawTools(Core::Emulator& emulator) {
             } else {
                 bus.WriteDirect(addr, val);
             }
+        }
+    }
+
+    if (ImGui::Button("Corrupt Random Byte")) {
+        std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<int> addrDist(0, 0xFFFF);
+        std::uniform_int_distribution<int> valDist(0, 0xFF);
+
+        Word addr = static_cast<Word>(addrDist(rng));
+        Byte val = static_cast<Byte>(valDist(rng));
+
+        if (addr >= 0x8000) {
+            emulator.GetROM().WriteDirect(addr - 0x8000, val);
+        } else {
+            bus.WriteDirect(addr, val);
         }
     }
 }
