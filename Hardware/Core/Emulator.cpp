@@ -22,6 +22,11 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::lock_guard<std::mutex> lock(emulationMutex);
     SetupHardware();
 
+    if (bin.empty()) {
+        currentBinPath = "";
+        return true;
+    }
+
     std::string path = bin;
 
     FILE* file = fopen(path.c_str(), "rb");  // NOLINT

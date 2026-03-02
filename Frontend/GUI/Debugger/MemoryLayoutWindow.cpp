@@ -187,7 +187,16 @@ void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
                 ImGui::TableSetColumnIndex(0);
                 ImGui::TextUnformatted(reg.device->GetName().c_str());
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Checkbox("##en", &reg.enabled);
+                if (ImGui::Checkbox("##en", &reg.enabled)) {
+                    if (reg.enabled) {
+                        for (auto& otherReg : devices) {
+                            if (otherReg.isVirtual && &otherReg != &reg) {
+                                otherReg.enabled = false;
+                            }
+                        }
+                    }
+                }
+
                 ImGui::PopID();
                 devIdx++;
             }
