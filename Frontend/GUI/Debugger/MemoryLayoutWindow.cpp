@@ -101,7 +101,7 @@ void DrawMemoryLayoutTooltip(const std::vector<DeviceRegistration>& devices, flo
     }
 }
 
-void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
+void DrawMappedDevicesTable(std::vector<DeviceRegistration>& devices) {
     ImGui::TextUnformatted("Hardware Components");
     ImGui::Separator();
 
@@ -157,8 +157,27 @@ void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
         }
         ImGui::EndTable();
     }
+}
 
-    // --- Virtual devices (callback-driven, no bus address) ---
+void DrawVirtualDeviceRow(DeviceRegistration& reg, std::vector<DeviceRegistration>& devices, int devIdx) {
+    ImGui::PushID(1000 + devIdx);
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(reg.device->GetName().c_str());
+    ImGui::TableSetColumnIndex(1);
+    if (ImGui::Checkbox("##en", &reg.enabled)) {
+        if (reg.enabled) {
+            for (auto& otherReg : devices) {
+                if (otherReg.isVirtual && &otherReg != &reg) {
+                    otherReg.enabled = false;
+                }
+            }
+        }
+    }
+    ImGui::PopID();
+}
+
+void DrawVirtualDevicesTable(std::vector<DeviceRegistration>& devices) {
     bool hasVirtual = false;
     for (const auto& reg : devices) {
         if (reg.isVirtual) {
@@ -166,43 +185,33 @@ void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
             break;
         }
     }
-    if (hasVirtual) {
-        ImGui::Spacing();
-        ImGui::TextUnformatted("Virtual Devices");
-        ImGui::Separator();
-
-        if (ImGui::BeginTable("VirtualDeviceTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 55);
-            ImGui::TableHeadersRow();
-
-            int devIdx = 0;
-            for (auto& reg : devices) {
-                if (!reg.isVirtual) {
-                    devIdx++;
-                    continue;
-                }
-                ImGui::PushID(1000 + devIdx);
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(reg.device->GetName().c_str());
-                ImGui::TableSetColumnIndex(1);
-                if (ImGui::Checkbox("##en", &reg.enabled)) {
-                    if (reg.enabled) {
-                        for (auto& otherReg : devices) {
-                            if (otherReg.isVirtual && &otherReg != &reg) {
-                                otherReg.enabled = false;
-                            }
-                        }
-                    }
-                }
-
-                ImGui::PopID();
-                devIdx++;
-            }
-            ImGui::EndTable();
-        }
+    if (!hasVirtual) {
+        return;
     }
+
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Virtual Devices");
+    ImGui::Separator();
+
+    if (ImGui::BeginTable("VirtualDeviceTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 55);
+        ImGui::TableHeadersRow();
+
+        int devIdx = 0;
+        for (auto& reg : devices) {
+            if (reg.isVirtual) {
+                DrawVirtualDeviceRow(reg, devices, devIdx);
+            }
+            devIdx++;
+        }
+        ImGui::EndTable();
+    }
+}
+
+void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
+    DrawMappedDevicesTable(devices);
+    DrawVirtualDevicesTable(devices);
 }
 
 }  // namespace
