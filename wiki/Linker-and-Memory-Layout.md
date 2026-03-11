@@ -29,21 +29,22 @@ The `Linker/` directory contains the linker configuration files (`ld65` from the
 
 ## Linker configuration files
 
-### `C-Runtime.cfg` — Standard C runtime
+### `C-Runtime-dynamic.cfg` — Dynamic Linker Configuration
 
-Default configuration for C programs. Defines:
-- Zero page for cc65 runtime ZP variables
-- C stack at `$7000`
-- Code in ROM (`$8000`–`$FFFA`)
-- Segments `DATA` (copied from ROM to RAM at startup), `BSS`, `CODE`, `RODATA`, `BIOS`
+Previously, the project used multiple static `.cfg` files (`C-Runtime.cfg`, `C-Runtime-GPU.cfg`, `C-Runtime-GPUDoubleBuffer.cfg`) to manage different memory layouts based on the hardware requirements of each program. This became difficult to maintain as the number of hardware components grew.
 
-### `C-Runtime-GPU.cfg` — C runtime with GPU
+Now, the memory layout is generated **dynamically** at compile time using a Python script (`Linker/generate_cfg.py`).
 
-Same as `C-Runtime.cfg` but reserves `0x2000`–`0x3FFF` as VRAM for the GPU. The C heap starts after the VRAM region.
+**How it works:**
+1. During compilation, `compile-bin.sh` inspects the C code (`.c` file) for specific library `#include` directives.
+2. If it detects libraries that require specific memory mapping (like `GPU.h`, `GPUDoubleBuffer.h`, or `NET.h`), it adds the corresponding flags (`--gpu`, `--double-buffer`, `--net`) to the generation step.
+3. `generate_cfg.py` calculates the memory map, reserving space for the requested hardware and dynamically allocating the remaining RAM (from `0x0400` to `0x8000`) into contiguous blocks (`RAM_1`, `RAM_2`, etc.).
+4. The generated configuration is saved to `Binaries/build/C-Runtime-dynamic.cfg` and used by `ld65`.
 
-### `C-Runtime-GPUDoubleBuffer.cfg` — GPU with double buffer
-
-Same as `C-Runtime-GPU.cfg` but splits the VRAM into two halves for double-buffering (eliminates tearing in animations).
+By default, the script reserves memory for standard components to avoid collisions with C variables:
+- **SID:** `0x4800`–`0x481F`
+- **ACIA:** `0x5000`–`0x5003`
+- **VIA:** `0x6000`–`0x600F`
 
 ### `raw.cfg` — Pure assembly
 
