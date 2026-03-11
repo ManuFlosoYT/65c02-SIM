@@ -131,6 +131,12 @@ message(STATUS "ZLib Found: ${ZLIB_LIBRARIES}")
 message(STATUS "OpenSSL Found: ${OPENSSL_LIBRARIES}")
 
 FetchContent_Declare(
+    asio
+    URL https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-30-2.tar.gz
+)
+FetchContent_MakeAvailable(asio)
+
+FetchContent_Declare(
     httplib
     GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
     GIT_TAG v0.15.3
@@ -151,12 +157,13 @@ file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(65c02_core STATIC ${CORE_SOURCES})
-target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR})
+target_compile_definitions(65c02_core PUBLIC ASIO_STANDALONE)
+target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include)
 target_link_libraries(65c02_core PUBLIC SDL3::SDL3 httplib::httplib)
 
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
-target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV)
-target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR})
+target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV ASIO_STANDALONE)
+target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include)
 target_link_libraries(65c02_core_test PUBLIC SDL3::SDL3 httplib::httplib)
 
 add_library(imgui_lib STATIC

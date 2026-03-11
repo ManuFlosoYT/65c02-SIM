@@ -6,23 +6,11 @@
 
 #include <httplib.h>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#endif
+
 
 namespace Hardware {
 
-#ifdef _WIN32
-ESP8266::ESP8266() : STATUS(0), CMD(0), CTRL(0), connected(false), sockfd(INVALID_SOCKET), threadRunning(false) {
-#else
-ESP8266::ESP8266() : statusReg(0), cmdReg(0), ctrlReg(0), connected(false), sockfd(-1), threadRunning(false) {
-#endif
+ESP8266::ESP8266() : statusReg(0), cmdReg(0), ctrlReg(0), connected(false), threadRunning(false) {
     Reset();
 }
 
@@ -54,8 +42,9 @@ void ESP8266::Write(Word address, Byte data) {
             } else {
                 if (connected && commandBuffer.empty()) {
                     char chr = static_cast<char>(data);
-                    if (sockfd != -1) {
-                        ::send(sockfd, &chr, 1, 0);
+                    if (tcpSocket && tcpSocket->is_open()) {
+                        asio::error_code errCode;
+                        asio::write(*tcpSocket, asio::buffer(&chr, 1), errCode);
                     }
                 } else {
                     commandBuffer += static_cast<char>(data);
@@ -78,9 +67,10 @@ void ESP8266::Write(Word address, Byte data) {
 
 void ESP8266::ProcessCommand() {
     if (connected && !commandBuffer.starts_with("AT") && commandBuffer != "+++") {
-        if (sockfd != -1) {
+        if (tcpSocket && tcpSocket->is_open()) {
             commandBuffer += "\r\n";
-            ::send(sockfd, commandBuffer.c_str(), commandBuffer.length(), 0);
+            asio::error_code errCode;
+            asio::write(*tcpSocket, asio::buffer(commandBuffer), errCode);
         }
         return;
     }
@@ -191,28 +181,17 @@ void ESP8266::HttpGetTask(std::string url) {
 void ESP8266::ConnectTCP(const std::string& host, int port) {
     DisconnectTCP(); // Ensure closed
     
-    struct hostent *server = gethostbyname(host.c_str());
-    if (server == nullptr) {
+    tcpSocket = std::make_unique<asio::ip::tcp::socket>(ioContext);
+    asio::ip::tcp::resolver resolver(ioContext);
+    asio::error_code errCode;
+    auto endpoints = resolver.resolve(host, std::to_string(port), errCode);
+    if (errCode) {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }
     
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-#ifdef _WIN32
-    if (sockfd == INVALID_SOCKET) {
-#else
-    if (sockfd < 0) {
-#endif
-        EnqueueResponse("\r\nERROR\r\n");
-        return;
-    }
-    
-    struct sockaddr_in serv_addr{};
-    serv_addr.sin_family = AF_INET;
-    std::memcpy(&serv_addr.sin_addr.s_addr, server->h_addr_list[0], static_cast<size_t>(server->h_length)); // NOLINT
-    serv_addr.sin_port = htons(static_cast<uint16_t>(port));
-
-    if (connect(sockfd, reinterpret_cast<struct sockaddr*>(&serv_addr), sizeof(serv_addr)) < 0) { // NOLINT
+    asio::connect(*tcpSocket, endpoints, errCode);
+    if (errCode) {
         DisconnectTCP();
         EnqueueResponse("\r\nERROR\r\n");
         return;
@@ -230,17 +209,12 @@ void ESP8266::DisconnectTCP() {
         threadRunning = false;
         connected = false;
         
-#ifdef _WIN32
-        if (sockfd != INVALID_SOCKET) {
-            closesocket(sockfd);
-            sockfd = INVALID_SOCKET;
+        if (tcpSocket && tcpSocket->is_open()) {
+            asio::error_code errCode;
+            errCode = tcpSocket->shutdown(asio::ip::tcp::socket::shutdown_both, errCode);
+            errCode = tcpSocket->close(errCode);
         }
-#else
-        if (sockfd >= 0) {
-            close(sockfd);
-            sockfd = -1;
-        }
-#endif
+        tcpSocket.reset();
         
         if (rxThread.joinable()) {
             rxThread.join();
@@ -249,23 +223,22 @@ void ESP8266::DisconnectTCP() {
 }
 
 void ESP8266::RxLoop() {
-    std::array<char, 1024> buffer{};
+    std::array<Byte, 1024> buffer{};
     while (threadRunning) {
-        auto num_bytes = ::recv(sockfd, buffer.data(), sizeof(buffer), 0);
-        if (num_bytes > 0) {
+        asio::error_code errCode;
+        size_t num_bytes = tcpSocket->read_some(asio::buffer(buffer), errCode);
+        if (!errCode && num_bytes > 0) {
             std::lock_guard<std::mutex> lock(rxMutex);
-            for (int i = 0; i < num_bytes; ++i) {
-                rxQueue.push(static_cast<Byte>(buffer.at(static_cast<size_t>(i))));
+            for (size_t i = 0; i < num_bytes; ++i) {
+                rxQueue.push(buffer.at(i));
             }
             statusReg |= 0x80; // Signal IRQ/Data valid
         } else {
             // Connection closed by remote or error
-#ifdef _WIN32
-            if (num_bytes < 0) {
-                int err = WSAGetLastError();
-                if (err == WSAEWOULDBLOCK) continue;
+            if (errCode == asio::error::would_block || errCode == asio::error::try_again) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
             }
-#endif
             threadRunning = false;
             connected = false;
             EnqueueResponse("\r\nCLOSED\r\n");

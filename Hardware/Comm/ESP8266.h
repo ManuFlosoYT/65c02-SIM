@@ -5,6 +5,8 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <memory>
+#include <asio.hpp>
 
 #include "Hardware/Core/IBusDevice.h"
 
@@ -54,11 +56,8 @@ class ESP8266 : public IBusDevice {
     std::mutex rxMutex;
     
     std::atomic<bool> connected;
-#ifdef _WIN32
-    uint64_t sockfd;
-#else
-    int sockfd;
-#endif
+    asio::io_context ioContext;
+    std::unique_ptr<asio::ip::tcp::socket> tcpSocket;
 
     std::thread rxThread;
     std::atomic<bool> threadRunning;

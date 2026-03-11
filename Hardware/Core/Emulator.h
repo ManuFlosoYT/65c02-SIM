@@ -61,7 +61,7 @@ class Emulator {
     void SetGPUEnabled(bool enabled);
     bool IsGPUEnabled() const;
 
-    SID& GetSID();
+    Hardware::SID& GetSID();
     Hardware::VIA& GetVIA();
     Hardware::ROM& GetROM();
     Hardware::SDCard& GetSDCard();
