@@ -70,16 +70,24 @@ elif [ -f "Binaries/$NAME.c" ]; then
     cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
         -o "Binaries/build/$NAME.s" "Binaries/$NAME.c"
 
-    # Select memory config based on which GPU library the program uses
+    # Detect features and accumulate flags
+    CFG_FLAGS=""
     if grep -q '#include "Libs/GPUDoubleBuffer.h"' "Binaries/$NAME.c"; then
-        echo "  [GPUDoubleBuffer detected] Using C-Runtime-GPUDoubleBuffer.cfg (double VRAM buffer)"
-        LINKER_CFG="Linker/C-Runtime-GPUDoubleBuffer.cfg"
+        echo "  [GPUDoubleBuffer detected] Added --double-buffer to Linker"
+        CFG_FLAGS="$CFG_FLAGS --double-buffer"
     elif grep -q '#include "Libs/GPU.h"' "Binaries/$NAME.c"; then
-        echo "  [GPU detected] Using C-Runtime-GPU.cfg (0x2000-0x3FFF reserved for VRAM)"
-        LINKER_CFG="Linker/C-Runtime-GPU.cfg"
-    else
-        LINKER_CFG="Linker/C-Runtime.cfg"
+        echo "  [GPU detected] Added --gpu to Linker"
+        CFG_FLAGS="$CFG_FLAGS --gpu"
     fi
+    
+    if grep -q '#include "Libs/NET.h"' "Binaries/$NAME.c"; then
+        echo "  [NET detected] Added --net to Linker"
+        CFG_FLAGS="$CFG_FLAGS --net"
+    fi
+
+    echo "  Generating dynamic Linker CFG..."
+    python3 Linker/generate_cfg.py $CFG_FLAGS > "Binaries/build/C-Runtime-dynamic.cfg"
+    LINKER_CFG="Binaries/build/C-Runtime-dynamic.cfg"
 
     # FatFs: if the program uses SD.h, compile ff.c and diskio.c
     EXTRA_OBJS=""
