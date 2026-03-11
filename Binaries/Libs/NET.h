@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 /* Registers for the ESP8266 */
-#define ESP8266_DATA (*(volatile uint8_t*)0x6010)
-#define ESP8266_STATUS (*(volatile uint8_t*)0x6011)
-#define ESP8266_CMD (*(volatile uint8_t*)0x6012)
-#define ESP8266_CTRL (*(volatile uint8_t*)0x6013)
+#define ESP8266_DATA (*(volatile uint8_t*)0x5004)
+#define ESP8266_STATUS (*(volatile uint8_t*)0x5005)
+#define ESP8266_CMD (*(volatile uint8_t*)0x5006)
+#define ESP8266_CTRL (*(volatile uint8_t*)0x5007)
 
 /* Helpers */
 #define net_has_data() ((ESP8266_STATUS & 0x80) != 0)

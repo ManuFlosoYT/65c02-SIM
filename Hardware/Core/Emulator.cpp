@@ -542,7 +542,7 @@ void Emulator::SetupHardware() {
         bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
         bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
         bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
-        bus.RegisterDevice(0x6010, 0x6013, &esp8266, false, true);
+        bus.RegisterDevice(0x5004, 0x5007, &esp8266, false, true);
         bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
         bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
         bus.RegisterVirtualDevice(&lcd, true);
