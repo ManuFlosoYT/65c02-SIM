@@ -61,9 +61,11 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
   - [LCD](LCD) — LCD display
   - [SD Card](SD-Card) — SPI storage emulation
   - [Save States](Save-States) — Serializing emulator state to binary files
+  - [ESP8266 and NET Library](ESP8266-and-NET-Library) — Virtual Wi-Fi module and NET.h C library
 - **User interface**
   - [Frontend](Frontend) — ImGui windows and controls
   - [Debugger](Debugger) — Integrated debugger and memory profiler
+  - [Scripting](Scripting) — Python scripting engine, headless mode and API reference
 - **Development & SDK**
   - [Linker and Memory Layout](Linker-and-Memory-Layout) — Linker configs, BIOS, memory map
   - [SDK](SDK) — Compilation and conversion tools

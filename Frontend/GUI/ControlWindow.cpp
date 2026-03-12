@@ -192,7 +192,7 @@ static void DrawControlButtonBar(AppState& state) {
     }
 
     ImGui::SameLine();
-    ImGui::BeginDisabled(!state.romLoaded);
+    ImGui::BeginDisabled(!state.romLoaded && !state.scriptLoaded);
     if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
         if (state.emulator.IsPaused()) {
             state.emulator.Resume();
@@ -228,6 +228,27 @@ static void DrawSettingsBasic(AppState& state) {
     ImGui::Checkbox("Force load savestate", &state.forceLoadSaveState);
     if (ImGui::Checkbox("Auto-Reload Bin", &state.autoReload)) {
         state.emulator.SetAutoReload(state.autoReload);
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Scripting");
+
+    if (state.scriptLoaded) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("Script Loaded & Running");
+        ImGui::PopStyleColor();
+        if (ImGui::Button("Stop Script")) {
+            state.emulator.GetScriptEngine().Stop();
+            state.scriptLoaded = false;
+        }
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("No Script Loaded");
+        ImGui::PopStyleColor();
+        if (ImGui::Button("Load & Run Script (.py)")) {
+            ImGuiFileDialog::Instance()->OpenDialog("LoadScriptDlgKey", "Load Python Script", ".py", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_None);
+        }
     }
 
     ImGui::Separator();
@@ -415,6 +436,20 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
             } else {
                 state.sdCardDisabledPopup = true;
             }
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // Handle Script load dialog
+    if (ImGuiFileDialog::Instance()->Display("LoadScriptDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.scriptPath = filePath;
+            state.scriptLoaded = true;
+            state.showScriptConsole = true;
+            state.emulator.Pause(); // Pause the frontend before running the script
+            state.emulator.GetScriptEngine().LoadAndRun(filePath);
+            ImGui::CloseCurrentPopup();
         }
         ImGuiFileDialog::Instance()->Close();
     }

@@ -16,7 +16,7 @@ using namespace Hardware;
 
 namespace Core {
 
-Emulator::Emulator() : cpu() { SetupHardware(); }
+Emulator::Emulator() : cpu(), scriptEngine(*this) { SetupHardware(); }
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::lock_guard<std::mutex> lock(emulationMutex);

@@ -6,7 +6,9 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl3.h>
 
+#include <fstream>
 #include <iostream>
+#include <span>
 #include <string>
 
 #include "Frontend/Control/AppState.h"
@@ -15,6 +17,7 @@
 #include "Frontend/GUI/ControlWindow.h"
 #include "Frontend/GUI/LCDWindow.h"
 #include "Frontend/GUI/RegistersWindow.h"
+#include "Frontend/GUI/ScriptConsoleWindow.h"
 #include "Frontend/GUI/SIDViewerWindow.h"
 #include "Frontend/GUI/UpdatePopup.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
@@ -270,7 +273,85 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
     SDL_Quit();
 }
 
+struct Args {
+    bool headless = false;
+    std::string scriptPath;
+    std::string romPath;
+    std::string dumpMemPath;
+    int runCycles = 0;
+};
+
+static Args ParseArgs(std::span<const char* const> argv) {
+    Args args;
+    for (std::size_t i = 1; i < argv.size(); ++i) {
+        std::string_view arg = argv[i];
+        if (arg == "--headless") {
+            args.headless = true;
+        } else if (arg == "--script" && i + 1 < argv.size()) {
+            args.scriptPath = argv[++i];
+        } else if (arg == "--run-cycles" && i + 1 < argv.size()) {
+            args.runCycles = std::stoi(argv[++i]);
+        } else if (arg == "--dump-mem" && i + 1 < argv.size()) {
+            args.dumpMemPath = argv[++i];
+        } else if (arg == "--rom" && i + 1 < argv.size()) {
+            args.romPath = argv[++i];
+        } else if (args.romPath.empty() && arg[0] != '-') {
+            args.romPath = std::string(arg);
+        }
+    }
+    return args;
+}
+
+static int RunHeadless(const Args& args) {
+    Core::Emulator emulator;
+    emulator.GetSID().Init();
+    emulator.SetGPUEnabled(false);
+
+    if (!args.romPath.empty()) {
+        std::string errorMsg;
+        if (!emulator.Init(args.romPath, errorMsg)) {
+            std::cerr << "Headless: Failed to load ROM: " << errorMsg << '\n';
+            return -1;
+        }
+    }
+
+    if (!args.scriptPath.empty()) {
+        emulator.GetScriptEngine().LoadAndRun(args.scriptPath);
+    }
+
+    if (args.runCycles > 0) {
+        emulator.Resume();
+        for (int i = 0; i < args.runCycles; ++i) {
+            emulator.Step();
+        }
+        emulator.Pause();
+    }
+
+    if (!args.dumpMemPath.empty()) {
+        std::ofstream out(args.dumpMemPath, std::ios::binary);
+        if (out.is_open()) {
+            auto& mem = emulator.GetMem();
+            for (uint32_t addr = 0; addr <= 0xFFFF; ++addr) {
+                char val = static_cast<char>(mem.Read<true>(static_cast<uint16_t>(addr)));
+                out.write(&val, 1);
+            }
+        } else {
+            std::cerr << "Headless: Failed to open dump file " << args.dumpMemPath << '\n';
+        }
+    }
+
+    emulator.Stop();
+    emulator.GetSID().Close();
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
+    const Args args = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
+
+    if (args.headless) {
+        return RunHeadless(args);
+    }
+
     SDL_Window* window = nullptr;
     SDL_GLContext gl_context = nullptr;
     if (!InitializeSDL(window, gl_context)) {
@@ -293,8 +374,8 @@ int main(int argc, char* argv[]) {
     const char* glsl_version = "#version 130";
     InitializeImGui(window, gl_context, glsl_version);
 
-    if (argc > 1) {
-        state.bin = argv[1];  // NOLINT
+    if (!args.romPath.empty()) {
+        state.bin = args.romPath;
         std::string errorMsg;
         if (state.emulator.Init(state.bin, errorMsg)) {
             state.romLoaded = true;
@@ -347,6 +428,7 @@ int main(int argc, char* argv[]) {
         GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
         GUI::DrawRegistersWindow(state, work_pos, work_size, top_section_height, windowFlags);
         GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
+        GUI::DrawScriptConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
         state.crtTime = static_cast<float>(SDL_GetTicks()) / 1000.0F;
         GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
 

@@ -20,6 +20,11 @@ struct AppState {
     std::string bin;
     bool romLoaded = false;
 
+    // Scripting
+    std::string scriptPath;
+    bool scriptLoaded = false;
+    bool showScriptConsole = false;
+
     // Emulation
     int instructionsPerFrame = 1000000;
     float ipsLogScale = 6.0F;

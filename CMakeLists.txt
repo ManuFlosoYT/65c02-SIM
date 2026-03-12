@@ -149,6 +149,15 @@ if(TARGET httplib)
     target_link_libraries(httplib INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
+FetchContent_Declare(
+    pocketpy
+    GIT_REPOSITORY https://github.com/pocketpy/pocketpy.git
+    GIT_TAG v2.0.0
+)
+set(PKPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(pocketpy)
+
+
 file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
     "Hardware/*.cpp"
     "Hardware/*.h"
@@ -158,13 +167,13 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(65c02_core STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core PUBLIC ASIO_STANDALONE)
-target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include)
-target_link_libraries(65c02_core PUBLIC SDL3::SDL3 httplib::httplib)
+target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include ${pocketpy_SOURCE_DIR}/include)
+target_link_libraries(65c02_core PUBLIC SDL3::SDL3 httplib::httplib pocketpy)
 
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV ASIO_STANDALONE)
-target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include)
-target_link_libraries(65c02_core_test PUBLIC SDL3::SDL3 httplib::httplib)
+target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include ${pocketpy_SOURCE_DIR}/include)
+target_link_libraries(65c02_core_test PUBLIC SDL3::SDL3 httplib::httplib pocketpy)
 
 add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp

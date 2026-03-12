@@ -16,6 +16,7 @@
 #include "Hardware/Comm/SDCard.h"
 #include "Hardware/Comm/VIA.h"
 #include "Hardware/Comm/ESP8266.h"
+#include "Hardware/Scripting/ScriptEngine.h"
 #include "Hardware/Core/Bus.h"
 #include "Hardware/Memory/RAM.h"
 #include "Hardware/Memory/ROM.h"
@@ -66,6 +67,7 @@ class Emulator {
     Hardware::ROM& GetROM();
     Hardware::SDCard& GetSDCard();
     Hardware::ESP8266& GetESP8266();
+    Hardware::ScriptEngine& GetScriptEngine();
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
@@ -120,6 +122,7 @@ class Emulator {
     Hardware::VIA via;
     Hardware::SDCard sdcard;
     Hardware::ESP8266 esp8266;
+    Hardware::ScriptEngine scriptEngine;
 
     // Input buffer
     std::deque<char> inputBuffer;
@@ -174,6 +177,7 @@ inline Hardware::VIA& Core::Emulator::GetVIA() { return via; }
 inline Hardware::ROM& Core::Emulator::GetROM() { return rom; }
 inline Hardware::SDCard& Core::Emulator::GetSDCard() { return sdcard; }
 inline Hardware::ESP8266& Core::Emulator::GetESP8266() { return esp8266; }
+inline Hardware::ScriptEngine& Core::Emulator::GetScriptEngine() { return scriptEngine; }
 
 inline void Core::Emulator::SetCycleAccurate(bool enabled) { cpu.SetCycleAccurate(enabled); }
 inline bool Core::Emulator::IsCycleAccurate() const { return cpu.IsCycleAccurate(); }
