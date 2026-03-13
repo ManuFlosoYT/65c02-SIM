@@ -108,7 +108,7 @@ find_package(OpenGL REQUIRED)
 
 if(WIN32)
     if(NOT MINGW_ROOT)
-        set(MINGW_ROOT "/usr/x86_64-w64-mingw32/sys-root/mingw")
+        set(MINGW_ROOT "/usr/x86_64-w64-mingw32ucrt/sys-root/mingw")
     endif()
     set(OPENSSL_ROOT_DIR "${MINGW_ROOT}")
     set(OPENSSL_USE_STATIC_LIBS ON)
