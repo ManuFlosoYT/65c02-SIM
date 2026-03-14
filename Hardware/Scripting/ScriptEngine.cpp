@@ -79,6 +79,9 @@ static void py_custom_print(const char* text) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     if (engine != nullptr) {
         engine->AppendOutput(text);
+        if (engine->IsMirrorToStdoutEnabled()) {
+            std::cout << text << std::flush;
+        }
     } else {
         std::cout << text << std::flush;
     }
@@ -110,14 +113,18 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
     PY_CHECK_ARGC(1);           // NOLINT(cppcoreguidelines-pro-type-vararg)
     PY_CHECK_ARG_TYPE(0, tp_int);  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto cycles = static_cast<int>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto cycles = static_cast<int64_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
-    if (engine->GetEmulator().IsPaused()) {
-        for (int i = 0; i < cycles; i++) {
+    if (engine->GetEmulator().IsPaused() || !engine->GetEmulator().IsRunning()) {
+        for (int64_t i = 0; i < cycles; i++) {
             engine->GetEmulator().Step();
         }
     } else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(cycles));
+        uint64_t startCycles = engine->GetEmulator().GetTotalCycles();
+        uint64_t targetCycles = startCycles + static_cast<uint64_t>(cycles);
+        while (engine->GetEmulator().GetTotalCycles() < targetCycles) {
+            std::this_thread::yield();
+        }
     }
     
     py_newnone(py_retval());

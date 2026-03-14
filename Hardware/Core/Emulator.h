@@ -82,6 +82,8 @@ class Emulator {
     bool IsRunning() const;
     bool IsPaused() const;
 
+    [[nodiscard]] uint64_t GetTotalCycles() const { return totalCycles; }
+
     void SetTargetIPS(int ips);
     int GetTargetIPS() const;
     int GetActualIPS() const;
@@ -140,6 +142,7 @@ class Emulator {
     std::mutex threadMutex;
     std::condition_variable pauseCV;
     std::mutex emulationMutex;  // mutex for thread safety during reset/step
+    uint64_t totalCycles{0};
 
     std::string currentBinPath;
     std::filesystem::file_time_type lastBinModificationTime;

@@ -28,6 +28,8 @@ class ScriptEngine {
     [[nodiscard]] std::deque<std::string> GetOutput() const;
     void ClearOutput();
     void AppendOutput(const std::string& text);
+    void SetMirrorToStdout(bool enabled) { mirrorToStdout = enabled; }
+    [[nodiscard]] bool IsMirrorToStdoutEnabled() const { return mirrorToStdout; }
 
     Core::Emulator& GetEmulator() { return emulatorRef; }
 
@@ -39,6 +41,7 @@ class ScriptEngine {
     std::unique_ptr<Impl> pImpl;
     std::thread workerThread;
     std::atomic<bool> isRunning{false};
+    std::atomic<bool> mirrorToStdout{false};
 };
 
 }  // namespace Hardware

@@ -316,6 +316,7 @@ static int RunHeadless(const Args& args) {
     }
 
     if (!args.scriptPath.empty()) {
+        emulator.GetScriptEngine().SetMirrorToStdout(true);
         emulator.GetScriptEngine().LoadAndRun(args.scriptPath);
     }
 

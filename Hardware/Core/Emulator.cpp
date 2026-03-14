@@ -349,6 +349,8 @@ int Emulator::Step() {
         res = cpu.Step<Debug>(bus);
     }
 
+    totalCycles++;
+
     if (baudDelay > 0) {
         baudDelay--;
     }
@@ -536,6 +538,7 @@ void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& l
 void Emulator::SetupHardware() {
     bus.Init();
     cpu.Reset();
+    totalCycles = 0;
 
     if (bus.GetRegisteredDevices().empty()) {
         bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
