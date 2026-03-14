@@ -131,6 +131,13 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
     return true;
 }
 
+static bool py_emu_step(int argc, py_StackRef argv) {
+    auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
+    engine->GetEmulator().Step();
+    py_newnone(py_retval());
+    return true;
+}
+
 void ScriptEngine::ScriptThread(const std::string& filepath) {
     py_initialize();
     py_setvmctx(this);
@@ -139,6 +146,7 @@ void ScriptEngine::ScriptThread(const std::string& filepath) {
     py_GlobalRef mod = py_newmodule("emu");
     py_bindfunc(mod, "pause", py_emu_pause);
     py_bindfunc(mod, "resume", py_emu_resume);
+    py_bindfunc(mod, "step", py_emu_step);
     py_bindfunc(mod, "read_mem", py_emu_read_mem);
     py_bindfunc(mod, "write_mem", py_emu_write_mem);
     py_bindfunc(mod, "wait_cycles", py_emu_wait_cycles);
