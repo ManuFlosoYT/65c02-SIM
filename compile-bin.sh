@@ -53,15 +53,15 @@ if [ "$NAME" == "eater" ]; then
 elif [ -f "SID/generator/build/$NAME.s" ]; then
     echo "--- Assembling $NAME.s (ASM from SID/generator/build/) ---"
     mkdir -p Binaries/build
-    ca65 --cpu 65C02 -o "Binaries/build/$NAME.o" "SID/generator/build/$NAME.s"
-    ld65 -C Linker/raw.cfg -o "Binaries/build/$NAME.bin" "Binaries/build/$NAME.o"
+    ca65 --cpu 65C02 -g -l "Binaries/build/$NAME.lst" -o "Binaries/build/$NAME.o" "SID/generator/build/$NAME.s"
+    ld65 -C Linker/raw.cfg -m "Binaries/build/$NAME.map" -vm -Ln "Binaries/build/$NAME.lbl" --dbgfile "Binaries/build/$NAME.dbg" -o "Binaries/build/$NAME.bin" "Binaries/build/$NAME.o"
     mkdir -p output/rom
     cp "Binaries/build/$NAME.bin" "output/rom/$NAME.bin"
 
 elif [ -f "Binaries/$NAME.s" ]; then
     echo "--- Assembling $NAME.s (ASM) ---"
-    ca65 --cpu 65C02 -o "Binaries/build/$NAME.o" "Binaries/$NAME.s"
-    ld65 -C Linker/raw.cfg -o "Binaries/build/$NAME.bin" "Binaries/build/$NAME.o"
+    ca65 --cpu 65C02 -g -l "Binaries/build/$NAME.lst" -o "Binaries/build/$NAME.o" "Binaries/$NAME.s"
+    ld65 -C Linker/raw.cfg -m "Binaries/build/$NAME.map" -vm -Ln "Binaries/build/$NAME.lbl" --dbgfile "Binaries/build/$NAME.dbg" -o "Binaries/build/$NAME.bin" "Binaries/build/$NAME.o"
     mkdir -p output/rom
     cp "Binaries/build/$NAME.bin" "output/rom/$NAME.bin"
 
@@ -102,10 +102,12 @@ elif [ -f "Binaries/$NAME.c" ]; then
         EXTRA_OBJS="Binaries/build/ff.s Binaries/build/diskio.s Binaries/build/sd.s"
     fi
 
-    cl65 --cpu 65C02 -t none -C "$LINKER_CFG" \
+    cl65 -g --cpu 65C02 -t none -C "$LINKER_CFG" \
         -o "Binaries/build/$NAME.bin" \
-        -m "Binaries/build/$NAME.map" \
+        -m "Binaries/build/$NAME.map" -vm \
         -l "Binaries/build/$NAME.lst" \
+        -Wl -Ln,"Binaries/build/$NAME.lbl" \
+        -Wl --dbgfile,"Binaries/build/$NAME.dbg" \
         Linker/bios.s Linker/C-Runtime.s "Binaries/build/$NAME.s" \
         $EXTRA_OBJS
     mv "Binaries/$NAME.o" "Binaries/build/$NAME.o" 2>/dev/null || true
