@@ -106,14 +106,36 @@ add_compile_definitions(PROJECT_VERSION="${GIT_VERSION}")
 
 find_package(OpenGL REQUIRED)
 
+FetchContent_Declare(
+    sndfile
+    GIT_REPOSITORY https://github.com/libsndfile/libsndfile.git
+    GIT_TAG 1.2.2
+    PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sndfile.cmake
+)
+
+set(BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(ENABLE_EXTERNAL_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(CMAKE_WARN_DEPRECATED OFF)
+set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
+FetchContent_MakeAvailable(sndfile)
+set(CMAKE_WARN_DEPRECATED ON)
+
+if(TARGET sndfile AND NOT TARGET SndFile::sndfile)
+    add_library(SndFile::sndfile ALIAS sndfile)
+endif()
+
+set(OPENSSL_USE_STATIC_LIBS ON)
+set(ZLIB_USE_STATIC_LIBS ON)
+
 if(WIN32)
     if(NOT MINGW_ROOT)
         set(MINGW_ROOT "/usr/x86_64-w64-mingw32ucrt/sys-root/mingw")
     endif()
     set(OPENSSL_ROOT_DIR "${MINGW_ROOT}")
-    set(OPENSSL_USE_STATIC_LIBS ON)
     set(ZLIB_ROOT "${MINGW_ROOT}")
-    set(ZLIB_USE_STATIC_LIBS ON)
 endif()
 
 find_package(OpenSSL REQUIRED)
@@ -168,12 +190,12 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 add_library(65c02_core STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core PUBLIC ASIO_STANDALONE)
 target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include ${pocketpy_SOURCE_DIR}/include)
-target_link_libraries(65c02_core PUBLIC SDL3::SDL3 httplib::httplib pocketpy)
+target_link_libraries(65c02_core PUBLIC SDL3::SDL3 httplib::httplib pocketpy SndFile::sndfile)
 
 add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV ASIO_STANDALONE)
 target_include_directories(65c02_core_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include ${pocketpy_SOURCE_DIR}/include)
-target_link_libraries(65c02_core_test PUBLIC SDL3::SDL3 httplib::httplib pocketpy)
+target_link_libraries(65c02_core_test PUBLIC SDL3::SDL3 httplib::httplib pocketpy SndFile::sndfile)
 
 add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp

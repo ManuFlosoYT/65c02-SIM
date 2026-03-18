@@ -117,6 +117,7 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
 
         ImGui::PopID();
     }
+
     ImGui::End();
 }
 

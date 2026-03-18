@@ -82,12 +82,26 @@ void SID::Reset() {
 void SID::EnableSound(bool enable) {
     std::lock_guard<std::mutex> lock(sidMutex);
     soundEnabled = enable;
+    if (soundEnabled && !emulationPaused && !pendingFilename.empty()) {
+        recorder = std::make_unique<AudioRecorder>();
+        if (!recorder->Start(pendingFilename, sampleRate)) {
+            recorder.reset();
+        }
+        pendingFilename.clear();
+    }
     UpdateAudioState();
 }
 
 void SID::SetEmulationPaused(bool paused) {
     std::lock_guard<std::mutex> lock(sidMutex);
     emulationPaused = paused;
+    if (!emulationPaused && soundEnabled && !pendingFilename.empty()) {
+        recorder = std::make_unique<AudioRecorder>();
+        if (!recorder->Start(pendingFilename, sampleRate)) {
+            recorder.reset();
+        }
+        pendingFilename.clear();
+    }
     UpdateAudioState();
 }
 
@@ -123,6 +137,16 @@ void SID::AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_
         int samples = static_cast<int>(additional_amount / sizeof(int16_t));
         std::vector<int16_t> buffer(samples);
         sid->GenerateAudio(buffer.data(), samples);
+        
+        bool shouldPush = false;
+        {
+            std::lock_guard<std::mutex> lock(sid->sidMutex);
+            shouldPush = sid->recorder && sid->soundEnabled && !sid->emulationPaused;
+        }
+
+        if (shouldPush) {
+            sid->recorder->PushAudio(buffer.data(), samples);
+        }
         SDL_PutAudioStreamData(stream, buffer.data(), additional_amount);
     }
 }
@@ -340,6 +364,32 @@ bool SID::LoadState(std::istream& inStream) {
     inStream.read(reinterpret_cast<char*>(&emulationPaused), sizeof(emulationPaused));  // NOLINT
     UpdateAudioState();
     return inStream.good();
+}
+
+void SID::StartRecording(const std::string& filename) {
+    std::lock_guard<std::mutex> lock(sidMutex);
+    if (!emulationPaused && soundEnabled) {
+        recorder = std::make_unique<AudioRecorder>();
+        if (!recorder->Start(filename, sampleRate)) {
+            recorder.reset();
+        }
+    } else {
+        pendingFilename = filename;
+    }
+}
+
+void SID::StopRecording() {
+    std::lock_guard<std::mutex> lock(sidMutex);
+    pendingFilename.clear();
+    if (recorder) {
+        recorder->Stop();
+        recorder.reset();
+    }
+}
+
+bool SID::IsRecording() const {
+    std::lock_guard<std::mutex> lock(sidMutex);
+    return recorder != nullptr || !pendingFilename.empty();
 }
 
 }  // namespace Hardware

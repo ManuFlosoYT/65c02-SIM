@@ -155,6 +155,92 @@ static bool CreateFAT16Image(const std::string& path) {
     return file.good();
 }
 
+static void HandleReset(AppState& state) {
+    bool wasRunning = !state.emulator.IsPaused();
+    if (wasRunning) {
+        state.emulator.Pause();
+    }
+
+    Console::Clear();
+    state.emulator.GetGPU().Reset();
+    state.emulator.ClearProfiler();
+
+    if (state.romLoaded) {
+        std::string errorMsg;
+        if (!state.emulator.Init(state.bin, errorMsg)) {
+            std::cerr << "Error resetting ROM: " << errorMsg << '\n';
+            state.romLoaded = false;
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+        } else {
+            state.emulator.SetGPUEnabled(state.gpuEnabled);
+        }
+    }
+
+    if (wasRunning) {
+        state.emulator.Resume();
+    }
+}
+
+static void DrawPlaybackControls(AppState& state) {
+    ImGui::BeginDisabled((!state.romLoaded && !state.scriptLoaded) || state.emulator.IsHalted());
+    if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
+        if (state.emulator.IsPaused()) {
+            state.emulator.Resume();
+        } else {
+            state.emulator.Pause();
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!state.emulator.IsPaused() || state.emulator.IsHalted());
+    if (ImGui::Button("Step")) {
+        state.emulator.Step();
+    }
+    ImGui::EndDisabled();
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!state.emulator.CanRewind() || !state.emulator.IsRunning() || !state.emulator.IsPaused());
+    if (ImGui::Button("Rewind")) {
+        state.emulator.Rewind();
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(
+            "Rewind to the previous state (max 255 states).\nOnly available when the emulator is paused.");
+        ImGui::EndTooltip();
+    }
+    ImGui::EndDisabled();
+}
+
+static void DrawAudioVideoControls(AppState& state) {
+    if (ImGui::Checkbox("GPU", &state.gpuEnabled)) {
+        state.emulator.SetGPUEnabled(state.gpuEnabled);
+    }
+    ImGui::SameLine();
+    bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
+    if (ImGui::Checkbox("SID", &soundEnabled)) {
+        state.emulator.GetSID().EnableSound(soundEnabled);
+    }
+
+    ImGui::SameLine();
+    auto& sid = state.emulator.GetSID();
+    bool isRecording = sid.IsRecording();
+    if (isRecording) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
+    }
+    if (ImGui::Button(isRecording ? "Stop Audio REC" : "REC Audio")) {
+        if (isRecording) {
+            sid.StopRecording();
+        } else {
+            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        }
+    }
+    if (isRecording) {
+        ImGui::PopStyleColor(2);
+    }
+}
+
 static void DrawControlButtonBar(AppState& state) {
     if (ImGui::Button("Settings")) {
         ImGui::OpenPopup("SettingsMenu");
@@ -165,71 +251,14 @@ static void DrawControlButtonBar(AppState& state) {
     }
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
-        bool wasRunning = !state.emulator.IsPaused();
-        if (wasRunning) {
-            state.emulator.Pause();
-        }
-
-        Console::Clear();
-        state.emulator.GetGPU().Reset();
-        state.emulator.ClearProfiler();
-
-        if (state.romLoaded) {
-            std::string errorMsg;
-            if (!state.emulator.Init(state.bin, errorMsg)) {
-                std::cerr << "Error resetting ROM: " << errorMsg << '\n';
-                state.romLoaded = false;
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
-            } else {
-                state.emulator.SetGPUEnabled(state.gpuEnabled);
-            }
-        }
-
-        if (wasRunning) {
-            state.emulator.Resume();
-            state.emulator.GetSID().SetEmulationPaused(false);
-        }
+        HandleReset(state);
     }
 
     ImGui::SameLine();
-    ImGui::BeginDisabled(!state.romLoaded && !state.scriptLoaded);
-    if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
-        if (state.emulator.IsPaused()) {
-            state.emulator.Resume();
-        } else {
-            state.emulator.Pause();
-        }
-        state.emulator.GetSID().SetEmulationPaused(state.emulator.IsPaused());
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Step")) {
-        state.emulator.GetSID().SetEmulationPaused(false);
-        state.emulator.Pause();
-        state.emulator.Step();
-        state.emulator.GetSID().SetEmulationPaused(true);
-    }
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!state.emulator.CanRewind() || !state.emulator.IsRunning() || !state.emulator.IsPaused());
-    if (ImGui::Button("Rewind")) {
-        state.emulator.Rewind();
-    }
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::BeginTooltip();
-        ImGui::TextUnformatted("Rewind to the previous state (max 255 states).\nOnly available when the emulator is paused.");
-        ImGui::EndTooltip();
-    }
-    ImGui::EndDisabled();
+    DrawPlaybackControls(state);
 
     ImGui::SameLine();
-    if (ImGui::Checkbox("GPU", &state.gpuEnabled)) {
-        state.emulator.SetGPUEnabled(state.gpuEnabled);
-    }
-    ImGui::SameLine();
-    bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
-    if (ImGui::Checkbox("SID", &soundEnabled)) {
-        state.emulator.GetSID().EnableSound(soundEnabled);
-    }
+    DrawAudioVideoControls(state);
 }
 
 static void DrawSettingsBasic(AppState& state) {
@@ -406,20 +435,7 @@ static void DrawIPSSection(AppState& state, float mainColWidth) {
     }
 }
 
-void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
-                       ImGuiWindowFlags window_flags) {
-    float mainColWidth = work_size.x * 0.47F;
-
-    ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(mainColWidth, top_section_height * 0.4F), ImGuiCond_Always);
-    ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-
-    DrawControlButtonBar(state);
-    DrawSettingsPopup(state);
-    DrawDebugMenu(state);
-    DrawIPSSection(state, mainColWidth);
-
-    // Handle SD Card create dialog
+static void HandleCreateSDDialog(AppState& state) {
     if (ImGuiFileDialog::Instance()->Display("CreateSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -437,8 +453,9 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
         }
         ImGuiFileDialog::Instance()->Close();
     }
+}
 
-    // Handle SD Card mount dialog
+static void HandleMountSDDialog(AppState& state) {
     if (ImGuiFileDialog::Instance()->Display("MountSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -450,20 +467,54 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
         }
         ImGuiFileDialog::Instance()->Close();
     }
+}
 
-    // Handle Script load dialog
+static void HandleLoadScriptDialog(AppState& state) {
     if (ImGuiFileDialog::Instance()->Display("LoadScriptDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
             state.scriptPath = filePath;
             state.scriptLoaded = true;
             state.showScriptConsole = true;
-            state.emulator.Pause(); // Pause the frontend before running the script
+            state.emulator.Pause();  // Pause the frontend before running the script
             state.emulator.GetScriptEngine().LoadAndRun(filePath);
             ImGui::CloseCurrentPopup();
         }
         ImGuiFileDialog::Instance()->Close();
     }
+}
+
+static void HandleRecordSIDDialog(AppState& state) {
+    if (ImGuiFileDialog::Instance()->Display("RecordSIDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.emulator.GetSID().StartRecording(filePath);
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+}
+
+static void HandleDialogs(AppState& state) {
+    HandleCreateSDDialog(state);
+    HandleMountSDDialog(state);
+    HandleLoadScriptDialog(state);
+    HandleRecordSIDDialog(state);
+}
+
+void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
+                       ImGuiWindowFlags window_flags) {
+    float mainColWidth = work_size.x * 0.47F;
+
+    ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(mainColWidth, top_section_height * 0.4F), ImGuiCond_Always);
+    ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+    DrawControlButtonBar(state);
+    DrawSettingsPopup(state);
+    DrawDebugMenu(state);
+    DrawIPSSection(state, mainColWidth);
+
+    HandleDialogs(state);
 
     ImGui::SetScrollHereY(1.0F);
     ImGui::End();

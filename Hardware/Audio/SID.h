@@ -7,7 +7,9 @@
 #include <iostream>
 #include <mutex>
 
+#include "Hardware/Audio/AudioRecorder.h"
 #include "Hardware/Core/IBusDevice.h"
+#include <memory>
 
 namespace Hardware {
 
@@ -74,17 +76,24 @@ class SID : public IBusDevice {
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
 
+    void StartRecording(const std::string& filename);
+    void StopRecording();
+    bool IsRecording() const;
+
    private:
     std::array<std::uint8_t, 0x20> registers{};
     std::array<Oscillator, MAX_SID_VOICES> voices{};
     std::uint8_t volumeRegister{0};
     bool soundEnabled = false;
-    bool emulationPaused = false;
+    bool emulationPaused = true;
 
     // Audio Stream
     SDL_AudioStream* audioStream = nullptr;
     int sampleRate = 44100;
     mutable std::mutex sidMutex;
+
+    std::unique_ptr<AudioRecorder> recorder;
+    std::string pendingFilename;
 
     static void AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
                               int total_amount);  // NOLINT(bugprone-easily-swappable-parameters)

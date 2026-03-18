@@ -144,6 +144,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     SetupHardware();
 
     std::ifstream inFile(filename, std::ios::binary | std::ios::ate);
+
     if (!inFile.is_open()) {
         return false;
     }
@@ -226,6 +227,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
         }
     }
 
+    halted = false;
     return true;
 }
 
@@ -324,10 +326,19 @@ int Emulator::Step() {
         std::lock_guard<std::mutex> lock(emulationMutex);
         SaveStateToBuffer();
     }
+    int res = 0;
     if (bus.HasActiveHooks()) {
-        return Step<true>();
+        res = Step<true>();
+    } else {
+        res = Step<false>();
     }
-    return Step<false>();
+    
+    if (res != 0) {
+        Pause();
+        sid.StopRecording();
+        halted = true;
+    }
+    return res;
 }
 
 template <bool Debug>
@@ -408,6 +419,7 @@ void Emulator::Start() {
 
 void Emulator::Stop() {
     running = false;
+    sid.StopRecording();
     Resume();
     if (emulatorThread.joinable()) {
         emulatorThread.join();
@@ -416,11 +428,13 @@ void Emulator::Stop() {
 
 void Emulator::Pause() {
     paused = true;
+    sid.SetEmulationPaused(true);
     pauseCV.notify_all();
 }
 
 void Emulator::Resume() {
     paused = false;
+    sid.SetEmulationPaused(false);
     pauseCV.notify_all();
 }
 
@@ -486,7 +500,9 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
         for (int i = 0; i < instructionsPerSlice; ++i) {
             int res = Step<true>();
             if (res != 0) {
-                paused = true;
+                Pause();
+                sid.StopRecording();
+                halted = true;
                 std::cerr << "Emulator stopped with code: " << res << '\n';
                 break;
             }
@@ -495,7 +511,9 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
         for (int i = 0; i < instructionsPerSlice; ++i) {
             int res = Step<false>();
             if (res != 0) {
-                paused = true;
+                Pause();
+                sid.StopRecording();
+                halted = true;
                 std::cerr << "Emulator stopped with code: " << res << '\n';
                 break;
             }
@@ -531,6 +549,7 @@ void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& l
 }
 
 void Emulator::SetupHardware() {
+    halted = false;
     bus.Init();
     cpu.Reset();
     totalCycles = 0;

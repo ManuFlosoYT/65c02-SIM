@@ -86,6 +86,7 @@ class Emulator {
     void Resume();
     bool IsRunning() const;
     bool IsPaused() const;
+    bool IsHalted() const;
 
     [[nodiscard]] uint64_t GetTotalCycles() const { return totalCycles; }
 
@@ -150,7 +151,8 @@ class Emulator {
 
     // Threading control
     std::atomic<bool> running{false};
-    std::atomic<bool> paused{false};
+    std::atomic<bool> paused{true};
+    std::atomic<bool> halted{false};
     std::atomic<int> targetIPS{1000000};
     std::atomic<int> actualIPS{0};
     std::thread emulatorThread;
@@ -205,6 +207,7 @@ inline bool Core::Emulator::IsCycleAccurate() const { return cpu.IsCycleAccurate
 
 inline bool Core::Emulator::IsRunning() const { return running; }
 inline bool Core::Emulator::IsPaused() const { return paused; }
+inline bool Core::Emulator::IsHalted() const { return halted; }
 
 inline void Core::Emulator::SetTargetIPS(int ips) { targetIPS = ips; }
 inline int Core::Emulator::GetTargetIPS() const { return targetIPS; }
