@@ -65,7 +65,7 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
     ImGui::BeginChild(ImGui::GetID(voiceIndex), ImVec2(100, 30), 0, ImGuiWindowFlags_NoInputs);
-    ImGui::PlotLines("##Wave", points.data(), 50, 0, nullptr, -1.0F, 1.0F, ImVec2(100, 30));
+    ImGui::PlotLines("##Wave", points.data(), 50, 0, nullptr, -1.1F, 1.1F, ImVec2(100, 30));
     ImGui::EndChild();
     ImGui::PopStyleVar(2);
     ImGui::EndGroup();
