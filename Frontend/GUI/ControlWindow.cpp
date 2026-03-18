@@ -209,6 +209,17 @@ static void DrawControlButtonBar(AppState& state) {
         state.emulator.GetSID().SetEmulationPaused(true);
     }
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!state.emulator.CanRewind() || !state.emulator.IsRunning() || !state.emulator.IsPaused());
+    if (ImGui::Button("Rewind")) {
+        state.emulator.Rewind();
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Rewind to the previous state (max 255 states).\nOnly available when the emulator is paused.");
+        ImGui::EndTooltip();
+    }
+    ImGui::EndDisabled();
 
     ImGui::SameLine();
     if (ImGui::Checkbox("GPU", &state.gpuEnabled)) {

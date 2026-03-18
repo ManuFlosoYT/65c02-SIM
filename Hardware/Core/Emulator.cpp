@@ -257,6 +257,23 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     return true;
 }
 
+void Emulator::Rewind() {
+    std::lock_guard<std::mutex> lock(emulationMutex);
+    if (rewindBuffer.empty()) {
+        return;
+    }
+
+    std::string statePayload = rewindBuffer.back();
+    rewindBuffer.pop_back();
+
+    std::stringstream stateStream(statePayload);
+    if (LoadComponentsState(stateStream)) {
+        LoadInternalState(stateStream);
+    }
+}
+
+bool Emulator::CanRewind() const { return !rewindBuffer.empty(); }
+
 bool Emulator::LoadComponentsState(std::istream& stateStream) {
     if (!bus.LoadState(stateStream)) {
         return false;
@@ -329,7 +346,74 @@ void Emulator::LoadInternalState(std::istream& stateStream) {
     autoReloadRequested.store(autoReload);
 }
 
+void Emulator::SaveStateToBuffer() {
+    std::stringstream stateStream;
+    if (!bus.SaveState(stateStream)) {
+        return;
+    }
+    if (!cpu.SaveState(stateStream)) {
+        return;
+    }
+    if (!ram.SaveState(stateStream)) {
+        return;
+    }
+    if (!rom.SaveState(stateStream)) {
+        return;
+    }
+    if (!via.SaveState(stateStream)) {
+        return;
+    }
+    if (!sid.SaveState(stateStream)) {
+        return;
+    }
+    if (!acia.SaveState(stateStream)) {
+        return;
+    }
+    if (!sdcard.SaveState(stateStream)) {
+        return;
+    }
+    if (!esp8266.SaveState(stateStream)) {
+        return;
+    }
+    if (!lcd.SaveState(stateStream)) {
+        return;
+    }
+    if (!gpu.SaveState(stateStream)) {
+        return;
+    }
+    if (!Console::SaveState(stateStream)) {
+        return;
+    }
+
+    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
+    bool gpuE = gpuEnabled;
+    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));  // NOLINT
+    int tIPS = targetIPS.load();
+    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));  // NOLINT
+
+    size_t qSize = inputBuffer.size();
+    stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
+    for (char chr : inputBuffer) {
+        stateStream.write(&chr, 1);
+    }
+
+    size_t binPathLen = currentBinPath.length();
+    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
+    stateStream.write(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
+    bool autoReload = autoReloadRequested.load();
+    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));  // NOLINT
+
+    rewindBuffer.push_back(stateStream.str());
+    if (rewindBuffer.size() > MAX_REWIND_STATES) {
+        rewindBuffer.pop_front();
+    }
+}
+
 int Emulator::Step() {
+    {
+        std::lock_guard<std::mutex> lock(emulationMutex);
+        SaveStateToBuffer();
+    }
     if (bus.HasActiveHooks()) {
         return Step<true>();
     }
@@ -487,6 +571,7 @@ void Emulator::ThreadLoop() {
 void Emulator::EmulateSlice(int instructionsPerSlice) {
     bool hooks = bus.HasActiveHooks();
     std::lock_guard<std::mutex> lock(emulationMutex);
+    SaveStateToBuffer();
     if (hooks) {
         for (int i = 0; i < instructionsPerSlice; ++i) {
             int res = Step<true>();
@@ -539,6 +624,7 @@ void Emulator::SetupHardware() {
     bus.Init();
     cpu.Reset();
     totalCycles = 0;
+    rewindBuffer.clear();
 
     if (bus.GetRegisteredDevices().empty()) {
         bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);

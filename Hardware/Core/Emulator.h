@@ -44,6 +44,9 @@ class Emulator {
     bool SaveState(const std::string& filename);
     bool LoadState(const std::string& filename, bool forceLoad = false);
 
+    void Rewind();
+    bool CanRewind() const;
+
     int Step();
     template <bool Debug>
     int Step();
@@ -112,6 +115,8 @@ class Emulator {
     void EmulateSlice(int instructionsPerSlice);
     void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
 
+    void SaveStateToBuffer();
+
     // Components
     Bus bus;
     CPU cpu;
@@ -157,6 +162,9 @@ class Emulator {
     int spi_bit_count = 0;
     uint8_t spi_miso_byte = 0xFF;
     int spi_miso_bit_idx = 0;
+
+    std::deque<std::string> rewindBuffer;
+    static constexpr size_t MAX_REWIND_STATES = 255;
 };
 
 }  // namespace Core
