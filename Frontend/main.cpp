@@ -422,7 +422,7 @@ int main(int argc, char* argv[]) {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos;
         ImVec2 work_size = viewport->WorkSize;
-        float top_section_height = work_size.y * 0.25F;
+        float top_section_height = work_size.y * 0.27F;
 
         const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                              ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
