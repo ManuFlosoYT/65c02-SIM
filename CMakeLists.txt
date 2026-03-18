@@ -127,10 +127,9 @@ if(TARGET sndfile AND NOT TARGET SndFile::sndfile)
     add_library(SndFile::sndfile ALIAS sndfile)
 endif()
 
-set(OPENSSL_USE_STATIC_LIBS ON)
-set(ZLIB_USE_STATIC_LIBS ON)
-
 if(WIN32)
+    set(OPENSSL_USE_STATIC_LIBS ON)
+    set(ZLIB_USE_STATIC_LIBS ON)
     if(NOT MINGW_ROOT)
         set(MINGW_ROOT "/usr/x86_64-w64-mingw32ucrt/sys-root/mingw")
     endif()
