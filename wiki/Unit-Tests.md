@@ -7,7 +7,7 @@
 
 The `UnitTests/` directory contains a unit test suite that verifies the correct behaviour of all 65c02 processor instructions and some additional hardware components.
 
-> ⚠️ The `UnitTests/` folder was generated with AI assistance.
+> ⚠️ **Warning:** The entire `UnitTests/` folder has been AI generated. Contributors should be aware of this regarding the quality or status of the tests.
 
 ## Structure
 

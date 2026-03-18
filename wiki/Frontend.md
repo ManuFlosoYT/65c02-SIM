@@ -137,6 +137,8 @@ checker.CheckAsync([](const std::string& latestVersion) {
 });
 ```
 
+> **Note:** The version displayed in the Frontend and used by the `UpdateChecker` is injected at compile time via Git (`PROJECT_VERSION`) and does not require manual changes in the code.
+
 ## AppState — Global state
 
 `Control/AppState.h` defines the shared state structure between the GUI and the control layer. It holds references to the emulator, status flags (paused, running, etc.), and the path of the loaded binary.
@@ -155,6 +157,11 @@ while (running):
     6. SDL_GL_SwapWindow()
 ```
 
+## ImGui & File Dialog Configuration
+
+- **File Bookmarks**: The file explorer has favorites/bookmarks management enabled thanks to the `-DUSE_BOOKMARK` flag of ImGuiFileDialog.
+- **Math Operators**: CMake enables `-DIMGUI_DEFINE_MATH_OPERATORS` by default, allowing developers to perform direct mathematical operations with vectors in the UI.
+
 ## External dependencies
 
 | Library         | Version        | Use                                  |
@@ -166,3 +173,10 @@ while (running):
 | nlohmann/json   | 3.12.0         | JSON parsing (GitHub API response)   |
 | cpp-httplib     | 0.15.3         | HTTP/HTTPS client for update checker |
 | OpenSSL         | —              | TLS for HTTPS requests               |
+| asio            | latest         | Networking/ESP8266                   |
+| picosha2        | latest         | Savestate Hashes                     |
+| ZLIB            | latest         | Compression                          |
+| pocketpy        | latest         | Scripting                            |
+| GoogleTest      | latest         | Unit testing                         |
+
+> **Note:** OpenSSL is strictly mandatory.

@@ -20,7 +20,9 @@ sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel \
     wayland-protocols-devel libdrm-devel mesa-libgbm-devel \
     libusb1-devel libdecor-devel \
     pipewire-jack-audio-connection-kit-devel libthai-devel liburing-devel \
-    zlib-ng-compat-static python3-jinja2
+    zlib-ng-compat-static python3-jinja2 \
+    ccache ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils \
+    ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib
 ```
 
 > **Windows:** Use WSL2 with Fedora to run the build scripts. See the README for installation instructions.
@@ -61,11 +63,17 @@ The script:
 3. Runs the **unit tests** at the end of the build
 4. Reports errors if any test fails
 
+> ⚠️ **Warning:** The entire `UnitTests/` folder has been AI generated. Contributors should be aware of this regarding the quality or status of the tests.
+
 ## Build for Windows (MinGW cross-compilation)
 
 ```bash
 ./build-win.sh
 ```
+
+> **Note:** The MinGW root path is hardcoded in `CMakeLists.txt` (`/usr/x86_64-w64-mingw32ucrt/...`). If you are not using Fedora, you must pass the `-DMINGW_ROOT=<your_path>` flag to CMake.
+>
+> **Note on manual compilation:** On Windows if not using WSL2, you must explicitly link the system libraries (`ws2_32`, `crypt32`, `pathcch`).
 
 The resulting executable is saved to `output/windows/SIM_65C02.exe`.
 
@@ -95,6 +103,11 @@ The project uses **CMake** with the following targets:
 - **LTO** (Link-Time Optimization) in Release mode
 - Release flags: `-O3 -DNDEBUG -ffunction-sections -fdata-sections -flto -Wl,--gc-sections -s`
 
+### Custom Commands and Variables
+
+- A custom command embeds the CRT shaders (`crt.vert` and `crt.frag`) into an automatically generated header (`CRTShaders.h`).
+- The version displayed in the Frontend and used by the `UpdateChecker` is injected at compile time via Git (`PROJECT_VERSION`) and does not require manual changes in the code.
+
 ### External dependencies (FetchContent)
 
 CMake automatically downloads all dependencies during the first build:
@@ -108,6 +121,10 @@ CMake automatically downloads all dependencies during the first build:
 | nlohmann/json | 3.12.0 | JSON parsing |
 | cpp-httplib | 0.15.3 | HTTP/HTTPS |
 | GoogleTest | latest | Unit testing |
+| asio | latest | Networking/ESP8266 |
+| picosha2 | latest | Savestate Hashes |
+| ZLIB | latest | Compression |
+| pocketpy | latest | Scripting |
 
 > The first build may take several minutes due to downloading and compiling dependencies.
 

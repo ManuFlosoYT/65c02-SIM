@@ -36,6 +36,7 @@ emulator.Stop();         // Stops the thread
 | `sid`  | `Hardware::SID`  | Sound chip                              |
 | `via`  | `Hardware::VIA`  | Versatile I/O interface (6522)          |
 | `sd`   | `Hardware::SDCard` | SD Card emulation (SPI)                 |
+| `esp8266` | `Hardware::ESP8266` | Network chip (Wi-Fi simulation)         |
 
 ### Emulation thread
 
@@ -108,13 +109,19 @@ public:
 ```
 0x0000 – 0x7FFF   RAM (32 KB)
 0x2000 – 0x3FFF   VRAM (7.5 KB) — only when GPU is enabled
+0x4800 – 0x481F   SID (Sound chip registers)
 0x5000 – 0x5003   ACIA (serial communication registers)
+0x5004 – 0x5007   ESP8266 (Network chip registers)
 0x6000 – 0x600F   VIA (I/O registers)
 0x8000 – 0xFFFF   ROM (32 KB, read-only)
 0xFFFC – 0xFFFD   RESET vector
 0xFFFE – 0xFFFF   IRQ/BRK vector
 ```
 
+> **Note on Virtual Devices:** Components like the **LCD** and **SD Card** are not directly mapped to memory addresses. Instead, they are controlled via the **VIA Port B** (`0x6000`):
+> - **LCD**: Receives commands and data directly through Port B pins.
+> - **SD Card**: Uses Port B pins for SPI bit-banging: `PB0` (MOSI), `PB1` (MISO), `PB2` (CLK), `PB3` (CS).
+>
 > ROM occupies the upper half of the address space. Write attempts to `addr >= 0x8000` are silently ignored.
 
 ### Read/write hooks
