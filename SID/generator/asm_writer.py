@@ -34,7 +34,7 @@ def write_asm(bytecode, input_path, mode):
         f.write("do_delay:\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    tax\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    sty $02\n    tay\n")
         f.write("delay_loop:\n    cpx #0\n    bne :+\n    cpy #0\n    beq delay_done\n    dey\n:   dex\n    nop\n    nop\n    jmp delay_loop\n")
         f.write("delay_done:\n    ldy $02\n    iny\n    bne :+\n    inc $01\n:   jmp play_loop\n")
-        f.write("stop:\n    lda #0\n    sta $4804\n    sta $480B\n    sta $4812\nstop_loop: jmp stop_loop\n")
+        f.write("stop:\n    lda #0\n    sta $4804\n    sta $480B\n    sta $4812\n    stp\n")
         f.write("music_data:\n")
 
         # Chunked Write to avoid massive string construction
