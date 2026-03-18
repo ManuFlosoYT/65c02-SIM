@@ -19,6 +19,7 @@
 #include "Frontend/GUI/RegistersWindow.h"
 #include "Frontend/GUI/ScriptConsoleWindow.h"
 #include "Frontend/GUI/SIDViewerWindow.h"
+#include "Frontend/GUI/Style/Style.h"
 #include "Frontend/GUI/UpdatePopup.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #include "UpdateChecker.h"
@@ -98,6 +99,12 @@ static void InitializeTextures(AppState& state) {
     state.crtFilter.Init(GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT);
 }
 
+static void SetupStyle(){
+    SetupImGuiStyle();
+    SetupModernStyle();
+    SetupFont();
+}
+
 static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const char* glsl_version) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -113,6 +120,7 @@ static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const 
     imgui_io.FontGlobalScale = 1.5F / dpi_scale;
 
     ImGui::StyleColorsDark();
+    SetupStyle();
     ImGui::GetStyle().ScaleAllSizes(1.0F / dpi_scale);
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
