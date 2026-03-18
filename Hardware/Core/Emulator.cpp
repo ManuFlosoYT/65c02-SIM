@@ -16,7 +16,10 @@ using namespace Hardware;
 
 namespace Core {
 
-Emulator::Emulator() : cpu(), scriptEngine(*this) { SetupHardware(); }
+Emulator::Emulator() : cpu(), scriptEngine(*this) {
+    components = {&bus, &cpu, &ram, &rom, &via, &sid, &acia, &sdcard, &esp8266, &lcd, &gpu, &consoleSerializable};
+    SetupHardware();
+}
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::lock_guard<std::mutex> lock(emulationMutex);
@@ -83,41 +86,10 @@ bool Emulator::SaveState(const std::string& filename) {
     std::lock_guard<std::mutex> lock(emulationMutex);
 
     std::stringstream stateStream;
-    if (!bus.SaveState(stateStream)) {
-        return false;
-    }
-    if (!cpu.SaveState(stateStream)) {
-        return false;
-    }
-    if (!ram.SaveState(stateStream)) {
-        return false;
-    }
-    if (!rom.SaveState(stateStream)) {
-        return false;
-    }
-    if (!via.SaveState(stateStream)) {
-        return false;
-    }
-    if (!sid.SaveState(stateStream)) {
-        return false;
-    }
-    if (!acia.SaveState(stateStream)) {
-        return false;
-    }
-    if (!sdcard.SaveState(stateStream)) {
-        return false;
-    }
-    if (!esp8266.SaveState(stateStream)) {
-        return false;
-    }
-    if (!lcd.SaveState(stateStream)) {
-        return false;
-    }
-    if (!gpu.SaveState(stateStream)) {
-        return false;
-    }
-    if (!Console::SaveState(stateStream)) {
-        return false;
+    for (auto* component : components) {
+        if (!component->SaveState(stateStream)) {
+            return false;
+        }
     }
 
     stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
@@ -275,41 +247,10 @@ void Emulator::Rewind() {
 bool Emulator::CanRewind() const { return !rewindBuffer.empty(); }
 
 bool Emulator::LoadComponentsState(std::istream& stateStream) {
-    if (!bus.LoadState(stateStream)) {
-        return false;
-    }
-    if (!cpu.LoadState(stateStream)) {
-        return false;
-    }
-    if (!ram.LoadState(stateStream)) {
-        return false;
-    }
-    if (!rom.LoadState(stateStream)) {
-        return false;
-    }
-    if (!via.LoadState(stateStream)) {
-        return false;
-    }
-    if (!sid.LoadState(stateStream)) {
-        return false;
-    }
-    if (!acia.LoadState(stateStream)) {
-        return false;
-    }
-    if (!sdcard.LoadState(stateStream)) {
-        return false;
-    }
-    if (!esp8266.LoadState(stateStream)) {
-        return false;
-    }
-    if (!lcd.LoadState(stateStream)) {
-        return false;
-    }
-    if (!gpu.LoadState(stateStream)) {
-        return false;
-    }
-    if (!Console::LoadState(stateStream)) {
-        return false;
+    for (auto* component : components) {
+        if (!component->LoadState(stateStream)) {
+            return false;
+        }
     }
     return true;
 }
@@ -348,41 +289,10 @@ void Emulator::LoadInternalState(std::istream& stateStream) {
 
 void Emulator::SaveStateToBuffer() {
     std::stringstream stateStream;
-    if (!bus.SaveState(stateStream)) {
-        return;
-    }
-    if (!cpu.SaveState(stateStream)) {
-        return;
-    }
-    if (!ram.SaveState(stateStream)) {
-        return;
-    }
-    if (!rom.SaveState(stateStream)) {
-        return;
-    }
-    if (!via.SaveState(stateStream)) {
-        return;
-    }
-    if (!sid.SaveState(stateStream)) {
-        return;
-    }
-    if (!acia.SaveState(stateStream)) {
-        return;
-    }
-    if (!sdcard.SaveState(stateStream)) {
-        return;
-    }
-    if (!esp8266.SaveState(stateStream)) {
-        return;
-    }
-    if (!lcd.SaveState(stateStream)) {
-        return;
-    }
-    if (!gpu.SaveState(stateStream)) {
-        return;
-    }
-    if (!Console::SaveState(stateStream)) {
-        return;
+    for (auto* component : components) {
+        if (!component->SaveState(stateStream)) {
+            return;
+        }
     }
 
     stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));  // NOLINT

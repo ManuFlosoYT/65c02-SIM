@@ -22,6 +22,8 @@
 #include "Hardware/Memory/ROM.h"
 #include "Hardware/Video/GPU.h"
 #include "Hardware/Video/LCD.h"
+#include "Hardware/Core/ISerializable.h"
+#include "Frontend/Control/Console.h"
 
 namespace Core {
 
@@ -117,6 +119,11 @@ class Emulator {
 
     void SaveStateToBuffer();
 
+    struct ConsoleSerializable : public ISerializable {
+        bool SaveState(std::ostream& out) const override { return Console::SaveState(out); }
+        bool LoadState(std::istream& inStream) override { return Console::LoadState(inStream); }
+    };
+
     // Components
     Bus bus;
     CPU cpu;
@@ -130,6 +137,9 @@ class Emulator {
     Hardware::SDCard sdcard;
     Hardware::ESP8266 esp8266;
     Hardware::ScriptEngine scriptEngine;
+
+    ConsoleSerializable consoleSerializable;
+    std::vector<ISerializable*> components;
 
     // Input buffer
     std::deque<char> inputBuffer;

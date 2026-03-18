@@ -2,16 +2,17 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include "Hardware/Core/ISerializable.h"
 
 namespace Hardware {
 
 using Byte = uint8_t;
 using Word = uint16_t;
 
-class IBusDevice {
+class IBusDevice : public ISerializable {
    public:
     IBusDevice() = default;
-    virtual ~IBusDevice() = default;
+    ~IBusDevice() override = default;
     IBusDevice(const IBusDevice&) = delete;
     IBusDevice& operator=(const IBusDevice&) = delete;
     IBusDevice(IBusDevice&&) = delete;
@@ -24,8 +25,8 @@ class IBusDevice {
 
     virtual void Reset();
 
-    virtual bool SaveState(std::ostream& out) const = 0;
-    virtual bool LoadState(std::istream& inStream) = 0;
+    bool SaveState(std::ostream& out) const override = 0;
+    bool LoadState(std::istream& inStream) override = 0;
 
     // Optional direct memory access for cache optimization (returns nullptr if not supported)
     [[nodiscard]] virtual Byte* GetRawMemory() { return nullptr; }

@@ -4,6 +4,7 @@
 #include <iterator>
 
 #include "Hardware/Core/Bus.h"
+#include "Hardware/Core/ISerializable.h"
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -16,7 +17,7 @@ template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus);
 }
 
-class CPU {
+class CPU : public ISerializable {
    public:
     // RETURNS:
     // 0: OK
@@ -44,8 +45,8 @@ class CPU {
     int remainingCycles = 0;
     bool cycleAccurate = true;
 
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& inputStream);
+    bool SaveState(std::ostream& out) const override;
+    bool LoadState(std::istream& inputStream) override;
 
     void Reset();
 

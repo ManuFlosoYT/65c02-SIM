@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Hardware/Core/IBusDevice.h"
+#include "Hardware/Core/ISerializable.h"
 
 namespace Hardware {
 
@@ -38,11 +39,11 @@ constexpr Word IER = 0x600E;
 constexpr Word ORA_NH = 0x600F;
 
 struct DeviceRegistration {
-    Word startAddress;
-    Word endAddress;
-    IBusDevice* device;
-    bool enabled;
-    bool ignoreCollision;
+    Word startAddress = 0;
+    Word endAddress = 0;
+    IBusDevice* device = nullptr;
+    bool enabled = false;
+    bool ignoreCollision = false;
     bool isVirtual = false;  // If true: UI-only, never mapped to deviceMap
 };
 
@@ -51,14 +52,14 @@ struct BusSlot {
     Word offset;
 };
 
-class Bus {
+class Bus : public ISerializable {
    public:
     Bus();
     void Init();
     void ClearDevices();
 
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& inStream);
+    bool SaveState(std::ostream& out) const override;
+    bool LoadState(std::istream& inStream) override;
 
     [[nodiscard]] inline bool HasActiveHooks() const;
 
