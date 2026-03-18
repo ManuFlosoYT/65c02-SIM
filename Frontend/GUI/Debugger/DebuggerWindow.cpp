@@ -68,7 +68,8 @@ void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row) {
         labelBuf << "##m" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << addr;
         std::string labelStr = labelBuf.str();
 
-        ImGui::PushItemWidth(22.0F);
+        ImGui::PushItemWidth(24.2F);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0F, ImGui::GetStyle().FramePadding.y));
         if (ImGui::InputScalar(labelStr.c_str(), ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
                                ImGuiInputTextFlags_CharsHexadecimal)) {
             if (addr >= 0x8000) {
@@ -77,6 +78,7 @@ void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row) {
                 bus.WriteDirect(addr, val);
             }
         }
+        ImGui::PopStyleVar();
         ImGui::PopItemWidth();
     }
 }
@@ -95,7 +97,7 @@ void DrawMemoryEditor(Core::Emulator& emulator) {
             for (int i = 0; i < 16; i++) {
                 std::ostringstream buf;
                 buf << std::uppercase << std::hex << i;
-                ImGui::TableSetupColumn(buf.str().c_str(), ImGuiTableColumnFlags_WidthFixed, 22.0F);
+                ImGui::TableSetupColumn(buf.str().c_str(), ImGuiTableColumnFlags_WidthFixed, 24.2F);
             }
             ImGui::TableHeadersRow();
 
