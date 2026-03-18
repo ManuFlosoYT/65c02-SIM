@@ -220,25 +220,6 @@ static void DrawAudioVideoControls(AppState& state) {
     if (ImGui::Checkbox("SID", &soundEnabled)) {
         state.emulator.GetSID().EnableSound(soundEnabled);
     }
-
-    ImGui::SameLine();
-    auto& sid = state.emulator.GetSID();
-    bool isRecording = sid.IsRecording();
-    if (isRecording) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
-    }
-    if (ImGui::Button(isRecording ? "Stop Audio REC" : "REC Audio")) {
-        if (isRecording) {
-            sid.StopRecording();
-        } else {
-            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
-        }
-    }
-    if (isRecording) {
-        ImGui::PopStyleColor(2);
-    }
 }
 
 static void DrawControlButtonBar(AppState& state) {
@@ -396,7 +377,7 @@ static void DrawIPSSection(AppState& state, float mainColWidth) {
     std::string targetLabel = "Target ";
     targetLabel += (state.cycleAccurate ? "Hz" : "IPS");
 
-    ImGui::SetNextItemWidth(mainColWidth * 0.5F);
+    ImGui::SetNextItemWidth(mainColWidth * 0.3F);
     if (ImGui::InputInt(targetLabel.c_str(), &tempIPS, 100000, 100000)) {
         if (state.instructionsPerFrame == 1 && tempIPS == 100001) {
             tempIPS = 100000;
@@ -432,6 +413,25 @@ static void DrawIPSSection(AppState& state, float mainColWidth) {
             }
         }
         ImGui::TextUnformatted(oss.str().c_str());
+    }
+
+    ImGui::SameLine();
+    auto& sid = state.emulator.GetSID();
+    bool isRecording = sid.IsRecording();
+    if (isRecording) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
+    }
+    if (ImGui::Button(isRecording ? "Stop Audio REC" : "REC Audio")) {
+        if (isRecording) {
+            sid.StopRecording();
+        } else {
+            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        }
+    }
+    if (isRecording) {
+        ImGui::PopStyleColor(2);
     }
 }
 
