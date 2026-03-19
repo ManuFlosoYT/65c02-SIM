@@ -140,7 +140,60 @@ endif()
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libswscale libavutil)
+
+if(WIN32)
+    set(FFMPEG_LIBRARIES "")
+    # FFmpeg prebuilt for Windows (BtbN GitHub Releases)
+    FetchContent_Declare(
+        ffmpeg_win
+        URL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip
+    )
+    FetchContent_MakeAvailable(ffmpeg_win) 
+    
+    unset(FFMPEG_INC_DIR CACHE)
+    foreach(lib avcodec avformat swscale avutil)
+        unset(FFMPEG_${lib}_LIB CACHE)
+        unset(FFMPEG_${lib}_DLL CACHE)
+    endforeach()
+
+    find_path(FFMPEG_INC_DIR libavcodec/avcodec.h
+        PATHS ${ffmpeg_win_SOURCE_DIR}
+        PATH_SUFFIXES include
+        NO_DEFAULT_PATH
+        NO_CMAKE_FIND_ROOT_PATH
+    )
+    
+    foreach(lib avcodec avformat swscale avutil)
+        find_library(FFMPEG_${lib}_LIB NAMES ${lib}
+            PATHS ${ffmpeg_win_SOURCE_DIR}
+            PATH_SUFFIXES lib
+            NO_DEFAULT_PATH
+            NO_CMAKE_FIND_ROOT_PATH
+        )
+        file(GLOB FFMPEG_${lib}_DLL_LIST "${ffmpeg_win_SOURCE_DIR}/bin/${lib}*.dll")
+        if(FFMPEG_${lib}_DLL_LIST)
+            list(GET FFMPEG_${lib}_DLL_LIST 0 FFMPEG_${lib}_DLL)
+        endif()
+        
+        if(FFMPEG_${lib}_LIB)
+            add_library(FFMPEG::${lib} SHARED IMPORTED)
+            set_target_properties(FFMPEG::${lib} PROPERTIES
+                IMPORTED_IMPLIB "${FFMPEG_${lib}_LIB}"
+                INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INC_DIR}"
+            )
+            if(FFMPEG_${lib}_DLL)
+                set_target_properties(FFMPEG::${lib} PROPERTIES
+                    IMPORTED_LOCATION "${FFMPEG_${lib}_DLL}"
+                )
+            endif()
+            list(APPEND FFMPEG_LIBRARIES FFMPEG::${lib})
+        endif()
+    endforeach()
+    
+    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_INC_DIR}")
+else()
+    pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libswscale libavutil)
+endif()
 
 if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
     add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
@@ -276,6 +329,19 @@ if(WIN32)
         pathcch
         ${FFMPEG_LIBRARIES}
     )
+
+    if(FFMPEG_LIBRARIES)
+        foreach(lib_target ${FFMPEG_LIBRARIES})
+            get_target_property(dll_path ${lib_target} IMPORTED_LOCATION)
+            if(dll_path)
+                add_custom_command(TARGET SIM_65C02 POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${dll_path}"
+                    "$<TARGET_FILE_DIR:SIM_65C02>/"
+                )
+            endif()
+        endforeach()
+    endif()
 else()
     add_executable(SIM_65C02 
         ${FRONTEND_SOURCES}
