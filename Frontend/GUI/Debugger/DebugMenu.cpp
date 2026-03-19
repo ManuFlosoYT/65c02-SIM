@@ -21,7 +21,7 @@ void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2));
     for (size_t i = 0; i < modes.size(); i++) {
-        bool selected = (state.debuggerMode == static_cast<int>(i));
+        bool selected = (state.debugger.mode == static_cast<Control::DebuggerMode>(i));
         if (selected) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
         } else {
@@ -29,7 +29,7 @@ void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
         }
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
         if (ImGui::Button(modes.at(i), ImVec2(sidebarWidth, 0))) {
-            state.debuggerMode = static_cast<int>(i);
+            state.debugger.mode = static_cast<Control::DebuggerMode>(i);
         }
         ImGui::PopStyleColor(2);
     }
@@ -46,7 +46,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
 
     // Run/Pause
-    ImGui::BeginDisabled(!state.romLoaded);
+    ImGui::BeginDisabled(!state.rom.loaded);
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button(state.emulator.IsPaused() ? "Run " : "Pause", ImVec2(adjustedWidth, 0))) {
         if (state.emulator.IsPaused()) {
@@ -77,13 +77,13 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         Console::Clear();
         state.emulator.GetGPU().Reset();
         state.emulator.ClearProfiler();
-        if (state.romLoaded) {
+        if (state.rom.loaded) {
             std::string errorMsg;
-            if (!state.emulator.Init(state.bin, errorMsg)) {
-                state.romLoaded = false;
+            if (!state.emulator.Init(state.rom.bin, errorMsg)) {
+                state.rom.loaded = false;
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
             } else {
-                state.emulator.SetGPUEnabled(state.gpuEnabled);
+                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
             }
         }
         if (wasRunning) {
@@ -99,7 +99,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
     if (ImGui::Button("Exit", ImVec2(adjustedWidth, 0))) {
-        state.debuggerOpen = false;
+        state.debugger.open = false;
     }
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
@@ -109,7 +109,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
 }  // namespace
 
 void DrawDebugMenu(Control::AppState& state) {
-    if (!state.debuggerOpen) {
+    if (!state.debugger.open) {
         state.emulator.SetProfilingEnabled(false);
         return;
     }
@@ -118,7 +118,7 @@ void DrawDebugMenu(Control::AppState& state) {
 
     ImVec2 vpSize = ImGui::GetMainViewport()->Size;
     ImGui::SetNextWindowSize(ImVec2(vpSize.x * 0.75F, vpSize.y * 0.75F), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Debug Menu", &state.debuggerOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
+    if (!ImGui::Begin("Debug Menu", &state.debugger.open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
         state.emulator.SetProfilingEnabled(false);
         ImGui::End();
         return;
@@ -140,11 +140,11 @@ void DrawDebugMenu(Control::AppState& state) {
     // Content area
     ImGui::BeginChild("DebugContent", ImVec2(0, 0), ImGuiChildFlags_None);
 
-    if (state.debuggerMode == 0) {  // Disassembly
+    if (state.debugger.mode == Control::DebuggerMode::Disassembly) {
         DrawDisassemblerContent(state);
-    } else if (state.debuggerMode == 1) {  // Profiler
+    } else if (state.debugger.mode == Control::DebuggerMode::Profiler) {
         DrawProfilerWindow(state);
-    } else if (state.debuggerMode == 2) {  // Debugger
+    } else if (state.debugger.mode == Control::DebuggerMode::Debugger) {
         DrawDebuggerWindow(state);
     } else {  // Memory Layout
         DrawMemoryLayoutWindow(state);

@@ -41,7 +41,7 @@ void UpdateProfilerTexture(AppState& state, std::span<const uint32_t> counts,
         pixels.fill(0);
     }
 
-    glBindTexture(GL_TEXTURE_2D, state.profilerTexture);
+    glBindTexture(GL_TEXTURE_2D, state.render.profilerTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 256, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -155,7 +155,7 @@ void DrawProfilerWindow(AppState& state) {
     float size = std::min(avail.x, avail.y) * 0.9F;
 
     ImGui::SetCursorPos(ImVec2((avail.x - size) * 0.5F, (avail.y - size) * 0.5F));
-    ImGui::Image((ImTextureID)(intptr_t)state.profilerTexture, ImVec2(size, size));
+    ImGui::Image((ImTextureID)(intptr_t)state.render.profilerTexture, ImVec2(size, size));
 
     if (ImGui::IsItemHovered()) {
         DrawProfilerTooltip(counts, size, size);

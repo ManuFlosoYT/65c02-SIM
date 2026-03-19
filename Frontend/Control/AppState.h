@@ -3,6 +3,7 @@
 #include <glad/gl.h>
 
 #include <atomic>
+#include <cstdint>
 #include <string>
 
 #include "Frontend/GUI/Video/CRTFilter.h"
@@ -13,71 +14,87 @@ namespace Control {
 using namespace Core;
 using namespace Hardware;
 
-struct AppState {
-    Emulator emulator;
-
-    // ROM
+struct ROMState {
     std::string bin;
-    bool romLoaded = false;
+    bool loaded = false;
+};
 
-    // Scripting
-    std::string scriptPath;
-    bool scriptLoaded = false;
-    bool showScriptConsole = false;
+struct ScriptState {
+    std::string path;
+    bool loaded = false;
+    bool showConsole = false;
+};
 
-    // Emulation
+struct EmulationState {
     int instructionsPerFrame = 1000000;
     float ipsLogScale = 6.0F;
     bool gpuEnabled = false;
     bool cycleAccurate = true;
     bool forceLoadSaveState = false;
     bool autoReload = true;
+};
 
-    // Debugger
-    bool debuggerOpen = false;
-    // 0=Disassembly, 1=Profiler, 2=Debugger, 3=Memory Layout
-    int debuggerMode = 0;
+enum class DebuggerMode : std::uint8_t {
+    Disassembly = 0,
+    Profiler = 1,
+    Debugger = 2,
+    MemoryLayout = 3
+};
 
-    // Update
-    std::atomic<bool> updateAvailable{false};
+struct DebuggerState {
+    bool open = false;
+    DebuggerMode mode = DebuggerMode::Disassembly;
+};
+
+struct UpdateState {
+    std::atomic<bool> available{false};
     std::string latestVersionTag;
+};
 
-    // VRAM texture (OpenGL)
+struct CRTSettings {
+    bool scanlines = true;
+    bool interlacing = true;
+    bool curvature = true;
+    bool chromatic = true;
+    bool blur = true;
+    bool shadowMask = true;
+    bool vignette = true;
+    bool cornerRounding = true;
+    bool glassGlare = true;
+    bool colorBleeding = true;
+    bool noise = true;
+    bool vsyncJitter = true;
+    bool phosphorDecay = true;
+    bool bloom = true;
+    float time = 0.0F;
+};
+
+struct RenderState {
     GLuint vramTexture = 0;
     GLuint profilerTexture = 0;
     GLuint layoutTexture = 0;
-
-    // CRT filters - The Essentials
-    bool crtScanlines = true;
-    bool crtInterlacing = true;
-    bool crtCurvature = true;
-    bool crtChromatic = true;
-    bool crtBlur = true;
-
-    // CRT filters - Screen Physicality
-    bool crtShadowMask = true;
-    bool crtVignette = true;
-    bool crtCornerRounding = true;
-    bool crtGlassGlare = true;
-
-    // CRT filters - Signal & Analog Imperfections
-    bool crtColorBleeding = true;
-    bool crtNoise = true;
-    bool crtVSyncJitter = true;
-    bool crtPhosphorDecay = true;
-
-    // CRT filters - Lighting
-    bool crtBloom = true;
-
-    float crtTime = 0.0F;
-    GUI::CRTFilter crtFilter;
-
-    // Last rendered display texture (post-CRT) for capture
     GLuint lastDisplayTex = 0;
     int lastDisplayW = 0;
     int lastDisplayH = 0;
+};
 
-    bool sdCardDisabledPopup = false;
+struct PopupState {
+    bool sdCardDisabled = false;
+};
+
+struct AppState {
+    Emulator emulator;
+
+    ROMState rom;
+    ScriptState script;
+    EmulationState emulation;
+    DebuggerState debugger;
+    UpdateState update;
+    CRTSettings crt;
+    RenderState render;
+    PopupState popups;
+
+    GUI::CRTFilter crtFilter;
 };
 
 }  // namespace Control

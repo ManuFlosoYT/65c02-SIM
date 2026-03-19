@@ -165,14 +165,14 @@ static void HandleReset(AppState& state) {
     state.emulator.GetGPU().Reset();
     state.emulator.ClearProfiler();
 
-    if (state.romLoaded) {
+    if (state.rom.loaded) {
         std::string errorMsg;
-        if (!state.emulator.Init(state.bin, errorMsg)) {
+        if (!state.emulator.Init(state.rom.bin, errorMsg)) {
             std::cerr << "Error resetting ROM: " << errorMsg << '\n';
-            state.romLoaded = false;
+            state.rom.loaded = false;
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
         } else {
-            state.emulator.SetGPUEnabled(state.gpuEnabled);
+            state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
         }
     }
 
@@ -182,7 +182,7 @@ static void HandleReset(AppState& state) {
 }
 
 static void DrawPlaybackControls(AppState& state) {
-    ImGui::BeginDisabled((!state.romLoaded && !state.scriptLoaded) || state.emulator.IsHalted());
+    ImGui::BeginDisabled((!state.rom.loaded && !state.script.loaded) || state.emulator.IsHalted());
     if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
         if (state.emulator.IsPaused()) {
             state.emulator.Resume();
@@ -212,8 +212,8 @@ static void DrawPlaybackControls(AppState& state) {
 }
 
 static void DrawAudioVideoControls(AppState& state) {
-    if (ImGui::Checkbox("GPU", &state.gpuEnabled)) {
-        state.emulator.SetGPUEnabled(state.gpuEnabled);
+    if (ImGui::Checkbox("GPU", &state.emulation.gpuEnabled)) {
+        state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
     }
     ImGui::SameLine();
     bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
@@ -228,7 +228,7 @@ static void DrawControlButtonBar(AppState& state) {
     }
     ImGui::SameLine();
     if (ImGui::Button("Debugger")) {
-        state.debuggerOpen = true;
+        state.debugger.open = true;
     }
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
@@ -243,24 +243,24 @@ static void DrawControlButtonBar(AppState& state) {
 }
 
 static void DrawSettingsBasic(AppState& state) {
-    if (ImGui::Checkbox("Cycle-Accurate", &state.cycleAccurate)) {
-        state.emulator.SetCycleAccurate(state.cycleAccurate);
+    if (ImGui::Checkbox("Cycle-Accurate", &state.emulation.cycleAccurate)) {
+        state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
     }
-    ImGui::Checkbox("Force load savestate", &state.forceLoadSaveState);
-    if (ImGui::Checkbox("Auto-Reload Bin", &state.autoReload)) {
-        state.emulator.SetAutoReload(state.autoReload);
+    ImGui::Checkbox("Force load savestate", &state.emulation.forceLoadSaveState);
+    if (ImGui::Checkbox("Auto-Reload Bin", &state.emulation.autoReload)) {
+        state.emulator.SetAutoReload(state.emulation.autoReload);
     }
 
     ImGui::Separator();
     ImGui::TextUnformatted("Scripting");
 
-    if (state.scriptLoaded) {
+    if (state.script.loaded) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
         ImGui::TextUnformatted("Script Loaded & Running");
         ImGui::PopStyleColor();
         if (ImGui::Button("Stop Script")) {
             state.emulator.GetScriptEngine().Stop();
-            state.scriptLoaded = false;
+            state.script.loaded = false;
         }
     } else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
@@ -303,8 +303,8 @@ static void DrawSettingsSaveState(AppState& state) {
     if (ImGui::Button("Save State")) {
         // Build default filename: SIM65C02SST_<bin>_<date>.savestate
         std::string binName = "unknown";
-        if (!state.bin.empty()) {
-            binName = std::filesystem::path(state.bin).stem().string();
+        if (!state.rom.bin.empty()) {
+            binName = std::filesystem::path(state.rom.bin).stem().string();
         }
         auto now = std::chrono::system_clock::now();
         std::time_t timeValue = std::chrono::system_clock::to_time_t(now);
@@ -328,10 +328,10 @@ static void DrawSettingsSaveState(AppState& state) {
 static void DrawSettingsCRT(AppState& state) {
     ImGui::TextUnformatted("CRT Filters (GPU)");
     auto setCRTAll = [&](bool val) {
-        state.crtScanlines = state.crtInterlacing = state.crtCurvature = state.crtChromatic = state.crtBlur =
-            state.crtShadowMask = state.crtVignette = state.crtCornerRounding = state.crtGlassGlare =
-                state.crtColorBleeding = state.crtNoise = state.crtVSyncJitter = state.crtPhosphorDecay =
-                    state.crtBloom = val;
+        state.crt.scanlines = state.crt.interlacing = state.crt.curvature = state.crt.chromatic = state.crt.blur =
+            state.crt.shadowMask = state.crt.vignette = state.crt.cornerRounding = state.crt.glassGlare =
+                state.crt.colorBleeding = state.crt.noise = state.crt.vsyncJitter = state.crt.phosphorDecay =
+                    state.crt.bloom = val;
     };
     if (ImGui::Button("All On")) {
         setCRTAll(true);
@@ -341,23 +341,23 @@ static void DrawSettingsCRT(AppState& state) {
         setCRTAll(false);
     }
     ImGui::TextUnformatted("Essentials");
-    ImGui::Checkbox("Scanlines", &state.crtScanlines);
-    ImGui::Checkbox("Interlacing", &state.crtInterlacing);
-    ImGui::Checkbox("Screen Curvature", &state.crtCurvature);
-    ImGui::Checkbox("Chromatic Aberration", &state.crtChromatic);
-    ImGui::Checkbox("Phosphor Blur", &state.crtBlur);
+    ImGui::Checkbox("Scanlines", &state.crt.scanlines);
+    ImGui::Checkbox("Interlacing", &state.crt.interlacing);
+    ImGui::Checkbox("Screen Curvature", &state.crt.curvature);
+    ImGui::Checkbox("Chromatic Aberration", &state.crt.chromatic);
+    ImGui::Checkbox("Phosphor Blur", &state.crt.blur);
     ImGui::TextUnformatted("Screen Physicality");
-    ImGui::Checkbox("Shadow Mask", &state.crtShadowMask);
-    ImGui::Checkbox("Vignette", &state.crtVignette);
-    ImGui::Checkbox("Corner Rounding", &state.crtCornerRounding);
-    ImGui::Checkbox("Glass Glare", &state.crtGlassGlare);
+    ImGui::Checkbox("Shadow Mask", &state.crt.shadowMask);
+    ImGui::Checkbox("Vignette", &state.crt.vignette);
+    ImGui::Checkbox("Corner Rounding", &state.crt.cornerRounding);
+    ImGui::Checkbox("Glass Glare", &state.crt.glassGlare);
     ImGui::TextUnformatted("Signal & Analog");
-    ImGui::Checkbox("Color Bleeding", &state.crtColorBleeding);
-    ImGui::Checkbox("RF Noise", &state.crtNoise);
-    ImGui::Checkbox("VSync Jitter", &state.crtVSyncJitter);
-    ImGui::Checkbox("Phosphor Decay", &state.crtPhosphorDecay);
+    ImGui::Checkbox("Color Bleeding", &state.crt.colorBleeding);
+    ImGui::Checkbox("RF Noise", &state.crt.noise);
+    ImGui::Checkbox("VSync Jitter", &state.crt.vsyncJitter);
+    ImGui::Checkbox("Phosphor Decay", &state.crt.phosphorDecay);
     ImGui::TextUnformatted("Lighting");
-    ImGui::Checkbox("Bloom", &state.crtBloom);
+    ImGui::Checkbox("Bloom", &state.crt.bloom);
 }
 
 static void DrawSettingsPopup(AppState& state) {
@@ -373,19 +373,19 @@ static void DrawSettingsPopup(AppState& state) {
 }
 
 static void DrawIPSSection(AppState& state, float mainColWidth) {
-    int tempIPS = state.instructionsPerFrame;
+    int tempIPS = state.emulation.instructionsPerFrame;
     std::string targetLabel = "Target ";
-    targetLabel += (state.cycleAccurate ? "Hz" : "IPS");
+    targetLabel += (state.emulation.cycleAccurate ? "Hz" : "IPS");
 
     ImGui::SetNextItemWidth(mainColWidth * 0.3F);
     if (ImGui::InputInt(targetLabel.c_str(), &tempIPS, 100000, 100000)) {
-        if (state.instructionsPerFrame == 1 && tempIPS == 100001) {
+        if (state.emulation.instructionsPerFrame == 1 && tempIPS == 100001) {
             tempIPS = 100000;
         }
 
         tempIPS = std::max(1, tempIPS);
-        state.instructionsPerFrame = tempIPS;
-        state.emulator.SetTargetIPS(state.instructionsPerFrame);
+        state.emulation.instructionsPerFrame = tempIPS;
+        state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
     }
 
     ImGui::SameLine();
@@ -395,7 +395,7 @@ static void DrawIPSSection(AppState& state, float mainColWidth) {
     {
         int actualIPS = state.emulator.GetActualIPS();
         std::ostringstream oss;
-        if (state.cycleAccurate) {
+        if (state.emulation.cycleAccurate) {
             if (actualIPS >= 1000000) {
                 oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000000.0F) << " MHz";
             } else if (actualIPS >= 1000) {
@@ -447,7 +447,7 @@ static void HandleCreateSDDialog(AppState& state) {
                 if (IsSDCardEnabled(state)) {
                     state.emulator.GetSDCard().Mount(filePath);
                 } else {
-                    state.sdCardDisabledPopup = true;
+                    state.popups.sdCardDisabled = true;
                 }
             }
         }
@@ -462,7 +462,7 @@ static void HandleMountSDDialog(AppState& state) {
             if (IsSDCardEnabled(state)) {
                 state.emulator.GetSDCard().Mount(filePath);
             } else {
-                state.sdCardDisabledPopup = true;
+                state.popups.sdCardDisabled = true;
             }
         }
         ImGuiFileDialog::Instance()->Close();
@@ -473,9 +473,9 @@ static void HandleLoadScriptDialog(AppState& state) {
     if (ImGuiFileDialog::Instance()->Display("LoadScriptDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-            state.scriptPath = filePath;
-            state.scriptLoaded = true;
-            state.showScriptConsole = true;
+            state.script.path = filePath;
+            state.script.loaded = true;
+            state.script.showConsole = true;
             state.emulator.Pause();  // Pause the frontend before running the script
             state.emulator.GetScriptEngine().LoadAndRun(filePath);
             ImGui::CloseCurrentPopup();

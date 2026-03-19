@@ -12,7 +12,7 @@ namespace GUI {
 
 void DrawUpdatePopup(AppState& state) {
     static bool updatePopupOpen = false;
-    if (state.updateAvailable && !updatePopupOpen) {
+    if (state.update.available && !updatePopupOpen) {
         ImGui::OpenPopup("Update Available");
         updatePopupOpen = true;
     }
@@ -25,7 +25,7 @@ void DrawUpdatePopup(AppState& state) {
             "Update Available", nullptr,
             ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
         ImGui::TextUnformatted("A new version of SIM_65C02 is available!");
-        ImGui::TextUnformatted(("Latest Version: " + state.latestVersionTag).c_str());
+        ImGui::TextUnformatted(("Latest Version: " + state.update.latestVersionTag).c_str());
         ImGui::TextUnformatted(("Current Version: " + std::string(PROJECT_VERSION)).c_str());
         ImGui::Separator();
 
@@ -40,7 +40,7 @@ void DrawUpdatePopup(AppState& state) {
         }
         ImGui::SameLine();
         if (ImGui::Button("Ignore", ImVec2(btnWidth, 0))) {
-            state.updateAvailable = false;
+            state.update.available = false;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

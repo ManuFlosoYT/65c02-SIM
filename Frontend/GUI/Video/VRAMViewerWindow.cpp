@@ -51,7 +51,7 @@ static void UpdateVRAMTexture(AppState& state) {
             pixels.at(idx + 2) = (val & 0x03) * 85;
         }
     }
-    glBindTexture(GL_TEXTURE_2D, state.vramTexture);
+    glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -107,11 +107,11 @@ static void HandleVRAMSaveDialog(AppState& state) {
         int capW = 0;
         int capH = 0;
 
-        if (state.lastDisplayTex != 0 && state.lastDisplayTex != state.vramTexture && state.lastDisplayW > 0) {
-            capW = state.lastDisplayW;
-            capH = state.lastDisplayH;
+        if (state.render.lastDisplayTex != 0 && state.render.lastDisplayTex != state.render.vramTexture && state.render.lastDisplayW > 0) {
+            capW = state.render.lastDisplayW;
+            capH = state.render.lastDisplayH;
             pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
-            glBindTexture(GL_TEXTURE_2D, state.lastDisplayTex);
+            glBindTexture(GL_TEXTURE_2D, state.render.lastDisplayTex);
             glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
             glBindTexture(GL_TEXTURE_2D, 0);
         } else {
@@ -145,7 +145,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
     float rightWidth = work_size.x - leftWidth;
     float bottomSectionHeight = work_size.y - top_section_height;
 
-    if (state.gpuEnabled) {
+    if (state.emulation.gpuEnabled) {
         ImGui::SetNextWindowPos(ImVec2(work_pos.x + leftWidth, work_pos.y + top_section_height), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(rightWidth, bottomSectionHeight), ImGuiCond_Always);
         ImGui::Begin("VRAM Viewer", nullptr, window_flags);
@@ -169,40 +169,40 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
         }
 
-        bool anyCRT = state.crtScanlines || state.crtInterlacing || state.crtCurvature || state.crtChromatic ||
-                      state.crtBlur || state.crtShadowMask || state.crtVignette || state.crtCornerRounding ||
-                      state.crtGlassGlare || state.crtColorBleeding || state.crtNoise || state.crtVSyncJitter ||
-                      state.crtPhosphorDecay || state.crtBloom;
+        bool anyCRT = state.crt.scanlines || state.crt.interlacing || state.crt.curvature || state.crt.chromatic ||
+                      state.crt.blur || state.crt.shadowMask || state.crt.vignette || state.crt.cornerRounding ||
+                      state.crt.glassGlare || state.crt.colorBleeding || state.crt.noise || state.crt.vsyncJitter ||
+                      state.crt.phosphorDecay || state.crt.bloom;
 
-        GLuint displayTex = state.vramTexture;
+        GLuint displayTex = state.render.vramTexture;
         if (anyCRT) {
             GUI::CRTParams params;
-            params.scanlines = state.crtScanlines;
-            params.interlacing = state.crtInterlacing;
-            params.curvature = state.crtCurvature;
-            params.chromatic = state.crtChromatic;
-            params.blur = state.crtBlur;
-            params.shadowMask = state.crtShadowMask;
-            params.vignette = state.crtVignette;
-            params.cornerRounding = state.crtCornerRounding;
-            params.glassGlare = state.crtGlassGlare;
-            params.colorBleeding = state.crtColorBleeding;
-            params.noise = state.crtNoise;
-            params.vsyncJitter = state.crtVSyncJitter;
-            params.phosphorDecay = state.crtPhosphorDecay;
-            params.bloom = state.crtBloom;
-            params.time = state.crtTime;
+            params.scanlines = state.crt.scanlines;
+            params.interlacing = state.crt.interlacing;
+            params.curvature = state.crt.curvature;
+            params.chromatic = state.crt.chromatic;
+            params.blur = state.crt.blur;
+            params.shadowMask = state.crt.shadowMask;
+            params.vignette = state.crt.vignette;
+            params.cornerRounding = state.crt.cornerRounding;
+            params.glassGlare = state.crt.glassGlare;
+            params.colorBleeding = state.crt.colorBleeding;
+            params.noise = state.crt.noise;
+            params.vsyncJitter = state.crt.vsyncJitter;
+            params.phosphorDecay = state.crt.phosphorDecay;
+            params.bloom = state.crt.bloom;
+            params.time = state.crt.time;
             displayTex =
-                state.crtFilter.Apply(state.vramTexture, static_cast<int>(imgW), static_cast<int>(imgH), params);
+                state.crtFilter.Apply(state.render.vramTexture, static_cast<int>(imgW), static_cast<int>(imgH), params);
         }
 
         // NOLINTNEXTLINE(performance-no-int-to-ptr, cppcoreguidelines-pro-type-cstyle-cast)
         ImGui::Image((ImTextureID)(intptr_t)(displayTex), ImVec2(imgW, imgH));
 
         // Keep track of what was actually displayed for the capture button
-        state.lastDisplayTex = displayTex;
-        state.lastDisplayW = static_cast<int>(imgW);
-        state.lastDisplayH = static_cast<int>(imgH);
+        state.render.lastDisplayTex = displayTex;
+        state.render.lastDisplayW = static_cast<int>(imgW);
+        state.render.lastDisplayH = static_cast<int>(imgH);
 
         ImGui::End();
     }

@@ -72,8 +72,8 @@ static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
 }
 
 static void InitializeTextures(AppState& state) {
-    glGenTextures(1, &state.vramTexture);
-    glBindTexture(GL_TEXTURE_2D, state.vramTexture);
+    glGenTextures(1, &state.render.vramTexture);
+    glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -82,14 +82,14 @@ static void InitializeTextures(AppState& state) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  emptyPixels.data());
 
-    glGenTextures(1, &state.profilerTexture);
-    glBindTexture(GL_TEXTURE_2D, state.profilerTexture);
+    glGenTextures(1, &state.render.profilerTexture);
+    glBindTexture(GL_TEXTURE_2D, state.render.profilerTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
-    glGenTextures(1, &state.layoutTexture);
-    glBindTexture(GL_TEXTURE_2D, state.layoutTexture);
+    glGenTextures(1, &state.render.layoutTexture);
+    glBindTexture(GL_TEXTURE_2D, state.render.layoutTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
@@ -148,9 +148,9 @@ static void HandleDialogs(AppState& state) {
             state.emulator.Pause();
             std::string errorMsg;
             if (state.emulator.Init(filePathName, errorMsg)) {
-                state.bin = filePathName;
-                state.romLoaded = true;
-                state.emulator.SetGPUEnabled(state.gpuEnabled);
+                state.rom.bin = filePathName;
+                state.rom.loaded = true;
+                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                 state.emulator.ClearProfiler();
             } else {
                 ImGui::OpenPopup("ErrorLoadingROM");
@@ -178,19 +178,19 @@ static void HandleDialogs(AppState& state) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
             state.emulator.Pause();
-            state.emulator.LoadState(filePathName, state.forceLoadSaveState);
+            state.emulator.LoadState(filePathName, state.emulation.forceLoadSaveState);
             auto loadResult = state.emulator.GetLastLoadResult();
             bool loadedOk = loadResult == SavestateLoadResult::Success ||
                             loadResult == SavestateLoadResult::VersionMismatch ||
                             loadResult == SavestateLoadResult::HashMismatch;
 
             if (loadedOk) {
-                state.romLoaded = true;
-                state.gpuEnabled = state.emulator.IsGPUEnabled();
-                state.instructionsPerFrame = state.emulator.GetTargetIPS();
-                state.cycleAccurate = state.emulator.IsCycleAccurate();
-                state.autoReload = state.emulator.IsAutoReloadEnabled();
-                state.bin = state.emulator.GetCurrentBinPath();
+                state.rom.loaded = true;
+                state.emulation.gpuEnabled = state.emulator.IsGPUEnabled();
+                state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
+                state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
+                state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
+                state.rom.bin = state.emulator.GetCurrentBinPath();
             }
 
             if (loadResult != SavestateLoadResult::Success) {
@@ -249,9 +249,9 @@ static void DrawPopups(AppState& state) {
         ImGui::EndPopup();
     }
 
-    if (state.sdCardDisabledPopup) {
+    if (state.popups.sdCardDisabled) {
         ImGui::OpenPopup("SD Card Disabled");
-        state.sdCardDisabledPopup = false;
+        state.popups.sdCardDisabled = false;
     }
 
     if (ImGui::BeginPopupModal("SD Card Disabled", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -269,9 +269,9 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
     state.emulator.Stop();
     state.emulator.GetSID().Close();
     state.crtFilter.Destroy();
-    glDeleteTextures(1, &state.vramTexture);
-    glDeleteTextures(1, &state.profilerTexture);
-    glDeleteTextures(1, &state.layoutTexture);
+    glDeleteTextures(1, &state.render.vramTexture);
+    glDeleteTextures(1, &state.render.profilerTexture);
+    glDeleteTextures(1, &state.render.layoutTexture);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
@@ -373,8 +373,8 @@ int main(int argc, char* argv[]) {
     // Check for updates
     UpdateChecker::CheckForUpdates(PROJECT_VERSION, [&state](bool available, const std::string& version) {
         if (available) {
-            state.latestVersionTag = version;
-            state.updateAvailable = true;
+            state.update.latestVersionTag = version;
+            state.update.available = true;
         }
     });
 
@@ -384,17 +384,17 @@ int main(int argc, char* argv[]) {
     InitializeImGui(window, gl_context, glsl_version);
 
     if (!args.romPath.empty()) {
-        state.bin = args.romPath;
+        state.rom.bin = args.romPath;
         std::string errorMsg;
-        if (state.emulator.Init(state.bin, errorMsg)) {
-            state.romLoaded = true;
+        if (state.emulator.Init(state.rom.bin, errorMsg)) {
+            state.rom.loaded = true;
             state.emulator.ClearProfiler();
         } else {
             std::cerr << "Failed to load ROM from args: " << errorMsg << '\n';
         }
     }
     state.emulator.SetOutputCallback(Console::OutputCallback);
-    state.emulator.SetGPUEnabled(state.gpuEnabled);
+    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
 
     bool done = false;
     state.emulator.Start();
@@ -410,7 +410,7 @@ int main(int argc, char* argv[]) {
         HandleSDLEvents(done, window);
 
         if (!state.emulator.IsPaused()) {
-            state.instructionsPerFrame = state.emulator.GetTargetIPS();
+            state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
         }
 
         // Start the Dear ImGui frame
@@ -438,7 +438,7 @@ int main(int argc, char* argv[]) {
         GUI::DrawRegistersWindow(state, work_pos, work_size, top_section_height, windowFlags);
         GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
         GUI::DrawScriptConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
-        state.crtTime = static_cast<float>(SDL_GetTicks()) / 1000.0F;
+        state.crt.time = static_cast<float>(SDL_GetTicks()) / 1000.0F;
         GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
 
         ImGui::Render();

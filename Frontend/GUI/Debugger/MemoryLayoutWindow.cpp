@@ -65,7 +65,7 @@ void UpdateMemoryLayoutTexture(AppState& state, const std::vector<DeviceRegistra
         }
     }
 
-    glBindTexture(GL_TEXTURE_2D, state.layoutTexture);
+    glBindTexture(GL_TEXTURE_2D, state.render.layoutTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 256, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -235,7 +235,7 @@ void DrawMemoryLayoutWindow(AppState& state) {
     mapSize = std::min(mapSize, ImGui::GetContentRegionAvail().y - 40.0F);
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<unsigned long long>(state.layoutTexture)),
+    ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<unsigned long long>(state.render.layoutTexture)),
                  ImVec2(mapSize, mapSize));
 
     if (ImGui::IsItemHovered()) {
@@ -257,7 +257,7 @@ void DrawMemoryLayoutWindow(AppState& state) {
             bus.RebuildDeviceMap();
 
             std::string error;
-            if (!state.emulator.Init(state.bin, error)) {
+            if (!state.emulator.Init(state.rom.bin, error)) {
                 strncpy(collisionError.data(), error.c_str(), 255);
                 showCollisionError = true;
             }

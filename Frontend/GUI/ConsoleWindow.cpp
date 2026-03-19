@@ -111,7 +111,7 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     float bottom_section_height = work_size.y - top_section_height;
 
     ImGui::SetNextWindowPos(ImVec2(work_pos.x, work_pos.y + top_section_height), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(state.gpuEnabled ? left_width : work_size.x, bottom_section_height),
+    ImGui::SetNextWindowSize(ImVec2(state.emulation.gpuEnabled ? left_width : work_size.x, bottom_section_height),
                              ImGuiCond_Always);
     ImGui::Begin("Console", nullptr, window_flags);
 
