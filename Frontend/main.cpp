@@ -150,6 +150,7 @@ static void HandleDialogs(AppState& state) {
             if (state.emulator.Init(filePathName, errorMsg)) {
                 state.rom.bin = filePathName;
                 state.rom.loaded = true;
+                state.rom.symbols.Clear();
                 state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                 state.emulator.ClearProfiler();
             } else {
@@ -388,6 +389,7 @@ int main(int argc, char* argv[]) {
         std::string errorMsg;
         if (state.emulator.Init(state.rom.bin, errorMsg)) {
             state.rom.loaded = true;
+            state.rom.symbols.Clear();
             state.emulator.ClearProfiler();
         } else {
             std::cerr << "Failed to load ROM from args: " << errorMsg << '\n';

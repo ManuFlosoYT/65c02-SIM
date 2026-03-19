@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 
+#include "Frontend/Control/SymbolTable.h"
 #include "Frontend/GUI/Video/CRTFilter.h"
 #include "Hardware/Core/Emulator.h"
 
@@ -17,6 +18,7 @@ using namespace Hardware;
 struct ROMState {
     std::string bin;
     bool loaded = false;
+    SymbolTable symbols;
 };
 
 struct ScriptState {
