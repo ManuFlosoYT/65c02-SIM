@@ -147,6 +147,14 @@ void SID::AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_
         if (shouldPush) {
             sid->recorder->PushAudio(buffer.data(), samples);
         }
+        
+        {
+            std::lock_guard<std::mutex> lock(sid->sidMutex);
+            if (sid->audioCallback) {
+                sid->audioCallback(buffer.data(), samples);
+            }
+        }
+        
         SDL_PutAudioStreamData(stream, buffer.data(), additional_amount);
     }
 }
@@ -390,6 +398,16 @@ void SID::StopRecording() {
 bool SID::IsRecording() const {
     std::lock_guard<std::mutex> lock(sidMutex);
     return recorder != nullptr || !pendingFilename.empty();
+}
+
+void SID::SetAudioCallback(std::function<void(const int16_t*, int)> callback) {
+    std::lock_guard<std::mutex> lock(sidMutex);
+    audioCallback = std::move(callback);
+}
+
+void SID::ClearAudioCallback() {
+    std::lock_guard<std::mutex> lock(sidMutex);
+    audioCallback = nullptr;
 }
 
 }  // namespace Hardware

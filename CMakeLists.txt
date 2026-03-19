@@ -139,6 +139,8 @@ endif()
 
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libswscale libavutil)
 
 if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
     add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
@@ -272,6 +274,7 @@ if(WIN32)
         ws2_32  
         crypt32 
         pathcch
+        ${FFMPEG_LIBRARIES}
     )
 else()
     add_executable(SIM_65C02 
@@ -298,12 +301,14 @@ else()
         OpenSSL::SSL 
         OpenSSL::Crypto
         ZLIB::ZLIB
+        ${FFMPEG_LIBRARIES}
     )
 endif()
 
 target_include_directories(SIM_65C02 PRIVATE
     ${imguifiledialog_SOURCE_DIR}
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    ${FFMPEG_INCLUDE_DIRS}
 )
 add_dependencies(SIM_65C02 crt_shaders)
 

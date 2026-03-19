@@ -23,6 +23,8 @@
 #include "Frontend/GUI/UpdatePopup.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #include "UpdateChecker.h"
+#include "Frontend/MediaExporter.h"
+#include <memory>
 
 using namespace Control;
 using namespace Core;
@@ -266,6 +268,56 @@ static void DrawPopups(AppState& state) {
     }
 }
 
+static void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2& work_size, float top_section_height, ImGuiWindowFlags windowFlags) {
+    GUI::DrawUpdatePopup(state);
+    GUI::DrawControlWindow(state, work_pos, work_size, top_section_height, windowFlags);
+    GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, windowFlags);
+    GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
+    GUI::DrawRegistersWindow(state, work_pos, work_size, top_section_height, windowFlags);
+    GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
+    GUI::DrawScriptConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
+    state.crt.time = static_cast<float>(SDL_GetTicks()) / 1000.0F;
+    GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
+}
+
+static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {
+    if (state.emulation.isRecordingVideo && !mediaExporter) {
+        auto& sid = state.emulator.GetSID();
+        constexpr int sidSampleRate = 44100;
+
+        mediaExporter = std::make_unique<MediaExporter>();
+        const MediaExporter::AudioParams audioParams{.sampleRate = sidSampleRate, .channels = 1, .bitDepth = 16};
+
+        int procW = state.render.lastDisplayW > 0 ? state.render.lastDisplayW : 600;
+        int procH = state.render.lastDisplayH > 0 ? state.render.lastDisplayH : 450;
+
+        bool initOk = mediaExporter->Initialize(state.emulation.recordingVideoPath, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT,
+                                                 procW, procH, audioParams);
+        if (!initOk) {
+            state.emulation.isRecordingVideo = false;
+            mediaExporter.reset();
+        } else {
+            sid.SetAudioCallback([mPtr = mediaExporter.get()](const int16_t* samples, int count) {
+                std::vector<float> floatSamples(count);
+                std::span<const int16_t> samplesSpan(samples, static_cast<std::size_t>(count));
+                for (int idx = 0; idx < count; ++idx) {
+                    floatSamples[idx] = static_cast<float>(samplesSpan[idx]) / 32767.0F;
+                }
+                mPtr->PushAudio(floatSamples.data(), count);
+            });
+        }
+    } else if (!state.emulation.isRecordingVideo && mediaExporter) {
+        state.emulator.GetSID().ClearAudioCallback();
+        mediaExporter->Finalize();
+        mediaExporter.reset();
+    }
+
+    if (mediaExporter) {
+        uint32_t processedTex = state.render.lastDisplayTex != 0 ? state.render.lastDisplayTex : state.render.vramTexture;
+        mediaExporter->PushFrames(state.render.vramTexture, processedTex, state.emulator.IsPaused());
+    }
+}
+
 static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
     state.emulator.Stop();
     state.emulator.GetSID().Close();
@@ -405,6 +457,8 @@ int main(int argc, char* argv[]) {
     const int frameDelay = 1000 / FPS;
     Uint64 frameStart = 0;
     int frameTime = 0;
+    
+    std::unique_ptr<MediaExporter> mediaExporter = nullptr;
 
     while (!done) {
         frameStart = SDL_GetTicks();
@@ -433,15 +487,7 @@ int main(int argc, char* argv[]) {
         DrawPopups(state);
 
         // Draw all windows
-        GUI::DrawUpdatePopup(state);
-        GUI::DrawControlWindow(state, work_pos, work_size, top_section_height, windowFlags);
-        GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, windowFlags);
-        GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
-        GUI::DrawRegistersWindow(state, work_pos, work_size, top_section_height, windowFlags);
-        GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
-        GUI::DrawScriptConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
-        state.crt.time = static_cast<float>(SDL_GetTicks()) / 1000.0F;
-        GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
+        DrawGUIWindows(state, work_pos, work_size, top_section_height, windowFlags);
 
         ImGui::Render();
         ImGuiIO& imgui_io = ImGui::GetIO();
@@ -449,6 +495,9 @@ int main(int argc, char* argv[]) {
         glClearColor(0.0F, 0.0F, 0.0F, 1.00F);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        UpdateMediaRecording(state, mediaExporter);
+
         SDL_GL_SwapWindow(window);
 
         frameTime = (int)(SDL_GetTicks() - frameStart);

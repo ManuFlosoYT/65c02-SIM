@@ -22,7 +22,7 @@ sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel \
     pipewire-jack-audio-connection-kit-devel libthai-devel liburing-devel \
     zlib-ng-compat-static python3-jinja2 \
     ccache ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils \
-    ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib
+    ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib ffmpeg-devel
 ```
 
 > **Windows:** Use WSL2 with Fedora to run the build scripts. See the README for installation instructions.

@@ -372,67 +372,117 @@ static void DrawSettingsPopup(AppState& state) {
     }
 }
 
-static void DrawIPSSection(AppState& state, float mainColWidth) {
+static void DrawTargetIPS(AppState& state, float mainColWidth) {
     int tempIPS = state.emulation.instructionsPerFrame;
     std::string targetLabel = "Target ";
     targetLabel += (state.emulation.cycleAccurate ? "Hz" : "IPS");
 
     ImGui::SetNextItemWidth(mainColWidth * 0.3F);
-    if (ImGui::InputInt(targetLabel.c_str(), &tempIPS, 100000, 100000)) {
-        if (state.emulation.instructionsPerFrame == 1 && tempIPS == 100001) {
-            tempIPS = 100000;
+    if (ImGui::InputInt(targetLabel.c_str(), &tempIPS, 1000000, 1000000)) {
+        if (state.emulation.instructionsPerFrame == 1 && tempIPS == 1000001) {
+            tempIPS = 1000000;
         }
 
         tempIPS = std::max(1, tempIPS);
         state.emulation.instructionsPerFrame = tempIPS;
         state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
     }
+}
 
-    ImGui::SameLine();
-    ImGui::TextUnformatted(" || ");
-
-    ImGui::SameLine();
-    {
-        int actualIPS = state.emulator.GetActualIPS();
-        std::ostringstream oss;
-        if (state.emulation.cycleAccurate) {
-            if (actualIPS >= 1000000) {
-                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000000.0F) << " MHz";
-            } else if (actualIPS >= 1000) {
-                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000.0F) << " KHz";
-            } else {
-                oss << "Sim: " << actualIPS << " Hz";
-            }
+static void DrawActualIPS(AppState& state) {
+    int actualIPS = state.emulator.GetActualIPS();
+    std::ostringstream oss;
+    if (state.emulation.cycleAccurate) {
+        if (actualIPS >= 1000000) {
+            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000000.0F) << " MHz";
+        } else if (actualIPS >= 1000) {
+            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000.0F) << " KHz";
         } else {
-            if (actualIPS >= 1000000) {
-                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000000.0F) << " MIPS";
-            } else if (actualIPS >= 1000) {
-                oss << "Sim: " << std::fixed << std::setprecision(2) << ((float)actualIPS / 1000.0F) << " KIPS";
-            } else {
-                oss << "Sim: " << actualIPS << " IPS";
-            }
+            oss << "Sim: " << actualIPS << " Hz";
         }
-        ImGui::TextUnformatted(oss.str().c_str());
+    } else {
+        if (actualIPS >= 1000000) {
+            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000000.0F) << " MIPS";
+        } else if (actualIPS >= 1000) {
+            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000.0F) << " KIPS";
+        } else {
+            oss << "Sim: " << actualIPS << " IPS";
+        }
     }
+    ImGui::TextUnformatted(oss.str().c_str());
+}
 
-    ImGui::SameLine();
-    auto& sid = state.emulator.GetSID();
-    bool isRecording = sid.IsRecording();
-    if (isRecording) {
+static void DrawAudioRecordingButton(AppState& state, Core::SID& sid) {
+    bool isRecordingAudio = sid.IsRecording();
+    if (isRecordingAudio) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
     }
-    if (ImGui::Button(isRecording ? "Stop Audio REC" : "REC Audio")) {
-        if (isRecording) {
+    if (ImGui::Button(isRecordingAudio ? "Stop Audio REC" : "REC Audio")) {
+        if (isRecordingAudio) {
             sid.StopRecording();
         } else {
             ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
         }
     }
-    if (isRecording) {
+    if (isRecordingAudio) {
         ImGui::PopStyleColor(2);
     }
+}
+
+static void DrawVideoRecordingButton(AppState& state) {
+    bool isRecordingVideo = state.emulation.isRecordingVideo;
+    if (isRecordingVideo) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
+    }
+
+    if (ImGui::Button(isRecordingVideo ? "Stop Video REC" : "REC Video")) {
+        if (isRecordingVideo) {
+            state.emulation.isRecordingVideo = false;
+        } else {
+            ImGuiFileDialog::Instance()->OpenDialog("RecordVideoDlgKey", "Save Video Recording", ".mkv", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        }
+    }
+    if (isRecordingVideo) {
+        ImGui::PopStyleColor(2);
+    }
+}
+
+static void DrawRecordingControls(AppState& state) {
+    auto& sid = state.emulator.GetSID();
+    bool isRecordingAudio = sid.IsRecording();
+    bool isRecordingVideo = state.emulation.isRecordingVideo;
+
+    ImGui::BeginDisabled(!state.rom.loaded);
+
+    // Display Audio REC button only if NOT recording video
+    if (!isRecordingVideo) {
+        DrawAudioRecordingButton(state, sid);
+        ImGui::SameLine();
+    }
+
+    // Display Video REC button only if NOT recording audio
+    if (!isRecordingAudio) {
+        DrawVideoRecordingButton(state);
+    }
+
+    ImGui::EndDisabled();
+}
+
+static void DrawIPSSection(AppState& state, float mainColWidth) {
+    DrawTargetIPS(state, mainColWidth);
+
+    ImGui::SameLine();
+    ImGui::TextUnformatted(" || ");
+
+    ImGui::SameLine();
+    DrawActualIPS(state);
+
+    ImGui::SameLine();
+    DrawRecordingControls(state);
 }
 
 static void HandleCreateSDDialog(AppState& state) {
@@ -494,11 +544,23 @@ static void HandleRecordSIDDialog(AppState& state) {
     }
 }
 
+static void HandleRecordVideoDialog(AppState& state) {
+    if (ImGuiFileDialog::Instance()->Display("RecordVideoDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.emulation.recordingVideoPath = filePath;
+            state.emulation.isRecordingVideo = true;
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+}
+
 static void HandleDialogs(AppState& state) {
     HandleCreateSDDialog(state);
     HandleMountSDDialog(state);
     HandleLoadScriptDialog(state);
     HandleRecordSIDDialog(state);
+    HandleRecordVideoDialog(state);
 }
 
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,

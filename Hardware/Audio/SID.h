@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <mutex>
 
@@ -79,6 +80,8 @@ class SID : public IBusDevice {
     void StartRecording(const std::string& filename);
     void StopRecording();
     bool IsRecording() const;
+    void SetAudioCallback(std::function<void(const int16_t*, int)> callback);
+    void ClearAudioCallback();
 
    private:
     std::array<std::uint8_t, 0x20> registers{};
@@ -94,6 +97,7 @@ class SID : public IBusDevice {
 
     std::unique_ptr<AudioRecorder> recorder;
     std::string pendingFilename;
+    std::function<void(const int16_t*, int)> audioCallback;
 
     static void AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
                               int total_amount);  // NOLINT(bugprone-easily-swappable-parameters)

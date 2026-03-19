@@ -34,6 +34,8 @@ struct EmulationState {
     bool cycleAccurate = true;
     bool forceLoadSaveState = false;
     bool autoReload = true;
+    bool isRecordingVideo = false;
+    std::string recordingVideoPath;
 };
 
 enum class DebuggerMode : std::uint8_t {
