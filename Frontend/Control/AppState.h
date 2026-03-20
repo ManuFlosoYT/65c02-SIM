@@ -88,6 +88,14 @@ struct PopupState {
     bool sdCardWebWarning = false;
 };
 
+struct SDKState {
+    std::vector<std::string> roms;
+    std::vector<std::string> midis;
+    std::vector<std::string> vrams;
+    bool loaded = false;
+    bool showPopup = false;
+};
+
 struct AppState {
     Emulator emulator;
 
@@ -99,6 +107,7 @@ struct AppState {
     CRTSettings crt;
     RenderState render;
     PopupState popups;
+    SDKState sdk;
 
     GUI::CRTFilter crtFilter;
 };

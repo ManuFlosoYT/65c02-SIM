@@ -161,9 +161,33 @@ jobs:
 
   build-web:
     runs-on: ubuntu-latest
+    needs: sdk
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cc65 jq python3-pip zip
+          pip3 install pillow mido --break-system-packages
+
+      - name: Download SDK Artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: SDK
+          path: .
+
+      - name: Extract SDK
+        run: |
+          unzip -o SDK.zip
+          chmod +x compile-bin.sh image-to-bin.sh midi-to-bin.sh
+
+      - name: Compile SDK ROMs and Assets
+        run: |
+          ./compile-bin.sh all
+          ./image-to-bin.sh all
+          ./midi-to-bin.sh all
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -174,6 +198,17 @@ jobs:
         run: |
           chmod +x build-web.sh
           ./build-web.sh --clean
+          mkdir -p output/web/roms
+          cp output/rom/*.bin output/web/roms/ 2>/dev/null || true
+          cp output/midi/*.bin output/web/roms/ 2>/dev/null || true
+          cp output/vram/*.bin output/web/roms/ 2>/dev/null || true
+          
+          # Generate structured JSON
+          ROMS_JSON=$(ls output/rom/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+          MIDIS_JSON=$(ls output/midi/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+          VRAMS_JSON=$(ls output/vram/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+          jq -n --argjson r "$ROMS_JSON" --argjson m "$MIDIS_JSON" --argjson v "$VRAMS_JSON" \
+            '{roms: $r, midis: $m, vrams: $v}' > output/web/roms/roms.json
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

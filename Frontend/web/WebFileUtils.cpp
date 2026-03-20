@@ -71,6 +71,35 @@ EM_JS(void, impl_download_file, (const char* filename, const uint8_t* data, size
     document.body.removeChild(a);
 });
 
+EM_JS(void, impl_fetch_file, (const char* url, const char* filename), {
+    const urlStr = UTF8ToString(url);
+    const fileStr = UTF8ToString(filename);
+    fetch(urlStr)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.arrayBuffer();
+        })
+        .then(buffer => {
+            const data = new Uint8Array(buffer);
+            const dataPtr = Module._malloc(data.length);
+            Module.HEAPU8.set(data, dataPtr);
+            
+            const filenameBytes = lengthBytesUTF8(fileStr) + 1;
+            const filenamePtr = Module._malloc(filenameBytes);
+            stringToUTF8(fileStr, filenamePtr, filenameBytes);
+            
+            Module['ccall']('Wasm_OnFilePicked', 
+                null, 
+                ['number', 'number', 'number'], 
+                [filenamePtr, dataPtr, data.length]
+            );
+            
+            Module._free(filenamePtr);
+            Module._free(dataPtr);
+        })
+        .catch(err => console.error("Fetch failed:", err));
+});
+
 } // extern "C"
 
 namespace WebFileUtils {
@@ -81,6 +110,10 @@ void open_browser_file_picker(const char* accept) {
 
 void download_file(const char* filename, const uint8_t* data, size_t size) {
     impl_download_file(filename, data, size);
+}
+
+void fetch_file(const char* url, const char* filename) {
+    impl_fetch_file(url, filename);
 }
 
 } // namespace WebFileUtils

@@ -15,9 +15,74 @@ using namespace Hardware;
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #include <fstream>
+#include <nlohmann/json.hpp>
 #endif
 
 namespace GUI {
+
+#ifdef TARGET_WASM
+static void DrawSDKPopup(AppState& state) {
+    if (state.sdk.showPopup) {
+        ImGui::OpenPopup("SDK ROMs");
+        state.sdk.showPopup = false;
+    }
+
+    ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
+    if (ImGui::BeginPopupModal("SDK ROMs", nullptr, ImGuiWindowFlags_None)) {
+        if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
+            ImGui::TextUnformatted("Loading ROM list...");
+        } else {
+            ImGui::Columns(3, "SDKColumns", true);
+            ImGui::Separator();
+            ImGui::TextUnformatted("ROMs");
+            ImGui::NextColumn();
+            ImGui::TextUnformatted("MIDIs");
+            ImGui::NextColumn();
+            ImGui::TextUnformatted("VRAMs");
+            ImGui::NextColumn();
+            ImGui::Separator();
+
+            auto draw_column = [&](const std::vector<std::string>& files) {
+                for (const auto& file : files) {
+                    if (ImGui::Selectable(file.c_str())) {
+                        std::string url = "roms/" + file;
+                        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data,
+                                                                      int size) {
+                            state.rom.data.assign(data, data + size);
+                            state.emulator.Pause();
+                            std::string errorMsg;
+                            if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename,
+                                                              errorMsg)) {
+                                state.rom.bin = filename;
+                                state.rom.loaded = true;
+                                state.rom.symbols.Clear();
+                                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+                                state.emulator.ClearProfiler();
+                            }
+                        };
+                        WebFileUtils::fetch_file(url.c_str(), file.c_str());
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+            };
+
+            draw_column(state.sdk.roms);
+            ImGui::NextColumn();
+            draw_column(state.sdk.midis);
+            ImGui::NextColumn();
+            draw_column(state.sdk.vrams);
+            ImGui::NextColumn();
+
+            ImGui::Columns(1);
+        }
+        ImGui::Separator();
+        if (ImGui::Button("Close", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+#endif
 
 static void DrawConsoleButtonBar(AppState& state) {
     if (ImGui::Button("Load ROM")) {
@@ -43,6 +108,31 @@ static void DrawConsoleButtonBar(AppState& state) {
         }
 #endif
     }
+
+#ifdef TARGET_WASM
+    ImGui::SameLine();
+    if (ImGui::Button("SDK")) {
+        if (!state.sdk.loaded) {
+            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+                try {
+                    auto j = nlohmann::json::parse(std::string(reinterpret_cast<const char*>(data), size));
+                    state.sdk.roms = j.at("roms").get<std::vector<std::string>>();
+                    state.sdk.midis = j.at("midis").get<std::vector<std::string>>();
+                    state.sdk.vrams = j.at("vrams").get<std::vector<std::string>>();
+                    state.sdk.loaded = true;
+                    state.sdk.showPopup = true;
+                } catch (...) {
+                    printf("Failed to parse roms.json\n");
+                }
+            };
+            WebFileUtils::fetch_file("roms/roms.json", "roms.json");
+        } else {
+            state.sdk.showPopup = true;
+        }
+    }
+    DrawSDKPopup(state);
+#endif
+
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {
         ImGui::OpenPopup("CopyConsoleOutput");

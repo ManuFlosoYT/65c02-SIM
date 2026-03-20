@@ -19,6 +19,7 @@ inline std::function<void(const char*, const uint8_t*, int)> onFilePickedCallbac
 
 void open_browser_file_picker(const char* accept);
 void download_file(const char* filename, const uint8_t* data, size_t size);
+void fetch_file(const char* url, const char* filename);
 
 } // namespace WebFileUtils
 

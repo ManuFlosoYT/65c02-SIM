@@ -62,6 +62,23 @@ cp "Frontend/web/coi-serviceworker.js" output/web/ 2>/dev/null || true
 
 echo "Web build completed in output/web (index.html)"
 
+# Copy ROMs, MIDIs, and VRAMs if they exist
+mkdir -p output/web/roms
+[ -d "output/rom" ] && cp output/rom/*.bin output/web/roms/ 2>/dev/null || true
+[ -d "output/midi" ] && cp output/midi/*.bin output/web/roms/ 2>/dev/null || true
+[ -d "output/vram" ] && cp output/vram/*.bin output/web/roms/ 2>/dev/null || true
+
+if command -v jq >/dev/null 2>&1; then
+    echo "Generating structured roms.json..."
+    ROMS_JSON=$(ls output/rom/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+    MIDIS_JSON=$(ls output/midi/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+    VRAMS_JSON=$(ls output/vram/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+    jq -n --argjson r "$ROMS_JSON" --argjson m "$MIDIS_JSON" --argjson v "$VRAMS_JSON" \
+        '{roms: $r, midis: $m, vrams: $v}' > output/web/roms/roms.json
+else
+    echo "Warning: jq not found, skipping structured roms.json generation."
+fi
+
 if [ "$DO_RUN" = true ]; then
     PORT=8080
     echo "Starting local server at http://localhost:$PORT..."
