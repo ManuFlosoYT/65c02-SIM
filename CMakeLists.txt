@@ -300,6 +300,7 @@ set(CRT_SHADERS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/CRTShaders.h")
 
 add_custom_command(
     OUTPUT  "${CRT_SHADERS_H}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
     COMMAND ${CMAKE_COMMAND}
         -DVERT_FILE=${CRT_VERT}
         -DFRAG_FILE=${CRT_FRAG}
@@ -325,6 +326,7 @@ set(ICON_RESOURCE_RC "${CMAKE_CURRENT_BINARY_DIR}/generated/resource.rc")
 # SVG -> PNG (256x256)
 add_custom_command(
     OUTPUT "${ICON_PNG}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
     COMMAND ${MAGICK_EXECUTABLE} -background none "${ICON_SVG}" -resize 256x256 "${ICON_PNG}"
     DEPENDS "${ICON_SVG}"
     COMMENT "Generating PNG icon from SVG"
@@ -334,6 +336,7 @@ add_custom_command(
 # SVG -> ICO (multi-size)
 add_custom_command(
     OUTPUT "${ICON_ICO}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
     COMMAND ${MAGICK_EXECUTABLE} -background none "${ICON_SVG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
     DEPENDS "${ICON_SVG}"
     COMMENT "Generating Windows ICO from SVG"
