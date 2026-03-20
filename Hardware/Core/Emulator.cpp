@@ -326,13 +326,25 @@ int Emulator::Step() {
         std::lock_guard<std::mutex> lock(emulationMutex);
         SaveStateToBuffer();
     }
+
     int res = 0;
-    if (bus.HasActiveHooks()) {
-        res = Step<true>();
+    bool hooks = bus.HasActiveHooks();
+
+    if (!gpuEnabled) {
+        res = hooks ? Step<true>() : Step<false>();
     } else {
-        res = Step<false>();
+        // Advance through the full drawing interval until the CPU executes one instruction
+        static constexpr int MAX_GPU_STEP_CYCLES = GPU::DISPLAY_WIDTH * GPU::DISPLAY_HEIGHT;
+        bool cpuRan = false;
+        for (int i = 0; i < MAX_GPU_STEP_CYCLES && !cpuRan; ++i) {
+            cpuRan = gpu.IsInBlankingInterval();
+            res = hooks ? Step<true>() : Step<false>();
+            if (res != 0) {
+                break;
+            }
+        }
     }
-    
+
     if (res != 0) {
         Pause();
         sid.StopRecording();
