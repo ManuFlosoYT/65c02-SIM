@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-linux:
     runs-on: ubuntu-latest
@@ -25,13 +28,13 @@ jobs:
           dnf -y install libstdc++-static gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel mingw64-openssl mingw64-openssl-static mingw64-zlib-static wget curl git tar which gcc git-core make fribidi-devel pipewire-devel libXext-devel libXfixes-devel libXScrnSaver-devel libXtst-devel dbus-devel ibus-devel systemd-devel mesa-libGLES-devel mesa-libEGL-devel vulkan-devel wayland-protocols-devel libdrm-devel mesa-libgbm-devel libusb1-devel libdecor-devel pipewire-jack-audio-connection-kit-devel libthai-devel liburing-devel zlib-ng-compat-static python3-jinja2 ccache ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib libsndfile-devel ffmpeg-devel
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Fix Git Trust
         run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
       - name: Cache ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ccache
           key: ccache-linux-${{ github.sha }}
@@ -39,7 +42,7 @@ jobs:
             ccache-linux-
 
       - name: Cache CMake dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/release/_deps
           key: deps-linux-${{ hashFiles('CMakeLists.txt') }}
@@ -50,7 +53,7 @@ jobs:
           ./build-linux.sh
 
       - name: Upload Linux Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SIM_65C02-linux
           path: output/SIM_65C02
@@ -71,13 +74,13 @@ jobs:
           dnf -y install libstdc++-static ninja-build mingw64-gcc mingw64-gcc-c++ mingw32-gcc mingw32-gcc-c++ cmake mingw64-openssl mingw64-openssl-static mingw64-zlib-static ccache git tar which gcc-c++ mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel alsa-lib-devel pulseaudio-libs-devel cc65 openssl-devel wget curl gcc git-core make fribidi-devel pipewire-devel libXext-devel libXfixes-devel libXScrnSaver-devel libXtst-devel dbus-devel ibus-devel systemd-devel mesa-libGLES-devel mesa-libEGL-devel vulkan-devel wayland-protocols-devel libdrm-devel mesa-libgbm-devel libusb1-devel libdecor-devel pipewire-jack-audio-connection-kit-devel libthai-devel liburing-devel zlib-ng-compat-static python3-jinja2 ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib unzip
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Fix Git Trust
         run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
       - name: Cache ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ccache
           key: ccache-windows-${{ github.sha }}
@@ -85,7 +88,7 @@ jobs:
             ccache-windows-
 
       - name: Cache CMake dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build_win/release/_deps
           key: deps-windows-${{ hashFiles('CMakeLists.txt') }}
@@ -96,13 +99,13 @@ jobs:
           ./build-win.sh
 
       - name: Upload Windows Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SIM_65C02-windows
           path: output/SIM_65C02.exe
 
       - name: Upload Unit Tests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-unit-tests
           path: build_win/release/unit_tests.exe
@@ -118,7 +121,7 @@ jobs:
           sudo apt-get install -y wine64 wine32
 
       - name: Download Unit Tests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: windows-unit-tests
           path: .
@@ -137,7 +140,7 @@ jobs:
           pip3 install pillow mido
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Fix Git Trust
         run: git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -151,7 +154,7 @@ jobs:
           zip -r SDK.zip Binaries/ Linker/ GPU/ SID/ output/ compile-bin.sh image-to-bin.sh midi-to-bin.sh -x "Binaries/build/*"
 
       - name: Upload SDK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SDK
           path: SDK.zip
@@ -160,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -186,19 +189,19 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download Linux Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: SIM_65C02-linux
           path: output
 
       - name: Download Windows Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: SIM_65C02-windows
           path: output
 
       - name: Download SDK Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: SDK
           path: .
@@ -216,12 +219,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: main-repo
 
       - name: Checkout wiki repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}.wiki
           path: wiki-repo
