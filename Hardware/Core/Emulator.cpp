@@ -22,61 +22,68 @@ Emulator::Emulator() : cpu(), scriptEngine(*this) {
 }
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
-    std::lock_guard<std::mutex> lock(emulationMutex);
-    SetupHardware();
-
     if (bin.empty()) {
+        std::lock_guard<std::mutex> lock(emulationMutex);
+        SetupHardware();
         currentBinPath = "";
         return true;
     }
 
-    std::string path = bin;
-
-    FILE* file = fopen(path.c_str(), "rb");  // NOLINT
-
-    if (file == nullptr && path.find(".bin") == std::string::npos) {
-        std::string tryBin = path + ".bin";
-        file = fopen(tryBin.c_str(), "rb");  // NOLINT
-        if (file != nullptr) {
-            path = tryBin;
-        }
-    }
+    FILE* file = fopen(bin.c_str(), "rb");  // NOLINT
     if (file == nullptr) {
-        errorMsg = "Error opening file " + path;
+        errorMsg = "Error opening file " + bin;
+        std::cerr << errorMsg << "\n";
         return false;
     }
 
     (void)fseek(file, 0, SEEK_END);
     long fileSize = ftell(file);
     if (fileSize != ROM_SIZE) {
-        errorMsg = "Error: The file " + path + " does not have size " + std::to_string(ROM_SIZE);
+        errorMsg = "Error: File size mismatch (expected 32KB, got " + std::to_string(fileSize) + ")";
         (void)fclose(file);  // NOLINT
+        std::cerr << errorMsg << "\n";
         return false;
     }
     (void)fseek(file, 0, SEEK_SET);
 
-    std::vector<Byte> buffer(ROM_SIZE);
-    size_t bytesRead = fread(buffer.data(), 1, ROM_SIZE, file);
-    if (bytesRead == 0) {
-        errorMsg = "Error reading file " + path;
+    std::vector<uint8_t> buffer(ROM_SIZE);
+    if (fread(buffer.data(), 1, ROM_SIZE, file) != ROM_SIZE) {
+        errorMsg = "Error reading file " + bin;
         (void)fclose(file);  // NOLINT
+        std::cerr << errorMsg << "\n";
+        return false;
+    }
+    (void)fclose(file);  // NOLINT
+
+    return InitFromMemory(buffer.data(), buffer.size(), bin, errorMsg);
+}
+
+bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::string& name, std::string& errorMsg) {
+    std::lock_guard<std::mutex> lock(emulationMutex);
+    SetupHardware();
+
+    if (size != ROM_SIZE) {
+        errorMsg = "Error: ROM data size mismatch (expected 32KB, got " + std::to_string(size) + ")";
+        std::cerr << errorMsg << "\n";
         return false;
     }
 
-    for (size_t i = 0; i < bytesRead; ++i) {
-        rom.WriteDirect(static_cast<Word>(i), buffer[i]);
+    for (size_t i = 0; i < ROM_SIZE; ++i) {
+        rom.WriteDirect(static_cast<Word>(i), data[i]);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     }
 
-    (void)fclose(file);  // NOLINT
+    currentBinPath = name;
+    std::cout << "Loaded ROM from memory: " << name << " (" << size << " bytes)\n";
 
-    currentBinPath = path;
     try {
-        if (std::filesystem::exists(path)) {
-            lastBinModificationTime = std::filesystem::last_write_time(path);
+#ifndef TARGET_WASM
+        if (std::filesystem::exists(name)) {
+            lastBinModificationTime = std::filesystem::last_write_time(name);
         }
-    } catch (...) {
-        // Ignore filesystem errors
-        (void)0;
+#endif
+    } catch (const std::exception& e) {
+        // Ignore filesystem errors as they are not critical for ROM loading
+        (void)e;
     }
 
     return true;
@@ -542,6 +549,7 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
 }
 
 void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck) {
+#ifndef TARGET_WASM
     using namespace std::chrono;
     if (autoReloadRequested.load() && !currentBinPath.empty()) {
         auto now = high_resolution_clock::now();
@@ -566,6 +574,9 @@ void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& l
             }
         }
     }
+#else
+    (void)lastWatchCheck;
+#endif
 }
 
 void Emulator::SetupHardware() {

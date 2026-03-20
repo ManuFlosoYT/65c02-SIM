@@ -12,13 +12,36 @@ using namespace Control;
 using namespace Core;
 using namespace Hardware;
 
+#ifdef TARGET_WASM
+#include "Frontend/web/WebFileUtils.h"
+#include <fstream>
+#endif
+
 namespace GUI {
 
-static void DrawConsoleButtonBar() {
+static void DrawConsoleButtonBar(AppState& state) {
     if (ImGui::Button("Load ROM")) {
+#ifdef TARGET_WASM
+        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+            state.rom.data.assign(data, data + size);
+            state.emulator.Pause();
+            std::string errorMsg;
+            if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename, errorMsg)) {
+                state.rom.bin = filename;
+                state.rom.loaded = true;
+                state.rom.symbols.Clear();
+                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+                state.emulator.ClearProfiler();
+            } else {
+                printf("Failed to load ROM: %s\n", errorMsg.c_str());
+            }
+        };
+        WebFileUtils::open_browser_file_picker(".bin");
+#else
         if (!ImGuiFileDialog::Instance()->IsOpened()) {
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
         }
+#endif
     }
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {
@@ -27,45 +50,54 @@ static void DrawConsoleButtonBar() {
     ImGui::Separator();
 }
 
+static void HandleQueueCharacters(AppState& state, const ImGuiIO& imgui_io) {
+    for (int idx = 0; idx < imgui_io.InputQueueCharacters.Size; idx++) {
+        unsigned int chr = imgui_io.InputQueueCharacters[idx];
+        if (chr > 0 && chr < 0x80) {
+            if (chr == '\r' || chr == '\n') {
+                continue;
+            }
+            state.emulator.InjectKey((char)chr);
+        }
+    }
+}
+
+static void HandleSpecialKeys(AppState& state) {
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        state.emulator.InjectKey(0x1B);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Tab)) {
+        state.emulator.InjectKey(0x09);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
+        state.emulator.InjectKey(0x7F);
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)) {
+        state.emulator.InjectKey('\r');
+    }
+}
+
+static void HandleCtrlKeys(AppState& state, const ImGuiIO& imgui_io) {
+    if (imgui_io.KeyCtrl) {
+        for (int key = ImGuiKey_A; key <= ImGuiKey_Z; key++) {
+            if (ImGui::IsKeyPressed(static_cast<ImGuiKey>(key))) {
+                state.emulator.InjectKey(static_cast<char>(1 + (key - static_cast<int>(ImGuiKey_A))));
+            }
+        }
+    }
+}
+
 static void HandleConsoleInput(AppState& state) {
-    ImGuiIO& imgui_io = ImGui::GetIO();
+    const ImGuiIO& imgui_io = ImGui::GetIO();
     if (ImGui::IsWindowFocused()) {
         SDL_Window* sdl_window = SDL_GetKeyboardFocus();
         if (sdl_window != nullptr) {
             SDL_StartTextInput(sdl_window);
         }
-        for (int idx = 0; idx < imgui_io.InputQueueCharacters.Size; idx++) {
-            unsigned int chr = imgui_io.InputQueueCharacters[idx];
-            if (chr > 0 && chr < 0x80) {
-                if (chr == '\r' || chr == '\n') {
-                    continue;
-                }
-                state.emulator.InjectKey((char)chr);
-            }
-        }
 
-        /* Handle special keys not in characters queue */
-        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-            state.emulator.InjectKey(0x1B);
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_Tab)) {
-            state.emulator.InjectKey(0x09);
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
-            state.emulator.InjectKey(0x7F);
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)) {
-            state.emulator.InjectKey('\r');
-        }
-
-        /* Handle Ctrl + A-Z */
-        if (imgui_io.KeyCtrl) {
-            for (int key = ImGuiKey_A; key <= ImGuiKey_Z; key++) {
-                if (ImGui::IsKeyPressed((ImGuiKey)key)) {
-                    state.emulator.InjectKey((char)(1 + (key - ImGuiKey_A)));
-                }
-            }
-        }
+        HandleQueueCharacters(state, imgui_io);
+        HandleSpecialKeys(state);
+        HandleCtrlKeys(state, imgui_io);
     }
 }
 
@@ -115,7 +147,7 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
                              ImGuiCond_Always);
     ImGui::Begin("Console", nullptr, window_flags);
 
-    DrawConsoleButtonBar();
+    DrawConsoleButtonBar(state);
     HandleConsoleInput(state);
     DrawConsoleText();
     DrawCopyOutputModal();

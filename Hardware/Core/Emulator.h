@@ -42,6 +42,7 @@ class Emulator {
     Emulator& operator=(Emulator&&) = delete;
 
     bool Init(const std::string& binPath, std::string& errorMsg);
+    bool InitFromMemory(const uint8_t* data, size_t size, const std::string& name, std::string& errorMsg);
 
     bool SaveState(const std::string& filename);
     bool LoadState(const std::string& filename, bool forceLoad = false);

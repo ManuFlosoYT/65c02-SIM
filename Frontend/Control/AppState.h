@@ -19,6 +19,7 @@ struct ROMState {
     std::string bin;
     bool loaded = false;
     SymbolTable symbols;
+    std::vector<uint8_t> data;
 };
 
 struct ScriptState {
@@ -84,6 +85,7 @@ struct RenderState {
 
 struct PopupState {
     bool sdCardDisabled = false;
+    bool sdCardWebWarning = false;
 };
 
 struct AppState {

@@ -1,6 +1,9 @@
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
 
 #include <ImGuiFileDialog.h>
+#ifdef TARGET_WASM
+#include "Frontend/web/WebFileUtils.h"
+#endif
 #include <SDL3/SDL.h>
 #include <glad/gl.h>
 #include <imgui.h>
@@ -72,12 +75,36 @@ void DrawProfilerTooltip(std::span<const uint32_t> counts, float imgSizeX, float
     }
 }
 
-void DrawProfilerButtons(AppState& state) {
+void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std::span<unsigned char> pixels) {
     ImGui::SetCursorPos(ImVec2(10, 5));
     if (ImGui::Button("Clear Data")) {
         state.emulator.ClearProfiler();
     }
     ImGui::SameLine();
+#ifdef TARGET_WASM
+    if (ImGui::Button("Export RAW")) {
+        std::ostringstream oss;
+        for (std::size_t i = 0; i < counts.size(); i++) {
+            if (i > 0) oss << '\n';
+            oss << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << i << ": " << std::dec << counts[i];
+        }
+        std::string raw = oss.str();
+        WebFileUtils::download_file("profiler_raw.txt", reinterpret_cast<const uint8_t*>(raw.data()), raw.size());
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Export as BMP")) {
+        std::string tempPath = "/tmp/profiler.bmp";
+        SDL_Surface* surface = SDL_CreateSurfaceFrom(256, 256, SDL_PIXELFORMAT_RGB24, const_cast<unsigned char*>(pixels.data()), 256 * 3);
+        if (surface != nullptr) {
+            SDL_SaveBMP(surface, tempPath.c_str());
+            SDL_DestroySurface(surface);
+            
+            std::ifstream ifs(tempPath, std::ios::binary);
+            std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            WebFileUtils::download_file("profiler_heatmap.bmp", buffer.data(), buffer.size());
+        }
+    }
+#else
     if (ImGui::Button("Export RAW")) {
         if (!ImGuiFileDialog::Instance()->IsOpened()) {
             time_t rawTime = time(nullptr);
@@ -103,8 +130,10 @@ void DrawProfilerButtons(AppState& state) {
             }
         }
     }
+#endif
 }
 
+#ifndef TARGET_WASM
 void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned char> pixels) {
     // Profiler Image Save Dialog
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
@@ -142,6 +171,7 @@ void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned 
         ImGuiFileDialog::Instance()->Close();
     }
 }
+#endif
 
 }  // namespace
 
@@ -161,8 +191,10 @@ void DrawProfilerWindow(AppState& state) {
         DrawProfilerTooltip(counts, size, size);
     }
 
-    DrawProfilerButtons(state);
+    DrawProfilerButtons(state, counts, pixels);
+#ifndef TARGET_WASM
     HandleProfilerDialogs(counts, pixels);
+#endif
 }
 
 }  // namespace GUI

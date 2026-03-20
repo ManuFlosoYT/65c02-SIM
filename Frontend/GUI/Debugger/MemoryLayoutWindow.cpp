@@ -122,8 +122,21 @@ void DrawMappedDevicesTable(std::vector<DeviceRegistration>& devices) {
             }
             ImGui::PushID(devIdx);
             ImGui::TableNextRow();
+
+            bool isESP = (reg.device->GetName() == "ESP8266");
+#ifdef TARGET_WASM
+            if (isESP) {
+                ImGui::BeginDisabled(true);
+            }
+#endif
+
             ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted(reg.device->GetName().c_str());
+#ifdef TARGET_WASM
+            if (isESP && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("The ESP8266 WiFi chip is only supported in native/local builds.");
+            }
+#endif
 
             ImGui::TableSetColumnIndex(1);
             int base = reg.startAddress;
@@ -151,6 +164,12 @@ void DrawMappedDevicesTable(std::vector<DeviceRegistration>& devices) {
 
             ImGui::TableSetColumnIndex(5);
             ImGui::ColorButton("##device_color", GetDeviceColor(reg.device->GetName()), ImGuiColorEditFlags_NoTooltip);
+
+#ifdef TARGET_WASM
+            if (isESP) {
+                ImGui::EndDisabled();
+            }
+#endif
 
             ImGui::PopID();
             devIdx++;

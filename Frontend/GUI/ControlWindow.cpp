@@ -16,6 +16,9 @@
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
 #include "Hardware/Comm/SDCard.h"
+#ifdef TARGET_WASM
+#include "Frontend/web/WebFileUtils.h"
+#endif
 
 using namespace Control;
 using namespace Core;
@@ -167,10 +170,16 @@ static void HandleReset(AppState& state) {
 
     if (state.rom.loaded) {
         std::string errorMsg;
+#ifdef TARGET_WASM
+        if (!state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg)) {
+#else
         if (!state.emulator.Init(state.rom.bin, errorMsg)) {
+#endif
             std::cerr << "Error resetting ROM: " << errorMsg << '\n';
             state.rom.loaded = false;
+#ifndef TARGET_WASM
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+#endif
         } else {
             state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
         }
@@ -247,9 +256,19 @@ static void DrawSettingsBasic(AppState& state) {
         state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
     }
     ImGui::Checkbox("Force load savestate", &state.emulation.forceLoadSaveState);
+#ifdef TARGET_WASM
+    bool dummyAutoReload = false;
+    ImGui::BeginDisabled(true);
+    ImGui::Checkbox("Auto-Reload Bin", &dummyAutoReload);
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Auto-reload is not supported in the web build.");
+    }
+#else
     if (ImGui::Checkbox("Auto-Reload Bin", &state.emulation.autoReload)) {
         state.emulator.SetAutoReload(state.emulation.autoReload);
     }
+#endif
 
     ImGui::Separator();
     ImGui::TextUnformatted("Scripting");
@@ -266,10 +285,35 @@ static void DrawSettingsBasic(AppState& state) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
         ImGui::TextUnformatted("No Script Loaded");
         ImGui::PopStyleColor();
+#ifdef TARGET_WASM
+        ImGui::BeginDisabled();
+        if (ImGui::Button("Load & Run Script (.py)")) {
+            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+                std::string virtualPath = "/tmp/" + std::string(filename);
+                FILE* f = fopen(virtualPath.c_str(), "wb");
+                if (f) {
+                    fwrite(data, 1, size, f);
+                    fclose(f);
+                }
+
+                state.script.path = virtualPath;
+                state.script.loaded = true;
+                state.script.showConsole = true;
+                state.emulator.Pause();
+                state.emulator.GetScriptEngine().LoadAndRun(virtualPath);
+            };
+            WebFileUtils::open_browser_file_picker(".py");
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("Python scripting is not supported in the web build.");
+        }
+#else
         if (ImGui::Button("Load & Run Script (.py)")) {
             ImGuiFileDialog::Instance()->OpenDialog("LoadScriptDlgKey", "Load Python Script", ".py", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
         }
+#endif
     }
 
     ImGui::Separator();
@@ -281,13 +325,78 @@ static void DrawSettingsBasic(AppState& state) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
         ImGui::TextUnformatted("SD Card Mounted");
         ImGui::PopStyleColor();
-        if (ImGui::Button("Unmount SD Card")) {
+#ifdef TARGET_WASM
+        if (ImGui::Button("Save Changes (Download)")) {
+            std::string path = state.emulator.GetSDCard().GetMountedPath();
+            if (!path.empty()) {
+                std::ifstream ifs(path, std::ios::binary);
+                if (ifs.is_open()) {
+                    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                    std::string filename = std::filesystem::path(path).filename().string();
+                    WebFileUtils::download_file(filename.c_str(), buffer.data(), buffer.size());
+                }
+            }
+        }
+        ImGui::SameLine();
+#endif
+        if (ImGui::Button(
+#ifdef TARGET_WASM
+            "Unmount & Save (Download)"
+#else
+            "Unmount SD Card"
+#endif
+        )) {
+#ifdef TARGET_WASM
+            std::string path = state.emulator.GetSDCard().GetMountedPath();
+            if (!path.empty()) {
+                std::ifstream ifs(path, std::ios::binary);
+                if (ifs.is_open()) {
+                    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                    std::string filename = std::filesystem::path(path).filename().string();
+                    WebFileUtils::download_file(filename.c_str(), buffer.data(), buffer.size());
+                }
+            }
+#endif
             state.emulator.GetSDCard().Unmount();
         }
     } else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
         ImGui::TextUnformatted("SD Card Not Mounted");
         ImGui::PopStyleColor();
+#ifdef TARGET_WASM
+        if (ImGui::Button("Create New SD Image...")) {
+            // Create a default image and download it
+            std::string tempPath = "/tmp/new_sd.img";
+            if (CreateFAT16Image(tempPath)) {
+                std::ifstream ifs(tempPath, std::ios::binary);
+                std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                WebFileUtils::download_file("new_sd.img", buffer.data(), buffer.size());
+                
+                if (IsSDCardEnabled(state)) {
+                    state.emulator.GetSDCard().Mount(tempPath);
+                    state.popups.sdCardWebWarning = true;
+                }
+            }
+        }
+        if (ImGui::Button("Mount Image (IMG)")) {
+            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+                std::string virtualPath = "/tmp/" + std::string(filename);
+                FILE* f = fopen(virtualPath.c_str(), "wb");
+                if (f) {
+                    fwrite(data, 1, size, f);
+                    fclose(f);
+                }
+
+                if (IsSDCardEnabled(state)) {
+                    state.emulator.GetSDCard().Mount(virtualPath);
+                    state.popups.sdCardWebWarning = true;
+                } else {
+                    state.popups.sdCardDisabled = true;
+                }
+            };
+            WebFileUtils::open_browser_file_picker(".img");
+        }
+#else
         if (ImGui::Button("Create New SD Image...")) {
             ImGuiFileDialog::Instance()->OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
@@ -296,10 +405,41 @@ static void DrawSettingsBasic(AppState& state) {
             ImGuiFileDialog::Instance()->OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
         }
+#endif
     }
 }
 
 static void DrawSettingsSaveState(AppState& state) {
+#ifdef TARGET_WASM
+    if (ImGui::Button("Save State")) {
+        std::string tempPath = "/tmp/save.savestate";
+        if (state.emulator.SaveState(tempPath)) {
+            std::ifstream ifs(tempPath, std::ios::binary);
+            std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            WebFileUtils::download_file("emulator_state.savestate", buffer.data(), buffer.size());
+        }
+    }
+    if (ImGui::Button("Load State")) {
+        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+            std::string virtualPath = "/tmp/" + std::string(filename);
+            FILE* f = fopen(virtualPath.c_str(), "wb");
+            if (f) {
+                fwrite(data, 1, size, f);
+                fclose(f);
+            }
+
+            state.emulator.Pause();
+            state.emulator.LoadState(virtualPath, state.emulation.forceLoadSaveState);
+            state.rom.loaded = true;
+            state.emulation.gpuEnabled = state.emulator.IsGPUEnabled();
+            state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
+            state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
+            state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
+            state.rom.bin = state.emulator.GetCurrentBinPath();
+        };
+        WebFileUtils::open_browser_file_picker(".savestate");
+    }
+#else
     if (ImGui::Button("Save State")) {
         // Build default filename: SIM65C02SST_<bin>_<date>.savestate
         std::string binName = "unknown";
@@ -323,6 +463,7 @@ static void DrawSettingsSaveState(AppState& state) {
         ImGuiFileDialog::Instance()->OpenDialog("LoadStateDlgKey", "Load State", ".savestate", ".");
         ImGui::CloseCurrentPopup();
     }
+#endif
 }
 
 static void DrawSettingsCRT(AppState& state) {

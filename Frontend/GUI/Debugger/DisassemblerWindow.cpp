@@ -1,6 +1,10 @@
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
 
 #include <ImGuiFileDialog.h>
+#ifdef TARGET_WASM
+#include "Frontend/web/WebFileUtils.h"
+#include <fstream>
+#endif
 #include <imgui.h>
 
 #include "Hardware/CPU/Disassembler.h"
@@ -82,9 +86,29 @@ static void ResolveSymbolsForInstruction(const Control::AppState& state, uint16_
 }
 
 void DrawDisassemblerContent(Control::AppState& state) {
+#ifdef TARGET_WASM
+    ImGui::BeginDisabled();
+    if (ImGui::Button("Load Symbols (.dbg)")) {
+        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+            std::string virtualPath = "/tmp/" + std::string(filename);
+            FILE* f = fopen(virtualPath.c_str(), "wb");
+            if (f) {
+                fwrite(data, 1, size, f);
+                fclose(f);
+            }
+            state.rom.symbols.LoadFromFile(virtualPath);
+        };
+        WebFileUtils::open_browser_file_picker(".dbg");
+    }
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Debug symbols (.dbg) are not supported in the web build.");
+    }
+#else
     if (ImGui::Button("Load Symbols (.dbg)")) {
         ImGuiFileDialog::Instance()->OpenDialog("LoadDbgDlgKey", "Load Debug Symbols", ".dbg", ".");
     }
+#endif
     
     if (state.rom.symbols.IsLoaded()) {
         ImGui::SameLine();
@@ -94,6 +118,7 @@ void DrawDisassemblerContent(Control::AppState& state) {
         ImGui::PopStyleColor();
     }
     
+#ifndef TARGET_WASM
     if (ImGuiFileDialog::Instance()->Display("LoadDbgDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -101,6 +126,7 @@ void DrawDisassemblerContent(Control::AppState& state) {
         }
         ImGuiFileDialog::Instance()->Close();
     }
+#endif
 
     ImGui::Spacing();
 

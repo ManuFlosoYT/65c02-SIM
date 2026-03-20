@@ -39,6 +39,12 @@ void OutputCallback(char character) {
         cursorX++;
     }
 }
+void Print(const std::string& message) {
+    for (char character : message) {
+        OutputCallback(character);
+    }
+    OutputCallback('\n');
+}
 
 bool SaveState(std::ostream& out) {
     size_t linesCount = consoleLines.size();

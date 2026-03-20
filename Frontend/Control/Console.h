@@ -13,6 +13,7 @@ constexpr size_t CONSOLE_MAX_LINES = 1000;
 
 void Clear();
 void OutputCallback(char character);
+void Print(const std::string& message);
 
 bool SaveState(std::ostream& out);
 bool LoadState(std::istream& inputStream);

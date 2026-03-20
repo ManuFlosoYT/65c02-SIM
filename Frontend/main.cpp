@@ -28,6 +28,9 @@
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #include "UpdateChecker.h"
 #include "Frontend/MediaExporter.h"
+#ifdef TARGET_WASM
+#include "Frontend/web/WebFileUtils.h"
+#endif
 #include <memory>
 
 using namespace Control;
@@ -146,6 +149,7 @@ static void HandleSDLEvents(bool& done, SDL_Window* window) {
 }
 
 static void HandleDialogs(AppState& state) {
+#ifndef TARGET_WASM
     // File Dialog
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
@@ -206,9 +210,10 @@ static void HandleDialogs(AppState& state) {
         }
         ImGuiFileDialog::Instance()->Close();
     }
+#endif
 }
 
-static void DrawPopups(AppState& state) {
+static void DrawROMAndStatePopups(AppState& state) {
     if (ImGui::BeginPopupModal("ErrorLoadingROM", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("Error loading ROM. Please check the file.");
         if (ImGui::Button("OK", ImVec2(120, 0))) {
@@ -255,7 +260,9 @@ static void DrawPopups(AppState& state) {
         }
         ImGui::EndPopup();
     }
+}
 
+static void DrawSDCardPopups(AppState& state) {
     if (state.popups.sdCardDisabled) {
         ImGui::OpenPopup("SD Card Disabled");
         state.popups.sdCardDisabled = false;
@@ -270,6 +277,31 @@ static void DrawPopups(AppState& state) {
         }
         ImGui::EndPopup();
     }
+
+    if (state.popups.sdCardWebWarning) {
+        ImGui::OpenPopup("SD Card Web Warning");
+        state.popups.sdCardWebWarning = false;
+    }
+
+    if (ImGui::BeginPopupModal("SD Card Web Warning", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("SD Card Mounted (Web Port)");
+        ImGui::Separator();
+        ImGui::TextUnformatted("Due to browser security limitations, changes made to the SD card");
+        ImGui::TextUnformatted("are stored in a virtual filesystem and NOT synced to your local file.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("To save your changes, you MUST use 'Unmount & Save (Download)'");
+        ImGui::TextUnformatted("or the 'Save Changes' button in the Control Window.");
+        ImGui::Spacing();
+        if (ImGui::Button("I Understand", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+static void DrawPopups(AppState& state) {
+    DrawROMAndStatePopups(state);
+    DrawSDCardPopups(state);
 }
 
 static void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2& work_size, float top_section_height, ImGuiWindowFlags windowFlags) {
@@ -492,7 +524,7 @@ int main(int argc, char* argv[]) {
 
 #ifndef TARGET_WASM
     // Check for updates
-    UpdateChecker::CheckForUpdates(PROJECT_VERSION, [&state](bool available, const std::string& version) {
+    UpdateChecker::CheckForUpdates(PROJECT_VERSION, [](bool available, const std::string& version) {
         if (available) {
             state.update.latestVersionTag = version;
             state.update.available = true;
@@ -531,7 +563,7 @@ int main(int argc, char* argv[]) {
 #endif
 
 #ifdef TARGET_WASM
-    static MainLoopArgs loopArgs = { window, gl_context, &state, nullptr, &done };
+    static MainLoopArgs loopArgs = { .window = window, .gl_context = gl_context, .state = &state, .mediaExporter = nullptr, .done = &done };
     emscripten_set_main_loop_arg(MainLoop, &loopArgs, 0, 1);
 #else
     const int FPS = 60;
@@ -539,7 +571,7 @@ int main(int argc, char* argv[]) {
     Uint64 frameStart = 0;
     int frameTime = 0;
 
-    MainLoopArgs loopArgs = { window, gl_context, &state, &mediaExporter, &done };
+    MainLoopArgs loopArgs = { .window = window, .gl_context = gl_context, .state = &state, .mediaExporter = &mediaExporter, .done = &done };
 
     while (!done) {
         frameStart = SDL_GetTicks();

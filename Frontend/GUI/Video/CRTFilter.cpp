@@ -9,8 +9,29 @@ namespace GUI {
 
 GLuint CRTFilter::CompileShader(const char* vertSrc, const char* fragSrc) {
     auto compile = [](GLenum type, const char* src) -> GLuint {
+        const char* shaderSourcePtr = nullptr;
+#ifdef TARGET_WASM
+        std::string finalSrc;
+        if (type == GL_VERTEX_SHADER) {
+            finalSrc = "#version 300 es\n";
+        } else {
+            finalSrc = "#version 300 es\nprecision mediump float;\n";
+        }
+        std::string s = src;
+        size_t verPos = s.find("#version");
+        if (verPos != std::string::npos) {
+            size_t lineEnd = s.find('\n', verPos);
+            if (lineEnd != std::string::npos) {
+                s.erase(verPos, lineEnd - verPos + 1);
+            }
+        }
+        finalSrc += s;
+        shaderSourcePtr = finalSrc.c_str();
+#else
+        shaderSourcePtr = src;
+#endif
         GLuint shaderId = glCreateShader(type);
-        glShaderSource(shaderId, 1, &src, nullptr);
+        glShaderSource(shaderId, 1, &shaderSourcePtr, nullptr);
         glCompileShader(shaderId);
         GLint isCompiled = 0;
         glGetShaderiv(shaderId, GL_COMPILE_STATUS, &isCompiled);

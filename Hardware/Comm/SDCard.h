@@ -25,6 +25,7 @@ class SDCard : public IBusDevice {
     bool Mount(const std::string& imagePath);
     void Unmount();
     [[nodiscard]] bool IsMounted() const { return mounted; }
+    [[nodiscard]] std::string GetMountedPath() const { return currentPath; }
 
     // IBusDevice overrides
     void Write(Word /*address*/, Byte /*val*/) override {}

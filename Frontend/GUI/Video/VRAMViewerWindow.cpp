@@ -1,6 +1,10 @@
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 
 #include <ImGuiFileDialog.h>
+#ifdef TARGET_WASM
+#include "Frontend/web/WebFileUtils.h"
+#include <fstream>
+#endif
 
 #include <algorithm>
 #include <cstdio>
@@ -12,49 +16,6 @@ using namespace Core;
 using namespace Hardware;
 
 namespace GUI {
-
-static void DrawVRAMControls() {
-    if (ImGui::Button("Load Image")) {
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseVRAMImageKey", "Choose VRAM Image", ".bin", ".", "");
-        }
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Capture VRAM")) {
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
-            time_t currentTime = time(nullptr);
-            struct tm* tmInfo = localtime(&currentTime);
-            std::array<char, 64> filenameBuffer{};
-            if (tmInfo != nullptr) {
-                static_cast<void>(strftime(filenameBuffer.data(), filenameBuffer.size(),
-                                           "65C02-SIM_VRAM_CAPTURE_%Y-%m-%d-%H-%M-%S.", tmInfo));
-            }
-
-            ImGuiFileDialog::Instance()->OpenDialog("SaveVRAMImageKey", "Save VRAM Image", ".bmp", ".",
-                                                    filenameBuffer.data());
-        }
-    }
-
-    ImGui::Separator();
-}
-
-static void UpdateVRAMTexture(AppState& state) {
-    GPU& gpu = state.emulator.GetGPU();
-    std::array<unsigned char, static_cast<size_t>(GPU::VRAM_HEIGHT) * static_cast<size_t>(GPU::VRAM_WIDTH) * 3>
-        pixels{};
-    for (size_t yIndex = 0; yIndex < GPU::VRAM_HEIGHT; yIndex++) {
-        for (size_t xIndex = 0; xIndex < GPU::VRAM_WIDTH; xIndex++) {
-            size_t idx = (yIndex * GPU::VRAM_WIDTH + xIndex) * 3;
-            Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
-            pixels.at(idx + 0) = ((val >> 4) & 0x03) * 85;
-            pixels.at(idx + 1) = ((val >> 2) & 0x03) * 85;
-            pixels.at(idx + 2) = (val & 0x03) * 85;
-        }
-    }
-    glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
 
 static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
     std::ifstream file(imgPath, std::ios::binary | std::ios::ate);
@@ -81,6 +42,92 @@ static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
     }
 }
 
+static void DrawVRAMControls(AppState& state) {
+#ifdef TARGET_WASM
+    if (ImGui::Button("Load Image")) {
+        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+            std::string virtualPath = "/tmp/" + std::string(filename);
+            FILE* f = fopen(virtualPath.c_str(), "wb");
+            if (f) {
+                fwrite(data, 1, size, f);
+                fclose(f);
+            }
+            LoadVRAMFromFile(virtualPath, state);
+        };
+        WebFileUtils::open_browser_file_picker(".bin");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Capture VRAM")) {
+        std::string tempPath = "/tmp/vram_capture.bmp";
+        std::vector<unsigned char> pixels;
+        int capW = GPU::VRAM_WIDTH;
+        int capH = GPU::VRAM_HEIGHT;
+        pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
+        GPU& gpu = state.emulator.GetGPU();
+        for (size_t yIndex = 0; yIndex < static_cast<size_t>(GPU::VRAM_HEIGHT); yIndex++) {
+            for (size_t xIndex = 0; xIndex < static_cast<size_t>(GPU::VRAM_WIDTH); xIndex++) {
+                size_t idx = (yIndex * static_cast<size_t>(GPU::VRAM_WIDTH) + xIndex) * 3;
+                Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
+                pixels.at(idx + 0) = ((val >> 4) & 0x03) * 85;
+                pixels.at(idx + 1) = ((val >> 2) & 0x03) * 85;
+                pixels.at(idx + 2) = (val & 0x03) * 85;
+            }
+        }
+        SDL_Surface* surface = SDL_CreateSurfaceFrom(capW, capH, SDL_PIXELFORMAT_RGB24, pixels.data(), capW * 3);
+        if (surface != nullptr) {
+            SDL_SaveBMP(surface, tempPath.c_str());
+            SDL_DestroySurface(surface);
+            std::ifstream ifs(tempPath, std::ios::binary);
+            std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            WebFileUtils::download_file("vram_capture.bmp", buffer.data(), buffer.size());
+        }
+    }
+#else
+    if (ImGui::Button("Load Image")) {
+        if (!ImGuiFileDialog::Instance()->IsOpened()) {
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseVRAMImageKey", "Choose VRAM Image", ".bin", ".", "");
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Capture VRAM")) {
+        if (!ImGuiFileDialog::Instance()->IsOpened()) {
+            time_t currentTime = time(nullptr);
+            struct tm* tmInfo = localtime(&currentTime);
+            std::array<char, 64> filenameBuffer{};
+            if (tmInfo != nullptr) {
+                static_cast<void>(strftime(filenameBuffer.data(), filenameBuffer.size(),
+                                           "65C02-SIM_VRAM_CAPTURE_%Y-%m-%d-%H-%M-%S.", tmInfo));
+            }
+
+            ImGuiFileDialog::Instance()->OpenDialog("SaveVRAMImageKey", "Save VRAM Image", ".bmp", ".",
+                                                    filenameBuffer.data());
+        }
+    }
+#endif
+
+    ImGui::Separator();
+}
+
+static void UpdateVRAMTexture(AppState& state) {
+    GPU& gpu = state.emulator.GetGPU();
+    std::array<unsigned char, static_cast<size_t>(GPU::VRAM_HEIGHT) * static_cast<size_t>(GPU::VRAM_WIDTH) * 3>
+        pixels{};
+    for (size_t yIndex = 0; yIndex < GPU::VRAM_HEIGHT; yIndex++) {
+        for (size_t xIndex = 0; xIndex < GPU::VRAM_WIDTH; xIndex++) {
+            size_t idx = (yIndex * GPU::VRAM_WIDTH + xIndex) * 3;
+            Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
+            pixels.at(idx + 0) = ((val >> 4) & 0x03) * 85;
+            pixels.at(idx + 1) = ((val >> 2) & 0x03) * 85;
+            pixels.at(idx + 2) = (val & 0x03) * 85;
+        }
+    }
+    glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+
+#ifndef TARGET_WASM
 static void HandleVRAMLoadDialog(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (!ImGuiFileDialog::Instance()->Display("ChooseVRAMImageKey")) {
@@ -138,6 +185,7 @@ static void HandleVRAMSaveDialog(AppState& state) {
     }
     ImGuiFileDialog::Instance()->Close();
 }
+#endif
 
 void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                           ImGuiWindowFlags window_flags) {
@@ -150,7 +198,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         ImGui::SetNextWindowSize(ImVec2(rightWidth, bottomSectionHeight), ImGuiCond_Always);
         ImGui::Begin("VRAM Viewer", nullptr, window_flags);
 
-        DrawVRAMControls();
+        DrawVRAMControls(state);
         UpdateVRAMTexture(state);
 
         ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -207,8 +255,10 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         ImGui::End();
     }
 
+#ifndef TARGET_WASM
     HandleVRAMLoadDialog(state);
     HandleVRAMSaveDialog(state);
+#endif
 }
 
 }  // namespace GUI

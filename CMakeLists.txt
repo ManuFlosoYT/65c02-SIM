@@ -400,6 +400,8 @@ if(EMSCRIPTEN)
         "-sMAX_WEBGL_VERSION=2"
         "-sUSE_PTHREADS=1"
         "-sPTHREAD_POOL_SIZE=8"
+        "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main','_Wasm_OnFilePicked']"
+        "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString','stringToUTF8','lengthBytesUTF8','HEAPU8','ccall','cwrap']"
         "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/web/shell.html"
     )
     set_target_properties(SIM_65C02 PROPERTIES SUFFIX ".html")
@@ -407,6 +409,7 @@ endif()
 
 
 target_include_directories(SIM_65C02 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${imguifiledialog_SOURCE_DIR}
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
     ${FFMPEG_INCLUDE_DIRS}
