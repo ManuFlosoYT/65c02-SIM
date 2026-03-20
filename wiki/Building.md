@@ -22,7 +22,8 @@ sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel \
     pipewire-jack-audio-connection-kit-devel libthai-devel liburing-devel \
     zlib-ng-compat-static python3-jinja2 \
     ccache ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils \
-    ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib ffmpeg-devel
+    ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib ffmpeg-devel \
+    ImageMagick
 ```
 
 > **Windows:** Use WSL2 with Fedora to run the build scripts. See the README for installation instructions.
@@ -127,8 +128,9 @@ The project uses **CMake** with the following targets:
 
 ### Custom Commands and Variables
 
-- A custom command embeds the CRT shaders (`crt.vert` and `crt.frag`) into an automatically generated header (`CRTShaders.h`).
-- The version displayed in the Frontend and used by the `UpdateChecker` is injected at compile time via Git (`PROJECT_VERSION`) and does not require manual changes in the code.
+- Custom commands embed the CRT shaders (`crt.vert` and `crt.frag`) and the application icon (`65c02-sim.png`) into automatically generated headers (`CRTShaders.h` and `IconPixels.h`) using **ImageMagick**.
+- A custom command also generates the Windows resource file (`resource.rc`) using the `.ico` file.
+- The version displayed in the Frontend and used by the `UpdateChecker` is injected at compile time via Git (`PROJECT_VERSION`).
 
 ### External dependencies (FetchContent)
 

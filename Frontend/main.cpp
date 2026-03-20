@@ -31,6 +31,7 @@
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #endif
+#include "IconPixels.h"
 #include <memory>
 
 using namespace Control;
@@ -60,6 +61,13 @@ static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     if (window == nullptr) {
         std::cerr << "Failed to create window: " << SDL_GetError() << '\n';
         return false;
+    }
+
+    // Set Window Icon
+    SDL_Surface* icon = SDL_CreateSurfaceFrom(256, 256, SDL_PIXELFORMAT_RGBA32, (void*)icon_pixels_bin, 256 * 4);
+    if (icon != nullptr) {
+        SDL_SetWindowIcon(window, icon);
+        SDL_DestroySurface(icon);
     }
 
     gl_context = SDL_GL_CreateContext(window);

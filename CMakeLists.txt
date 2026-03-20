@@ -298,18 +298,39 @@ set(CRT_VERT "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.vert")
 set(CRT_FRAG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.frag")
 set(CRT_SHADERS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/CRTShaders.h")
 
+# ---------------------------------------------------------------------------
+# App Icon Generation (Windows Resource + SDL3 Pixel Header)
+# ---------------------------------------------------------------------------
+find_program(MAGICK_EXECUTABLE NAMES magick convert REQUIRED)
+
+set(ICON_PNG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/Assets/65c02-sim.png")
+set(ICON_ICO "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/Assets/65c02-sim.ico")
+set(ICON_PIXELS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/IconPixels.h")
+set(ICON_RESOURCE_RC "${CMAKE_CURRENT_BINARY_DIR}/generated/resource.rc")
+
+# Generate IconPixels.h from PNG
 add_custom_command(
-    OUTPUT  "${CRT_SHADERS_H}"
+    OUTPUT "${ICON_PIXELS_H}"
     COMMAND ${CMAKE_COMMAND}
-        -DVERT_FILE=${CRT_VERT}
-        -DFRAG_FILE=${CRT_FRAG}
-        -DOUTPUT=${CRT_SHADERS_H}
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCRTShaders.cmake"
-    DEPENDS "${CRT_VERT}" "${CRT_FRAG}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCRTShaders.cmake"
-    COMMENT "Embedding CRT shaders into CRTShaders.h"
+        -DMAGICK_EXECUTABLE=${MAGICK_EXECUTABLE}
+        -DINPUT_PNG=${ICON_PNG}
+        -DOUTPUT_HEADER=${ICON_PIXELS_H}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateIconHeader.cmake"
+    DEPENDS "${ICON_PNG}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateIconHeader.cmake"
+    COMMENT "Generating SDL3 icon pixel header"
     VERBATIM
 )
+
+# Generate Windows resource.rc
+add_custom_command(
+    OUTPUT "${ICON_RESOURCE_RC}"
+    COMMAND ${CMAKE_COMMAND} -E echo "IDI_ICON1 ICON DISCARDABLE \"${ICON_ICO}\"" > "${ICON_RESOURCE_RC}"
+    DEPENDS "${ICON_ICO}"
+    COMMENT "Generating Windows resource file"
+    VERBATIM
+)
+
+add_custom_target(app_icons DEPENDS "${ICON_PIXELS_H}" "${ICON_RESOURCE_RC}")
 
 add_custom_target(crt_shaders DEPENDS "${CRT_SHADERS_H}")
 
@@ -317,6 +338,7 @@ add_custom_target(crt_shaders DEPENDS "${CRT_SHADERS_H}")
 if(WIN32)
     add_executable(SIM_65C02 WIN32
         ${FRONTEND_SOURCES}
+        "${ICON_RESOURCE_RC}"
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
     )
     target_link_options(SIM_65C02 PRIVATE 
@@ -414,7 +436,7 @@ target_include_directories(SIM_65C02 PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
     ${FFMPEG_INCLUDE_DIRS}
 )
-add_dependencies(SIM_65C02 crt_shaders)
+add_dependencies(SIM_65C02 crt_shaders app_icons)
 
 target_compile_definitions(SIM_65C02 PRIVATE 
     IMGUI_DEFINE_MATH_OPERATORS 
