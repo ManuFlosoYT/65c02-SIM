@@ -298,6 +298,19 @@ set(CRT_VERT "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.vert")
 set(CRT_FRAG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.frag")
 set(CRT_SHADERS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/CRTShaders.h")
 
+add_custom_command(
+    OUTPUT  "${CRT_SHADERS_H}"
+    COMMAND ${CMAKE_COMMAND}
+        -DVERT_FILE=${CRT_VERT}
+        -DFRAG_FILE=${CRT_FRAG}
+        -DOUTPUT=${CRT_SHADERS_H}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCRTShaders.cmake"
+    DEPENDS "${CRT_VERT}" "${CRT_FRAG}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCRTShaders.cmake"
+    COMMENT "Embedding CRT shaders into CRTShaders.h"
+    VERBATIM
+)
+
 # ---------------------------------------------------------------------------
 # App Icon Generation (Windows Resource + SDL3 Pixel Header)
 # ---------------------------------------------------------------------------
