@@ -56,6 +56,7 @@ The simulator uses **pthreads** for the emulation core, SID audio, and UI update
 
 ### Limitations
 - **FFmpeg/Recording**: Video and audio recording to disk is currently disabled in the web port due to the heavy dependencies of FFmpeg. Buttons are visible but disabled with an explanatory tooltip.
+- **ESP8266 (WiFi)**: The ESP8266 chip is disabled for the web port as it requires host-side socket access that the browser cannot provide. Its row in the **Memory Layout** table is rendered non-interactive with an explanatory tooltip.
 - **Networking**: High-level networking features (OpenSSL/httplib) are disabled to reduce binary size and avoid library incompatibilities.
 
 ## GitHub Pages Deployment
