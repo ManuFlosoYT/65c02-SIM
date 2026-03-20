@@ -1,3 +1,4 @@
+#ifndef TARGET_WASM
 #include "Hardware/Audio/AudioRecorder.h"
 
 #include <iostream>
@@ -96,3 +97,5 @@ void AudioRecorder::WorkerThread() {
 }
 
 }  // namespace Hardware
+#endif
+

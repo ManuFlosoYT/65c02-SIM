@@ -1,0 +1,86 @@
+#!/bin/bash
+set -e
+
+BUILD_TYPE="Release"
+CMAKE_OPTS=""
+DO_CLEAN=false
+DO_RUN=false
+
+for arg in "$@"; do
+    if [[ "$arg" == "--clean" ]]; then
+        DO_CLEAN=true
+    elif [[ "$arg" == "--debug" ]]; then
+        BUILD_TYPE="Debug"
+    elif [[ "$arg" == "--run" ]]; then
+        DO_RUN=true
+    fi
+done
+
+BUILD_DIR="build/web"
+
+if [ "$DO_CLEAN" = true ]; then
+    echo "Cleaning build directory ($BUILD_DIR)..."
+    rm -rf "$BUILD_DIR"
+fi
+
+# --- Emscripten Automatic Setup ---
+EMSDK_DIR="emsdk_local"
+
+if ! command -v emcmake >/dev/null 2>&1; then
+    if [ ! -d "$EMSDK_DIR" ]; then
+        echo "Emscripten SDK not found. Downloading to $EMSDK_DIR..."
+        git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$EMSDK_DIR"
+        cd "$EMSDK_DIR"
+        ./emsdk install latest
+        ./emsdk activate latest
+        cd ..
+    fi
+
+    echo "Activating Emscripten SDK..."
+    source "$EMSDK_DIR/emsdk_env.sh" > /dev/null 2>&1
+fi
+
+if ! command -v emcmake >/dev/null 2>&1; then
+    echo "Error: Failed to activate Emscripten. Please try manual installation."
+    exit 1
+fi
+
+
+
+echo "Compiling for WebAssembly in $BUILD_TYPE mode..."
+mkdir -p "$BUILD_DIR"
+
+emcmake cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
+cmake --build "$BUILD_DIR" -j$(nproc)
+
+mkdir -p output/web
+cp "$BUILD_DIR/SIM_65C02.html" output/web/index.html 2>/dev/null || true
+cp "$BUILD_DIR/SIM_65C02.js" output/web/ 2>/dev/null || true
+cp "$BUILD_DIR/SIM_65C02.wasm" output/web/ 2>/dev/null || true
+cp "$BUILD_DIR/SIM_65C02.worker.js" output/web/ 2>/dev/null || true
+cp "Frontend/web/coi-serviceworker.js" output/web/ 2>/dev/null || true
+
+echo "Web build completed in output/web (index.html)"
+
+if [ "$DO_RUN" = true ]; then
+    PORT=8080
+    echo "Starting local server at http://localhost:$PORT..."
+    
+    # Open browser in background
+    if command -v xdg-open > /dev/null; then
+        xdg-open "http://localhost:$PORT" &
+    elif command -v open > /dev/null; then
+        open "http://localhost:$PORT" &
+    fi
+
+    # Start server
+    if command -v npx > /dev/null; then
+        echo "Using 'npx serve'..."
+        npx -y serve output/web -l $PORT
+    else
+        echo "Using 'python3 -m http.server'..."
+        python3 -m http.server $PORT --directory output/web
+    fi
+fi
+
+exit 0

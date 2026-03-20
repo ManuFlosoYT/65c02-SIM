@@ -418,6 +418,9 @@ static void DrawAudioRecordingButton(AppState& state, Core::SID& sid) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
     }
+#ifdef TARGET_WASM
+    ImGui::BeginDisabled(true);
+#endif
     if (ImGui::Button(isRecordingAudio ? "Stop Audio REC" : "REC Audio")) {
         if (isRecordingAudio) {
             sid.StopRecording();
@@ -426,6 +429,12 @@ static void DrawAudioRecordingButton(AppState& state, Core::SID& sid) {
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
         }
     }
+#ifdef TARGET_WASM
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Recording is only supported in local builds.");
+    }
+#endif
     if (isRecordingAudio) {
         ImGui::PopStyleColor(2);
     }
@@ -438,6 +447,9 @@ static void DrawVideoRecordingButton(AppState& state) {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
     }
 
+#ifdef TARGET_WASM
+    ImGui::BeginDisabled(true);
+#endif
     if (ImGui::Button(isRecordingVideo ? "Stop Video REC" : "REC Video")) {
         if (isRecordingVideo) {
             state.emulation.isRecordingVideo = false;
@@ -446,6 +458,12 @@ static void DrawVideoRecordingButton(AppState& state) {
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
         }
     }
+#ifdef TARGET_WASM
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Recording is only supported in local builds.");
+    }
+#endif
     if (isRecordingVideo) {
         ImGui::PopStyleColor(2);
     }

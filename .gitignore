@@ -5,6 +5,7 @@ compile_commands.json
 /build_win
 /output
 /Binaries/build
+/emsdk_local
 
 SID/generator/__pycache__
 SID/generator/build

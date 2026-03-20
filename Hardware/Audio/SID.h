@@ -8,7 +8,9 @@
 #include <iostream>
 #include <mutex>
 
+#ifndef TARGET_WASM
 #include "Hardware/Audio/AudioRecorder.h"
+#endif
 #include "Hardware/Core/IBusDevice.h"
 #include <memory>
 
@@ -95,7 +97,9 @@ class SID : public IBusDevice {
     int sampleRate = 44100;
     mutable std::mutex sidMutex;
 
+#ifndef TARGET_WASM
     std::unique_ptr<AudioRecorder> recorder;
+#endif
     std::string pendingFilename;
     std::function<void(const int16_t*, int)> audioCallback;
 

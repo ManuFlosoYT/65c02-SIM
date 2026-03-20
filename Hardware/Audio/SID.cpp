@@ -82,6 +82,8 @@ void SID::Reset() {
 void SID::EnableSound(bool enable) {
     std::lock_guard<std::mutex> lock(sidMutex);
     soundEnabled = enable;
+
+#ifndef TARGET_WASM
     if (soundEnabled && !emulationPaused && !pendingFilename.empty()) {
         recorder = std::make_unique<AudioRecorder>();
         if (!recorder->Start(pendingFilename, sampleRate)) {
@@ -89,12 +91,15 @@ void SID::EnableSound(bool enable) {
         }
         pendingFilename.clear();
     }
+#endif
+
     UpdateAudioState();
 }
 
 void SID::SetEmulationPaused(bool paused) {
     std::lock_guard<std::mutex> lock(sidMutex);
     emulationPaused = paused;
+#ifndef TARGET_WASM
     if (!emulationPaused && soundEnabled && !pendingFilename.empty()) {
         recorder = std::make_unique<AudioRecorder>();
         if (!recorder->Start(pendingFilename, sampleRate)) {
@@ -102,6 +107,7 @@ void SID::SetEmulationPaused(bool paused) {
         }
         pendingFilename.clear();
     }
+#endif
     UpdateAudioState();
 }
 
@@ -138,6 +144,7 @@ void SID::AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_
         std::vector<int16_t> buffer(samples);
         sid->GenerateAudio(buffer.data(), samples);
         
+#ifndef TARGET_WASM
         bool shouldPush = false;
         {
             std::lock_guard<std::mutex> lock(sid->sidMutex);
@@ -147,6 +154,7 @@ void SID::AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_
         if (shouldPush) {
             sid->recorder->PushAudio(buffer.data(), samples);
         }
+#endif
         
         {
             std::lock_guard<std::mutex> lock(sid->sidMutex);
@@ -376,6 +384,7 @@ bool SID::LoadState(std::istream& inStream) {
 
 void SID::StartRecording(const std::string& filename) {
     std::lock_guard<std::mutex> lock(sidMutex);
+#ifndef TARGET_WASM
     if (!emulationPaused && soundEnabled) {
         recorder = std::make_unique<AudioRecorder>();
         if (!recorder->Start(filename, sampleRate)) {
@@ -384,20 +393,29 @@ void SID::StartRecording(const std::string& filename) {
     } else {
         pendingFilename = filename;
     }
+#else
+    (void)filename;
+#endif
 }
 
 void SID::StopRecording() {
     std::lock_guard<std::mutex> lock(sidMutex);
     pendingFilename.clear();
+#ifndef TARGET_WASM
     if (recorder) {
         recorder->Stop();
         recorder.reset();
     }
+#endif
 }
 
 bool SID::IsRecording() const {
     std::lock_guard<std::mutex> lock(sidMutex);
+#ifndef TARGET_WASM
     return recorder != nullptr || !pendingFilename.empty();
+#else
+    return !pendingFilename.empty();
+#endif
 }
 
 void SID::SetAudioCallback(std::function<void(const int16_t*, int)> callback) {

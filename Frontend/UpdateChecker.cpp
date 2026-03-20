@@ -1,3 +1,4 @@
+#ifndef TARGET_WASM
 #include "UpdateChecker.h"
 
 #include <httplib.h>
@@ -81,4 +82,7 @@ std::string UpdateChecker::FetchLatestReleaseTag() {
     return "";
 }
 
+
 }  // namespace Frontend
+#endif
+

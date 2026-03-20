@@ -347,7 +347,9 @@ int Emulator::Step() {
 
     if (res != 0) {
         Pause();
+#ifndef TARGET_WASM
         sid.StopRecording();
+#endif
         halted = true;
     }
     return res;
@@ -431,7 +433,9 @@ void Emulator::Start() {
 
 void Emulator::Stop() {
     running = false;
+#ifndef TARGET_WASM
     sid.StopRecording();
+#endif
     Resume();
     if (emulatorThread.joinable()) {
         emulatorThread.join();
@@ -513,7 +517,9 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
             int res = Step<true>();
             if (res != 0) {
                 Pause();
+#ifndef TARGET_WASM
                 sid.StopRecording();
+#endif
                 halted = true;
                 std::cerr << "Emulator stopped with code: " << res << '\n';
                 break;
@@ -524,7 +530,9 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
             int res = Step<false>();
             if (res != 0) {
                 Pause();
+#ifndef TARGET_WASM
                 sid.StopRecording();
+#endif
                 halted = true;
                 std::cerr << "Emulator stopped with code: " << res << '\n';
                 break;

@@ -14,16 +14,25 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
-endif()
-
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -ffunction-sections -fdata-sections")
         set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -flto -Wl,--gc-sections -s")
     endif()
 endif()
+
+if(EMSCRIPTEN)
+    add_compile_definitions(TARGET_WASM)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -sUSE_PTHREADS=1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_PTHREADS=1")
+    add_link_options("-sUSE_PTHREADS=1")
+    add_link_options("-sPTHREAD_POOL_SIZE=8")
+    add_link_options("-sALLOW_MEMORY_GROWTH=1")
+    add_link_options("-sMAX_WEBGL_VERSION=2")
+    # Optimize for WASM
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+endif()
+
 
 include(FetchContent)
 
@@ -137,74 +146,79 @@ if(WIN32)
     set(ZLIB_ROOT "${MINGW_ROOT}")
 endif()
 
-find_package(OpenSSL REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(PkgConfig REQUIRED)
+if(NOT EMSCRIPTEN)
+    find_package(OpenSSL REQUIRED)
+    find_package(ZLIB REQUIRED)
+    find_package(PkgConfig REQUIRED)
+endif()
 
-if(WIN32)
-    set(FFMPEG_LIBRARIES "")
-    # FFmpeg prebuilt for Windows (BtbN GitHub Releases)
-    FetchContent_Declare(
-        ffmpeg_win
-        URL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip
-    )
-    FetchContent_MakeAvailable(ffmpeg_win) 
-    
-    unset(FFMPEG_INC_DIR CACHE)
-    foreach(lib avcodec avformat swscale avutil)
-        unset(FFMPEG_${lib}_LIB CACHE)
-        unset(FFMPEG_${lib}_DLL CACHE)
-    endforeach()
 
-    find_path(FFMPEG_INC_DIR libavcodec/avcodec.h
-        PATHS ${ffmpeg_win_SOURCE_DIR}
-        PATH_SUFFIXES include
-        NO_DEFAULT_PATH
-        NO_CMAKE_FIND_ROOT_PATH
-    )
-    
-    foreach(lib avcodec avformat swscale avutil)
-        find_library(FFMPEG_${lib}_LIB NAMES ${lib}
+if(NOT EMSCRIPTEN)
+    if(WIN32)
+        set(FFMPEG_LIBRARIES "")
+        # FFmpeg prebuilt for Windows (BtbN GitHub Releases)
+        FetchContent_Declare(
+            ffmpeg_win
+            URL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip
+        )
+        FetchContent_MakeAvailable(ffmpeg_win) 
+        
+        unset(FFMPEG_INC_DIR CACHE)
+        foreach(lib avcodec avformat swscale avutil)
+            unset(FFMPEG_${lib}_LIB CACHE)
+            unset(FFMPEG_${lib}_DLL CACHE)
+        endforeach()
+
+        find_path(FFMPEG_INC_DIR libavcodec/avcodec.h
             PATHS ${ffmpeg_win_SOURCE_DIR}
-            PATH_SUFFIXES lib
+            PATH_SUFFIXES include
             NO_DEFAULT_PATH
             NO_CMAKE_FIND_ROOT_PATH
         )
-        file(GLOB FFMPEG_${lib}_DLL_LIST "${ffmpeg_win_SOURCE_DIR}/bin/${lib}*.dll")
-        if(FFMPEG_${lib}_DLL_LIST)
-            list(GET FFMPEG_${lib}_DLL_LIST 0 FFMPEG_${lib}_DLL)
-        endif()
         
-        if(FFMPEG_${lib}_LIB)
-            add_library(FFMPEG::${lib} SHARED IMPORTED)
-            set_target_properties(FFMPEG::${lib} PROPERTIES
-                IMPORTED_IMPLIB "${FFMPEG_${lib}_LIB}"
-                INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INC_DIR}"
+        foreach(lib avcodec avformat swscale avutil)
+            find_library(FFMPEG_${lib}_LIB NAMES ${lib}
+                PATHS ${ffmpeg_win_SOURCE_DIR}
+                PATH_SUFFIXES lib
+                NO_DEFAULT_PATH
+                NO_CMAKE_FIND_ROOT_PATH
             )
-            if(FFMPEG_${lib}_DLL)
-                set_target_properties(FFMPEG::${lib} PROPERTIES
-                    IMPORTED_LOCATION "${FFMPEG_${lib}_DLL}"
-                )
+            file(GLOB FFMPEG_${lib}_DLL_LIST "${ffmpeg_win_SOURCE_DIR}/bin/${lib}*.dll")
+            if(FFMPEG_${lib}_DLL_LIST)
+                list(GET FFMPEG_${lib}_DLL_LIST 0 FFMPEG_${lib}_DLL)
             endif()
-            list(APPEND FFMPEG_LIBRARIES FFMPEG::${lib})
-        endif()
-    endforeach()
-    
-    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_INC_DIR}")
-else()
-    pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libswscale libavutil)
-endif()
+            
+            if(FFMPEG_${lib}_LIB)
+                add_library(FFMPEG::${lib} SHARED IMPORTED)
+                set_target_properties(FFMPEG::${lib} PROPERTIES
+                    IMPORTED_IMPLIB "${FFMPEG_${lib}_LIB}"
+                    INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INC_DIR}"
+                )
+                if(FFMPEG_${lib}_DLL)
+                    set_target_properties(FFMPEG::${lib} PROPERTIES
+                        IMPORTED_LOCATION "${FFMPEG_${lib}_DLL}"
+                    )
+                endif()
+                list(APPEND FFMPEG_LIBRARIES FFMPEG::${lib})
+            endif()
+        endforeach()
+        
+        set(FFMPEG_INCLUDE_DIRS "${FFMPEG_INC_DIR}")
+    else()
+        pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libswscale libavutil)
+    endif()
 
-if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
-    add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
-    set_target_properties(ZLIB::ZLIB PROPERTIES
-        IMPORTED_LOCATION "${ZLIB_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
-    )
-endif()
+    if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
+        add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+        set_target_properties(ZLIB::ZLIB PROPERTIES
+            IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+        )
+    endif()
 
-message(STATUS "ZLib Found: ${ZLIB_LIBRARIES}")
-message(STATUS "OpenSSL Found: ${OPENSSL_LIBRARIES}")
+    message(STATUS "ZLib Found: ${ZLIB_LIBRARIES}")
+    message(STATUS "OpenSSL Found: ${OPENSSL_LIBRARIES}")
+endif()
 
 FetchContent_Declare(
     asio
@@ -220,10 +234,11 @@ FetchContent_Declare(
 set(HTTPLIB_REQUIRE_OPENSSL OFF CACHE BOOL "" FORCE) 
 set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(httplib)
-if(TARGET httplib)
+if(TARGET httplib AND NOT EMSCRIPTEN)
     target_compile_definitions(httplib INTERFACE CPPHTTPLIB_OPENSSL_SUPPORT)
     target_link_libraries(httplib INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 endif()
+
 
 FetchContent_Declare(
     pocketpy
@@ -243,6 +258,9 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(65c02_core STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core PUBLIC ASIO_STANDALONE)
+if(EMSCRIPTEN)
+    target_compile_definitions(65c02_core PUBLIC TARGET_WASM)
+endif()
 target_include_directories(65c02_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${picosha2_SOURCE_DIR} ${asio_SOURCE_DIR}/asio/include ${pocketpy_SOURCE_DIR}/include)
 target_link_libraries(65c02_core PUBLIC SDL3::SDL3 httplib::httplib pocketpy SndFile::sndfile)
 
@@ -364,12 +382,29 @@ else()
         glad_gl
         nlohmann_json::nlohmann_json
         httplib::httplib
-        OpenSSL::SSL 
-        OpenSSL::Crypto
-        ZLIB::ZLIB
         ${FFMPEG_LIBRARIES}
     )
+    if(NOT EMSCRIPTEN)
+        target_link_libraries(SIM_65C02 PRIVATE 
+            OpenSSL::SSL 
+            OpenSSL::Crypto
+            ZLIB::ZLIB
+        )
+    endif()
 endif()
+
+if(EMSCRIPTEN)
+    target_link_options(SIM_65C02 PRIVATE 
+        "-sUSE_SDL=3"
+        "-sALLOW_MEMORY_GROWTH=1"
+        "-sMAX_WEBGL_VERSION=2"
+        "-sUSE_PTHREADS=1"
+        "-sPTHREAD_POOL_SIZE=8"
+        "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/web/shell.html"
+    )
+    set_target_properties(SIM_65C02 PROPERTIES SUFFIX ".html")
+endif()
+
 
 target_include_directories(SIM_65C02 PRIVATE
     ${imguifiledialog_SOURCE_DIR}
@@ -387,7 +422,7 @@ target_compile_definitions(SIM_65C02 PRIVATE
 enable_testing()
 file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
 
-if(TEST_SOURCES)
+if(TEST_SOURCES AND NOT EMSCRIPTEN)
     add_executable(unit_tests ${TEST_SOURCES})
     target_link_libraries(unit_tests PRIVATE 65c02_core_test GTest::gtest_main)
 
@@ -402,3 +437,4 @@ if(TEST_SOURCES)
         gtest_discover_tests(unit_tests)
     endif()
 endif()
+

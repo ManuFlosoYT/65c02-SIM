@@ -5,6 +5,10 @@
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl3.h>
+#ifdef TARGET_WASM
+#include <emscripten.h>
+#endif
+
 
 #include <fstream>
 #include <iostream>
@@ -407,6 +411,69 @@ static int RunHeadless(const Args& args) {
     return 0;
 }
 
+// --- Emscripten Loop Support ---
+
+struct MainLoopArgs {
+    SDL_Window* window;
+    SDL_GLContext gl_context;
+    AppState* state;
+    std::unique_ptr<MediaExporter>* mediaExporter;
+    bool* done;
+};
+
+static void MainLoop(void* arg) {
+    auto* args = static_cast<MainLoopArgs*>(arg);
+    auto& state = *args->state;
+    auto& done = *args->done;
+    auto* window = args->window;
+
+    HandleSDLEvents(done, window);
+
+    if (!state.emulator.IsPaused()) {
+        state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
+    }
+
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+
+    // Layout Configuration
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImVec2 work_pos = viewport->WorkPos;
+    ImVec2 work_size = viewport->WorkSize;
+    float top_section_height = work_size.y * 0.27F;
+
+    const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+    HandleDialogs(state);
+    DrawPopups(state);
+
+    // Draw all windows
+    DrawGUIWindows(state, work_pos, work_size, top_section_height, windowFlags);
+
+    ImGui::Render();
+    ImGuiIO& imgui_io = ImGui::GetIO();
+    glViewport(0, 0, (int)imgui_io.DisplaySize.x, (int)imgui_io.DisplaySize.y);
+    glClearColor(0.0F, 0.0F, 0.0F, 1.00F);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+#ifndef TARGET_WASM
+    UpdateMediaRecording(state, *args->mediaExporter);
+#endif
+
+    SDL_GL_SwapWindow(window);
+
+#ifdef TARGET_WASM
+    if (done) {
+        emscripten_cancel_main_loop();
+        Cleanup(state, window, args->gl_context);
+    }
+#endif
+}
+
 int main(int argc, char* argv[]) {
     const Args args = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
 
@@ -420,9 +487,10 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    AppState state;
+    static AppState state;
     state.emulator.GetSID().Init();
 
+#ifndef TARGET_WASM
     // Check for updates
     UpdateChecker::CheckForUpdates(PROJECT_VERSION, [&state](bool available, const std::string& version) {
         if (available) {
@@ -430,10 +498,15 @@ int main(int argc, char* argv[]) {
             state.update.available = true;
         }
     });
+#endif
 
     InitializeTextures(state);
 
+#ifdef TARGET_WASM
+    const char* glsl_version = "#version 100"; // WebGL 1/2 compatible
+#else
     const char* glsl_version = "#version 130";
+#endif
     InitializeImGui(window, gl_context, glsl_version);
 
     if (!args.romPath.empty()) {
@@ -450,56 +523,27 @@ int main(int argc, char* argv[]) {
     state.emulator.SetOutputCallback(Console::OutputCallback);
     state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
 
-    bool done = false;
+    static bool done = false;
     state.emulator.Start();
+    
+#ifndef TARGET_WASM
+    static std::unique_ptr<MediaExporter> mediaExporter = nullptr;
+#endif
 
+#ifdef TARGET_WASM
+    static MainLoopArgs loopArgs = { window, gl_context, &state, nullptr, &done };
+    emscripten_set_main_loop_arg(MainLoop, &loopArgs, 0, 1);
+#else
     const int FPS = 60;
     const int frameDelay = 1000 / FPS;
     Uint64 frameStart = 0;
     int frameTime = 0;
-    
-    std::unique_ptr<MediaExporter> mediaExporter = nullptr;
+
+    MainLoopArgs loopArgs = { window, gl_context, &state, &mediaExporter, &done };
 
     while (!done) {
         frameStart = SDL_GetTicks();
-
-        HandleSDLEvents(done, window);
-
-        if (!state.emulator.IsPaused()) {
-            state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
-        }
-
-        // Start the Dear ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-        ImGui::NewFrame();
-
-        // Layout Configuration
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImVec2 work_pos = viewport->WorkPos;
-        ImVec2 work_size = viewport->WorkSize;
-        float top_section_height = work_size.y * 0.27F;
-
-        const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-        HandleDialogs(state);
-        DrawPopups(state);
-
-        // Draw all windows
-        DrawGUIWindows(state, work_pos, work_size, top_section_height, windowFlags);
-
-        ImGui::Render();
-        ImGuiIO& imgui_io = ImGui::GetIO();
-        glViewport(0, 0, (int)imgui_io.DisplaySize.x, (int)imgui_io.DisplaySize.y);
-        glClearColor(0.0F, 0.0F, 0.0F, 1.00F);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        UpdateMediaRecording(state, mediaExporter);
-
-        SDL_GL_SwapWindow(window);
-
+        MainLoop(&loopArgs);
         frameTime = (int)(SDL_GetTicks() - frameStart);
         if (frameDelay > frameTime) {
             SDL_Delay(frameDelay - frameTime);
@@ -507,6 +551,8 @@ int main(int argc, char* argv[]) {
     }
 
     Cleanup(state, window, gl_context);
+#endif
 
     return 0;
 }
+

@@ -1,3 +1,4 @@
+#ifndef TARGET_WASM
 #include "MediaExporter.h"
 #include <glad/gl.h>
 #include <algorithm>
@@ -476,3 +477,4 @@ void MediaExporter::Finalize() {
         pboProcessed.fill(0U);
     }
 }
+#endif
