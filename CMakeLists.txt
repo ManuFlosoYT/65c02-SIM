@@ -303,12 +303,31 @@ set(CRT_SHADERS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/CRTShaders.h")
 # ---------------------------------------------------------------------------
 find_program(MAGICK_EXECUTABLE NAMES magick convert REQUIRED)
 
-set(ICON_PNG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/Assets/65c02-sim.png")
-set(ICON_ICO "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/Assets/65c02-sim.ico")
+set(ICON_SVG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/Assets/65c02-sim.svg")
+set(ICON_PNG "${CMAKE_CURRENT_BINARY_DIR}/generated/65c02-sim.png")
+set(ICON_ICO "${CMAKE_CURRENT_BINARY_DIR}/generated/65c02-sim.ico")
 set(ICON_PIXELS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/IconPixels.h")
 set(ICON_RESOURCE_RC "${CMAKE_CURRENT_BINARY_DIR}/generated/resource.rc")
 
-# Generate IconPixels.h from PNG
+# SVG -> PNG (256x256)
+add_custom_command(
+    OUTPUT "${ICON_PNG}"
+    COMMAND ${MAGICK_EXECUTABLE} -background none "${ICON_SVG}" -resize 256x256 "${ICON_PNG}"
+    DEPENDS "${ICON_SVG}"
+    COMMENT "Generating PNG icon from SVG"
+    VERBATIM
+)
+
+# SVG -> ICO (multi-size)
+add_custom_command(
+    OUTPUT "${ICON_ICO}"
+    COMMAND ${MAGICK_EXECUTABLE} -background none "${ICON_SVG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
+    DEPENDS "${ICON_SVG}"
+    COMMENT "Generating Windows ICO from SVG"
+    VERBATIM
+)
+
+# Generate IconPixels.h from the generated PNG
 add_custom_command(
     OUTPUT "${ICON_PIXELS_H}"
     COMMAND ${CMAKE_COMMAND}
@@ -321,7 +340,7 @@ add_custom_command(
     VERBATIM
 )
 
-# Generate Windows resource.rc
+# Generate Windows resource.rc pointing to the generated ICO
 add_custom_command(
     OUTPUT "${ICON_RESOURCE_RC}"
     COMMAND ${CMAKE_COMMAND} -E echo "IDI_ICON1 ICON DISCARDABLE \"${ICON_ICO}\"" > "${ICON_RESOURCE_RC}"
