@@ -169,7 +169,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cc65 jq python3-pip zip imagemagick
+          sudo apt-get install -y cc65 jq python3-pip zip imagemagick librsvg2-bin
           pip3 install pillow mido --break-system-packages
 
       - name: Download SDK Artifact
