@@ -86,6 +86,28 @@ The resulting executable is saved to `output/windows/SIM_65C02.exe`.
 
 If **Wine** is installed, the script automatically runs the unit tests.
 
+## Build for Web (WebAssembly)
+
+The simulator can be compiled to run in the browser using Emscripten.
+
+```bash
+./build-web.sh
+```
+
+For detailed information on prerequisites, local testing, and browser features, see the **[WebAssembly Build](WebAssembly-Build.md)** wiki page.
+
+### Script options
+
+| Option | Description |
+|--------|-------------|
+| `--run` | Starts a local web server and opens the application in the browser |
+| `--clean` | Forces a clean build |
+
+```bash
+./build-web.sh --run       # Build and run locally
+./build-web.sh --clean     # Clean build
+```
+
 ## Build system (CMake)
 
 The project uses **CMake** with the following targets:
@@ -136,6 +158,10 @@ output/
 │   └── SIM_65C02          ← Linux executable
 ├── windows/
 │   └── SIM_65C02.exe      ← Windows executable
+├── web/                   ← WebAssembly build
+│   ├── index.html
+│   ├── SIM_65C02.wasm
+│   └── ...
 └── rom/                   ← Programs compiled with compile-bin.sh
     ├── echo.bin
     ├── tetris.bin
@@ -145,6 +171,7 @@ output/
 ## CI/CD
 
 The project uses **GitHub Actions** (`.github/workflows/`) to:
-- Automatically build on every push
+- Automatically build on every push (Linux + Windows)
+- Build and deploy to **GitHub Pages** (WebAssembly) on every tag
 - Run the unit tests
 - Generate release artifacts (Linux + Windows + SDK)
