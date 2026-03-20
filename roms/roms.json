@@ -1,0 +1,41 @@
+{
+  "roms": [
+    "cube.bin",
+    "eater.bin",
+    "echo.bin",
+    "fillVRAM.bin",
+    "fullTest.bin",
+    "game.bin",
+    "mat.bin",
+    "mat64.bin",
+    "microDOS.bin",
+    "room.bin",
+    "test.bin",
+    "testGPU.bin",
+    "testNET.bin",
+    "testSD.bin",
+    "testSID.bin",
+    "testVIA.bin",
+    "tetris.bin",
+    "vga.bin"
+  ],
+  "midis": [
+    "awake.bin",
+    "cynthia.bin",
+    "fortnite.bin",
+    "fukashigi.bin",
+    "komi.bin",
+    "miku.bin",
+    "og.bin",
+    "overworld.bin",
+    "seishun.bin",
+    "sweeden.bin",
+    "usseewa.bin"
+  ],
+  "vrams": [
+    "bocchi.bin",
+    "finch.bin",
+    "rick.bin",
+    "xdd.bin"
+  ]
+}
