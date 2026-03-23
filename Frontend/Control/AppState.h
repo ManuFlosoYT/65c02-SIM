@@ -101,6 +101,7 @@ struct IDEState {
     std::string code;
     std::string outputLog;
     std::string currentFilePath;
+    std::vector<uint8_t> exportBinary;
     bool isCMode = true;
 };
 

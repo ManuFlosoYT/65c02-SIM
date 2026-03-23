@@ -96,6 +96,26 @@ void DrawIDEWindow(Control::AppState& state) {
             }
         }
 
+        ImGui::SameLine();
+        if (ImGui::Button("Compile & Export", ImVec2(180, 0))) {
+            state.ide.outputLog.clear();
+            if (state.ide.code.empty()) {
+                state.ide.outputLog = "Error: Code is empty.";
+            } else {
+                CompilerFrontend::BuildType type = state.ide.isCMode ? 
+                    CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
+                
+                auto result = CompilerFrontend::Compile(type, state.ide.code);
+                state.ide.outputLog = result.log;
+
+                if (result.success && !result.binary.empty()) {
+                    state.ide.exportBinary = result.binary;
+                    state.ide.outputLog += "\nCompilation successful. Choose where to save the .bin file.";
+                    ImGuiFileDialog::Instance()->OpenDialog("IDE_ExportBinDlg", "Export Binary As", ".bin", ".");
+                }
+            }
+        }
+
         ImGui::Separator();
 
         // Editor and Output Split
@@ -157,6 +177,23 @@ void DrawIDEWindow(Control::AppState& state) {
                 } else {
                     state.ide.outputLog = "Failed to save " + state.ide.currentFilePath;
                 }
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("IDE_ExportBinDlg", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::string exportPath = ImGuiFileDialog::Instance()->GetFilePathName();
+                std::ofstream out(exportPath, std::ios::binary);
+                if (out && !state.ide.exportBinary.empty()) {
+                    out.write(reinterpret_cast<const char*>(state.ide.exportBinary.data()), state.ide.exportBinary.size());
+                    state.ide.outputLog += "\nExported binary to " + exportPath;
+                } else {
+                    state.ide.outputLog += "\nFailed to export binary to " + exportPath;
+                }
+                state.ide.exportBinary.clear();
+            } else {
+                state.ide.exportBinary.clear();
             }
             ImGuiFileDialog::Instance()->Close();
         }
