@@ -96,6 +96,13 @@ struct SDKState {
     bool showPopup = false;
 };
 
+struct IDEState {
+    bool open = false;
+    std::string code;
+    std::string outputLog;
+    bool isCMode = true;
+};
+
 struct AppState {
     Emulator emulator;
 
@@ -108,6 +115,7 @@ struct AppState {
     RenderState render;
     PopupState popups;
     SDKState sdk;
+    IDEState ide;
 
     GUI::CRTFilter crtFilter;
 };

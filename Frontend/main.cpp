@@ -26,6 +26,7 @@
 #include "Frontend/GUI/Style/Style.h"
 #include "Frontend/GUI/UpdatePopup.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
+#include "Frontend/GUI/IDEWindow.h"
 #include "UpdateChecker.h"
 #include "Frontend/MediaExporter.h"
 #ifdef TARGET_WASM
@@ -33,6 +34,9 @@
 #endif
 #include "IconPixels.h"
 #include <memory>
+#ifndef TARGET_WASM
+#include "Frontend/Compiler/CC65VFS.h"
+#endif
 
 using namespace Control;
 using namespace Core;
@@ -322,6 +326,7 @@ static void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2
     GUI::DrawScriptConsoleWindow(state, work_pos, work_size, top_section_height, windowFlags);
     state.crt.time = static_cast<float>(SDL_GetTicks()) / 1000.0F;
     GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, windowFlags);
+    GUI::DrawIDEWindow(state);
 }
 
 static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {
@@ -376,6 +381,10 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
     SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
+    
+#ifndef TARGET_WASM
+    CC65VFS::Cleanup();
+#endif
 }
 
 struct Args {
@@ -517,8 +526,16 @@ static void MainLoop(void* arg) {
 int main(int argc, char* argv[]) {
     const Args args = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
 
+#ifndef TARGET_WASM
+    CC65VFS::Initialize();
+#endif
+
     if (args.headless) {
-        return RunHeadless(args);
+        int ret = RunHeadless(args);
+#ifndef TARGET_WASM
+        CC65VFS::Cleanup();
+#endif
+        return ret;
     }
 
     SDL_Window* window = nullptr;

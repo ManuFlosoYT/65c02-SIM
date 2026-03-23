@@ -248,6 +248,84 @@ FetchContent_Declare(
 set(PKPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(pocketpy)
 
+if(NOT EMSCRIPTEN)
+    FetchContent_Declare(
+        cc65
+        GIT_REPOSITORY https://github.com/cc65/cc65.git
+        GIT_TAG V2.19
+    )
+    FetchContent_MakeAvailable(cc65)
+
+    FetchContent_Declare(
+        cc65_snapshot
+        URL https://sourceforge.net/projects/cc65/files/cc65-snapshot-win32.zip/download
+    )
+    FetchContent_MakeAvailable(cc65_snapshot)
+
+    if(NOT TARGET cc65_common)
+        file(GLOB CC65_COMMON_SRC "${cc65_SOURCE_DIR}/src/common/*.c")
+        add_library(cc65_common STATIC ${CC65_COMMON_SRC})
+        target_include_directories(cc65_common PUBLIC "${cc65_SOURCE_DIR}/src/common")
+
+        file(GLOB CC65_CC65_SRC "${cc65_SOURCE_DIR}/src/cc65/*.c")
+        add_executable(cc65_bin ${CC65_CC65_SRC})
+        target_include_directories(cc65_bin PUBLIC "${cc65_SOURCE_DIR}/src/common")
+        target_link_libraries(cc65_bin PRIVATE cc65_common m)
+
+        file(GLOB CC65_CA65_SRC "${cc65_SOURCE_DIR}/src/ca65/*.c")
+        add_executable(ca65_bin ${CC65_CA65_SRC})
+        target_include_directories(ca65_bin PUBLIC "${cc65_SOURCE_DIR}/src/common")
+        target_link_libraries(ca65_bin PRIVATE cc65_common m)
+
+        file(GLOB CC65_LD65_SRC "${cc65_SOURCE_DIR}/src/ld65/*.c")
+        add_executable(ld65_bin ${CC65_LD65_SRC})
+        target_include_directories(ld65_bin PUBLIC "${cc65_SOURCE_DIR}/src/common")
+        target_link_libraries(ld65_bin PRIVATE cc65_common m)
+        
+        # Disable LTO for these executables to speed up build
+        set_target_properties(cc65_bin ca65_bin ld65_bin PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+
+        # Generate C++ headers containing the executable bytes
+        add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/cc65_exe.h"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+            COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "$<TARGET_FILE:cc65_bin>" "cc65_exe_data" "${CMAKE_CURRENT_BINARY_DIR}/generated/cc65_exe.h"
+            DEPENDS cc65_bin "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
+            COMMENT "Embedding cc65_bin executable"
+            VERBATIM
+        )
+        add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/ca65_exe.h"
+            COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "$<TARGET_FILE:ca65_bin>" "ca65_exe_data" "${CMAKE_CURRENT_BINARY_DIR}/generated/ca65_exe.h"
+            DEPENDS ca65_bin "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
+            COMMENT "Embedding ca65_bin executable"
+            VERBATIM
+        )
+        add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/ld65_exe.h"
+            COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "$<TARGET_FILE:ld65_bin>" "ld65_exe_data" "${CMAKE_CURRENT_BINARY_DIR}/generated/ld65_exe.h"
+            DEPENDS ld65_bin "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
+            COMMENT "Embedding ld65_bin executable"
+            VERBATIM
+        )
+
+        add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
+            COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCC65.py" "${cc65_snapshot_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/Linker" "${CMAKE_CURRENT_SOURCE_DIR}/Binaries/Libs" "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
+            DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCC65.py"
+            COMMENT "Embedding CC65 VFS contents (headers and none.lib)"
+            VERBATIM
+        )
+
+        add_custom_target(embedded_compilers DEPENDS
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/cc65_exe.h"
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/ca65_exe.h"
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/ld65_exe.h"
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
+        )
+    endif()
+endif()
+
 
 file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
     "Hardware/*.cpp"
@@ -472,6 +550,9 @@ target_include_directories(SIM_65C02 PRIVATE
     ${FFMPEG_INCLUDE_DIRS}
 )
 add_dependencies(SIM_65C02 crt_shaders app_icons)
+if(NOT EMSCRIPTEN)
+    add_dependencies(SIM_65C02 embedded_compilers)
+endif()
 
 target_compile_definitions(SIM_65C02 PRIVATE 
     IMGUI_DEFINE_MATH_OPERATORS 

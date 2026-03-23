@@ -137,6 +137,16 @@ static void DrawConsoleButtonBar(AppState& state) {
     if (ImGui::Button("Copy Output")) {
         ImGui::OpenPopup("CopyConsoleOutput");
     }
+
+#ifndef TARGET_WASM
+    ImGui::SameLine();
+    if (ImGui::Button("Open IDE")) {
+        state.ide.open = !state.ide.open;
+        if (state.ide.code.empty()) {
+            state.ide.code = "// Write your C or Assembly here!\n";
+        }
+    }
+#endif
     ImGui::Separator();
 }
 
