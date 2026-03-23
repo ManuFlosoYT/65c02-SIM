@@ -103,6 +103,7 @@ struct IDEState {
     std::string outputLog;
     std::string currentFilePath;
     std::vector<uint8_t> exportBinary;
+    std::string exportDbgPath;
     bool isCMode = true;
     std::array<char, 65536> codeBuffer = {{0}};
 };

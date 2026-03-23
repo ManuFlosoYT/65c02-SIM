@@ -71,6 +71,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(ImGuiFileDialog)
 
 FetchContent_Declare(
+    ImGuiColorTextEdit
+    GIT_REPOSITORY https://github.com/BalazsJako/ImGuiColorTextEdit.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(ImGuiColorTextEdit)
+
+FetchContent_Declare(
     json
     URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
 )
@@ -499,6 +506,7 @@ else()
     add_executable(SIM_65C02 
         ${FRONTEND_SOURCES}
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+        ${imguicolortextedit_SOURCE_DIR}/TextEditor.cpp
     )
     target_link_options(SIM_65C02 PRIVATE 
         -static-libgcc 
@@ -546,6 +554,7 @@ endif()
 target_include_directories(SIM_65C02 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${imguifiledialog_SOURCE_DIR}
+    ${imguicolortextedit_SOURCE_DIR}
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
     ${FFMPEG_INCLUDE_DIRS}
 )

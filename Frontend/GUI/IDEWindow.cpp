@@ -3,12 +3,68 @@
 #include <fstream>
 #include <sstream>
 #include <array>
+#include <TextEditor.h>
 
 #ifndef EMSCRIPTEN
 #include "Frontend/Compiler/CompilerFrontend.h"
 #endif
 
 namespace GUI {
+
+namespace {
+    TextEditor& GetTextEditor() {
+        static TextEditor editor;
+        return editor;
+    }
+
+    bool& IsEditorInitialized() {
+        static bool initialized = false;
+        return initialized;
+    }
+
+    TextEditor::LanguageDefinition GetCC65LanguageDefinition() {
+        TextEditor::LanguageDefinition langDef = TextEditor::LanguageDefinition::CPlusPlus();
+        langDef.mName = "6502 Assembly";
+
+        static const std::array<const char*, 64> opcodes = {{
+            "adc", "and", "asl", "bcc", "bcs", "beq", "bit", "bmi", "bne", "bpl", "brk", "bvc", "bvs", "clc",
+            "cld", "cli", "clv", "cmp", "cpx", "cpy", "dec", "dex", "dey", "eor", "inc", "inx", "iny", "jmp",
+            "jsr", "lda", "ldx", "ldy", "lsr", "nop", "ora", "pha", "php", "pla", "plp", "rol", "ror", "rti",
+            "rts", "sbc", "sec", "sed", "sei", "sta", "stx", "sty", "tax", "tay", "tsx", "txa", "txs", "tya",
+            "bra", "phx", "phy", "plx", "ply", "stz", "trb", "tsb" // 65C02 instructions
+        }};
+
+        static const std::array<const char*, 28> directives = {{
+            ".byte", ".word", ".dword", ".res", ".text", ".data", ".bss", ".rodata", ".org", ".include", ".incbin",
+            ".macpack", ".macro", ".endmacro", ".proc", ".endproc", ".scope", ".endscope", ".out", ".segment", ".export",
+            ".import", ".importzp", ".exportzp", ".global", ".globalzp", ".align", ".addr"
+        }};
+
+        for (const auto& keyword : opcodes) {
+            langDef.mKeywords.insert(keyword);
+        }
+        for (const auto& keyword : directives) {
+            langDef.mKeywords.insert(keyword);
+        }
+
+        langDef.mSingleLineComment = ";";
+        langDef.mCommentStart = "/*";
+        langDef.mCommentEnd = "*/";
+
+        langDef.mCaseSensitive = false;
+        langDef.mAutoIndentation = true;
+
+        return langDef;
+    }
+
+    void InitEditor(Control::AppState& state) {
+        if (!IsEditorInitialized()) {
+            GetTextEditor().SetPalette(TextEditor::GetDarkPalette());
+            GetTextEditor().SetLanguageDefinition(state.ide.isCMode ? TextEditor::LanguageDefinition::CPlusPlus() : GetCC65LanguageDefinition());
+            IsEditorInitialized() = true;
+        }
+    }
+}
 
 static void DrawFileToolbar(Control::AppState& state) {
     if (ImGui::Button("Open File")) {
@@ -47,15 +103,23 @@ static void DrawFileToolbar(Control::AppState& state) {
 
 static void HandleCompileAndRun(Control::AppState& state) {
     state.ide.outputLog.clear();
-    if (state.ide.code.empty()) {
-        state.ide.outputLog = "Error: Code is empty.";
+    if (state.ide.currentFilePath.empty()) {
+        state.ide.outputLog = "Error: Please save your file before compiling.";
         return;
     }
+    std::ofstream fileOut(state.ide.currentFilePath);
+    if (fileOut) {
+        fileOut << state.ide.code;
+    } else {
+        state.ide.outputLog = "Error: Failed to auto-save file before compiling.";
+        return;
+    }
+
 #ifndef EMSCRIPTEN
     CompilerFrontend::BuildType type = state.ide.isCMode ? 
         CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
     
-    auto result = CompilerFrontend::Compile(type, state.ide.code);
+    auto result = CompilerFrontend::Compile(type, state.ide.code, state.ide.currentFilePath);
     state.ide.outputLog = result.log;
 
     if (result.success && !result.binary.empty()) {
@@ -66,6 +130,13 @@ static void HandleCompileAndRun(Control::AppState& state) {
             state.rom.data = result.binary;
             state.rom.loaded = true;
             state.rom.symbols.Clear();
+            if (!result.dbgFile.empty()) {
+                if (state.rom.symbols.LoadFromFile(result.dbgFile)) {
+                    state.ide.outputLog += "\nLoaded debug symbols.";
+                } else {
+                    state.ide.outputLog += "\nFailed to load debug symbols.";
+                }
+            }
             state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
             state.emulator.ClearProfiler();
             state.ide.outputLog += "\nSuccessfully loaded to emulator and Reset.";
@@ -78,19 +149,28 @@ static void HandleCompileAndRun(Control::AppState& state) {
 
 static void HandleCompileAndExport(Control::AppState& state) {
     state.ide.outputLog.clear();
-    if (state.ide.code.empty()) {
-        state.ide.outputLog = "Error: Code is empty.";
+    if (state.ide.currentFilePath.empty()) {
+        state.ide.outputLog = "Error: Please save your file before compiling.";
         return;
     }
+    std::ofstream fileOut(state.ide.currentFilePath);
+    if (fileOut) {
+        fileOut << state.ide.code;
+    } else {
+        state.ide.outputLog = "Error: Failed to auto-save file before compiling.";
+        return;
+    }
+
 #ifndef EMSCRIPTEN
     CompilerFrontend::BuildType type = state.ide.isCMode ? 
         CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
     
-    auto result = CompilerFrontend::Compile(type, state.ide.code);
+    auto result = CompilerFrontend::Compile(type, state.ide.code, state.ide.currentFilePath);
     state.ide.outputLog = result.log;
 
     if (result.success && !result.binary.empty()) {
         state.ide.exportBinary = result.binary;
+        state.ide.exportDbgPath = result.dbgFile;
         state.ide.outputLog += "\nCompilation successful. Choose where to save the .bin file.";
         ImGuiFileDialog::Instance()->OpenDialog("IDE_ExportBinDlg", "Export Binary As", ".bin", ".");
     }
@@ -100,10 +180,12 @@ static void HandleCompileAndExport(Control::AppState& state) {
 static void DrawCompilerToolbar(Control::AppState& state) {
     if (ImGui::RadioButton("C", state.ide.isCMode)) {
         state.ide.isCMode = true;
+        GetTextEditor().SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
     }
     ImGui::SameLine();
     if (ImGui::RadioButton("Assembly", !state.ide.isCMode)) {
         state.ide.isCMode = false;
+        GetTextEditor().SetLanguageDefinition(GetCC65LanguageDefinition());
     }
 
     ImGui::SameLine();
@@ -135,17 +217,16 @@ static void HandleOpenFile(Control::AppState& state) {
                 std::ostringstream stringStream;
                 stringStream << fileIn.rdbuf();
                 state.ide.code = stringStream.str();
-                
-                size_t copySize = std::min(state.ide.code.size(), state.ide.codeBuffer.size() - 1);
-                std::copy_n(state.ide.code.begin(), copySize, state.ide.codeBuffer.begin());
-                state.ide.codeBuffer.at(copySize) = '\0';
+                GetTextEditor().SetText(state.ide.code);
 
                 state.ide.outputLog = "Opened " + state.ide.currentFilePath;
                 
                 if (state.ide.currentFilePath.ends_with(".c")) {
                     state.ide.isCMode = true;
+                    GetTextEditor().SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
                 } else if (state.ide.currentFilePath.ends_with(".s") || state.ide.currentFilePath.ends_with(".asm")) {
                     state.ide.isCMode = false;
+                    GetTextEditor().SetLanguageDefinition(GetCC65LanguageDefinition());
                 }
             } else {
                 state.ide.outputLog = "Failed to open " + state.ide.currentFilePath;
@@ -180,12 +261,24 @@ static void HandleExportFile(Control::AppState& state) {
                 fileOut.write(reinterpret_cast<const char*>(state.ide.exportBinary.data()), // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
                             static_cast<std::streamsize>(state.ide.exportBinary.size()));
                 state.ide.outputLog += "\nExported binary to " + exportPath;
+                
+                if (!state.ide.exportDbgPath.empty()) {
+                    std::string dbgPath = exportPath.substr(0, exportPath.find_last_of('.')) + ".dbg";
+                    std::ifstream src(state.ide.exportDbgPath, std::ios::binary);
+                    std::ofstream dst(dbgPath, std::ios::binary);
+                    if (src && dst) {
+                        dst << src.rdbuf();
+                        state.ide.outputLog += "\nExported debug symbols to " + dbgPath;
+                    }
+                }
             } else {
                 state.ide.outputLog += "\nFailed to export binary to " + exportPath;
             }
             state.ide.exportBinary.clear();
+            state.ide.exportDbgPath.clear();
         } else {
             state.ide.exportBinary.clear();
+            state.ide.exportDbgPath.clear();
         }
         ImGuiFileDialog::Instance()->Close();
     }
@@ -215,20 +308,16 @@ void DrawIDEWindow(Control::AppState& state) {
         float availableHeight = ImGui::GetContentRegionAvail().y;
 
         ImGui::TextUnformatted("Code Editor:");
-        if (state.ide.code.capacity() < 65536) {
-            state.ide.code.reserve(65536);
+        InitEditor(state);
+        
+        if (GetTextEditor().GetText().empty() && !state.ide.code.empty()) {
+            GetTextEditor().SetText(state.ide.code);
         }
         
-        if (state.ide.codeBuffer.at(0) == '\0' && !state.ide.code.empty()) {
-            size_t copySize = std::min(state.ide.code.size(), state.ide.codeBuffer.size() - 1);
-            std::copy_n(state.ide.code.begin(), copySize, state.ide.codeBuffer.begin());
-            state.ide.codeBuffer.at(copySize) = '\0';
-        }
+        GetTextEditor().Render("##CodeEditor", ImVec2(0, availableHeight - outputHeight - 30.0F));
         
-        if (ImGui::InputTextMultiline("##CodeEditor", state.ide.codeBuffer.data(), state.ide.codeBuffer.size(), 
-            ImVec2(-FLT_MIN, availableHeight - outputHeight - 30.0F), 
-            ImGuiInputTextFlags_AllowTabInput)) {
-            state.ide.code = state.ide.codeBuffer.data();
+        if (GetTextEditor().IsTextChanged()) {
+            state.ide.code = GetTextEditor().GetText();
         }
 
         ImGui::TextUnformatted("Build Output:");

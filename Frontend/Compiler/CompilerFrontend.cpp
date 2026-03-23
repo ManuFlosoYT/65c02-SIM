@@ -240,8 +240,8 @@ static int CompileCC65(const std::string& cc65, const std::string& tempDir, cons
     return RunSysCommand(cmd, log);
 }
 
-static int AssembleFile(const std::string& ca65, const std::string& src, const std::string& obj, std::string& log) {
-    std::string cmd = ca65 + " -g -t none " + src + " -o " + obj;
+static int AssembleFile(const std::string& ca65, const std::string& tempDir, const std::string& src, const std::string& obj, std::string& log) {
+    std::string cmd = ca65 + " --cpu 65C02 -g -t none -I " + tempDir + "/asminc " + src + " -o " + obj;
     log += "> " + cmd + "\n";
     return RunSysCommand(cmd, log);
 }
@@ -254,7 +254,7 @@ static int CompileExtraLibs(const std::string& cc65, const std::string& ca65, co
             std::string s_cmd = cc65;
             s_cmd += " -I ";
             s_cmd += tempDir;
-            s_cmd += "/include -O --cpu 65C02 ";
+            s_cmd += "/include -O --cpu 65C02 -t none ";
             s_cmd += tempDir;
             s_cmd += "/include/";
             s_cmd += files.at(i);
@@ -270,7 +270,9 @@ static int CompileExtraLibs(const std::string& cc65, const std::string& ca65, co
             }
 
             std::string o_cmd = ca65;
-            o_cmd += " -g -t none ";
+            o_cmd += " --cpu 65C02 -g -t none -I ";
+            o_cmd += tempDir;
+            o_cmd += "/asminc ";
             o_cmd += tempDir;
             o_cmd += "/";
             o_cmd += objNames.at(i);
@@ -291,15 +293,34 @@ static int CompileExtraLibs(const std::string& cc65, const std::string& ca65, co
     return 0;
 }
 
-CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const std::string& code) {
+CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const std::string& code, const std::string& sourceName) {
     BuildResult res;
+    if (code.empty()) {
+        res.log = "Error: Empty source code.\n";
+        return res;
+    }
+
     std::string tempDir = CC65VFS::GetTempDir();
     if (tempDir.empty()) {
         res.log = "Error: CC65 VFS not initialized.";
         return res;
     }
 
-    std::string srcFile = tempDir + (type == BuildType::C ? "/test.c" : "/test.s");
+    std::string baseName = sourceName;
+    size_t lastDot = baseName.find_last_of('.');
+    if (lastDot != std::string::npos) {
+        baseName = baseName.substr(0, lastDot);
+    }
+    size_t lastSlash = baseName.find_last_of("/\\");
+    if (lastSlash != std::string::npos) {
+        baseName = baseName.substr(lastSlash + 1);
+    }
+
+    if (baseName.empty()) {
+        baseName = "out";
+    }
+
+    std::string srcFile = tempDir + "/" + baseName + (type == BuildType::C ? ".c" : ".s");
     WriteTextFile(srcFile, code);
 
     std::string ext;
@@ -311,22 +332,28 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string ca65 = tempDir + "/ca65" + ext;
     std::string ld65 = tempDir + "/ld65" + ext;
     
+    std::string sFile = tempDir + "/" + baseName + ".s";
+    std::string oFile = tempDir + "/" + baseName + ".o";
+
     if (type == BuildType::C) {
-        if (CompileCC65(cc65, tempDir, srcFile, res.log) != 0) {
+        // CompileCC65 needs to output to sFile
+        std::string cmd = cc65 + " -I " + tempDir + "/include -O -Oi -Or --static-locals --add-source --cpu 65C02 -g -t none " + srcFile + " -o " + sFile;
+        res.log += "> " + cmd + "\n";
+        if (RunSysCommand(cmd, res.log) != 0) {
             return res;
         }
     }
 
-    if (AssembleFile(ca65, tempDir + "/test.s", tempDir + "/test.o", res.log) != 0) {
+    if (AssembleFile(ca65, tempDir, sFile, oFile, res.log) != 0) {
         return res;
     }
 
-    if (AssembleFile(ca65, tempDir + "/Linker/bios.s", tempDir + "/bios.o", res.log) != 0) {
+    if (AssembleFile(ca65, tempDir, tempDir + "/Linker/bios.s", tempDir + "/bios.o", res.log) != 0) {
         return res;
     }
 
     if (type == BuildType::C) {
-        if (AssembleFile(ca65, tempDir + "/Linker/C-Runtime.s", tempDir + "/cr.o", res.log) != 0) {
+        if (AssembleFile(ca65, tempDir, tempDir + "/Linker/C-Runtime.s", tempDir + "/cr.o", res.log) != 0) {
             return res;
         }
     }
@@ -341,15 +368,19 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string cfgFile = tempDir + "/dynamic.cfg";
     WriteTextFile(cfgFile, GenerateCFG(code));
 
+    std::string dbgFile = tempDir + "/out.dbg";
+
     // Link
     {
         std::string objs = tempDir + "/bios.o ";
         if (type == BuildType::C) {
             objs += tempDir + "/cr.o ";
         }
-        objs += tempDir + "/test.o " + extraObjs;
+        objs += oFile + " " + extraObjs;
         
-        std::string cmd = ld65 + " -C " + cfgFile + " -o " + tempDir + "/out.bin " + objs + (type == BuildType::C ? " " + tempDir + "/lib/none.lib" : "");
+        std::string cmd = ld65 + " -C " + cfgFile + " -o " + tempDir + "/out.bin " + objs + 
+                          (type == BuildType::C ? " " + tempDir + "/lib/none.lib" : "") + 
+                          " -m " + tempDir + "/out.map -vm -Ln " + tempDir + "/out.lbl --dbgfile " + dbgFile;
         res.log += "> " + cmd + "\n";
         if (RunSysCommand(cmd, res.log) != 0) {
             return res;
@@ -357,6 +388,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     }
 
     res.binary = ReadBinaryFile(tempDir + "/out.bin");
+    res.dbgFile = dbgFile;
     if (res.binary.empty()) {
         res.log += "Error: Output binary is empty.\n";
         return res;
