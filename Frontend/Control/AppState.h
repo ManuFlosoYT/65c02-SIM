@@ -100,6 +100,7 @@ struct IDEState {
     bool open = false;
     std::string code;
     std::string outputLog;
+    std::string currentFilePath;
     bool isCMode = true;
 };
 

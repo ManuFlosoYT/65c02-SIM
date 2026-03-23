@@ -1,9 +1,15 @@
 #include "IDEWindow.h"
+#include <ImGuiFileDialog.h>
+#include <fstream>
+#include <sstream>
+
 #ifndef EMSCRIPTEN
 #include "Frontend/Compiler/CompilerFrontend.h"
 #endif
 
 namespace GUI {
+
+static char codeBuffer[65536] = {0};
 
 void DrawIDEWindow(Control::AppState& state) {
     if (!state.ide.open) return;
@@ -17,8 +23,43 @@ void DrawIDEWindow(Control::AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("CC65 Code Editor", &state.ide.open)) {
         
-        // Toolbar
-        if (ImGui::RadioButton("C", state.ide.isCMode)) state.ide.isCMode = true;
+        // Toolbar: File Operations
+        if (ImGui::Button("Open File")) {
+            ImGuiFileDialog::Instance()->OpenDialog("IDE_OpenFile", "Open Source File", ".c,.s,.asm,.*", ".");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Save")) {
+            if (state.ide.currentFilePath.empty()) {
+                ImGuiFileDialog::Instance()->OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
+            } else {
+                std::ofstream out(state.ide.currentFilePath);
+                if (out) {
+                    out << state.ide.code;
+                    state.ide.outputLog = "Saved " + state.ide.currentFilePath;
+                } else {
+                    state.ide.outputLog = "Failed to save " + state.ide.currentFilePath;
+                }
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Save As")) {
+            ImGuiFileDialog::Instance()->OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
+        }
+        
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+
+        if (!state.ide.currentFilePath.empty()) {
+            ImGui::Text("File: %s", state.ide.currentFilePath.c_str());
+        } else {
+            ImGui::Text("File: (Unsaved)");
+        }
+
+        ImGui::Separator();
+
+        // Toolbar: Compiler
+        if (ImGui::RadioButton("C", state.ide.isCMode)) { state.ide.isCMode = true; }
         ImGui::SameLine();
         if (ImGui::RadioButton("Assembly", !state.ide.isCMode)) state.ide.isCMode = false;
 
@@ -26,7 +67,7 @@ void DrawIDEWindow(Control::AppState& state) {
         ImGui::Spacing();
         ImGui::SameLine();
 
-        if (ImGui::Button("Compile & Run", ImVec2(120, 0))) {
+        if (ImGui::Button("Compile & Run", ImVec2(180, 0))) {
             state.ide.outputLog.clear();
             if (state.ide.code.empty()) {
                 state.ide.outputLog = "Error: Code is empty.";
@@ -68,7 +109,6 @@ void DrawIDEWindow(Control::AppState& state) {
         state.ide.code.resize(strlen(state.ide.code.c_str())); 
         // Note: Using a fixed buffer or a callback for std::string resizing
         // The simplest way with ImGui InputTextMultiline is to pass a statically large buffer or use a callback
-        static char codeBuffer[65536];
         if (codeBuffer[0] == '\0' && !state.ide.code.empty()) {
             strncpy(codeBuffer, state.ide.code.c_str(), sizeof(codeBuffer) - 1);
         }
@@ -83,6 +123,43 @@ void DrawIDEWindow(Control::AppState& state) {
         ImGui::Text("Build Output:");
         ImGui::InputTextMultiline("##BuildOutput", (char*)state.ide.outputLog.c_str(), state.ide.outputLog.capacity() + 1, 
             ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+
+        // File Dialogs
+        if (ImGuiFileDialog::Instance()->Display("IDE_OpenFile", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                state.ide.currentFilePath = ImGuiFileDialog::Instance()->GetFilePathName();
+                std::ifstream in(state.ide.currentFilePath);
+                if (in) {
+                    std::ostringstream ss;
+                    ss << in.rdbuf();
+                    state.ide.code = ss.str();
+                    strncpy(codeBuffer, state.ide.code.c_str(), sizeof(codeBuffer) - 1);
+                    codeBuffer[sizeof(codeBuffer) - 1] = '\0';
+                    state.ide.outputLog = "Opened " + state.ide.currentFilePath;
+                    
+                    // Auto-detect mode based on extension
+                    if (state.ide.currentFilePath.ends_with(".c")) state.ide.isCMode = true;
+                    else if (state.ide.currentFilePath.ends_with(".s") || state.ide.currentFilePath.ends_with(".asm")) state.ide.isCMode = false;
+                } else {
+                    state.ide.outputLog = "Failed to open " + state.ide.currentFilePath;
+                }
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("IDE_SaveFile", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                state.ide.currentFilePath = ImGuiFileDialog::Instance()->GetFilePathName();
+                std::ofstream out(state.ide.currentFilePath);
+                if (out) {
+                    out << state.ide.code;
+                    state.ide.outputLog = "Saved " + state.ide.currentFilePath;
+                } else {
+                    state.ide.outputLog = "Failed to save " + state.ide.currentFilePath;
+                }
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
 
     }
     ImGui::End();
