@@ -79,7 +79,14 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         state.emulator.ClearProfiler();
         if (state.rom.loaded) {
             std::string errorMsg;
-            if (!state.emulator.Init(state.rom.bin, errorMsg)) {
+            bool initSuccess = false;
+            if (!state.rom.data.empty()) {
+                initSuccess = state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg);
+            } else {
+                initSuccess = state.emulator.Init(state.rom.bin, errorMsg);
+            }
+            
+            if (!initSuccess) {
                 state.rom.loaded = false;
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
             } else {
