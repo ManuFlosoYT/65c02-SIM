@@ -173,7 +173,13 @@ static void HandleReset(AppState& state) {
 #ifdef TARGET_WASM
         if (!state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg)) {
 #else
-        if (!state.emulator.Init(state.rom.bin, errorMsg)) {
+        bool initSuccess = false;
+        if (!state.rom.data.empty()) {
+            initSuccess = state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg);
+        } else {
+            initSuccess = state.emulator.Init(state.rom.bin, errorMsg);
+        }
+        if (!initSuccess) {
 #endif
             std::cerr << "Error resetting ROM: " << errorMsg << '\n';
             state.rom.loaded = false;
