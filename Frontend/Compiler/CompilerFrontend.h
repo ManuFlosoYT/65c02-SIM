@@ -7,7 +7,7 @@
 
 class CompilerFrontend {
 public:
-    enum class BuildType {
+    enum class BuildType : std::uint8_t {
         C,
         Assembly
     };

@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstdint>
 #include <string>
+#include <array>
 
 #include "Frontend/Control/SymbolTable.h"
 #include "Frontend/GUI/Video/CRTFilter.h"
@@ -103,6 +104,7 @@ struct IDEState {
     std::string currentFilePath;
     std::vector<uint8_t> exportBinary;
     bool isCMode = true;
+    std::array<char, 65536> codeBuffer = {{0}};
 };
 
 struct AppState {

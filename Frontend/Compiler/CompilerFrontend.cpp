@@ -1,48 +1,139 @@
 #ifndef EMSCRIPTEN
 #include "CompilerFrontend.h"
 #include "CC65VFS.h"
-#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <array>
 
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <spawn.h>
 #endif
 
-namespace fs = std::filesystem;
-
 static std::string ReadFile(const std::string& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) return "";
-    std::ostringstream ss;
-    ss << in.rdbuf();
-    return ss.str();
+    std::ifstream fileIn(path, std::ios::binary);
+    if (!fileIn) {
+        return "";
+    }
+    std::ostringstream contents;
+    contents << fileIn.rdbuf();
+    return contents.str();
 }
 
 static std::vector<uint8_t> ReadBinaryFile(const std::string& path) {
-    std::ifstream in(path, std::ios::binary | std::ios::ate);
-    if (!in) return {};
-    auto size = in.tellg();
-    in.seekg(0, std::ios::beg);
-    std::vector<uint8_t> data((size_t)size);
-    in.read(reinterpret_cast<char*>(data.data()), size);
-    return data;
+    std::ifstream fileIn(path, std::ios::binary | std::ios::ate);
+    if (!fileIn) {
+        return {};
+    }
+    const auto fileSize = fileIn.tellg();
+    fileIn.seekg(0, std::ios::beg);
+    std::vector<char> buffer(static_cast<size_t>(fileSize));
+    fileIn.read(buffer.data(), fileSize);
+    return {buffer.begin(), buffer.end()};
 }
 
 static void WriteTextFile(const std::string& path, const std::string& txt) {
     std::ofstream out(path, std::ios::binary);
-    if (out) out << txt;
+    if (out) {
+        out << txt;
+    }
 }
+
+#ifdef _WIN32
+static int PlatformRunCommand(const std::string& cmd, const std::string& logFile) {
+    SECURITY_ATTRIBUTES saAttr;
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    saAttr.bInheritHandle = TRUE;
+    saAttr.lpSecurityDescriptor = nullptr;
+
+    HANDLE hLog = CreateFileA(logFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ, &saAttr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hLog == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.hStdError = hLog;
+    si.hStdOutput = hLog;
+    si.dwFlags |= STARTF_USESTDHANDLES;
+    ZeroMemory(&pi, sizeof(pi));
+
+    std::string mutableCmd = cmd;
+    if (!CreateProcessA(nullptr, mutableCmd.data(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
+        CloseHandle(hLog);
+        return -1;
+    }
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD exitCode = 0;
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    CloseHandle(hLog);
+
+    return static_cast<int>(exitCode);
+}
+#else
+static int PlatformRunCommand(const std::string& cmd, const std::string& logFile) {
+    // Basic argument splitter (respects spaces, no quotes needed for our current paths)
+    std::vector<std::string> args;
+    std::stringstream stringStream(cmd);
+    std::string item;
+    while (stringStream >> item) {
+        args.push_back(item);
+    }
+
+    if (args.empty()) {
+        return -1;
+    }
+
+    posix_spawn_file_actions_t actions;
+    if (posix_spawn_file_actions_init(&actions) != 0) {
+        return -1;
+    }
+    posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, logFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
+
+    std::vector<std::vector<char>> argBuffers;
+    argBuffers.reserve(args.size());
+    for (const auto& arg : args) {
+        std::vector<char> buf(arg.begin(), arg.end());
+        buf.push_back('\0');
+        argBuffers.push_back(std::move(buf));
+    }
+
+    std::vector<char*> argv;
+    argv.reserve(argBuffers.size() + 1);
+    for (auto& buf : argBuffers) {
+        argv.push_back(buf.data());
+    }
+    argv.push_back(nullptr);
+
+    pid_t pid = 0;
+    if (posix_spawn(&pid, argv.at(0), &actions, nullptr, argv.data(), nullptr) != 0) {
+        posix_spawn_file_actions_destroy(&actions);
+        return -1;
+    }
+
+    int status = 0;
+    waitpid(pid, &status, 0);
+    posix_spawn_file_actions_destroy(&actions);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+#endif
 
 static int RunSysCommand(const std::string& cmd, std::string& log) {
     std::string tempLog = CC65VFS::GetTempDir() + "/temp.log";
-    std::string fullCmd = cmd + " > " + tempLog + " 2>&1";
-    
-    int result = std::system(fullCmd.c_str());
+    int result = PlatformRunCommand(cmd, tempLog);
     log += ReadFile(tempLog);
     return result;
 }
@@ -61,20 +152,27 @@ std::string CompilerFrontend::GenerateCFG(const std::string& code) {
         {0x6000, 0x600F, "VIA"}
     };
 
-    if (hasGpu || hasDoubleBuffer) res.push_back({0x2000, 0x3FFF, "GPU VRAM Front Buffer"});
-    if (hasDoubleBuffer) res.push_back({0x6010, 0x790F, "GPU VRAM Back Buffer"});
+    if (hasGpu || hasDoubleBuffer) {
+        res.push_back({0x2000, 0x3FFF, "GPU VRAM Front Buffer"});
+    }
+    if (hasDoubleBuffer) {
+        res.push_back({0x6010, 0x790F, "GPU VRAM Back Buffer"});
+    }
     
-    std::sort(res.begin(), res.end(), [](const Block& a, const Block& b){ return a.start < b.start; });
+    std::ranges::sort(res, [](const Block& first, const Block& second) {
+        return first.start < second.start;
+    });
     std::vector<Block> merged;
-    for (auto& b : res) {
-        if (merged.empty()) merged.push_back(b);
-        else {
+    for (const auto& block : res) {
+        if (merged.empty()) {
+            merged.push_back(block);
+        } else {
             auto& prev = merged.back();
-            if (b.start <= prev.end + 1) {
-                prev.end = std::max(prev.end, b.end);
-                prev.name += " + " + b.name;
+            if (block.start <= prev.end + 1) {
+                prev.end = std::max(prev.end, block.end);
+                prev.name += " + " + block.name;
             } else {
-                merged.push_back(b);
+                merged.push_back(block);
             }
         }
     }
@@ -82,11 +180,15 @@ std::string CompilerFrontend::GenerateCFG(const std::string& code) {
     std::vector<Block> ram;
     uint32_t current = 0x0400; // ram_start
     uint32_t ram_end = 0x8000;
-    for (auto& b : merged) {
-        if (current < b.start) ram.push_back({current, b.start - 1, ""});
-        current = std::max(current, b.end + 1);
+    for (const auto& block : merged) {
+        if (current < block.start) {
+            ram.push_back({current, block.start - 1, ""});
+        }
+        current = std::max(current, block.end + 1);
     }
-    if (current < ram_end) ram.push_back({current, ram_end - 1, ""});
+    if (current < ram_end) {
+        ram.push_back({current, ram_end - 1, ""});
+    }
 
     std::ostringstream cfg;
     cfg << "MEMORY {\n";
@@ -94,9 +196,9 @@ std::string CompilerFrontend::GenerateCFG(const std::string& code) {
     cfg << "    INPUT_BUFFER: start = $0300, size = $0100, type = rw, file = \"\";\n";
     
     for (size_t i = 0; i < ram.size(); i++) {
-        uint32_t size = ram[i].end - ram[i].start + 1;
+        uint32_t size = ram.at(i).end - ram.at(i).start + 1;
         std::string name = "RAM_" + std::to_string(i + 1);
-        cfg << "    " << name << ": start = $" << std::hex << ram[i].start << ", size = $" << size << ", type = rw, define = yes, file = \"\";\n";
+        cfg << "    " << name << ": start = $" << std::hex << ram.at(i).start << ", size = $" << size << ", type = rw, define = yes, file = \"\";\n";
     }
 
     cfg << "    ROM:          start = $8000, size = $7FFA, type = ro, define = yes, file = %O, fill = yes, fillval = $FF;\n";
@@ -132,6 +234,63 @@ std::string CompilerFrontend::GenerateCFG(const std::string& code) {
     return cfg.str();
 }
 
+static int CompileCC65(const std::string& cc65, const std::string& tempDir, const std::string& srcFile, std::string& log) {
+    std::string cmd = cc65 + " -I " + tempDir + "/include -O --cpu 65C02 -g " + srcFile + " -o " + tempDir + "/test.s";
+    log += "> " + cmd + "\n";
+    return RunSysCommand(cmd, log);
+}
+
+static int AssembleFile(const std::string& ca65, const std::string& src, const std::string& obj, std::string& log) {
+    std::string cmd = ca65 + " -g -t none " + src + " -o " + obj;
+    log += "> " + cmd + "\n";
+    return RunSysCommand(cmd, log);
+}
+
+static int CompileExtraLibs(const std::string& cc65, const std::string& ca65, const std::string& tempDir, const std::string& code, std::string& extraObjs, std::string& log) {
+    if (code.find("SD.h") != std::string::npos) {
+        const std::array<std::string, 3> files = { "Libs/SD.c", "Libs/fatfs/ff.c", "Libs/fatfs/diskio.c" };
+        const std::array<std::string, 3> objNames = { "sd", "ff", "diskio" };
+        for (size_t i = 0; i < files.size(); ++i) {
+            std::string s_cmd = cc65;
+            s_cmd += " -I ";
+            s_cmd += tempDir;
+            s_cmd += "/include -O --cpu 65C02 ";
+            s_cmd += tempDir;
+            s_cmd += "/include/";
+            s_cmd += files.at(i);
+            s_cmd += " -o ";
+            s_cmd += tempDir;
+            s_cmd += "/";
+            s_cmd += objNames.at(i);
+            s_cmd += ".s";
+            
+            log += "> " + s_cmd + "\n";
+            if (RunSysCommand(s_cmd, log) != 0) {
+                return -1;
+            }
+
+            std::string o_cmd = ca65;
+            o_cmd += " -g -t none ";
+            o_cmd += tempDir;
+            o_cmd += "/";
+            o_cmd += objNames.at(i);
+            o_cmd += ".s -o ";
+            o_cmd += tempDir;
+            o_cmd += "/";
+            o_cmd += objNames.at(i);
+            o_cmd += ".o";
+            
+            log += "> " + o_cmd + "\n";
+            if (RunSysCommand(o_cmd, log) != 0) {
+                return -1;
+            }
+
+            extraObjs += tempDir + "/" + objNames.at(i) + ".o ";
+        }
+    }
+    return 0;
+}
+
 CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const std::string& code) {
     BuildResult res;
     std::string tempDir = CC65VFS::GetTempDir();
@@ -143,10 +302,9 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string srcFile = tempDir + (type == BuildType::C ? "/test.c" : "/test.s");
     WriteTextFile(srcFile, code);
 
+    std::string ext;
 #ifdef _WIN32
-    std::string ext = ".exe";
-#else
-    std::string ext = "";
+    ext = ".exe";
 #endif
 
     std::string cc65 = tempDir + "/cc65" + ext;
@@ -154,48 +312,29 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string ld65 = tempDir + "/ld65" + ext;
     
     if (type == BuildType::C) {
-        // cc65
-        std::string cmd = cc65 + " -I " + tempDir + "/include -O --cpu 65C02 -g " + srcFile + " -o " + tempDir + "/test.s";
-        res.log += "> " + cmd + "\n";
-        if (RunSysCommand(cmd, res.log) != 0) return res;
-    }
-
-    // Assemble test.s -> test.o
-    {
-        std::string cmd = ca65 + " -g -t none " + tempDir + "/test.s -o " + tempDir + "/test.o";
-        res.log += "> " + cmd + "\n";
-        if (RunSysCommand(cmd, res.log) != 0) return res;
-    }
-
-    // Assemble Linker files
-    {
-        std::string cmd1 = ca65 + " -g -t none " + tempDir + "/Linker/bios.s -o " + tempDir + "/bios.o";
-        res.log += "> " + cmd1 + "\n";
-        if (RunSysCommand(cmd1, res.log) != 0) return res;
-
-        if (type == BuildType::C) {
-            std::string cmd2 = ca65 + " -g -t none " + tempDir + "/Linker/C-Runtime.s -o " + tempDir + "/cr.o";
-            res.log += "> " + cmd2 + "\n";
-            if (RunSysCommand(cmd2, res.log) != 0) return res;
+        if (CompileCC65(cc65, tempDir, srcFile, res.log) != 0) {
+            return res;
         }
     }
 
-    // FatFS (SD.h)
-    std::string extraObjs = "";
-    if (type == BuildType::C && code.find("SD.h") != std::string::npos) {
-        // Compile SD.c, ff.c, diskio.c
-        const char* files[] = { "Libs/SD.c", "Libs/fatfs/ff.c", "Libs/fatfs/diskio.c" };
-        const char* objNames[] = { "sd", "ff", "diskio" };
-        for (int i = 0; i < 3; ++i) {
-            std::string s_cmd = cc65 + " -I " + tempDir + "/include -O --cpu 65C02 " + tempDir + "/include/" + files[i] + " -o " + tempDir + "/" + objNames[i] + ".s";
-            res.log += "> " + s_cmd + "\n";
-            if (RunSysCommand(s_cmd, res.log) != 0) return res;
+    if (AssembleFile(ca65, tempDir + "/test.s", tempDir + "/test.o", res.log) != 0) {
+        return res;
+    }
 
-            std::string o_cmd = ca65 + " -g -t none " + tempDir + "/" + objNames[i] + ".s -o " + tempDir + "/" + objNames[i] + ".o";
-            res.log += "> " + o_cmd + "\n";
-            if (RunSysCommand(o_cmd, res.log) != 0) return res;
+    if (AssembleFile(ca65, tempDir + "/Linker/bios.s", tempDir + "/bios.o", res.log) != 0) {
+        return res;
+    }
 
-            extraObjs += tempDir + "/" + objNames[i] + ".o ";
+    if (type == BuildType::C) {
+        if (AssembleFile(ca65, tempDir + "/Linker/C-Runtime.s", tempDir + "/cr.o", res.log) != 0) {
+            return res;
+        }
+    }
+
+    std::string extraObjs;
+    if (type == BuildType::C) {
+        if (CompileExtraLibs(cc65, ca65, tempDir, code, extraObjs, res.log) != 0) {
+            return res;
         }
     }
 
@@ -208,13 +347,9 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
         if (type == BuildType::C) {
             objs += tempDir + "/cr.o ";
         }
-        objs += tempDir + "/test.o ";
-        objs += extraObjs;
+        objs += tempDir + "/test.o " + extraObjs;
         
-        std::string cmd = ld65 + " -C " + cfgFile + " -o " + tempDir + "/out.bin " + objs;
-        if (type == BuildType::C) {
-            cmd += " " + tempDir + "/lib/none.lib";
-        }
+        std::string cmd = ld65 + " -C " + cfgFile + " -o " + tempDir + "/out.bin " + objs + (type == BuildType::C ? " " + tempDir + "/lib/none.lib" : "");
         res.log += "> " + cmd + "\n";
         if (RunSysCommand(cmd, res.log) != 0) {
             return res;
