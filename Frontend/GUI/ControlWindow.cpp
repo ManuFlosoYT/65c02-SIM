@@ -478,7 +478,10 @@ static void DrawSettingsCRT(AppState& state) {
         state.crt.scanlines = state.crt.interlacing = state.crt.curvature = state.crt.chromatic = state.crt.blur =
             state.crt.shadowMask = state.crt.vignette = state.crt.cornerRounding = state.crt.glassGlare =
                 state.crt.colorBleeding = state.crt.noise = state.crt.vsyncJitter = state.crt.phosphorDecay =
-                    state.crt.bloom = val;
+                    state.crt.bloom = state.crt.ghosting = state.crt.halation = state.crt.moire = val;
+        if (!val) {
+            state.crt.gamma = 2.75F;
+        }
     };
     if (ImGui::Button("All On")) {
         setCRTAll(true);
@@ -505,6 +508,11 @@ static void DrawSettingsCRT(AppState& state) {
     ImGui::Checkbox("Phosphor Decay", &state.crt.phosphorDecay);
     ImGui::TextUnformatted("Lighting");
     ImGui::Checkbox("Bloom", &state.crt.bloom);
+    ImGui::Checkbox("Halation", &state.crt.halation);
+    ImGui::TextUnformatted("Signal Advanced");
+    ImGui::Checkbox("Ghosting (Echo)", &state.crt.ghosting);
+    ImGui::Checkbox("Moiré Pattern", &state.crt.moire);
+    ImGui::SliderFloat("Gamma", &state.crt.gamma, 1.0F, 3.5F, "%.2f");
 }
 
 static void DrawSettingsPopup(AppState& state) {

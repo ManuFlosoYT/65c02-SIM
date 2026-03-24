@@ -182,6 +182,10 @@ GLuint CRTFilter::Apply(GLuint inputTex, int width, int height, const CRTParams&
     uni1i("u_vsyncJitter", params.vsyncJitter);
     uni1i("u_phosphorDecay", params.phosphorDecay);
     uni1i("u_bloom", params.bloom);
+    uni1i("u_ghosting", params.ghosting);
+    uni1i("u_halation", params.halation);
+    uni1i("u_moire", params.moire);
+    glUniform1f(glGetUniformLocation(m_shader, "u_gamma"), params.gamma);
 
     glBindVertexArray(m_vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);

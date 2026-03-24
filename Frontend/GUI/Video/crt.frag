@@ -27,6 +27,12 @@ uniform bool u_phosphorDecay;
 
 // Lighting
 uniform bool u_bloom;
+uniform bool u_halation;
+
+// Signal Advanced
+uniform bool u_ghosting;
+uniform bool u_moire;
+uniform float u_gamma;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -142,6 +148,25 @@ void main() {
         color.rgb += (bsum.rgb / 25.0) * 0.35;
     }
 
+    if (u_halation) {
+        vec4 hsum = vec4(0.0);
+        float hr = 6.0;
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                vec4 s = texture(u_texture, uv + vec2(float(dx), float(dy)) * u_texelSize * hr);
+                float luma = dot(s.rgb, vec3(0.2126, 0.7152, 0.0722));
+                hsum += s * pow(luma, 3.0);
+            }
+        }
+        color.rgb += (hsum.rgb / 25.0) * 0.25;
+    }
+
+    if (u_ghosting) {
+        vec4 g1 = texture(u_texture, uv - vec2(u_texelSize.x * 6.0, 0.0)) * 0.15;
+        vec4 g2 = texture(u_texture, uv - vec2(u_texelSize.x * 12.0, 0.0)) * 0.08;
+        color.rgb += g1.rgb + g2.rgb;
+    }
+
     // --- Screen artifact effects ---
 
     if (u_shadowMask) {
@@ -173,6 +198,11 @@ void main() {
         color.rgb = clamp(color.rgb + n, 0.0, 1.0);
     }
 
+    if (u_moire) {
+        float m = sin(uv.x * 1000.0) * sin(uv.y * 1000.0);
+        color.rgb *= 1.0 + m * 0.04;
+    }
+
     // --- Screen geometry / lighting ---
 
     if (u_vignette) {
@@ -185,6 +215,10 @@ void main() {
         vec2 g = uv - vec2(0.28, 0.22);
         float glare = exp(-dot(g, g) * 9.0) * 0.10;
         color.rgb = clamp(color.rgb + glare, 0.0, 1.0);
+    }
+
+    if (u_gamma != 1.0) {
+        color.rgb = pow(color.rgb, vec3(u_gamma / 2.2));
     }
 
     fragColor = color;

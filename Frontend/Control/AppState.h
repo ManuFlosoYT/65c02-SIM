@@ -72,6 +72,10 @@ struct CRTSettings {
     bool vsyncJitter = true;
     bool phosphorDecay = true;
     bool bloom = true;
+    bool ghosting = true;
+    bool halation = true;
+    bool moire = true;
+    float gamma = 2.75F;
     float time = 0.0F;
 };
 

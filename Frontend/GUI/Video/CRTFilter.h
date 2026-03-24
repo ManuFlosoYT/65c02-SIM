@@ -26,6 +26,10 @@ struct CRTParams {
 
     // Lighting
     bool bloom = false;
+    bool ghosting = false;
+    bool halation = false;
+    bool moire = false;
+    float gamma = 2.75F;
 
     // Animated effects time source
     float time = 0.0F;
