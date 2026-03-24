@@ -342,6 +342,17 @@ static void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2
 }
 
 static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {
+    // Auto-stop recording if emulation has halted or stopped after having run
+    bool shouldAutoStop = (state.emulator.IsHalted() || !state.emulator.IsRunning());
+    if (state.emulation.isRecordingVideo && shouldAutoStop && state.emulator.GetTotalCycles() > 0) {
+        state.emulation.isRecordingVideo = false;
+        
+        // Also ensure standalone audio stops if it was active
+        if (state.emulator.GetSID().IsRecording()) {
+            state.emulator.GetSID().StopRecording();
+        }
+    }
+
     if (state.emulation.isRecordingVideo && !mediaExporter) {
         auto& sid = state.emulator.GetSID();
         constexpr int sidSampleRate = 44100;
