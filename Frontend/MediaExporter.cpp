@@ -150,8 +150,12 @@ bool MediaExporter::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
     (*outStream)->disposition = isDefault ? AV_DISPOSITION_DEFAULT : 0;
 
     AVDictionary* param = nullptr;
-    av_dict_set(&param, "preset", "fast", 0);
     av_dict_set(&param, "crf", "23", 0);
+    av_dict_set(&param, "preset", "slow", 0);
+    
+    if (trackName == "SID Viewer") {
+        av_dict_set(&param, "tune", "stillimage", 0);
+    }
 
     if (avcodec_open2(*outCodecCtx, codec, &param) < 0) {
         std::cerr << "MediaExporter: avcodec_open2 failed for " << trackName << '\n';
