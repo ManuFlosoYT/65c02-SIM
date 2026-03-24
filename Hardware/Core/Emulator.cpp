@@ -355,7 +355,9 @@ int Emulator::Step() {
     if (res != 0) {
         Pause();
 #ifndef TARGET_WASM
-        sid.StopRecording();
+        if (totalCycles > totalCyclesAtLastResume) {
+            sid.StopRecording();
+        }
 #endif
         halted = true;
     }
@@ -456,8 +458,9 @@ void Emulator::Pause() {
 }
 
 void Emulator::Resume() {
-    paused = false;
+    totalCyclesAtLastResume = totalCycles;
     sid.SetEmulationPaused(false);
+    paused = false;
     pauseCV.notify_all();
 }
 
@@ -525,7 +528,9 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
             if (res != 0) {
                 Pause();
 #ifndef TARGET_WASM
-                sid.StopRecording();
+                if (totalCycles > totalCyclesAtLastResume) {
+                    sid.StopRecording();
+                }
 #endif
                 halted = true;
                 std::cerr << "Emulator stopped with code: " << res << '\n';
@@ -538,7 +543,9 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
             if (res != 0) {
                 Pause();
 #ifndef TARGET_WASM
-                sid.StopRecording();
+                if (totalCycles > totalCyclesAtLastResume) {
+                    sid.StopRecording();
+                }
 #endif
                 halted = true;
                 std::cerr << "Emulator stopped with code: " << res << '\n';

@@ -101,11 +101,11 @@ void SID::SetEmulationPaused(bool paused) {
     emulationPaused = paused;
 #ifndef TARGET_WASM
     if (!emulationPaused && soundEnabled && !pendingFilename.empty()) {
-        recorder = std::make_unique<AudioRecorder>();
-        if (!recorder->Start(pendingFilename, sampleRate)) {
-            recorder.reset();
+        auto newRecorder = std::make_unique<AudioRecorder>();
+        if (newRecorder->Start(pendingFilename, sampleRate)) {
+            recorder = std::move(newRecorder);
+            pendingFilename.clear();
         }
-        pendingFilename.clear();
     }
 #endif
     UpdateAudioState();

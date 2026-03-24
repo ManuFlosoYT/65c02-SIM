@@ -161,6 +161,7 @@ class Emulator {
     std::condition_variable pauseCV;
     std::mutex emulationMutex;  // mutex for thread safety during reset/step
     uint64_t totalCycles{0};
+    uint64_t totalCyclesAtLastResume{0};
 
     std::string currentBinPath;
     std::filesystem::file_time_type lastBinModificationTime;
