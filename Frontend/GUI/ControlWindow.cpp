@@ -566,81 +566,113 @@ static void DrawActualIPS(AppState& state) {
     }
     ImGui::TextUnformatted(oss.str().c_str());
 }
+static void DrawRecordingConfigPopup(AppState& state) {
+    if (ImGui::BeginPopup("RecordingConfig", ImGuiWindowFlags_NoMove)) {
+        ImGui::TextUnformatted("Recording Mode");
 
-static void DrawAudioRecordingButton(AppState& state, Core::SID& sid) {
-    bool isRecordingAudio = sid.IsRecording();
-    if (isRecordingAudio) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
-    }
-#ifdef TARGET_WASM
-    ImGui::BeginDisabled(true);
-#endif
-    if (ImGui::Button(isRecordingAudio ? "Stop Audio REC" : "REC Audio")) {
-        if (isRecordingAudio) {
-            sid.StopRecording();
-        } else {
-            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        int type = static_cast<int>(state.emulation.recordingSettings.type);
+        if (ImGui::RadioButton("Audio", type == 0)) {
+            state.emulation.recordingSettings.type = RecordingType::Audio;
         }
-    }
-#ifdef TARGET_WASM
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Recording is only supported in local builds.");
-    }
-#endif
-    if (isRecordingAudio) {
-        ImGui::PopStyleColor(2);
-    }
-}
-
-static void DrawVideoRecordingButton(AppState& state) {
-    bool isRecordingVideo = state.emulation.isRecordingVideo;
-    if (isRecordingVideo) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
-    }
-
-#ifdef TARGET_WASM
-    ImGui::BeginDisabled(true);
-#endif
-    if (ImGui::Button(isRecordingVideo ? "Stop Video REC" : "REC Video")) {
-        if (isRecordingVideo) {
-            state.emulation.isRecordingVideo = false;
-        } else {
-            ImGuiFileDialog::Instance()->OpenDialog("RecordVideoDlgKey", "Save Video Recording", ".mkv", ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Video", type == 1)) {
+            state.emulation.recordingSettings.type = RecordingType::Video;
         }
-    }
-#ifdef TARGET_WASM
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Recording is only supported in local builds.");
-    }
-#endif
-    if (isRecordingVideo) {
-        ImGui::PopStyleColor(2);
+        ImGui::SameLine();
+        if (ImGui::RadioButton("SID Window", type == 2)) {
+            state.emulation.recordingSettings.type = RecordingType::SIDWindow;
+        }
+
+        if (state.emulation.recordingSettings.type == RecordingType::Video) {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Video Tracks");
+            ImGui::Checkbox("Raw Track", &state.emulation.recordingSettings.recordRaw);
+            ImGui::Checkbox("Processed Track", &state.emulation.recordingSettings.recordProcessed);
+
+            // Forcing MKV if both selected
+            bool forcedMKV = state.emulation.recordingSettings.recordRaw && state.emulation.recordingSettings.recordProcessed;
+            if (forcedMKV) {
+                state.emulation.recordingSettings.format = VideoFormat::MKV;
+                ImGui::BeginDisabled(true);
+            }
+
+            ImGui::Separator();
+            ImGui::TextUnformatted("Format");
+            int format = static_cast<int>(state.emulation.recordingSettings.format);
+            if (ImGui::RadioButton("MKV", format == 0)) {
+                state.emulation.recordingSettings.format = VideoFormat::MKV;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("MP4", format == 1)) {
+                state.emulation.recordingSettings.format = VideoFormat::MP4;
+            }
+
+            if (forcedMKV) {
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip("Dual track recording requires MKV format.");
+                }
+            }
+        } else if (state.emulation.recordingSettings.type == RecordingType::SIDWindow) {
+            // Force MP4 and Processed track for SID Window
+            state.emulation.recordingSettings.format = VideoFormat::MP4;
+            state.emulation.recordingSettings.recordRaw = false;
+            state.emulation.recordingSettings.recordProcessed = true;
+        }
+
+        ImGui::Separator();
+        if (ImGui::Button("Start Recording", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+            if (state.emulation.recordingSettings.type == RecordingType::Audio) {
+                ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
+                                                        ImGuiFileDialogFlags_ConfirmOverwrite);
+            } else {
+                std::string ext = (state.emulation.recordingSettings.format == VideoFormat::MP4) ? ".mp4" : ".mkv";
+                ImGuiFileDialog::Instance()->OpenDialog("RecordVideoDlgKey", "Save Video Recording", ext.c_str(), ".", 1, nullptr,
+                                                        ImGuiFileDialogFlags_ConfirmOverwrite);
+            }
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 }
 
 static void DrawRecordingControls(AppState& state) {
-    auto& sid = state.emulator.GetSID();
-    bool isRecordingAudio = sid.IsRecording();
-    bool isRecordingVideo = state.emulation.isRecordingVideo;
+    bool isRecording = state.emulation.isRecordingVideo || state.emulator.GetSID().IsRecording();
 
     ImGui::BeginDisabled(!state.rom.loaded);
 
-    // Display Audio REC button only if NOT recording video
-    if (!isRecordingVideo) {
-        DrawAudioRecordingButton(state, sid);
-        ImGui::SameLine();
+    if (isRecording) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8F, 0.0F, 0.0F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
     }
 
-    // Display Video REC button only if NOT recording audio
-    if (!isRecordingAudio) {
-        DrawVideoRecordingButton(state);
+#ifdef TARGET_WASM
+    ImGui::BeginDisabled(true);
+#endif
+    if (ImGui::Button(isRecording ? "STOP REC" : "REC")) {
+        if (isRecording) {
+            if (state.emulation.isRecordingVideo) {
+                state.emulation.isRecordingVideo = false;
+            } else {
+                state.emulator.GetSID().StopRecording();
+            }
+        } else {
+            ImGui::OpenPopup("RecordingConfig");
+        }
     }
+#ifdef TARGET_WASM
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Recording is only supported in local builds.");
+    }
+#endif
+
+    if (isRecording) {
+        ImGui::PopStyleColor(2);
+    }
+
+    DrawRecordingConfigPopup(state);
 
     ImGui::EndDisabled();
 }
@@ -707,7 +739,7 @@ static void HandleLoadScriptDialog(AppState& state) {
     }
 }
 
-static void HandleRecordSIDDialog(AppState& state) {
+static void HandleRecordAudioDialog(AppState& state) {
     if (ImGuiFileDialog::Instance()->Display("RecordSIDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -732,7 +764,7 @@ static void HandleDialogs(AppState& state) {
     HandleCreateSDDialog(state);
     HandleMountSDDialog(state);
     HandleLoadScriptDialog(state);
-    HandleRecordSIDDialog(state);
+    HandleRecordAudioDialog(state);
     HandleRecordVideoDialog(state);
 }
 

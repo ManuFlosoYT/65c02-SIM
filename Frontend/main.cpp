@@ -115,6 +115,17 @@ static void InitializeTextures(AppState& state) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
+    glGenTextures(1, &state.render.sidTexture);
+    glBindTexture(GL_TEXTURE_2D, state.render.sidTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+    glGenFramebuffers(1, &state.render.sidFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, state.render.sidFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, state.render.sidTexture, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     state.crtFilter.Init(GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT);
@@ -337,11 +348,26 @@ static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>
         mediaExporter = std::make_unique<MediaExporter>();
         const MediaExporter::AudioParams audioParams{.sampleRate = sidSampleRate, .channels = 1, .bitDepth = 16};
 
+        int videoW = GPU::VRAM_WIDTH;
+        int videoH = GPU::VRAM_HEIGHT;
+        if (state.emulation.recordingSettings.type == RecordingType::SIDWindow) {
+            videoW = 800;
+            videoH = 600;
+        }
+
         int procW = state.render.lastDisplayW > 0 ? state.render.lastDisplayW : 600;
         int procH = state.render.lastDisplayH > 0 ? state.render.lastDisplayH : 450;
+        if (state.emulation.recordingSettings.type == RecordingType::SIDWindow) {
+            procW = 800;
+            procH = 600;
+        }
 
-        bool initOk = mediaExporter->Initialize(state.emulation.recordingVideoPath, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT,
-                                                 procW, procH, audioParams);
+        bool initOk = mediaExporter->Initialize(state.emulation.recordingVideoPath, videoW, videoH,
+                                                 procW, procH, audioParams,
+                                                 state.emulation.recordingSettings.type,
+                                                 state.emulation.recordingSettings.format,
+                                                 state.emulation.recordingSettings.recordRaw,
+                                                 state.emulation.recordingSettings.recordProcessed);
         if (!initOk) {
             state.emulation.isRecordingVideo = false;
             mediaExporter.reset();
@@ -363,7 +389,41 @@ static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>
 
     if (mediaExporter) {
         uint32_t processedTex = state.render.lastDisplayTex != 0 ? state.render.lastDisplayTex : state.render.vramTexture;
-        mediaExporter->PushFrames(state.render.vramTexture, processedTex, state.emulator.IsPaused());
+        uint32_t rawTex = state.render.vramTexture;
+
+        if (state.emulation.recordingSettings.type == RecordingType::SIDWindow) {
+            const ImGuiIO& imguiIO = ImGui::GetIO();
+            int screenHeightPixels = static_cast<int>(imguiIO.DisplaySize.y * imguiIO.DisplayFramebufferScale.y);
+
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // Read from screen backbuffer
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, state.render.sidFBO);
+
+            float scaleX = imguiIO.DisplayFramebufferScale.x;
+            float scaleY = imguiIO.DisplayFramebufferScale.y;
+
+            float windowX = state.render.sidWindowPos[0];
+            float windowY = state.render.sidWindowPos[1];
+            float windowW = state.render.sidWindowSize[0];
+            float windowH = state.render.sidWindowSize[1];
+
+            // OpenGL coordinates start from bottom-left (pixels)
+            int srcX0 = static_cast<int>(windowX * scaleX);
+            int srcY0 = screenHeightPixels - static_cast<int>((windowY + windowH) * scaleY);
+            int srcX1 = static_cast<int>((windowX + windowW) * scaleX);
+            int srcY1 = screenHeightPixels - static_cast<int>(windowY * scaleY);
+
+            // Blit and flip vertically for FFmpeg compatibility
+            glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
+                                0, 600, 800, 0, // Invert Y in destination
+                                GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            rawTex = state.render.sidTexture;
+            processedTex = state.render.sidTexture;
+        }
+
+        mediaExporter->PushFrames(rawTex, processedTex, state.emulator.IsPaused());
     }
 }
 

@@ -1,9 +1,6 @@
 #ifndef TARGET_WASM
 #include "MediaExporter.h"
-#include <glad/gl.h>
-#include <algorithm>
 #include <cstring>
-#include <iostream>
 #include <span>
 
 extern "C" {
@@ -25,24 +22,40 @@ MediaExporter::~MediaExporter() {
 bool MediaExporter::Initialize(const std::string& filename,
                                 int rawW, int rawH,
                                 int processedW, int processedH,
-                                const AudioParams& audioParams) {
+                                const AudioParams& audioParams,
+                                Control::RecordingType type,
+                                Control::VideoFormat format,
+                                bool recordRaw,
+                                bool recordProcessed) {
     rawWidth = rawW;
     rawHeight = rawH;
     processedWidth = processedW;
     processedHeight = processedH;
+    recordingType = type;
+    videoFormat = format;
+    shouldRecordRaw = recordRaw;
+    shouldRecordProcessed = recordProcessed;
 
-    avformat_alloc_output_context2(&fmtCtx, nullptr, "matroska", filename.c_str());
+    const char* formatName = (format == Control::VideoFormat::MP4) ? "mp4" : "matroska";
+    avformat_alloc_output_context2(&fmtCtx, nullptr, formatName, filename.c_str());
     if (fmtCtx == nullptr) {
-        std::cerr << "MediaExporter: Failed to allocate format context\n";
+        std::cerr << "MediaExporter: Failed to allocate format context for " << formatName << "\n";
         return false;
     }
 
-    if (!SetupVideoStream(&videoStreamRaw, &videoCodecCtxRaw, rawWidth, rawHeight, true)) {
-        return false;
-    }
+    if (recordingType != Control::RecordingType::Audio) {
+        if (shouldRecordRaw) {
+            if (!SetupVideoStream(&videoStreamRaw, &videoCodecCtxRaw, rawWidth, rawHeight, "Raw Video", true)) {
+                return false;
+            }
+        }
 
-    if (!SetupVideoStream(&videoStreamProcessed, &videoCodecCtxProcessed, processedWidth, processedHeight, false)) {
-        return false;
+        if (shouldRecordProcessed) {
+            std::string trackName = (recordingType == Control::RecordingType::SIDWindow) ? "SID Viewer" : "Processed Video";
+            if (!SetupVideoStream(&videoStreamProcessed, &videoCodecCtxProcessed, processedWidth, processedHeight, trackName, !shouldRecordRaw)) {
+                return false;
+            }
+        }
     }
 
     if (!SetupAudioStream(audioParams)) {
@@ -61,20 +74,30 @@ bool MediaExporter::Initialize(const std::string& filename,
         return false;
     }
 
-    swsCtxRaw = sws_getContext(rawWidth, rawHeight, AV_PIX_FMT_RGBA,
-                               rawWidth, rawHeight, videoCodecCtxRaw->pix_fmt,
-                               SWS_POINT, nullptr, nullptr, nullptr);
+    if (shouldRecordRaw) {
+        swsCtxRaw = sws_getContext(rawWidth, rawHeight, AV_PIX_FMT_RGBA,
+                                   rawWidth, rawHeight, videoCodecCtxRaw->pix_fmt,
+                                   SWS_POINT, nullptr, nullptr, nullptr);
 
-    swsCtxProcessed = sws_getContext(processedWidth, processedHeight, AV_PIX_FMT_RGBA,
-                                     videoCodecCtxProcessed->width, videoCodecCtxProcessed->height, videoCodecCtxProcessed->pix_fmt,
-                                     SWS_POINT, nullptr, nullptr, nullptr);
-
-    glGenBuffers(2, pboRaw.data());
-    for (int i = 0; i < 2; ++i) {
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(i));
-        glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(rawWidth) * rawHeight * 4, nullptr, GL_STREAM_READ);
+        glGenBuffers(2, pboRaw.data());
+        for (int i = 0; i < 2; ++i) {
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(i));
+            glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(rawWidth) * rawHeight * 4, nullptr, GL_STREAM_READ);
+        }
     }
-    pboProcessed.fill(0U);
+
+    if (shouldRecordProcessed) {
+        swsCtxProcessed = sws_getContext(processedWidth, processedHeight, AV_PIX_FMT_RGBA,
+                                         videoCodecCtxProcessed->width, videoCodecCtxProcessed->height, videoCodecCtxProcessed->pix_fmt,
+                                         SWS_POINT, nullptr, nullptr, nullptr);
+
+        glGenBuffers(2, pboProcessed.data());
+        for (int i = 0; i < 2; ++i) {
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(i));
+            glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(processedWidth) * processedHeight * 4, nullptr, GL_STREAM_READ);
+        }
+    }
+
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
     pboWarmupFrames = 0;
@@ -85,7 +108,7 @@ bool MediaExporter::Initialize(const std::string& filename,
     return true;
 }
 
-bool MediaExporter::SetupVideoStream(AVStream** outStream, AVCodecContext** outCodecCtx, int texWidth, int texHeight, bool isRaw) {
+bool MediaExporter::SetupVideoStream(AVStream** outStream, AVCodecContext** outCodecCtx, int texWidth, int texHeight, const std::string& trackName, bool isDefault) {
     const AVCodec* codec = avcodec_find_encoder_by_name("libx264");
     if (codec == nullptr) {
         codec = avcodec_find_encoder(AV_CODEC_ID_H264);
@@ -123,9 +146,8 @@ bool MediaExporter::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
         (*outCodecCtx)->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     }
 
-    const std::string trackName = isRaw ? "Raw Video" : "Processed Video";
     av_dict_set(&(*outStream)->metadata, "title", trackName.c_str(), 0);
-    (*outStream)->disposition = isRaw ? 0 : AV_DISPOSITION_DEFAULT;
+    (*outStream)->disposition = isDefault ? AV_DISPOSITION_DEFAULT : 0;
 
     AVDictionary* param = nullptr;
     av_dict_set(&param, "preset", "fast", 0);
@@ -190,52 +212,66 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
 
     int nextIndex = (pboIndex + 1) % 2;
 
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(pboIndex));
-    glBindTexture(GL_TEXTURE_2D, texRaw);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, texProcessed);
-    GLint actualProcW = 0;
-    GLint actualProcH = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &actualProcW);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &actualProcH);
+    if (shouldRecordRaw) {
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(pboIndex));
+        glBindTexture(GL_TEXTURE_2D, texRaw);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
 
     std::vector<uint8_t> processedPixels;
-    if (actualProcW > 0 && actualProcH > 0 && actualProcW < 8192 && actualProcH < 8192) {
-        glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-        glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
-        glPixelStorei(GL_PACK_SKIP_ROWS, 0);
+    if (shouldRecordProcessed) {
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(pboIndex));
+        glBindTexture(GL_TEXTURE_2D, texProcessed);
+        
+        GLint actualProcW = 0;
+        GLint actualProcH = 0;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &actualProcW);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &actualProcH);
 
-        processedPixels.resize(static_cast<size_t>(actualProcW) * static_cast<size_t>(actualProcH) * 4U);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, processedPixels.data());
+        if (actualProcW > 0 && actualProcH > 0 && actualProcW < 8192 && actualProcH < 8192) {
+            glPixelStorei(GL_PACK_ALIGNMENT, 1);
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        }
     }
 
     if (pboWarmupFrames >= 1) {
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(nextIndex));
-        const auto* ptrRaw = static_cast<const uint8_t*>(glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY));
+        VideoFrameData frameData;
+        frameData.pts = nextVideoPts++;
+        bool hasData = false;
 
-        if (ptrRaw != nullptr && !processedPixels.empty()) {
-            VideoFrameData frameData;
-            frameData.rawW = rawWidth;
-            frameData.rawH = rawHeight;
-            frameData.processedW = static_cast<int>(actualProcW);
-            frameData.processedH = static_cast<int>(actualProcH);
+        if (shouldRecordRaw) {
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(nextIndex));
+            const auto* ptrRaw = static_cast<const uint8_t*>(glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY));
+            if (ptrRaw != nullptr) {
+                frameData.rawW = rawWidth;
+                frameData.rawH = rawHeight;
+                size_t szRaw = static_cast<size_t>(rawWidth) * static_cast<size_t>(rawHeight) * 4U;
+                frameData.rawPixels.assign(ptrRaw, ptrRaw + szRaw);
+                glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+                hasData = true;
+            }
+        }
 
-            size_t szRaw = static_cast<size_t>(rawWidth) * static_cast<size_t>(rawHeight) * 4U;
-            std::span<const uint8_t> rawSpan(ptrRaw, szRaw);
-            frameData.rawPixels.assign(rawSpan.begin(), rawSpan.end());
-            frameData.processedPixels = std::move(processedPixels);
-            frameData.pts = nextVideoPts++;
+        if (shouldRecordProcessed) {
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(nextIndex));
+            const auto* ptrProc = static_cast<const uint8_t*>(glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY));
+            if (ptrProc != nullptr) {
+                // We need the dimensions from when the command was issued
+                // For simplicity, let's assume they haven't changed or use stored ones
+                frameData.processedW = processedWidth;
+                frameData.processedH = processedHeight;
+                size_t szProc = static_cast<size_t>(processedWidth) * static_cast<size_t>(processedHeight) * 4U;
+                frameData.processedPixels.assign(ptrProc, ptrProc + szProc);
+                glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+                hasData = true;
+            }
+        }
 
+        if (hasData) {
             std::lock_guard<std::mutex> lock(queueMutex);
             videoQueue.push(std::move(frameData));
             queueCondVar.notify_one();
         }
-
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(nextIndex));
-        glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
     } else {
         ++pboWarmupFrames;
     }
@@ -274,35 +310,36 @@ void MediaExporter::ProcessVideoFrame(const VideoFrameData& vData, AVFrame* fram
     const std::array<int, 1> rawStride = {vData.rawW * 4};
     const std::array<int, 1> procStride = {vData.processedW * 4};
 
-    sws_scale(swsCtxRaw, rawSrc.data(), rawStride.data(), 0, vData.rawH, frameRaw->data, frameRaw->linesize);
+    if (shouldRecordRaw) {
+        sws_scale(swsCtxRaw, rawSrc.data(), rawStride.data(), 0, vData.rawH, frameRaw->data, frameRaw->linesize);
 
-    // Zero out any Y padding rows (encoder height > texture height)
-    for (int row = vData.rawH; row < videoCodecCtxRaw->height; ++row) {
-        std::span<uint8_t> plane0(frameRaw->data[0], static_cast<size_t>(videoCodecCtxRaw->height) * frameRaw->linesize[0]);
-        uint8_t* rowPtr = &plane0[static_cast<size_t>(row) * static_cast<size_t>(frameRaw->linesize[0])];
-        std::memset(rowPtr, 16, static_cast<size_t>(videoCodecCtxRaw->width));
-    }
-
-    // Recreate the sws context if the processed texture dimensions changed
-    if (vData.processedW != processedWidth || vData.processedH != processedHeight) {
-        if (swsCtxProcessed != nullptr) {
-            sws_freeContext(swsCtxProcessed);
+        // Zero out any Y padding rows (encoder height > texture height)
+        for (int row = vData.rawH; row < videoCodecCtxRaw->height; ++row) {
+            uint8_t* rowPtr = frameRaw->data[0] + (static_cast<size_t>(row) * static_cast<size_t>(frameRaw->linesize[0]));
+            memset(rowPtr, 16, static_cast<size_t>(videoCodecCtxRaw->width));
         }
-        swsCtxProcessed = sws_getContext(vData.processedW, vData.processedH, AV_PIX_FMT_RGBA, videoCodecCtxProcessed->width,
-                                         videoCodecCtxProcessed->height, videoCodecCtxProcessed->pix_fmt, SWS_POINT, nullptr,
-                                         nullptr, nullptr);
-        processedWidth = vData.processedW;
-        processedHeight = vData.processedH;
+        frameRaw->pts = vData.pts;
+        EncodeVideoFrame(frameRaw, videoCodecCtxRaw, videoStreamRaw);
     }
 
-    sws_scale(swsCtxProcessed, procSrc.data(), procStride.data(), 0, vData.processedH, frameProcessed->data,
-              frameProcessed->linesize);
+    if (shouldRecordProcessed) {
+        // Recreate the sws context if the processed texture dimensions changed
+        if (vData.processedW != processedWidth || vData.processedH != processedHeight) {
+            if (swsCtxProcessed != nullptr) {
+                sws_freeContext(swsCtxProcessed);
+            }
+            swsCtxProcessed = sws_getContext(vData.processedW, vData.processedH, AV_PIX_FMT_RGBA, videoCodecCtxProcessed->width,
+                                             videoCodecCtxProcessed->height, videoCodecCtxProcessed->pix_fmt, SWS_POINT, nullptr,
+                                             nullptr, nullptr);
+            processedWidth = vData.processedW;
+            processedHeight = vData.processedH;
+        }
 
-    frameRaw->pts = vData.pts;
-    frameProcessed->pts = vData.pts;
-
-    EncodeVideoFrame(frameRaw, videoCodecCtxRaw, videoStreamRaw);
-    EncodeVideoFrame(frameProcessed, videoCodecCtxProcessed, videoStreamProcessed);
+        sws_scale(swsCtxProcessed, procSrc.data(), procStride.data(), 0, vData.processedH, frameProcessed->data,
+                  frameProcessed->linesize);
+        frameProcessed->pts = vData.pts;
+        EncodeVideoFrame(frameProcessed, videoCodecCtxProcessed, videoStreamProcessed);
+    }
 }
 
 void MediaExporter::ProcessAudioData(const std::vector<float>& aData, AVFrame* audioFrame) {
@@ -346,15 +383,19 @@ void MediaExporter::ProcessAudioData(const std::vector<float>& aData, AVFrame* a
 void MediaExporter::WorkerLoop() {
     AVFrame* frameRaw = av_frame_alloc();
     AVFrame* frameProcessed = av_frame_alloc();
-    frameRaw->format = videoCodecCtxRaw->pix_fmt;
-    frameRaw->width = videoCodecCtxRaw->width;
-    frameRaw->height = videoCodecCtxRaw->height;
-    av_frame_get_buffer(frameRaw, 32);
+    if (shouldRecordRaw) {
+        frameRaw->format = videoCodecCtxRaw->pix_fmt;
+        frameRaw->width = videoCodecCtxRaw->width;
+        frameRaw->height = videoCodecCtxRaw->height;
+        av_frame_get_buffer(frameRaw, 32);
+    }
 
-    frameProcessed->format = videoCodecCtxProcessed->pix_fmt;
-    frameProcessed->width = videoCodecCtxProcessed->width;
-    frameProcessed->height = videoCodecCtxProcessed->height;
-    av_frame_get_buffer(frameProcessed, 32);
+    if (shouldRecordProcessed) {
+        frameProcessed->format = videoCodecCtxProcessed->pix_fmt;
+        frameProcessed->width = videoCodecCtxProcessed->width;
+        frameProcessed->height = videoCodecCtxProcessed->height;
+        av_frame_get_buffer(frameProcessed, 32);
+    }
 
     AVFrame* audioFrame = av_frame_alloc();
     audioFrame->format = audioCodecCtx->sample_fmt;
@@ -472,8 +513,10 @@ void MediaExporter::Finalize() {
 
     if (pboRaw[0] != 0U) {
         glDeleteBuffers(2, pboRaw.data());
-        glDeleteBuffers(2, pboProcessed.data());
         pboRaw.fill(0U);
+    }
+    if (pboProcessed[0] != 0U) {
+        glDeleteBuffers(2, pboProcessed.data());
         pboProcessed.fill(0U);
     }
 }

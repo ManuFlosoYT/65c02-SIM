@@ -96,18 +96,7 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     ImGui::EndGroup();
 }
 
-void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
-                         ImGuiWindowFlags window_flags) {
-    ImGui::SetNextWindowPos(ImVec2(work_pos.x + (work_size.x * 0.47F), work_pos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.33F, top_section_height), ImGuiCond_Always);
-    ImGui::Begin("SID Viewer", nullptr, window_flags);
-
-    static double sid_time = 0.0;
-    if (state.emulator.IsRunning() && !state.emulator.IsPaused()) {
-        sid_time += ImGui::GetIO().DeltaTime;
-    }
-
-    bool should_update = state.emulator.IsRunning() && !state.emulator.IsPaused();
+static void DrawSIDViewerContent(const AppState& state, double sid_time, bool should_update) {
     for (int voiceIndex = 0; voiceIndex < 3; ++voiceIndex) {
         ImGui::PushID(voiceIndex);
         if (voiceIndex > 0) {
@@ -120,6 +109,26 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
 
         ImGui::PopID();
     }
+}
+
+void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
+                         ImGuiWindowFlags window_flags) {
+    ImGui::SetNextWindowPos(ImVec2(work_pos.x + (work_size.x * 0.47F), work_pos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.33F, top_section_height), ImGuiCond_Always);
+    ImGui::Begin("SID Viewer", nullptr, window_flags | ImGuiWindowFlags_NoMove);
+
+    state.render.sidWindowPos[0] = ImGui::GetWindowPos().x;
+    state.render.sidWindowPos[1] = ImGui::GetWindowPos().y;
+    state.render.sidWindowSize[0] = ImGui::GetWindowSize().x;
+    state.render.sidWindowSize[1] = ImGui::GetWindowSize().y;
+
+    static double sid_time = 0.0;
+    if (state.emulator.IsRunning() && !state.emulator.IsPaused()) {
+        sid_time += ImGui::GetIO().DeltaTime;
+    }
+
+    bool should_update = state.emulator.IsRunning() && !state.emulator.IsPaused();
+    DrawSIDViewerContent(state, sid_time, should_update);
 
     ImGui::End();
 }

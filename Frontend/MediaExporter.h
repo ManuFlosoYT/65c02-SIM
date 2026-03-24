@@ -6,9 +6,9 @@
 #include <condition_variable>
 #include <thread>
 #include <array>
-#include <vector>
-#include <atomic>
 #include <cstdint>
+#include <vector>
+
 struct AVFormatContext;
 struct AVCodecContext;
 struct AVStream;
@@ -16,6 +16,8 @@ struct AVFrame;
 struct AVPacket;
 struct SwsContext;
 struct AVAudioFifo;
+
+#include "Frontend/Control/AppState.h"
 
 class MediaExporter {
 public:
@@ -36,7 +38,11 @@ public:
     bool Initialize(const std::string& filename,
                      int rawW, int rawH,
                      int processedW, int processedH,
-                     const AudioParams& audioParams);
+                     const AudioParams& audioParams,
+                     Control::RecordingType type,
+                     Control::VideoFormat format,
+                     bool recordRaw,
+                     bool recordProcessed);
     
     void PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emulationPaused);
     static std::vector<uint8_t> ReadTextureSynchronous(uint32_t tex, int width, int height);
@@ -61,7 +67,7 @@ private:
     void FlushEncoder(AVCodecContext* codecCtx, AVStream* stream);
     void ProcessVideoFrame(const VideoFrameData& vData, AVFrame* frameRaw, AVFrame* frameProcessed);
     void ProcessAudioData(const std::vector<float>& aData, AVFrame* audioFrame);
-    bool SetupVideoStream(AVStream** outStream, AVCodecContext** outCodecCtx, int texWidth, int texHeight, bool isRaw);
+    bool SetupVideoStream(AVStream** outStream, AVCodecContext** outCodecCtx, int texWidth, int texHeight, const std::string& trackName, bool isDefault);
     bool SetupAudioStream(const AudioParams& params);
 
 
@@ -96,6 +102,11 @@ private:
     
     int64_t nextVideoPts = 0;
     int64_t nextAudioPts = 0;
+
+    bool shouldRecordRaw = true;
+    bool shouldRecordProcessed = true;
+    Control::RecordingType recordingType = Control::RecordingType::Video;
+    Control::VideoFormat videoFormat = Control::VideoFormat::MKV;
 
     std::array<uint32_t, 2> pboRaw = {0, 0};
     std::array<uint32_t, 2> pboProcessed = {0, 0};
