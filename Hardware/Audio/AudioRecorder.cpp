@@ -6,10 +6,7 @@
 
 namespace Hardware {
 
-AudioRecorder::AudioRecorder() {
-    sfInfo.format = SF_FORMAT_FLAC | SF_FORMAT_PCM_16;
-    sfInfo.channels = 1;
-}
+AudioRecorder::AudioRecorder() = default;
 
 AudioRecorder::~AudioRecorder() {
     Stop();
@@ -20,7 +17,16 @@ bool AudioRecorder::Start(const std::string& filename, int sampleRate) {
         Stop();
     }
 
+    // Ensure SF_INFO is clean for writing
+    sfInfo = {}; 
+    sfInfo.format = SF_FORMAT_FLAC | SF_FORMAT_PCM_16;
+    sfInfo.channels = 1;
     sfInfo.samplerate = sampleRate;
+
+    if (sf_format_check(&sfInfo) == 0) {
+        return false;
+    }
+
     handle = sf_open(filename.c_str(), SFM_WRITE, &sfInfo);
     if (handle == nullptr) {
         std::cerr << "AudioRecorder: Failed to open file " << filename << ": " << sf_strerror(nullptr) << '\n';
