@@ -113,7 +113,10 @@ static void DrawConsoleButtonBar(AppState& state) {
     }
     ImGui::EndDisabled();
     if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Eject cartridge first to load a different ROM");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Eject cartridge first to load a different ROM");
+            ImGui::EndTooltip();
+        }
     }
 
     ImGui::SameLine();
@@ -182,7 +185,10 @@ static void DrawConsoleButtonBar(AppState& state) {
     }
     ImGui::EndDisabled();
     if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Eject cartridge first to use the IDE");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Eject cartridge first to use the IDE");
+            ImGui::EndTooltip();
+        }
     }
 #endif
     ImGui::Separator();

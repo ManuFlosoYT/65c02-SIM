@@ -234,7 +234,10 @@ static void DrawAudioVideoControls(AppState& state) {
     }
     ImGui::EndDisabled();
     if (gpuOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Managed by Cartridge");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Managed by Cartridge");
+            ImGui::EndTooltip();
+        }
     }
 
     ImGui::SameLine();
@@ -246,7 +249,10 @@ static void DrawAudioVideoControls(AppState& state) {
     }
     ImGui::EndDisabled();
     if (sidOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Managed by Cartridge");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Managed by Cartridge");
+            ImGui::EndTooltip();
+        }
     }
 }
 
@@ -278,7 +284,10 @@ static void DrawSettingsBasic(AppState& state) {
     }
     ImGui::EndDisabled();
     if (cycleOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Managed by Cartridge");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Managed by Cartridge");
+            ImGui::EndTooltip();
+        }
     }
 
     ImGui::Checkbox("Force load savestate", &state.emulation.forceLoadSaveState);
@@ -288,7 +297,10 @@ static void DrawSettingsBasic(AppState& state) {
     ImGui::Checkbox("Auto-Reload Bin", &dummyAutoReload);
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Auto-reload is not supported in the web build.");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Auto-reload is not supported in the web build.");
+            ImGui::EndTooltip();
+        }
     }
 #else
     if (ImGui::Checkbox("Auto-Reload Bin", &state.emulation.autoReload)) {
@@ -332,7 +344,10 @@ static void DrawSettingsBasic(AppState& state) {
         }
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("Python scripting is not supported in the web build.");
+            if (ImGui::BeginItemTooltip()) {
+                ImGui::TextUnformatted("Python scripting is not supported in the web build.");
+                ImGui::EndTooltip();
+            }
         }
 #else
         if (ImGui::Button("Load & Run Script (.py)")) {
@@ -566,7 +581,10 @@ static void DrawTargetIPS(AppState& state, float mainColWidth) {
     }
     ImGui::EndDisabled();
     if (ipsOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Managed by Cartridge");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Managed by Cartridge");
+            ImGui::EndTooltip();
+        }
     }
 }
 
@@ -837,24 +855,6 @@ static void HandleDialogs(AppState& state) {
     HandleRecordVideoDialog(state);
 }
 
-static void DrawCartridgePopup(AppState& state) {
-    if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        const auto& metadata = state.emulator.GetCartridge().metadata;
-        ImGui::Text("Cartridge: %s", metadata.name.c_str());
-        ImGui::Text("Author: %s", metadata.author.c_str());
-        ImGui::Text("Version: %s", metadata.version.c_str());
-        if (!metadata.description.empty()) {
-            ImGui::Separator();
-            ImGui::TextWrapped("%s", metadata.description.c_str());
-        }
-        ImGui::Separator();
-        if (ImGui::Button("OK", ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
-}
-
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                        ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
@@ -869,7 +869,6 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     DrawIPSSection(state, mainColWidth);
 
     HandleDialogs(state);
-    DrawCartridgePopup(state);
 
     ImGui::SetScrollHereY(1.0F);
     ImGui::End();

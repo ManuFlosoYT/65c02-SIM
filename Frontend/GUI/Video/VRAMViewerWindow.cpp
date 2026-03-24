@@ -60,7 +60,10 @@ static void DrawVRAMControls(AppState& state) {
     }
     ImGui::EndDisabled();
     if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Eject cartridge first to load images to VRAM");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Eject cartridge first to load images to VRAM");
+            ImGui::EndTooltip();
+        }
     }
 
     ImGui::SameLine();
@@ -99,7 +102,10 @@ static void DrawVRAMControls(AppState& state) {
     }
     ImGui::EndDisabled();
     if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Eject cartridge first to load images to VRAM");
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Eject cartridge first to load images to VRAM");
+            ImGui::EndTooltip();
+        }
     }
 
     ImGui::SameLine();

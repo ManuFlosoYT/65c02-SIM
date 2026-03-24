@@ -175,9 +175,7 @@ static void HandleSDLEvents(bool& done, SDL_Window* window) {
     }
 }
 
-static void HandleDialogs(AppState& state) {
-#ifndef TARGET_WASM
-    // File Dialog
+static void HandleROMFilePicker(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
@@ -196,8 +194,31 @@ static void HandleDialogs(AppState& state) {
         }
         ImGuiFileDialog::Instance()->Close();
     }
+}
 
-    // Cartridge Dialog
+static void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
+    if (cart.config.gpuEnabled.has_value()) {
+        state.emulation.gpuEnabled = cart.config.gpuEnabled.value();
+    }
+    if (cart.config.targetIPS.has_value()) {
+        state.emulation.instructionsPerFrame = cart.config.targetIPS.value();
+    }
+    if (cart.config.cycleAccurate.has_value()) {
+        state.emulation.cycleAccurate = cart.config.cycleAccurate.value();
+    }
+    if (cart.config.sidEnabled.has_value()) {
+        state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value());
+    }
+    
+    state.emulator.SetCartridge(cart);
+    state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
+    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+    state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
+    state.emulator.ClearProfiler();
+    ImGui::OpenPopup("Cartridge Loaded");
+}
+
+static void HandleCartridgeFilePicker(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGuiFileDialog::Instance()->Display("ChooseCartridgeDlgKey")) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
@@ -210,29 +231,7 @@ static void HandleDialogs(AppState& state) {
                     state.rom.bin = filePathName;
                     state.rom.loaded = true;
                     state.rom.symbols.Clear();
-                    
-                    // Apply config overrides
-                    if (cart.config.gpuEnabled.has_value()) {
-                        state.emulation.gpuEnabled = cart.config.gpuEnabled.value();
-                    }
-                    if (cart.config.targetIPS.has_value()) {
-                        state.emulation.instructionsPerFrame = cart.config.targetIPS.value();
-                    }
-                    if (cart.config.cycleAccurate.has_value()) {
-                        state.emulation.cycleAccurate = cart.config.cycleAccurate.value();
-                    }
-                    if (cart.config.sidEnabled.has_value()) {
-                        state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value());
-                    }
-                    
-                    state.emulator.SetCartridge(cart);
-                    state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
-                    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-                    state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
-                    state.emulator.ClearProfiler();
-                    
-                    // Trigger metadata popup
-                    ImGui::OpenPopup("Cartridge Loaded");
+                    ApplyCartridgeConfig(state, cart);
                 } else {
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }
@@ -243,8 +242,9 @@ static void HandleDialogs(AppState& state) {
         }
         ImGuiFileDialog::Instance()->Close();
     }
+}
 
-    // Save State Dialog
+static void HandleSaveStateFilePicker(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGuiFileDialog::Instance()->Display("SaveStateDlgKey")) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
@@ -256,8 +256,9 @@ static void HandleDialogs(AppState& state) {
         }
         ImGuiFileDialog::Instance()->Close();
     }
+}
 
-    // Load State Dialog
+static void HandleLoadStateFilePicker(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGuiFileDialog::Instance()->Display("LoadStateDlgKey")) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
@@ -284,6 +285,14 @@ static void HandleDialogs(AppState& state) {
         }
         ImGuiFileDialog::Instance()->Close();
     }
+}
+
+static void HandleDialogs(AppState& state) {
+#ifndef TARGET_WASM
+    HandleROMFilePicker(state);
+    HandleCartridgeFilePicker(state);
+    HandleSaveStateFilePicker(state);
+    HandleLoadStateFilePicker(state);
 #endif
 }
 
@@ -377,11 +386,16 @@ static void DrawCartridgePopups(AppState& state) {
     if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         const auto& cart = state.emulator.GetCartridge();
         if (cart.loaded) {
-            ImGui::Text("Name: %s", cart.metadata.name.c_str());
-            ImGui::Text("Author: %s", cart.metadata.author.c_str());
-            ImGui::Text("Version: %s", cart.metadata.version.c_str());
+            std::string nameLine = "Name: " + cart.metadata.name;
+            std::string authorLine = "Author: " + cart.metadata.author;
+            std::string versionLine = "Version: " + cart.metadata.version;
+            ImGui::TextUnformatted(nameLine.c_str());
+            ImGui::TextUnformatted(authorLine.c_str());
+            ImGui::TextUnformatted(versionLine.c_str());
             ImGui::Separator();
-            ImGui::TextWrapped("%s", cart.metadata.description.c_str());
+            ImGui::PushTextWrapPos(0.0F);
+            ImGui::TextUnformatted(cart.metadata.description.c_str());
+            ImGui::PopTextWrapPos();
         }
         ImGui::Separator();
         if (ImGui::Button("OK", ImVec2(120, 0))) {
