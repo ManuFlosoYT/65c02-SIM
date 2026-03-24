@@ -29,6 +29,25 @@ struct ScriptState {
     bool showConsole = false;
 };
 
+enum class RecordingType : std::uint8_t {
+    Audio = 0,
+    Video = 1,
+    SIDWindow = 2
+};
+
+enum class VideoFormat : std::uint8_t {
+    MKV = 0,
+    MP4 = 1
+};
+
+struct RecordingSettings {
+    RecordingType type = RecordingType::Audio;
+    VideoFormat format = VideoFormat::MKV;
+    bool recordRaw = true;
+    bool recordProcessed = true;
+    bool showPopup = false;
+};
+
 struct EmulationState {
     int instructionsPerFrame = 1000000;
     float ipsLogScale = 6.0F;
@@ -38,6 +57,7 @@ struct EmulationState {
     bool autoReload = true;
     bool isRecordingVideo = false;
     std::string recordingVideoPath;
+    RecordingSettings recordingSettings;
 };
 
 enum class DebuggerMode : std::uint8_t {
@@ -83,9 +103,13 @@ struct RenderState {
     GLuint vramTexture = 0;
     GLuint profilerTexture = 0;
     GLuint layoutTexture = 0;
+    GLuint sidTexture = 0;
+    GLuint sidFBO = 0;
     GLuint lastDisplayTex = 0;
     int lastDisplayW = 0;
     int lastDisplayH = 0;
+    std::array<float, 2> sidWindowPos = {0.0F, 0.0F};
+    std::array<float, 2> sidWindowSize = {0.0F, 0.0F};
 };
 
 struct PopupState {
