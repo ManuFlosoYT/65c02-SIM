@@ -373,9 +373,28 @@ static void DrawSDCardPopups(AppState& state) {
     }
 }
 
+static void DrawCartridgePopups(AppState& state) {
+    if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const auto& cart = state.emulator.GetCartridge();
+        if (cart.loaded) {
+            ImGui::Text("Name: %s", cart.metadata.name.c_str());
+            ImGui::Text("Author: %s", cart.metadata.author.c_str());
+            ImGui::Text("Version: %s", cart.metadata.version.c_str());
+            ImGui::Separator();
+            ImGui::TextWrapped("%s", cart.metadata.description.c_str());
+        }
+        ImGui::Separator();
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
 static void DrawPopups(AppState& state) {
     DrawROMAndStatePopups(state);
     DrawSDCardPopups(state);
+    DrawCartridgePopups(state);
 }
 
 static void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2& work_size, float top_section_height, ImGuiWindowFlags windowFlags) {
