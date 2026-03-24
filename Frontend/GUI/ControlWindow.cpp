@@ -566,6 +566,40 @@ static void DrawActualIPS(AppState& state) {
     }
     ImGui::TextUnformatted(oss.str().c_str());
 }
+static void DrawVideoOptions(AppState& state) {
+    ImGui::Separator();
+    ImGui::TextUnformatted("Video Tracks");
+    ImGui::Checkbox("Raw Track", &state.emulation.recordingSettings.recordRaw);
+    ImGui::Checkbox("Processed Track", &state.emulation.recordingSettings.recordProcessed);
+
+    // Forcing MKV if both tracks are selected
+    bool forcedMKV = state.emulation.recordingSettings.recordRaw && state.emulation.recordingSettings.recordProcessed;
+    if (forcedMKV) {
+        state.emulation.recordingSettings.format = VideoFormat::MKV;
+        ImGui::BeginDisabled(true);
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Format");
+    int format = static_cast<int>(state.emulation.recordingSettings.format);
+    if (ImGui::RadioButton("MKV", format == 0)) {
+        state.emulation.recordingSettings.format = VideoFormat::MKV;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("MP4", format == 1)) {
+        state.emulation.recordingSettings.format = VideoFormat::MP4;
+    }
+
+    if (forcedMKV) {
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted("Dual track recording requires MKV format.");
+            ImGui::EndTooltip();
+        }
+    }
+}
+
 static void DrawRecordingConfigPopup(AppState& state) {
     if (ImGui::BeginPopup("RecordingConfig", ImGuiWindowFlags_NoMove)) {
         ImGui::TextUnformatted("Recording Mode");
@@ -584,35 +618,7 @@ static void DrawRecordingConfigPopup(AppState& state) {
         }
 
         if (state.emulation.recordingSettings.type == RecordingType::Video) {
-            ImGui::Separator();
-            ImGui::TextUnformatted("Video Tracks");
-            ImGui::Checkbox("Raw Track", &state.emulation.recordingSettings.recordRaw);
-            ImGui::Checkbox("Processed Track", &state.emulation.recordingSettings.recordProcessed);
-
-            // Forcing MKV if both selected
-            bool forcedMKV = state.emulation.recordingSettings.recordRaw && state.emulation.recordingSettings.recordProcessed;
-            if (forcedMKV) {
-                state.emulation.recordingSettings.format = VideoFormat::MKV;
-                ImGui::BeginDisabled(true);
-            }
-
-            ImGui::Separator();
-            ImGui::TextUnformatted("Format");
-            int format = static_cast<int>(state.emulation.recordingSettings.format);
-            if (ImGui::RadioButton("MKV", format == 0)) {
-                state.emulation.recordingSettings.format = VideoFormat::MKV;
-            }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("MP4", format == 1)) {
-                state.emulation.recordingSettings.format = VideoFormat::MP4;
-            }
-
-            if (forcedMKV) {
-                ImGui::EndDisabled();
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                    ImGui::SetTooltip("Dual track recording requires MKV format.");
-                }
-            }
+            DrawVideoOptions(state);
         } else if (state.emulation.recordingSettings.type == RecordingType::SIDWindow) {
             // Force MP4 and Processed track for SID Window
             state.emulation.recordingSettings.format = VideoFormat::MP4;
