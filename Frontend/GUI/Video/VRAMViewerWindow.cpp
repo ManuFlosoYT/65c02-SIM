@@ -245,8 +245,13 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             params.moire = state.crt.moire;
             params.gamma = state.crt.gamma;
             params.time = state.crt.time;
-            displayTex =
-                state.crtFilter.Apply(state.render.vramTexture, static_cast<int>(imgW), static_cast<int>(imgH), params);
+
+            // We use a high internal resolution (1080p height) for better recording quality
+            // while keeping the aspect ratio (100:75 -> 4:3 -> 1440:1080)
+            const int internalH = 1080;
+            const int internalW = 1440;
+
+            displayTex = state.crtFilter.Apply(state.render.vramTexture, internalW, internalH, params);
         }
 
         // NOLINTNEXTLINE(performance-no-int-to-ptr, cppcoreguidelines-pro-type-cstyle-cast)
