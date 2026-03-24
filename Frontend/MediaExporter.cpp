@@ -62,11 +62,10 @@ bool MediaExporter::Initialize(const std::string& filename,
         return false;
     }
 
-    if ((fmtCtx->oformat->flags & AVFMT_NOFILE) == 0) {
-        if (avio_open(&fmtCtx->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
-            std::cerr << "MediaExporter: Could not open output file\n";
-            return false;
-        }
+    if (((fmtCtx->oformat->flags & AVFMT_NOFILE) == 0) &&
+        (avio_open(&fmtCtx->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0)) {
+        std::cerr << "MediaExporter: Could not open output file\n";
+        return false;
     }
 
     if (avformat_write_header(fmtCtx, nullptr) < 0) {
@@ -75,37 +74,35 @@ bool MediaExporter::Initialize(const std::string& filename,
     }
 
     if (shouldRecordRaw) {
-        swsCtxRaw = sws_getContext(rawWidth, rawHeight, AV_PIX_FMT_RGBA,
-                                   rawWidth, rawHeight, videoCodecCtxRaw->pix_fmt,
-                                   SWS_POINT, nullptr, nullptr, nullptr);
-
-        glGenBuffers(2, pboRaw.data());
-        for (int i = 0; i < 2; ++i) {
-            glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(i));
-            glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(rawWidth) * rawHeight * 4, nullptr, GL_STREAM_READ);
-        }
+        SetupSwsContext(&swsCtxRaw, rawWidth, rawHeight, videoCodecCtxRaw);
+        SetupPBOs(pboRaw, rawWidth, rawHeight);
     }
 
     if (shouldRecordProcessed) {
-        swsCtxProcessed = sws_getContext(processedWidth, processedHeight, AV_PIX_FMT_RGBA,
-                                         videoCodecCtxProcessed->width, videoCodecCtxProcessed->height, videoCodecCtxProcessed->pix_fmt,
-                                         SWS_POINT, nullptr, nullptr, nullptr);
-
-        glGenBuffers(2, pboProcessed.data());
-        for (int i = 0; i < 2; ++i) {
-            glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(i));
-            glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(processedWidth) * processedHeight * 4, nullptr, GL_STREAM_READ);
-        }
+        SetupSwsContext(&swsCtxProcessed, processedWidth, processedHeight, videoCodecCtxProcessed);
+        SetupPBOs(pboProcessed, processedWidth, processedHeight);
     }
 
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-
     pboWarmupFrames = 0;
-
     isRunning = true;
     workerThread = std::thread(&MediaExporter::WorkerLoop, this);
 
     return true;
+}
+
+void MediaExporter::SetupPBOs(std::array<uint32_t, 2>& pbos, int width, int height) {
+    glGenBuffers(2, pbos.data());
+    for (int i = 0; i < 2; ++i) {
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, pbos.at(i));
+        glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(width) * height * 4, nullptr, GL_STREAM_READ);
+    }
+}
+
+void MediaExporter::SetupSwsContext(SwsContext** ctx, int srcW, int srcH, AVCodecContext* codecCtx) {
+    *ctx = sws_getContext(srcW, srcH, AV_PIX_FMT_RGBA,
+                           codecCtx->width, codecCtx->height, codecCtx->pix_fmt,
+                           SWS_POINT, nullptr, nullptr, nullptr);
 }
 
 bool MediaExporter::SetupVideoStream(AVStream** outStream, AVCodecContext** outCodecCtx, int texWidth, int texHeight, const std::string& trackName, bool isDefault) {
@@ -321,7 +318,7 @@ void MediaExporter::ProcessVideoFrame(const VideoFrameData& vData, AVFrame* fram
 
         // Zero out any Y padding rows (encoder height > texture height)
         for (int row = vData.rawH; row < videoCodecCtxRaw->height; ++row) {
-            uint8_t* rowPtr = frameRaw->data[0] + (static_cast<size_t>(row) * static_cast<size_t>(frameRaw->linesize[0]));
+            uint8_t* rowPtr = std::next(frameRaw->data[0], static_cast<std::ptrdiff_t>(row) * frameRaw->linesize[0]);
             memset(rowPtr, 16, static_cast<size_t>(videoCodecCtxRaw->width));
         }
         frameRaw->pts = vData.pts;

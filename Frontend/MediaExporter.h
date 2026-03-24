@@ -69,6 +69,8 @@ private:
     void ProcessAudioData(const std::vector<float>& aData, AVFrame* audioFrame);
     bool SetupVideoStream(AVStream** outStream, AVCodecContext** outCodecCtx, int texWidth, int texHeight, const std::string& trackName, bool isDefault);
     bool SetupAudioStream(const AudioParams& params);
+    static void SetupPBOs(std::array<uint32_t, 2>& pbos, int width, int height);
+    static void SetupSwsContext(SwsContext** ctx, int srcW, int srcH, AVCodecContext* codecCtx);
 
 
     AVFormatContext* fmtCtx = nullptr;
