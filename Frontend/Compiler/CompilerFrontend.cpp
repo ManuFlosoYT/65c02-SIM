@@ -1,4 +1,4 @@
-#ifndef EMSCRIPTEN
+#ifndef TARGET_WASM
 #include "CompilerFrontend.h"
 #include "CC65VFS.h"
 #include <fstream>

@@ -1,4 +1,4 @@
-#ifndef EMSCRIPTEN
+#ifndef TARGET_WASM
 #include "CC65VFS.h"
 #include "embedded_cc65.h"
 #include "cc65_exe.h"

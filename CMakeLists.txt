@@ -460,6 +460,7 @@ if(WIN32)
         ${FRONTEND_SOURCES}
         "${ICON_RESOURCE_RC}"
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+        ${imguicolortextedit_SOURCE_DIR}/TextEditor.cpp
     )
     target_link_options(SIM_65C02 PRIVATE 
         -static 

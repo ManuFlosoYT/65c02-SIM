@@ -3,7 +3,7 @@
 #include <vector>
 #include <cstdint>
 
-#ifndef EMSCRIPTEN
+#ifndef TARGET_WASM
 
 class CompilerFrontend {
 public:

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#ifndef EMSCRIPTEN
+#ifndef TARGET_WASM
 
 class CC65VFS {
 public:

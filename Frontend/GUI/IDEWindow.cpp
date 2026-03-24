@@ -5,7 +5,7 @@
 #include <array>
 #include <TextEditor.h>
 
-#ifndef EMSCRIPTEN
+#ifndef TARGET_WASM
 #include "Frontend/Compiler/CompilerFrontend.h"
 #endif
 
@@ -115,7 +115,7 @@ static void HandleCompileAndRun(Control::AppState& state) {
         return;
     }
 
-#ifndef EMSCRIPTEN
+#ifndef TARGET_WASM
     CompilerFrontend::BuildType type = state.ide.isCMode ? 
         CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
     
@@ -161,7 +161,7 @@ static void HandleCompileAndExport(Control::AppState& state) {
         return;
     }
 
-#ifndef EMSCRIPTEN
+#ifndef TARGET_WASM
     CompilerFrontend::BuildType type = state.ide.isCMode ? 
         CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
     
@@ -295,7 +295,7 @@ void DrawIDEWindow(Control::AppState& state) {
         return;
     }
 
-#ifdef EMSCRIPTEN
+#ifdef TARGET_WASM
     state.ide.open = false;
     return;
 #else
