@@ -119,7 +119,8 @@ static void InitializeTextures(AppState& state) {
     glBindTexture(GL_TEXTURE_2D, state.render.sidTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    std::array<unsigned char, 1280ULL * 720 * 3> emptySIDPixels{};
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, emptySIDPixels.data());
 
     glGenFramebuffers(1, &state.render.sidFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, state.render.sidFBO);
@@ -358,8 +359,10 @@ static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>
         int procW = state.render.lastDisplayW > 0 ? state.render.lastDisplayW : 600;
         int procH = state.render.lastDisplayH > 0 ? state.render.lastDisplayH : 450;
         if (state.emulation.recordingSettings.type == RecordingType::SIDWindow) {
-            procW = 800;
-            procH = 600;
+            videoW = 1280;
+            videoH = 720;
+            procW = 1280;
+            procH = 720;
         }
 
         bool initOk = mediaExporter->Initialize(state.emulation.recordingVideoPath, videoW, videoH,
@@ -412,9 +415,34 @@ static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>
             int srcX1 = static_cast<int>((windowX + windowW) * scaleX);
             int srcY1 = screenHeightPixels - static_cast<int>(windowY * scaleY);
 
+            // Calculate centered aspect ratio in 720p
+            float targetW = 1280.0F;
+            float targetH = 720.0F;
+            float winAR = windowW / windowH;
+            float targetAR = targetW / targetH;
+
+            int drawW = 0;
+            int drawH = 0;
+            int offsetX = 0;
+            int offsetY = 0;
+
+            if (winAR > targetAR) {
+                drawW = 1280;
+                drawH = static_cast<int>(1280.0F / winAR);
+                offsetY = (720 - drawH) / 2;
+            } else {
+                drawH = 720;
+                drawW = static_cast<int>(720.0F * winAR);
+                offsetX = (1280 - drawW) / 2;
+            }
+
+            // Clear FBO each frame to avoid artifacts in pillarbox areas
+            glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
+            glClear(GL_COLOR_BUFFER_BIT);
+
             // Blit and flip vertically for FFmpeg compatibility
             glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
-                                0, 600, 800, 0, // Invert Y in destination
+                                offsetX, offsetY + drawH, offsetX + drawW, offsetY, // Centered and Inverted Y
                                 GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
