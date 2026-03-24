@@ -441,15 +441,23 @@ static bool InitializeExporter(AppState& state, std::unique_ptr<MediaExporter>& 
     return true;
 }
 
-static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {
+static void HandleAutoStop(AppState& state) {
     // Auto-stop recording if emulation has halted or stopped after having run
+    if (!state.emulation.isRecordingVideo) {
+        return;
+    }
+
     bool shouldAutoStop = (state.emulator.IsHalted() || !state.emulator.IsRunning());
-    if (state.emulation.isRecordingVideo && shouldAutoStop && state.emulator.GetTotalCycles() > 0) {
+    if (shouldAutoStop && state.emulator.GetTotalCycles() > 0) {
         state.emulation.isRecordingVideo = false;
         if (state.emulator.GetSID().IsRecording()) {
             state.emulator.GetSID().StopRecording();
         }
     }
+}
+
+static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {
+    HandleAutoStop(state);
 
     if (state.emulation.isRecordingVideo && !mediaExporter) {
         InitializeExporter(state, mediaExporter);

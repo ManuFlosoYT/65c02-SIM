@@ -250,7 +250,8 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
                 frameData.rawW = rawWidth;
                 frameData.rawH = rawHeight;
                 size_t szRaw = static_cast<size_t>(rawWidth) * static_cast<size_t>(rawHeight) * 4U;
-                frameData.rawPixels.assign(ptrRaw, ptrRaw + szRaw);
+                frameData.rawPixels.resize(szRaw);
+                std::memcpy(frameData.rawPixels.data(), ptrRaw, szRaw);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
                 hasData = true;
             }
@@ -265,7 +266,8 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
                 frameData.processedW = processedWidth;
                 frameData.processedH = processedHeight;
                 size_t szProc = static_cast<size_t>(processedWidth) * static_cast<size_t>(processedHeight) * 4U;
-                frameData.processedPixels.assign(ptrProc, ptrProc + szProc);
+                frameData.processedPixels.resize(szProc);
+                std::memcpy(frameData.processedPixels.data(), ptrProc, szProc);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
                 hasData = true;
             }
