@@ -600,6 +600,46 @@ static void DrawVideoOptions(AppState& state) {
     }
 }
 
+static void HandleSIDWindowSettings(AppState& state) {
+    // Force MP4 and Processed track for SID Window
+    state.emulation.recordingSettings.format = VideoFormat::MP4;
+    state.emulation.recordingSettings.recordRaw = false;
+    state.emulation.recordingSettings.recordProcessed = true;
+}
+
+static void DrawStartRecordingButton(AppState& state) {
+    bool canStart = true;
+    if (state.emulation.recordingSettings.type == RecordingType::Video) {
+        canStart = (state.emulation.recordingSettings.recordRaw || state.emulation.recordingSettings.recordProcessed);
+    }
+
+    if (!canStart) {
+        ImGui::BeginDisabled(true);
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button("Start Recording", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+        if (state.emulation.recordingSettings.type == RecordingType::Audio) {
+            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        } else {
+            std::string ext = (state.emulation.recordingSettings.format == VideoFormat::MP4) ? ".mp4" : ".mkv";
+            ImGuiFileDialog::Instance()->OpenDialog("RecordVideoDlgKey", "Save Video Recording", ext.c_str(), ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        }
+        ImGui::CloseCurrentPopup();
+    }
+
+    if (!canStart) {
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted("Select at least one video track to record.");
+            ImGui::EndTooltip();
+        }
+    }
+}
+
 static void DrawRecordingConfigPopup(AppState& state) {
     if (ImGui::BeginPopup("RecordingConfig", ImGuiWindowFlags_NoMove)) {
         ImGui::TextUnformatted("Recording Mode");
@@ -620,25 +660,10 @@ static void DrawRecordingConfigPopup(AppState& state) {
         if (state.emulation.recordingSettings.type == RecordingType::Video) {
             DrawVideoOptions(state);
         } else if (state.emulation.recordingSettings.type == RecordingType::SIDWindow) {
-            // Force MP4 and Processed track for SID Window
-            state.emulation.recordingSettings.format = VideoFormat::MP4;
-            state.emulation.recordingSettings.recordRaw = false;
-            state.emulation.recordingSettings.recordProcessed = true;
+            HandleSIDWindowSettings(state);
         }
 
-        ImGui::Separator();
-        if (ImGui::Button("Start Recording", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-            if (state.emulation.recordingSettings.type == RecordingType::Audio) {
-                ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
-                                                        ImGuiFileDialogFlags_ConfirmOverwrite);
-            } else {
-                std::string ext = (state.emulation.recordingSettings.format == VideoFormat::MP4) ? ".mp4" : ".mkv";
-                ImGuiFileDialog::Instance()->OpenDialog("RecordVideoDlgKey", "Save Video Recording", ext.c_str(), ".", 1, nullptr,
-                                                        ImGuiFileDialogFlags_ConfirmOverwrite);
-            }
-            ImGui::CloseCurrentPopup();
-        }
-
+        DrawStartRecordingButton(state);
         ImGui::EndPopup();
     }
 }
