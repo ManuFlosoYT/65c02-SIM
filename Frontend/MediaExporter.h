@@ -41,6 +41,7 @@ public:
                      const AudioParams& audioParams,
                      Control::RecordingType type,
                      Control::VideoFormat format,
+                     Control::AudioFormat audioFormat,
                      bool recordRaw,
                      bool recordProcessed);
     
@@ -109,6 +110,7 @@ private:
     bool shouldRecordProcessed = true;
     Control::RecordingType recordingType = Control::RecordingType::Video;
     Control::VideoFormat videoFormat = Control::VideoFormat::MKV;
+    Control::AudioFormat audioFormat = Control::AudioFormat::FLAC;
 
     std::array<uint32_t, 2> pboRaw = {0, 0};
     std::array<uint32_t, 2> pboProcessed = {0, 0};

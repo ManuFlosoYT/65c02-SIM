@@ -27,7 +27,7 @@ struct ADSREnvelope {
     double sustainLevel = 0.0;
     int releaseRate = 0;
 
-    void Update(bool gate, int sampleRate = 44100);
+    void Update(bool gate, int sampleRate = 48000);
     double Next();
 
     bool SaveState(std::ostream& out) const;
@@ -45,7 +45,7 @@ struct Oscillator {
     // Noise generation
     uint32_t noiseShift = 0x7FFFF8;
 
-    double Next(int sampleRate = 44100);
+    double Next(int sampleRate = 48000);
 
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& inStream);
@@ -62,7 +62,7 @@ class SID : public IBusDevice {
     SID(SID&&) = delete;
     SID& operator=(SID&&) = delete;
 
-    void Init(int sampleRate = 44100);
+    void Init(int sampleRate = 48000);
     void Close();
     void Reset() override;
     Byte Read(Word addr) override;
@@ -94,7 +94,7 @@ class SID : public IBusDevice {
 
     // Audio Stream
     SDL_AudioStream* audioStream = nullptr;
-    int sampleRate = 44100;
+    int sampleRate = 48000;
     mutable std::mutex sidMutex;
 
 #ifndef TARGET_WASM

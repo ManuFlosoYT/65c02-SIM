@@ -620,7 +620,8 @@ static void DrawStartRecordingButton(AppState& state) {
     ImGui::Separator();
     if (ImGui::Button("Start Recording", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         if (state.emulation.recordingSettings.type == RecordingType::Audio) {
-            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ".flac", ".", 1, nullptr,
+            const char* ext = (state.emulation.recordingSettings.audioFormat == Control::AudioFormat::OPUS) ? ".ogg" : ".flac";
+            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ext, ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
         } else {
             std::string ext = (state.emulation.recordingSettings.format == VideoFormat::MP4) ? ".mp4" : ".mkv";
@@ -655,6 +656,17 @@ static void DrawRecordingConfigPopup(AppState& state) {
         ImGui::SameLine();
         if (ImGui::RadioButton("SID Window", type == 2)) {
             state.emulation.recordingSettings.type = RecordingType::SIDWindow;
+        }
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Audio Format");
+        int aFormat = static_cast<int>(state.emulation.recordingSettings.audioFormat);
+        if (ImGui::RadioButton("FLAC", aFormat == 0)) {
+            state.emulation.recordingSettings.audioFormat = Control::AudioFormat::FLAC;
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("OPUS", aFormat == 1)) {
+            state.emulation.recordingSettings.audioFormat = Control::AudioFormat::OPUS;
         }
 
         if (state.emulation.recordingSettings.type == RecordingType::Video) {

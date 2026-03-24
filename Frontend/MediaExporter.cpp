@@ -25,16 +25,18 @@ bool MediaExporter::Initialize(const std::string& filename,
                                 const AudioParams& audioParams,
                                 Control::RecordingType type,
                                 Control::VideoFormat format,
+                                Control::AudioFormat audioFormat,
                                 bool recordRaw,
                                 bool recordProcessed) {
-    rawWidth = rawW;
-    rawHeight = rawH;
-    processedWidth = processedW;
-    processedHeight = processedH;
-    recordingType = type;
-    videoFormat = format;
-    shouldRecordRaw = recordRaw;
-    shouldRecordProcessed = recordProcessed;
+    this->rawWidth = rawW;
+    this->rawHeight = rawH;
+    this->processedWidth = processedW;
+    this->processedHeight = processedH;
+    this->recordingType = type;
+    this->videoFormat = format;
+    this->audioFormat = audioFormat;
+    this->shouldRecordRaw = recordRaw;
+    this->shouldRecordProcessed = recordProcessed;
 
     const char* formatName = (format == Control::VideoFormat::MP4) ? "mp4" : "matroska";
     avformat_alloc_output_context2(&fmtCtx, nullptr, formatName, filename.c_str());
@@ -167,9 +169,18 @@ bool MediaExporter::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
 }
 
 bool MediaExporter::SetupAudioStream(const AudioParams& params) {
-    const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_FLAC);
+    const AVCodec* codec = nullptr;
+    if (audioFormat == Control::AudioFormat::FLAC) {
+        codec = avcodec_find_encoder(AV_CODEC_ID_FLAC);
+    } else {
+        codec = avcodec_find_encoder_by_name("libopus");
+        if (codec == nullptr) {
+            codec = avcodec_find_encoder(AV_CODEC_ID_OPUS);
+        }
+    }
+
     if (codec == nullptr) {
-        std::cerr << "MediaExporter: FLAC encoder not found\n";
+        std::cerr << "MediaExporter: Audio encoder not found\n";
         return false;
     }
 
@@ -185,6 +196,15 @@ bool MediaExporter::SetupAudioStream(const AudioParams& params) {
 
     audioCodecCtx->sample_rate = params.sampleRate;
     audioCodecCtx->sample_fmt = AV_SAMPLE_FMT_S16;
+
+    // Opus prefers Float; FLAC uses S16 by default in this implementation
+    if (audioFormat == Control::AudioFormat::OPUS) {
+        audioCodecCtx->sample_fmt = AV_SAMPLE_FMT_FLT;
+        audioCodecCtx->bit_rate = 320000;
+    } else {
+        audioCodecCtx->compression_level = 5;
+    }
+
     AVChannelLayout stereo = AV_CHANNEL_LAYOUT_STEREO;
     av_channel_layout_copy(&audioCodecCtx->ch_layout, &stereo);
     audioCodecCtx->time_base = {.num = 1, .den = params.sampleRate};
@@ -195,7 +215,7 @@ bool MediaExporter::SetupAudioStream(const AudioParams& params) {
     }
 
     if (avcodec_open2(audioCodecCtx, codec, nullptr) < 0) {
-        std::cerr << "MediaExporter: avcodec_open2 failed for FLAC\n";
+        std::cerr << "MediaExporter: avcodec_open2 failed for audio encoder\n";
         avcodec_free_context(&audioCodecCtx);
         return false;
     }
@@ -347,20 +367,32 @@ void MediaExporter::ProcessVideoFrame(const VideoFrameData& vData, AVFrame* fram
 
 void MediaExporter::ProcessAudioData(const std::vector<float>& aData, AVFrame* audioFrame) {
     int codecChannels = audioCodecCtx->ch_layout.nb_channels;
-    std::vector<int16_t> s16Data;
-    s16Data.reserve(aData.size() * static_cast<size_t>(codecChannels));
-
-    for (float sampleF : aData) {
-        float clamped = std::max(-1.0F, std::min(1.0F, sampleF));
-        auto sampleS16 = static_cast<int16_t>(clamped * 32767.0F);
-        for (int ch = 0; ch < codecChannels; ++ch) {
-            s16Data.push_back(sampleS16);
-        }
-    }
-
     int numSamplesPerChannel = static_cast<int>(aData.size());
-    void* fifoPtr = s16Data.data();
-    av_audio_fifo_write(audioFifo, &fifoPtr, numSamplesPerChannel);
+
+    if (audioCodecCtx->sample_fmt == AV_SAMPLE_FMT_FLT) {
+        std::vector<float> fData;
+        fData.reserve(aData.size() * static_cast<size_t>(codecChannels));
+        for (float sampleF : aData) {
+            float clamped = std::max(-1.0F, std::min(1.0F, sampleF));
+            for (int ch = 0; ch < codecChannels; ++ch) {
+                fData.push_back(clamped);
+            }
+        }
+        void* fifoPtr = fData.data();
+        av_audio_fifo_write(audioFifo, &fifoPtr, numSamplesPerChannel);
+    } else {
+        std::vector<int16_t> s16Data;
+        s16Data.reserve(aData.size() * static_cast<size_t>(codecChannels));
+        for (float sampleF : aData) {
+            float clamped = std::max(-1.0F, std::min(1.0F, sampleF));
+            auto sampleS16 = static_cast<int16_t>(clamped * 32767.0F);
+            for (int ch = 0; ch < codecChannels; ++ch) {
+                s16Data.push_back(sampleS16);
+            }
+        }
+        void* fifoPtr = s16Data.data();
+        av_audio_fifo_write(audioFifo, &fifoPtr, numSamplesPerChannel);
+    }
 
     int frameSize = audioCodecCtx->frame_size;
     if (frameSize == 0) {

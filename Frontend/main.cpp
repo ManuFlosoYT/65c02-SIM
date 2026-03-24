@@ -43,6 +43,8 @@ using namespace Core;
 using namespace Frontend;
 using namespace Hardware;
 
+static constexpr int sidSampleRate = 48000;
+
 static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
         std::cerr << "Error: " << SDL_GetError() << '\n';
@@ -401,7 +403,6 @@ static void HandleSIDWindowCapture(AppState& state) {
 
 static bool InitializeExporter(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {
     auto& sid = state.emulator.GetSID();
-    constexpr int sidSampleRate = 44100;
 
     mediaExporter = std::make_unique<MediaExporter>();
     const MediaExporter::AudioParams audioParams{.sampleRate = sidSampleRate, .channels = 1, .bitDepth = 16};
@@ -422,6 +423,7 @@ static bool InitializeExporter(AppState& state, std::unique_ptr<MediaExporter>& 
                                              procW, procH, audioParams,
                                              state.emulation.recordingSettings.type,
                                              state.emulation.recordingSettings.format,
+                                             state.emulation.recordingSettings.audioFormat, // Pass audioFormat
                                              state.emulation.recordingSettings.recordRaw,
                                              state.emulation.recordingSettings.recordProcessed);
     if (!initOk) {
@@ -532,7 +534,7 @@ static Args ParseArgs(std::span<const char* const> argv) {
 
 static int RunHeadless(const Args& args) {
     Core::Emulator emulator;
-    emulator.GetSID().Init();
+    emulator.GetSID().Init(sidSampleRate);
     emulator.SetGPUEnabled(false);
 
     if (!args.romPath.empty()) {
@@ -659,7 +661,7 @@ int main(int argc, char* argv[]) {
     }
 
     static AppState state;
-    state.emulator.GetSID().Init();
+    state.emulator.GetSID().Init(sidSampleRate);
 
 #ifndef TARGET_WASM
     // Check for updates
