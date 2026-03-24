@@ -23,6 +23,7 @@
 #include "Hardware/Video/GPU.h"
 #include "Hardware/Video/LCD.h"
 #include "Hardware/Core/ISerializable.h"
+#include "Hardware/Core/Cartridge.h"
 #include "Frontend/Control/Console.h"
 
 namespace Core {
@@ -107,6 +108,10 @@ class Emulator {
     std::string GetLastLoadVersion() const;
     std::string GetCurrentBinPath() const;
 
+    void SetCartridge(const Cartridge& cart) { cartridge = cart; }
+    const Cartridge& GetCartridge() const { return cartridge; }
+    void ClearCartridge() { cartridge = Cartridge(); }
+
    private:
     void ThreadLoop();
     void SetupHardware();
@@ -180,6 +185,8 @@ class Emulator {
 
     std::deque<std::string> rewindBuffer;
     static constexpr size_t MAX_REWIND_STATES = 255;
+
+    Cartridge cartridge;
 };
 
 }  // namespace Core

@@ -139,6 +139,7 @@ struct AppState {
     Emulator emulator;
 
     ROMState rom;
+    Cartridge cartridge;
     ScriptState script;
     EmulationState emulation;
     DebuggerState debugger;

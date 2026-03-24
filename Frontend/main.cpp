@@ -37,6 +37,7 @@
 #ifndef TARGET_WASM
 #include "Frontend/Compiler/CC65VFS.h"
 #endif
+#include "Hardware/Core/CartridgeLoader.h"
 
 using namespace Control;
 using namespace Core;
@@ -190,6 +191,53 @@ static void HandleDialogs(AppState& state) {
                 state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                 state.emulator.ClearProfiler();
             } else {
+                ImGui::OpenPopup("ErrorLoadingROM");
+            }
+        }
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    // Cartridge Dialog
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGuiFileDialog::Instance()->Display("ChooseCartridgeDlgKey")) {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            state.emulator.Pause();
+            std::string errorMsg;
+            Core::Cartridge cart;
+            if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
+                if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
+                    state.rom.bin = filePathName;
+                    state.rom.loaded = true;
+                    state.rom.symbols.Clear();
+                    
+                    // Apply config overrides
+                    if (cart.config.gpuEnabled.has_value()) {
+                        state.emulation.gpuEnabled = cart.config.gpuEnabled.value();
+                    }
+                    if (cart.config.targetIPS.has_value()) {
+                        state.emulation.instructionsPerFrame = cart.config.targetIPS.value();
+                    }
+                    if (cart.config.cycleAccurate.has_value()) {
+                        state.emulation.cycleAccurate = cart.config.cycleAccurate.value();
+                    }
+                    if (cart.config.sidEnabled.has_value()) {
+                        state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value());
+                    }
+                    
+                    state.emulator.SetCartridge(cart);
+                    state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
+                    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+                    state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
+                    state.emulator.ClearProfiler();
+                    
+                    // Trigger metadata popup
+                    ImGui::OpenPopup("Cartridge Loaded");
+                } else {
+                    ImGui::OpenPopup("ErrorLoadingROM");
+                }
+            } else {
+                std::cerr << "Cartridge load error: " << errorMsg << "\n";
                 ImGui::OpenPopup("ErrorLoadingROM");
             }
         }

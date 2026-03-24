@@ -44,6 +44,8 @@ static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
 
 static void DrawVRAMControls(AppState& state) {
 #ifdef TARGET_WASM
+    bool cartLoaded = state.emulator.GetCartridge().loaded;
+    ImGui::BeginDisabled(cartLoaded);
     if (ImGui::Button("Load Image")) {
         WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
             std::string virtualPath = "/tmp/" + std::string(filename);
@@ -56,6 +58,11 @@ static void DrawVRAMControls(AppState& state) {
         };
         WebFileUtils::open_browser_file_picker(".bin");
     }
+    ImGui::EndDisabled();
+    if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Eject cartridge first to load images to VRAM");
+    }
+
     ImGui::SameLine();
     if (ImGui::Button("Capture VRAM")) {
         std::string tempPath = "/tmp/vram_capture.bmp";
@@ -83,11 +90,18 @@ static void DrawVRAMControls(AppState& state) {
         }
     }
 #else
+    bool cartLoaded = state.emulator.GetCartridge().loaded;
+    ImGui::BeginDisabled(cartLoaded);
     if (ImGui::Button("Load Image")) {
         if (!ImGuiFileDialog::Instance()->IsOpened()) {
             ImGuiFileDialog::Instance()->OpenDialog("ChooseVRAMImageKey", "Choose VRAM Image", ".bin", ".", "");
         }
     }
+    ImGui::EndDisabled();
+    if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Eject cartridge first to load images to VRAM");
+    }
+
     ImGui::SameLine();
     if (ImGui::Button("Capture VRAM")) {
         if (!ImGuiFileDialog::Instance()->IsOpened()) {

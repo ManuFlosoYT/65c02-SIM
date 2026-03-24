@@ -227,13 +227,26 @@ static void DrawPlaybackControls(AppState& state) {
 }
 
 static void DrawAudioVideoControls(AppState& state) {
+    bool gpuOverridden = state.emulator.GetCartridge().config.gpuEnabled.has_value();
+    ImGui::BeginDisabled(gpuOverridden);
     if (ImGui::Checkbox("GPU", &state.emulation.gpuEnabled)) {
         state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
     }
+    ImGui::EndDisabled();
+    if (gpuOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Managed by Cartridge");
+    }
+
     ImGui::SameLine();
     bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
+    bool sidOverridden = state.emulator.GetCartridge().config.sidEnabled.has_value();
+    ImGui::BeginDisabled(sidOverridden);
     if (ImGui::Checkbox("SID", &soundEnabled)) {
         state.emulator.GetSID().EnableSound(soundEnabled);
+    }
+    ImGui::EndDisabled();
+    if (sidOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Managed by Cartridge");
     }
 }
 
@@ -258,9 +271,16 @@ static void DrawControlButtonBar(AppState& state) {
 }
 
 static void DrawSettingsBasic(AppState& state) {
+    bool cycleOverridden = state.emulator.GetCartridge().config.cycleAccurate.has_value();
+    ImGui::BeginDisabled(cycleOverridden);
     if (ImGui::Checkbox("Cycle-Accurate", &state.emulation.cycleAccurate)) {
         state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
     }
+    ImGui::EndDisabled();
+    if (cycleOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Managed by Cartridge");
+    }
+
     ImGui::Checkbox("Force load savestate", &state.emulation.forceLoadSaveState);
 #ifdef TARGET_WASM
     bool dummyAutoReload = false;
@@ -532,6 +552,8 @@ static void DrawTargetIPS(AppState& state, float mainColWidth) {
     std::string targetLabel = "Target ";
     targetLabel += (state.emulation.cycleAccurate ? "Hz" : "IPS");
 
+    bool ipsOverridden = state.emulator.GetCartridge().config.targetIPS.has_value();
+    ImGui::BeginDisabled(ipsOverridden);
     ImGui::SetNextItemWidth(mainColWidth * 0.3F);
     if (ImGui::InputInt(targetLabel.c_str(), &tempIPS, 1000000, 1000000)) {
         if (state.emulation.instructionsPerFrame == 1 && tempIPS == 1000001) {
@@ -541,6 +563,10 @@ static void DrawTargetIPS(AppState& state, float mainColWidth) {
         tempIPS = std::max(1, tempIPS);
         state.emulation.instructionsPerFrame = tempIPS;
         state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
+    }
+    ImGui::EndDisabled();
+    if (ipsOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Managed by Cartridge");
     }
 }
 
@@ -811,6 +837,24 @@ static void HandleDialogs(AppState& state) {
     HandleRecordVideoDialog(state);
 }
 
+static void DrawCartridgePopup(AppState& state) {
+    if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const auto& metadata = state.emulator.GetCartridge().metadata;
+        ImGui::Text("Cartridge: %s", metadata.name.c_str());
+        ImGui::Text("Author: %s", metadata.author.c_str());
+        ImGui::Text("Version: %s", metadata.version.c_str());
+        if (!metadata.description.empty()) {
+            ImGui::Separator();
+            ImGui::TextWrapped("%s", metadata.description.c_str());
+        }
+        ImGui::Separator();
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                        ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
@@ -825,6 +869,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     DrawIPSSection(state, mainColWidth);
 
     HandleDialogs(state);
+    DrawCartridgePopup(state);
 
     ImGui::SetScrollHereY(1.0F);
     ImGui::End();

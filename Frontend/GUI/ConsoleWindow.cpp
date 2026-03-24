@@ -85,6 +85,8 @@ static void DrawSDKPopup(AppState& state) {
 #endif
 
 static void DrawConsoleButtonBar(AppState& state) {
+    bool cartLoaded = state.emulator.GetCartridge().loaded;
+    ImGui::BeginDisabled(cartLoaded);
     if (ImGui::Button("Load ROM")) {
 #ifdef TARGET_WASM
         WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
@@ -97,6 +99,7 @@ static void DrawConsoleButtonBar(AppState& state) {
                 state.rom.symbols.Clear();
                 state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                 state.emulator.ClearProfiler();
+                state.emulator.ClearCartridge();
             } else {
                 printf("Failed to load ROM: %s\n", errorMsg.c_str());
             }
@@ -107,6 +110,36 @@ static void DrawConsoleButtonBar(AppState& state) {
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
         }
 #endif
+    }
+    ImGui::EndDisabled();
+    if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Eject cartridge first to load a different ROM");
+    }
+
+    ImGui::SameLine();
+    const char* cartBtnText = cartLoaded ? "Eject Cartridge" : "Load Cartridge (.65c)";
+    if (ImGui::Button(cartBtnText)) {
+        if (cartLoaded) {
+            state.emulator.ClearCartridge();
+        } else {
+#ifdef TARGET_WASM
+        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+            // Write to virtual FS
+            std::string virtualPath = "/tmp/" + std::string(filename);
+            FILE* f = fopen(virtualPath.c_str(), "wb");
+            if (f) {
+                fwrite(data, 1, size, f);
+                fclose(f);
+            }
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseCartridgeDlgKey", "Load Cartridge", ".65c", ".");
+        };
+        WebFileUtils::open_browser_file_picker(".65c");
+#else
+        if (!ImGuiFileDialog::Instance()->IsOpened()) {
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseCartridgeDlgKey", "Choose Cartridge", ".65c", ".");
+        }
+#endif
+        }
     }
 
 #ifdef TARGET_WASM
@@ -140,11 +173,16 @@ static void DrawConsoleButtonBar(AppState& state) {
 
 #ifndef TARGET_WASM
     ImGui::SameLine();
+    ImGui::BeginDisabled(cartLoaded);
     if (ImGui::Button("Open IDE")) {
         state.ide.open = !state.ide.open;
         if (state.ide.code.empty()) {
             state.ide.code = "// Write your C or Assembly here!\n";
         }
+    }
+    ImGui::EndDisabled();
+    if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Eject cartridge first to use the IDE");
     }
 #endif
     ImGui::Separator();
