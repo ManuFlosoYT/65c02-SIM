@@ -252,15 +252,20 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             const int internalW = 1440;
 
             displayTex = state.crtFilter.Apply(state.render.vramTexture, internalW, internalH, params);
+            
+            // Keep track of what was actually displayed for the capture button
+            state.render.lastDisplayTex = displayTex;
+            state.render.lastDisplayW = internalW;
+            state.render.lastDisplayH = internalH;
+        } else {
+            // Keep track of raw VRAM texture
+            state.render.lastDisplayTex = state.render.vramTexture;
+            state.render.lastDisplayW = GPU::VRAM_WIDTH;
+            state.render.lastDisplayH = GPU::VRAM_HEIGHT;
         }
 
         // NOLINTNEXTLINE(performance-no-int-to-ptr, cppcoreguidelines-pro-type-cstyle-cast)
         ImGui::Image((ImTextureID)(intptr_t)(displayTex), ImVec2(imgW, imgH));
-
-        // Keep track of what was actually displayed for the capture button
-        state.render.lastDisplayTex = displayTex;
-        state.render.lastDisplayW = static_cast<int>(imgW);
-        state.render.lastDisplayH = static_cast<int>(imgH);
 
         ImGui::End();
     }
