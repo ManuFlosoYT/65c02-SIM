@@ -69,6 +69,7 @@ class Emulator {
     bool IsGPUEnabled() const;
 
     Hardware::SID& GetSID();
+    const Hardware::SID& GetSID() const;
     Hardware::VIA& GetVIA();
     Hardware::ROM& GetROM();
     Hardware::SDCard& GetSDCard();
@@ -198,6 +199,7 @@ inline void Core::Emulator::SetGPUEnabled(bool enabled) { gpuEnabled = enabled; 
 inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
 
 inline Hardware::SID& Core::Emulator::GetSID() { return sid; }
+inline const Hardware::SID& Core::Emulator::GetSID() const { return sid; }
 inline Hardware::VIA& Core::Emulator::GetVIA() { return via; }
 inline Hardware::ROM& Core::Emulator::GetROM() { return rom; }
 inline Hardware::SDCard& Core::Emulator::GetSDCard() { return sdcard; }
