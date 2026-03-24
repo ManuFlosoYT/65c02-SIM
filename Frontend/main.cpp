@@ -122,8 +122,7 @@ static void InitializeTextures(AppState& state) {
     glBindTexture(GL_TEXTURE_2D, state.render.sidTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    std::array<unsigned char, 1280ULL * 720 * 3> emptySIDPixels{};
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, emptySIDPixels.data());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
     glGenFramebuffers(1, &state.render.sidFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, state.render.sidFBO);
