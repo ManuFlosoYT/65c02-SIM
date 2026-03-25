@@ -39,10 +39,23 @@
 #endif
 #include "Hardware/Core/CartridgeLoader.h"
 
+// Dedicated GPU
+#if defined(__linux__) && !defined(TARGET_WASM)
+#include <cstdlib>
+#endif
+
 using namespace Control;
 using namespace Core;
 using namespace Frontend;
 using namespace Hardware;
+
+// Dedicated GPU
+#ifdef _WIN32
+extern "C" {
+    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
 
 static constexpr int sidSampleRate = 48000;
 
@@ -720,6 +733,11 @@ static void MainLoop(void* arg) {
 }
 
 int main(int argc, char* argv[]) {
+#if defined(__linux__) && !defined(TARGET_WASM)
+    setenv("DRI_PRIME", "1", 0);                        // Mesa (AMD/Intel)
+    setenv("__NV_PRIME_RENDER_OFFLOAD", "1", 0);        // NVIDIA Propietary
+    setenv("__GLX_VENDOR_LIBRARY_NAME", "nvidia", 0);   // NVIDIA Propietary
+#endif
     const Args args = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
 
 #ifndef TARGET_WASM
