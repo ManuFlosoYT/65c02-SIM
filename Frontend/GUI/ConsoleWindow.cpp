@@ -16,6 +16,8 @@ using namespace Hardware;
 #include "Frontend/web/WebFileUtils.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include "Hardware/Core/CartridgeLoader.h"
+#include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #endif
 
 namespace GUI {
@@ -46,18 +48,39 @@ static void DrawSDKPopup(AppState& state) {
                 for (const auto& file : files) {
                     if (ImGui::Selectable(file.c_str())) {
                         std::string url = "roms/" + file;
-                        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data,
+                        WebFileUtils::onFilePickedCallback = [&state, file](const char* filename, const uint8_t* data,
                                                                       int size) {
-                            state.rom.data.assign(data, data + size);
-                            state.emulator.Pause();
-                            std::string errorMsg;
-                            if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename,
-                                                              errorMsg)) {
-                                state.rom.bin = filename;
-                                state.rom.loaded = true;
-                                state.rom.symbols.Clear();
-                                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-                                state.emulator.ClearProfiler();
+                            if (file.size() > 4 && file.substr(file.size() - 4) == ".65c") {
+                                state.emulator.Pause();
+                                std::string errorMsg;
+                                Core::Cartridge cart;
+                                if (Core::CartridgeLoader::LoadFromMemory(data, size, cart, errorMsg)) {
+                                    state.emulator.SetCartridge(cart);
+                                    if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
+                                        state.rom.bin = filename;
+                                        state.rom.loaded = true;
+                                        state.rom.symbols.Clear();
+                                        state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+                                        state.emulator.ClearProfiler();
+                                        if (!cart.vramData.empty() && state.emulation.gpuEnabled) {
+                                            ::GUI::ForceRefreshVRAM(state);
+                                        }
+                                    }
+                                } else {
+                                    printf("Failed to load cartridge: %s\n", errorMsg.c_str());
+                                }
+                            } else {
+                                state.rom.data.assign(data, data + size);
+                                state.emulator.Pause();
+                                std::string errorMsg;
+                                if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename,
+                                                                  errorMsg)) {
+                                    state.rom.bin = filename;
+                                    state.rom.loaded = true;
+                                    state.rom.symbols.Clear();
+                                    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+                                    state.emulator.ClearProfiler();
+                                }
                             }
                         };
                         WebFileUtils::fetch_file(url.c_str(), file.c_str());

@@ -15,11 +15,32 @@ bool CartridgeLoader::Load(const std::string& path, Cartridge& outCartridge, std
         return false;
     }
 
+    bool success = LoadInternal(&zip_archive, outCartridge, errorMsg);
+    mz_zip_reader_end(&zip_archive);
+    return success;
+}
+
+bool CartridgeLoader::LoadFromMemory(const uint8_t* data, size_t size, Cartridge& outCartridge, std::string& errorMsg) {
+    mz_zip_archive zip_archive;
+    memset(&zip_archive, 0, sizeof(zip_archive));
+
+    if (mz_zip_reader_init_mem(&zip_archive, data, size, 0) == MZ_FALSE) {
+        errorMsg = "Failed to open ZIP from memory";
+        return false;
+    }
+
+    bool success = LoadInternal(&zip_archive, outCartridge, errorMsg);
+    mz_zip_reader_end(&zip_archive);
+    return success;
+}
+
+bool CartridgeLoader::LoadInternal(void* zip_archive_ptr, Cartridge& outCartridge, std::string& errorMsg) {
+    auto* zip_archive = static_cast<mz_zip_archive*>(zip_archive_ptr);
+
     // Read manifest.json
     size_t manifestSize = 0;
-    void* manifestData = mz_zip_reader_extract_file_to_heap(&zip_archive, "manifest.json", &manifestSize, 0);
+    void* manifestData = mz_zip_reader_extract_file_to_heap(zip_archive, "manifest.json", &manifestSize, 0);
     if (manifestData == nullptr) {
-        mz_zip_reader_end(&zip_archive);
         errorMsg = "Cartridge is missing manifest.json";
         return false;
     }
@@ -33,36 +54,34 @@ bool CartridgeLoader::Load(const std::string& path, Cartridge& outCartridge, std
         ParseConfig(manifestJson, outCartridge);
         ParseBus(manifestJson, outCartridge);
 
+        outCartridge.version = manifestJson.value("version", "1.0");
         outCartridge.romFileName = manifestJson.value("rom", "");
         outCartridge.vramFileName = manifestJson.value("vram", "");
 
         if (!outCartridge.romFileName.empty()) {
-            if (!ReadRomData(&zip_archive, outCartridge.romFileName, outCartridge, errorMsg)) {
+            if (!ReadRomData(zip_archive, outCartridge.romFileName, outCartridge, errorMsg)) {
                 return false;
             }
         }
 
         if (!outCartridge.vramFileName.empty()) {
-            if (!ReadVramData(&zip_archive, outCartridge.vramFileName, outCartridge, errorMsg)) {
+            if (!ReadVramData(zip_archive, outCartridge.vramFileName, outCartridge, errorMsg)) {
                 return false;
             }
         }
 
         // Must have either ROM or VRAM
         if (outCartridge.romFileName.empty() && outCartridge.vramFileName.empty()) {
-            mz_zip_reader_end(&zip_archive);
             errorMsg = "Cartridge is missing ROM/VRAM data";
             return false;
         }
 
         outCartridge.loaded = true;
     } catch (const std::exception& e) {
-        mz_zip_reader_end(&zip_archive);
         errorMsg = "Failed to parse manifest.json: " + std::string(e.what());
         return false;
     }
 
-    mz_zip_reader_end(&zip_archive);
     return true;
 }
 
@@ -129,7 +148,6 @@ bool CartridgeLoader::ReadRomData(void* zip_archive, const std::string& romFileN
     size_t romSize = 0;
     void* romData = mz_zip_reader_extract_file_to_heap(static_cast<mz_zip_archive*>(zip_archive), romFileName.c_str(), &romSize, 0);
     if (romData == nullptr) {
-        mz_zip_reader_end(static_cast<mz_zip_archive*>(zip_archive));
         errorMsg = "Cartridge is missing ROM file: " + romFileName;
         return false;
     }
@@ -144,7 +162,6 @@ bool CartridgeLoader::ReadVramData(void* zip_archive, const std::string& vramFil
     size_t vramSize = 0;
     void* vramData = mz_zip_reader_extract_file_to_heap(static_cast<mz_zip_archive*>(zip_archive), vramFileName.c_str(), &vramSize, 0);
     if (vramData == nullptr) {
-        mz_zip_reader_end(static_cast<mz_zip_archive*>(zip_archive));
         errorMsg = "Cartridge is missing VRAM file: " + vramFileName;
         return false;
     }
