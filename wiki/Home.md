@@ -69,6 +69,7 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 - **Development & SDK**
   - [Linker and Memory Layout](Linker-and-Memory-Layout) — Linker configs, BIOS, memory map
   - [SDK](SDK) — Compilation and conversion tools
+  - [Cartridge System](Cartridge-System) — Packaging and hardware configuration system
   - [Binaries](Binaries) — Included example programs
 - **Building & testing**
   - [Building](Building) — Compile the project from source
@@ -79,8 +80,8 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 ### Run the simulator (pre-compiled binaries)
 
 1. Download the latest release from the [releases page](https://github.com/ManuFlosoYT/65c02-SIM/releases).
-2. Also download `SDK.zip` if you want to develop programs.
-3. Open the simulator and select the `.bin` file you want to run.
+2. Also download `SDK.zip` if you want to develop programs/cartridges or run pre-compiled binaries.
+3. Open the simulator and select the `.bin` or `.65c` (cartridge) file you want to run.
 
 ### Compile a program from the SDK
 
