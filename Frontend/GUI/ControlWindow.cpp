@@ -168,7 +168,10 @@ static void HandleReset(AppState& state) {
     state.emulator.GetGPU().Reset();
     state.emulator.ClearProfiler();
 
-    if (state.rom.loaded) {
+    if (state.emulator.GetCartridge().loaded) {
+        // Reset cartridge state (full hardware re-init from manifest)
+        state.emulator.SetupHardware();
+    } else if (state.rom.loaded) {
         std::string errorMsg;
 #ifdef TARGET_WASM
         if (!state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg)) {

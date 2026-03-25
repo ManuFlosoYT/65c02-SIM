@@ -112,9 +112,10 @@ class Emulator {
     const Cartridge& GetCartridge() const { return cartridge; }
     void ClearCartridge() { cartridge = Cartridge(); }
 
+    void SetupHardware();
+
    private:
     void ThreadLoop();
-    void SetupHardware();
 
     void HandleVIAPortB(Byte val);
     void UpdateSDCardSPI(Byte val);
