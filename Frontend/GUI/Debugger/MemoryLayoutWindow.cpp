@@ -209,7 +209,7 @@ void DrawVirtualDevicesTable(std::vector<DeviceRegistration>& devices) {
     }
 
     ImGui::Spacing();
-    ImGui::TextUnformatted("Virtual Devices");
+    ImGui::TextUnformatted("Virtual Devices (VIA I/O)");
     ImGui::Separator();
 
     if (ImGui::BeginTable("VirtualDeviceTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
