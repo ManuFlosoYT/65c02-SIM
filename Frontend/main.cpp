@@ -17,6 +17,7 @@
 
 #include "Frontend/Control/AppState.h"
 #include "Frontend/Control/Console.h"
+#include "Frontend/Control/CartridgeUtils.h"
 #include "Frontend/GUI/ConsoleWindow.h"
 #include "Frontend/GUI/ControlWindow.h"
 #include "Frontend/GUI/LCDWindow.h"
@@ -208,34 +209,6 @@ static void HandleROMFilePicker(AppState& state) {
     }
 }
 
-static void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
-    if (cart.config.gpuEnabled.has_value()) {
-        state.emulation.gpuEnabled = cart.config.gpuEnabled.value();
-    }
-    if (cart.config.targetIPS.has_value()) {
-        state.emulation.instructionsPerFrame = cart.config.targetIPS.value();
-    }
-    if (cart.config.cycleAccurate.has_value()) {
-        state.emulation.cycleAccurate = cart.config.cycleAccurate.value();
-    }
-    if (cart.config.sidEnabled.has_value()) {
-        state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value());
-    }
-    
-    state.emulator.SetCartridge(cart);
-    state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
-    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-    state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
-    state.emulator.ClearProfiler();
-    
-    // Refresh VRAM texture if an image was loaded
-    if (!cart.vramData.empty() && state.emulation.gpuEnabled) {
-        ::GUI::ForceRefreshVRAM(state);
-    }
-    
-    ImGui::OpenPopup("Cartridge Loaded");
-}
-
 static void HandleCartridgeFilePicker(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if (ImGuiFileDialog::Instance()->Display("ChooseCartridgeDlgKey")) {
@@ -245,7 +218,8 @@ static void HandleCartridgeFilePicker(AppState& state) {
             std::string errorMsg;
             Core::Cartridge cart;
             if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
-                ApplyCartridgeConfig(state, cart);
+                Control::ApplyCartridgeConfig(state, cart);
+                ImGui::OpenPopup("Cartridge Loaded");
                 if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
                     state.rom.bin = filePathName;
                     state.rom.loaded = true;

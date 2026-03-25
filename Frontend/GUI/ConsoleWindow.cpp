@@ -18,6 +18,7 @@ using namespace Hardware;
 #include <nlohmann/json.hpp>
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
+#include "Frontend/Control/CartridgeUtils.h"
 #endif
 
 namespace GUI {
@@ -55,16 +56,11 @@ static void DrawSDKPopup(AppState& state) {
                                 std::string errorMsg;
                                 Core::Cartridge cart;
                                 if (Core::CartridgeLoader::LoadFromMemory(data, size, cart, errorMsg)) {
-                                    state.emulator.SetCartridge(cart);
+                                    Control::ApplyCartridgeConfig(state, cart);
                                     if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
                                         state.rom.bin = filename;
                                         state.rom.loaded = true;
                                         state.rom.symbols.Clear();
-                                        state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-                                        state.emulator.ClearProfiler();
-                                        if (!cart.vramData.empty() && state.emulation.gpuEnabled) {
-                                            ::GUI::ForceRefreshVRAM(state);
-                                        }
                                     }
                                 } else {
                                     printf("Failed to load cartridge: %s\n", errorMsg.c_str());
