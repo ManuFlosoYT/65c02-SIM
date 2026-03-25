@@ -147,10 +147,48 @@ jobs:
 
       - name: Create SDK
         run: |
-          chmod +x compile-bin.sh image-to-bin.sh midi-to-bin.sh
+          chmod +x compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh
           ./compile-bin.sh all
           ./image-to-bin.sh all
           ./midi-to-bin.sh all
+          
+          # Function to handle ROM flags
+          get_rom_flags() {
+            local name=$1
+            local flags=""
+            case $name in
+              cube|fillVRAM|fullTest|game|room|testGPU|tetris|vga) flags="$flags --gpu true" ;;
+            esac
+            case $name in
+              fullTest|tetris|testSID|eater) flags="$flags --sid true" ;;
+            esac
+            echo "$flags"
+          }
+
+          # Package ROMs
+          for f in output/rom/*.bin; do
+            if [ -f "$f" ]; then
+              name=$(basename "${f%.bin}")
+              ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" $(get_rom_flags "$name")
+            fi
+          done
+
+          # Package MIDIs
+          for f in output/midi/*.bin; do
+            if [ -f "$f" ]; then
+              name=$(basename "${f%.bin}")
+              ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true
+            fi
+          done
+
+          # Package VRAM images
+          for f in output/vram/*.bin; do
+            if [ -f "$f" ]; then
+              name=$(basename "${f%.bin}")
+              ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true
+            fi
+          done
+
           zip -r SDK.zip Binaries/ Linker/ GPU/ SID/ output/ compile-bin.sh image-to-bin.sh midi-to-bin.sh -x "Binaries/build/*"
 
       - name: Upload SDK Artifact
@@ -185,9 +223,47 @@ jobs:
 
       - name: Compile SDK ROMs and Assets
         run: |
+          chmod +x compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh
           ./compile-bin.sh all
           ./image-to-bin.sh all
           ./midi-to-bin.sh all
+
+          # Function to handle ROM flags
+          get_rom_flags() {
+            local name=$1
+            local flags=""
+            case $name in
+              cube|fillVRAM|fullTest|game|room|testGPU|tetris|vga) flags="$flags --gpu true" ;;
+            esac
+            case $name in
+              fullTest|tetris|testSID|eater) flags="$flags --sid true" ;;
+            esac
+            echo "$flags"
+          }
+
+          # Package ROMs
+          for f in output/rom/*.bin; do
+            if [ -f "$f" ]; then
+              name=$(basename "${f%.bin}")
+              ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" $(get_rom_flags "$name")
+            fi
+          done
+
+          # Package MIDIs
+          for f in output/midi/*.bin; do
+            if [ -f "$f" ]; then
+              name=$(basename "${f%.bin}")
+              ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true
+            fi
+          done
+
+          # Package VRAM images
+          for f in output/vram/*.bin; do
+            if [ -f "$f" ]; then
+              name=$(basename "${f%.bin}")
+              ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true
+            fi
+          done
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -199,14 +275,12 @@ jobs:
           chmod +x build-web.sh
           ./build-web.sh --clean
           mkdir -p output/web/roms
-          cp output/rom/*.bin output/web/roms/ 2>/dev/null || true
-          cp output/midi/*.bin output/web/roms/ 2>/dev/null || true
-          cp output/vram/*.bin output/web/roms/ 2>/dev/null || true
+          cp output/cartridge/*.65c output/web/roms/ 2>/dev/null || true
           
           # Generate structured JSON
-          ROMS_JSON=$(ls output/rom/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
-          MIDIS_JSON=$(ls output/midi/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
-          VRAMS_JSON=$(ls output/vram/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+          ROMS_JSON=$(ls output/rom/*.bin 2>/dev/null | xargs -n 1 basename | sed 's/\.bin$/.65c/' | jq -R . | jq -s . || echo "[]")
+          MIDIS_JSON=$(ls output/midi/*.bin 2>/dev/null | xargs -n 1 basename | sed 's/\.bin$/.65c/' | jq -R . | jq -s . || echo "[]")
+          VRAMS_JSON=$(ls output/vram/*.bin 2>/dev/null | xargs -n 1 basename | sed 's/\.bin$/.65c/' | jq -R . | jq -s . || echo "[]")
           jq -n --argjson r "$ROMS_JSON" --argjson m "$MIDIS_JSON" --argjson v "$VRAMS_JSON" \
             '{roms: $r, midis: $m, vrams: $v}' > output/web/roms/roms.json
 
