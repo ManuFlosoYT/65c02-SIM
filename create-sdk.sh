@@ -18,7 +18,8 @@ get_rom_flags() {
     fullTest|tetris|testSID|eater) flags="$flags --sid true" ;;
   esac
   case $name in
-    testNET|microDOS) flags="$flags --esp true" ;;
+    testNET) flags="$flags --esp true" ;;
+    microDOS) flags="$flags --esp true --sd true" ;;
   esac
   echo "$flags"
 }

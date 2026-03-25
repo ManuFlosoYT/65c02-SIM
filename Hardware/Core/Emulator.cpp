@@ -622,8 +622,9 @@ void Emulator::SetupHardware() {
             }
         }
         // Virtual devices (no bus address)
-        bus.RegisterVirtualDevice(&lcd, true);
-        bus.RegisterVirtualDevice(&sdcard, false);
+        bool sdActive = cartridge.config.sdEnabled.value_or(false);
+        bus.RegisterVirtualDevice(&lcd, !sdActive);
+        bus.RegisterVirtualDevice(&sdcard, sdActive);
     } else {
         // Default layout (v1.0)
         bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
@@ -633,8 +634,9 @@ void Emulator::SetupHardware() {
         bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(false), true);
         bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
         bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
-        bus.RegisterVirtualDevice(&lcd, true);
-        bus.RegisterVirtualDevice(&sdcard, false);
+        bool sdActive = cartridge.config.sdEnabled.value_or(false);
+        bus.RegisterVirtualDevice(&lcd, !sdActive);
+        bus.RegisterVirtualDevice(&sdcard, sdActive);
     }
 
     // Reset SPI bit-bang state

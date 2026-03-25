@@ -20,6 +20,7 @@ struct CartridgeConfig {
     std::optional<bool> cycleAccurate;
     std::optional<bool> sidEnabled;
     std::optional<bool> espEnabled;
+    std::optional<bool> sdEnabled;
 };
 
 struct DeviceConfig {

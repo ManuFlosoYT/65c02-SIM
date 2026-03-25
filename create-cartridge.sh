@@ -14,6 +14,7 @@ GPU="false"
 CYCLE="true"
 SID="true"
 ESP="false"
+SD_ENABLED="false"
 
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
@@ -29,6 +30,7 @@ while [[ "$#" -gt 0 ]]; do
         --cycle) CYCLE="$2"; shift 2 ;;
         --sid) SID="$2"; shift 2 ;;
         --esp) ESP="$2"; shift 2 ;;
+        --sd) SD_ENABLED="$2"; shift 2 ;;
         *) 
             if [ -z "$ROM_FILE" ] && [[ ! "$1" == --* ]]; then 
                 ROM_FILE="$1"
@@ -79,7 +81,8 @@ TEMP_DIR=$(mktemp -d)
   echo "    \"gpu_enabled\": $GPU,"
   echo "    \"cycle_accurate\": $CYCLE,"
   echo "    \"sid_enabled\": $SID,"
-  echo "    \"esp_enabled\": $ESP"
+  echo "    \"esp_enabled\": $ESP,"
+  echo "    \"sd_enabled\": $SD_ENABLED"
   echo "  },"
   echo "  \"bus\": ["
   echo "    { \"name\": \"RAM\", \"start\": \"0x0000\", \"end\": \"0x7FFF\" },"

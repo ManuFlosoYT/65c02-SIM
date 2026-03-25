@@ -94,6 +94,9 @@ void CartridgeLoader::ParseConfig(const nlohmann::json& manifestJson, Cartridge&
         if (configObj.contains("esp_enabled")) {
             outCartridge.config.espEnabled = configObj["esp_enabled"].get<bool>();
         }
+        if (configObj.contains("sd_enabled")) {
+            outCartridge.config.sdEnabled = configObj["sd_enabled"].get<bool>();
+        }
     }
 }
 
