@@ -280,13 +280,20 @@ void cmd_nano() {
 
 int main(void) {
     char cwd[64];
+    int res;
     INIT_BUFFER();
 
     println("microDOS v1.1");
     println("Mounting SD...");
+    if (!sd_is_present()) {
+        println("ERROR: SD Hardware not detected at 0x5100!");
+        return 1;
+    }
 
-    if (!sd_mount()) {
-        println("CRITICAL: Could not mount SD card.");
+    res = sd_mount();
+    if (res != 0) {
+        print_str("CRITICAL: Could not mount SD card: ");
+        println(sd_error_string(res));
         return 1;
     }
 

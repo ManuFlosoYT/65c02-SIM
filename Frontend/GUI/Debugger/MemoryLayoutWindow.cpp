@@ -13,6 +13,7 @@
 
 using namespace Control;
 using namespace Hardware;
+using namespace Core;
 
 namespace GUI {
 
@@ -101,7 +102,7 @@ void DrawMemoryLayoutTooltip(const std::vector<DeviceRegistration>& devices, flo
     }
 }
 
-void DrawMappedDevicesTable(std::vector<DeviceRegistration>& devices) {
+void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& devices) {
     ImGui::TextUnformatted("Hardware Components");
     ImGui::Separator();
 
@@ -157,7 +158,15 @@ void DrawMappedDevicesTable(std::vector<DeviceRegistration>& devices) {
             ImGui::PopItemWidth();
 
             ImGui::TableSetColumnIndex(3);
-            ImGui::Checkbox("##en", &reg.enabled);
+            if (ImGui::Checkbox("##en", &reg.enabled)) {
+                if (reg.device->GetName() == "SD Card") {
+                    state.emulator.SetSDEnabled(reg.enabled);
+                    state.emulation.sdEnabled = reg.enabled;
+                } else if (reg.device->GetName() == "ESP8266") {
+                    state.emulator.SetESPEnabled(reg.enabled);
+                    state.emulation.espEnabled = reg.enabled;
+                }
+            }
 
             ImGui::TableSetColumnIndex(4);
             ImGui::Checkbox("##ign", &reg.ignoreCollision);
@@ -196,41 +205,8 @@ void DrawVirtualDeviceRow(DeviceRegistration& reg, std::vector<DeviceRegistratio
     ImGui::PopID();
 }
 
-void DrawVirtualDevicesTable(std::vector<DeviceRegistration>& devices) {
-    bool hasVirtual = false;
-    for (const auto& reg : devices) {
-        if (reg.isVirtual) {
-            hasVirtual = true;
-            break;
-        }
-    }
-    if (!hasVirtual) {
-        return;
-    }
-
-    ImGui::Spacing();
-    ImGui::TextUnformatted("Virtual Devices (VIA I/O)");
-    ImGui::Separator();
-
-    if (ImGui::BeginTable("VirtualDeviceTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 55);
-        ImGui::TableHeadersRow();
-
-        int devIdx = 0;
-        for (auto& reg : devices) {
-            if (reg.isVirtual) {
-                DrawVirtualDeviceRow(reg, devices, devIdx);
-            }
-            devIdx++;
-        }
-        ImGui::EndTable();
-    }
-}
-
-void DrawHardwareComponentsTable(std::vector<DeviceRegistration>& devices) {
-    DrawMappedDevicesTable(devices);
-    DrawVirtualDevicesTable(devices);
+void DrawHardwareComponentsTable(AppState& state, std::vector<DeviceRegistration>& devices) {
+    DrawMappedDevicesTable(state, devices);
 }
 
 }  // namespace
@@ -263,7 +239,7 @@ void DrawMemoryLayoutWindow(AppState& state) {
 
     ImGui::NextColumn();
 
-    DrawHardwareComponentsTable(devices);
+    DrawHardwareComponentsTable(state, devices);
 
     ImGui::Spacing();
     ImGui::Separator();

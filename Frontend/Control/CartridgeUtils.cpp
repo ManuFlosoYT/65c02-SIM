@@ -4,6 +4,8 @@
 namespace Control {
 
 void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
+    state.emulator.SetCartridge(cart);
+
     if (cart.config.gpuEnabled.has_value()) {
         state.emulation.gpuEnabled = cart.config.gpuEnabled.value();
     }
@@ -13,13 +15,22 @@ void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
     if (cart.config.cycleAccurate.has_value()) {
         state.emulation.cycleAccurate = cart.config.cycleAccurate.value();
     }
-    if (cart.config.sidEnabled.has_value()) {
-        state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value());
+    if (cart.config.sdEnabled.has_value()) {
+        state.emulation.sdEnabled = cart.config.sdEnabled.value();
+    }
+    if (cart.config.espEnabled.has_value()) {
+        state.emulation.espEnabled = cart.config.espEnabled.value();
     }
     
-    state.emulator.SetCartridge(cart);
+    // Explicit hardware activation
+    if (cart.config.sidEnabled.value_or(false)) {
+        state.emulator.GetSID().EnableSound(true);
+    }
+    
     state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
     state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+    state.emulator.SetSDEnabled(state.emulation.sdEnabled);
+    state.emulator.SetESPEnabled(state.emulation.espEnabled);
     state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
     state.emulator.ClearProfiler();
     

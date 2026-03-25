@@ -69,6 +69,12 @@ class Emulator {
     void SetGPUEnabled(bool enabled);
     bool IsGPUEnabled() const;
 
+    void SetESPEnabled(bool enabled);
+    bool IsESPEnabled() const;
+
+    void SetSDEnabled(bool enabled);
+    bool IsSDEnabled() const;
+
     Hardware::SID& GetSID();
     const Hardware::SID& GetSID() const;
     Hardware::VIA& GetVIA();
@@ -110,6 +116,7 @@ class Emulator {
 
     void SetCartridge(const Cartridge& cart) { cartridge = cart; }
     const Cartridge& GetCartridge() const { return cartridge; }
+    Cartridge& GetCartridge() { return cartridge; }
     void ClearCartridge() { cartridge = Cartridge(); }
 
     void SetupHardware();
@@ -118,7 +125,6 @@ class Emulator {
     void ThreadLoop();
 
     void HandleVIAPortB(Byte val);
-    void UpdateSDCardSPI(Byte val);
 
     bool LoadComponentsState(std::istream& stateStream);
     void LoadInternalState(std::istream& stateStream);
@@ -156,6 +162,8 @@ class Emulator {
     std::atomic<bool> hasInput{false};
     int baudDelay = 0;
     bool gpuEnabled = false;
+    bool espEnabled = false;
+    bool sdEnabled = false;
 
     // Threading control
     std::atomic<bool> running{false};
@@ -174,15 +182,9 @@ class Emulator {
     std::filesystem::file_time_type lastBinModificationTime;
     std::atomic<bool> autoReloadRequested{true};
 
+    // Savestate versioning
     SavestateLoadResult lastLoadResult = SavestateLoadResult::Success;
     std::string lastLoadVersion;
-
-    // SPI bit-bang state (shared between VIA callback and Reset)
-    bool spi_last_clk = false;
-    uint8_t spi_byte_in = 0;
-    int spi_bit_count = 0;
-    uint8_t spi_miso_byte = 0xFF;
-    int spi_miso_bit_idx = 0;
 
     std::deque<std::string> rewindBuffer;
     static constexpr size_t MAX_REWIND_STATES = 255;
@@ -209,6 +211,20 @@ inline void Core::Emulator::SetGPUEnabled(bool enabled) {
     SetupHardware();
 }
 inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
+
+inline void Core::Emulator::SetESPEnabled(bool enabled) {
+    std::lock_guard<std::mutex> lock(emulationMutex);
+    espEnabled = enabled;
+    SetupHardware();
+}
+inline bool Core::Emulator::IsESPEnabled() const { return espEnabled; }
+
+inline void Core::Emulator::SetSDEnabled(bool enabled) {
+    std::lock_guard<std::mutex> lock(emulationMutex);
+    sdEnabled = enabled;
+    SetupHardware();
+}
+inline bool Core::Emulator::IsSDEnabled() const { return sdEnabled; }
 
 inline Hardware::SID& Core::Emulator::GetSID() { return sid; }
 inline const Hardware::SID& Core::Emulator::GetSID() const { return sid; }

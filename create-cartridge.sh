@@ -90,6 +90,7 @@ TEMP_DIR=$(mktemp -d)
   echo "    { \"name\": \"ACIA\", \"start\": \"0x5000\", \"end\": \"0x5003\" },"
   echo "    { \"name\": \"VIA\", \"start\": \"0x6000\", \"end\": \"0x600F\" },"
   echo "    { \"name\": \"ESP8266\", \"start\": \"0x5004\", \"end\": \"0x5007\" },"
+  echo "    { \"name\": \"SD Card\", \"start\": \"0x5008\", \"end\": \"0x500B\" },"
   echo "    { \"name\": \"SID\", \"start\": \"0x4800\", \"end\": \"0x481F\" },"
   echo "    { \"name\": \"GPU\", \"start\": \"0x2000\", \"end\": \"0x3FFF\" }"
   echo "  ]"

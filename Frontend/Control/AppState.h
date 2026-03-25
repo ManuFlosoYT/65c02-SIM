@@ -51,6 +51,9 @@ struct EmulationState {
     int instructionsPerFrame = 1000000;
     float ipsLogScale = 6.0F;
     bool gpuEnabled = false;
+    bool sidEnabled = true;
+    bool espEnabled = false;
+    bool sdEnabled = false;
     bool cycleAccurate = true;
     bool forceLoadSaveState = false;
     bool autoReload = true;

@@ -13,6 +13,14 @@
 
 #include "fatfs/ff.h"
 
+/* MMIO Registers */
+#define SD_CTRL (*(volatile uint8_t*)0x5008)
+#define SD_DATA (*(volatile uint8_t*)0x5009)
+
+/* Register bits */
+#define SD_CTRL_CS      0x01  /* Bit 0: Chip Select (Write: 1=Active/Low, 0=Inactive/High) */
+#define SD_STAT_MOUNTED 0x01  /* Bit 0: Mounted Status (Read: 1=Mounted, 0=None) */
+
 /* Friendly open-mode aliases */
 #define SD_READ FA_READ
 #define SD_WRITE FA_WRITE
@@ -27,7 +35,9 @@ typedef FILINFO SD_INFO;
 
 /* Volume */
 int sd_mount(void);
+const char* sd_error_string(int res);
 void sd_unmount(void);
+int sd_is_present(void);
 
 /* File I/O */
 int sd_open(SD_FILE* fp, const char* path, uint8_t mode);

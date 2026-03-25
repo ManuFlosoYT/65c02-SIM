@@ -28,8 +28,8 @@ class SDCard : public IBusDevice {
     [[nodiscard]] std::string GetMountedPath() const { return currentPath; }
 
     // IBusDevice overrides
-    void Write(Word /*address*/, Byte /*val*/) override {}
-    Byte Read(Word /*address*/) override { return 0xFF; }
+    Byte Read(Word address) override;
+    void Write(Word address, Byte data) override;
     [[nodiscard]] std::string GetName() const override { return "SD Card"; }
     [[nodiscard]] bool IsReadOnly() const override { return false; }
     Byte* GetRawMemory() override { return nullptr; }
@@ -69,6 +69,7 @@ class SDCard : public IBusDevice {
     };
 
     State state = State::IDLE;
+    uint8_t last_miso = 0xFFU;
 
     // Command parsing
     std::array<std::uint8_t, 6> cmd_buffer{};

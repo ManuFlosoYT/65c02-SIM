@@ -82,6 +82,7 @@ bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::strin
     }
 
     currentBinPath = name;
+    SetupHardware();
     std::cout << "Loaded ROM from memory: " << name << " (" << size << " bytes)\n";
 
     try {
@@ -614,37 +615,27 @@ void Emulator::SetupHardware() {
             } else if (dev.name == "VIA") {
                 bus.RegisterDevice(dev.start, dev.end, &via, true, true);
             } else if (dev.name == "ESP8266") {
-                bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(false), true);
+                bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
             } else if (dev.name == "SID") {
                 bus.RegisterDevice(dev.start, dev.end, &sid, true, true);
             } else if (dev.name == "GPU") {
                 bus.RegisterDevice(dev.start, dev.end, &gpu, true, true);
             }
         }
-        // Virtual devices (no bus address)
-        bool sdActive = cartridge.config.sdEnabled.value_or(false);
-        bus.RegisterVirtualDevice(&lcd, !sdActive);
-        bus.RegisterVirtualDevice(&sdcard, sdActive);
+        // MMIO SD device
+        bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
     } else {
         // Default layout (v1.0)
         bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
         bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
         bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
         bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
-        bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(false), true);
+        bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
+        bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
         bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
         bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
-        bool sdActive = cartridge.config.sdEnabled.value_or(false);
-        bus.RegisterVirtualDevice(&lcd, !sdActive);
-        bus.RegisterVirtualDevice(&sdcard, sdActive);
+        bus.RegisterVirtualDevice(&lcd, true);
     }
-
-    // Reset SPI bit-bang state
-    spi_last_clk = false;
-    spi_byte_in = 0;
-    spi_bit_count = 0;
-    spi_miso_byte = 0xFF;
-    spi_miso_bit_idx = 0;
 
     acia.Reset();
     via.Reset();
@@ -657,6 +648,15 @@ void Emulator::SetupHardware() {
     // Load VRAM from cartridge if present
     if (cartridge.loaded && !cartridge.vramData.empty()) {
         gpu.LoadVRAM(cartridge.vramData);
+    }
+
+    // Load SD image if present
+    if (!currentBinPath.empty()) {
+        std::filesystem::path sdPath = currentBinPath;
+        sdPath.replace_extension(".sd");
+        if (std::filesystem::exists(sdPath)) {
+            sdcard.Mount(sdPath.string());
+        }
     }
 
     via.SetPortBCallback([this](Byte val) { HandleVIAPortB(val); });
@@ -675,49 +675,7 @@ void Emulator::HandleVIAPortB(Byte val) {
 
     if (is_lcd_enabled) {
         lcd.Update(val);
-    } else if (is_sd_enabled) {
-        UpdateSDCardSPI(val);
     }
-}
-
-void Emulator::UpdateSDCardSPI(Byte val) {
-    bool clk = (val & 0x04U) != 0;
-    bool cs_pin = (val & 0x08U) != 0;
-
-    sdcard.SetCS(cs_pin);
-
-    if (cs_pin) {
-        // CS is High (Inactive for SD card). Reset SPI bit-sync state.
-        spi_bit_count = 0;
-        spi_miso_bit_idx = 0;
-        spi_byte_in = 0;
-        spi_miso_byte = 0xFF;  // Default idle output
-        via.SetInputB(0x02U);  // MISO Pull-up
-    } else {
-        // CS is Low (Active).
-        if (clk && !spi_last_clk) {  // Rising edge
-            // Accumulate the incoming MOSI bit. (PB0 = MOSI)
-            bool mosi_bit = (val & 0x01U) != 0;
-            spi_byte_in = static_cast<uint8_t>((spi_byte_in << 1U) | (mosi_bit ? 1U : 0U));
-            spi_bit_count++;
-
-            // Full byte received — exchange with the SD card.
-            if (spi_bit_count == 8) {
-                spi_miso_byte = sdcard.TransferByte(spi_byte_in);
-                spi_bit_count = 0;
-                spi_miso_bit_idx = 0;
-                spi_byte_in = 0;
-            } else {
-                spi_miso_bit_idx++;
-            }
-        }
-
-        // Drive the CURRENT bit of MISO onto PB1.
-        // We do this on every callback to ensure it's stable when the CPU reads it.
-        bool miso_out = ((spi_miso_byte >> (7 - spi_miso_bit_idx)) & 0x01U) != 0;
-        via.SetInputB(static_cast<Byte>(miso_out ? 0x02U : 0x00U));
-    }
-    spi_last_clk = clk;
 }
 
 }  // namespace Core

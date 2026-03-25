@@ -13,18 +13,9 @@
 
 #include <stdint.h>
 
-/* 6522 VIA register addresses (match VIA.h) */
-#define VIA_PORTB (*(volatile uint8_t*)0x6000)
-#define VIA_DDRB (*(volatile uint8_t*)0x6002)
-
-/* SPI pin masks on Port B */
-#define SPI_MOSI 0x01u /* PB0 */
-#define SPI_MISO 0x02u /* PB1 */
-#define SPI_CLK 0x04u  /* PB2 */
-#define SPI_CS_N 0x08u /* PB3 */
-
-/* Direction bits: MOSI/CLK/CS are outputs, MISO is input */
-#define SPI_DDR_MASK (SPI_MOSI | SPI_CLK | SPI_CS_N)
+/* MMIO SD register addresses */
+#define SD_CTRL (*(volatile uint8_t*)0x5008)
+#define SD_DATA (*(volatile uint8_t*)0x5009)
 
 /* -----------------------------------------------------------------------
    Internal helpers
@@ -33,37 +24,18 @@
 static DSTATUS Stat = STA_NOINIT;
 
 static void spi_init(void) {
-    /* Set MOSI, CLK, CS as outputs; MISO as input */
-    VIA_DDRB = (VIA_DDRB & ~SPI_MISO) | SPI_DDR_MASK;
-    /* Deassert CS, CLK low, MOSI low */
-    VIA_PORTB = (VIA_PORTB & ~(SPI_MOSI | SPI_CLK)) | SPI_CS_N;
+    /* Ensure CS is high (inactive) */
+    SD_CTRL = 0;
 }
 
-/* Send/receive one byte MSB-first, SPI mode 0 (bit-bang) */
+/* Send/receive one byte via MMIO SPI */
 static uint8_t spi_xfer(uint8_t mosi) {
-    uint8_t miso = 0;
-    int i;
-    for (i = 7; i >= 0; i--) {
-        /* Drive MOSI */
-        if (mosi & (uint8_t)(1u << i)) {
-            VIA_PORTB |= SPI_MOSI;
-        } else {
-            VIA_PORTB &= ~SPI_MOSI;
-        }
-        /* Rising edge – card samples MOSI */
-        VIA_PORTB |= SPI_CLK;
-        /* Sample MISO */
-        if (VIA_PORTB & SPI_MISO) {
-            miso |= (uint8_t)(1u << i);
-        }
-        /* Falling edge */
-        VIA_PORTB &= ~SPI_CLK;
-    }
-    return miso;
+    SD_DATA = mosi;     /* Write starts transfer */
+    return SD_DATA;    /* Read returns MISO */
 }
 
-static void spi_cs_low(void) { VIA_PORTB &= ~SPI_CS_N; }
-static void spi_cs_high(void) { VIA_PORTB |= SPI_CS_N; }
+static void spi_cs_low(void) { SD_CTRL = 1; }
+static void spi_cs_high(void) { SD_CTRL = 0; }
 
 /* Send SD command, return R1 response byte */
 static uint8_t sd_send_cmd(uint8_t cmd, uint32_t arg) {

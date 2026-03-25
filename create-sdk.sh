@@ -22,7 +22,7 @@ get_rom_flags() {
   esac
   case $name in
     testNET) flags="$flags --esp true" ;;
-    microDOS) flags="$flags --esp true --sd true" ;;
+    microDOS) flags="$flags --esp true --sd true --sid true" ;;
   esac
   echo "$flags"
 }

@@ -71,13 +71,36 @@ void SDCard::SetCS(bool csVal) {
     }
 }
 
+Byte SDCard::Read(Word address) {
+    switch (address & 0x03U) {
+        case 0:  // CTRL
+            return (mounted ? 0x01U : 0x00U);
+        case 1:  // DATA
+            return last_miso;
+        default:
+            return 0xFFU;
+    }
+}
+
+void SDCard::Write(Word address, Byte data) {
+    switch (address & 0x03U) {
+        case 0:  // CTRL
+            SetCS((data & 0x01U) == 0); // If 0, then high (inactive), if 1, then low (active)
+            break;
+        case 1:  // DATA
+            last_miso = TransferByte(data);
+            break;
+        default:
+            break;
+    }
+}
+
 uint8_t SDCard::TransferByte(uint8_t mosi) {
     if (!mounted || !cs_active) {
-        return 0xFFU;  // When deselected or unmounted, MISO is floating (pulled up to 0xFF)
+        return 0xFFU;
     }
 
     uint8_t miso = 0xFFU;
-
     switch (state) {
         case State::IDLE:
             HandleIdleState(mosi);
@@ -116,7 +139,6 @@ uint8_t SDCard::TransferByte(uint8_t mosi) {
             state = State::IDLE;
             break;
     }
-
     return miso;
 }
 
@@ -334,27 +356,33 @@ void SDCard::HandleCmd58() {
 }
 
 void SDCard::QueueResponse1(uint8_t response1) {
+    response_buffer.clear();
     response_buffer.push_back(response1);
+    response_index = 0;
     state = State::WAIT_RESPONSE;
 }
 
 void SDCard::QueueResponse2(uint8_t response1, uint8_t response2) {
+    response_buffer.clear();
     response_buffer.push_back(response1);
     response_buffer.push_back(response2);
+    response_index = 0;
     state = State::WAIT_RESPONSE;
 }
 
 void SDCard::QueueResponse3(uint8_t response1, uint32_t response3) {
+    response_buffer.clear();
     response_buffer.push_back(response1);
-    response_buffer.push_back((response3 >> 24) & 0xFF);
-    response_buffer.push_back((response3 >> 16) & 0xFF);
-    response_buffer.push_back((response3 >> 8) & 0xFF);
-    response_buffer.push_back(response3 & 0xFF);
+    response_buffer.push_back(static_cast<uint8_t>((response3 >> 24) & 0xFFU));
+    response_buffer.push_back(static_cast<uint8_t>((response3 >> 16) & 0xFFU));
+    response_buffer.push_back(static_cast<uint8_t>((response3 >> 8) & 0xFFU));
+    response_buffer.push_back(static_cast<uint8_t>(response3 & 0xFFU));
+    response_index = 0;
     state = State::WAIT_RESPONSE;
 }
 
 void SDCard::QueueResponse7(uint8_t response1, uint32_t response7) {
-    QueueResponse3(response1, response7);  // R7 has same format as R3
+    QueueResponse3(response1, response7);
 }
 
 namespace {
