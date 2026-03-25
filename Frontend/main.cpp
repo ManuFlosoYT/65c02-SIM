@@ -227,6 +227,12 @@ static void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
     state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
     state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
     state.emulator.ClearProfiler();
+    
+    // Refresh VRAM texture if an image was loaded
+    if (!cart.vramData.empty() && state.emulation.gpuEnabled) {
+        ::GUI::ForceRefreshVRAM(state);
+    }
+    
     ImGui::OpenPopup("Cartridge Loaded");
 }
 
@@ -239,11 +245,11 @@ static void HandleCartridgeFilePicker(AppState& state) {
             std::string errorMsg;
             Core::Cartridge cart;
             if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
+                ApplyCartridgeConfig(state, cart);
                 if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
                     state.rom.bin = filePathName;
                     state.rom.loaded = true;
                     state.rom.symbols.Clear();
-                    ApplyCartridgeConfig(state, cart);
                 } else {
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }

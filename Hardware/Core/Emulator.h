@@ -202,7 +202,11 @@ inline Hardware::CPU& Core::Emulator::GetCPU() { return cpu; }
 inline const Hardware::Bus& Core::Emulator::GetMem() const { return bus; }
 inline Hardware::Bus& Core::Emulator::GetMem() { return bus; }
 inline Hardware::GPU& Core::Emulator::GetGPU() { return gpu; }
-inline void Core::Emulator::SetGPUEnabled(bool enabled) { gpuEnabled = enabled; }
+inline void Core::Emulator::SetGPUEnabled(bool enabled) { 
+    std::lock_guard<std::mutex> lock(emulationMutex);
+    gpuEnabled = enabled; 
+    SetupHardware();
+}
 inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
 
 inline Hardware::SID& Core::Emulator::GetSID() { return sid; }

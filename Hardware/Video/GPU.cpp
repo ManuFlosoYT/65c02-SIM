@@ -13,6 +13,17 @@ void GPU::Reset() {
     }
 }
 
+void GPU::LoadVRAM(std::span<const uint8_t> data) {
+    for (size_t yIndex = 0; yIndex < VRAM_HEIGHT; yIndex++) {
+        for (size_t xIndex = 0; xIndex < VRAM_WIDTH; xIndex++) {
+            size_t addr = (yIndex * 128) + xIndex;
+            if (addr < data.size()) {
+                vram.at(yIndex).at(xIndex) = data[addr];
+            }
+        }
+    }
+}
+
 bool GPU::SaveState(std::ostream& out) const {
     out.write(reinterpret_cast<const char*>(vram.data()), sizeof(vram));  // NOLINT
     Word currPixelX = pixelX;

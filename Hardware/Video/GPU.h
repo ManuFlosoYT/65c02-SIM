@@ -2,6 +2,7 @@
 
 #include <array>
 #include <iostream>
+#include <span>
 
 #include "Hardware/Core/IBusDevice.h"
 
@@ -23,6 +24,7 @@ class GPU : public IBusDevice {
 
     GPU();
     void Reset() override;
+    void LoadVRAM(std::span<const uint8_t> data);
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inputStream) override;

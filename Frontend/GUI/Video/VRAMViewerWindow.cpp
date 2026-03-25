@@ -30,14 +30,7 @@ static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         if (file.read(reinterpret_cast<char*>(buf.data()), fileSize)) {
             GPU& gpu = state.emulator.GetGPU();
-            for (size_t yIndex = 0; yIndex < GPU::VRAM_HEIGHT; yIndex++) {
-                for (size_t xIndex = 0; xIndex < GPU::VRAM_WIDTH; xIndex++) {
-                    size_t addr = (yIndex * 128) + xIndex;
-                    if (addr < static_cast<size_t>(fileSize)) {
-                        gpu.GetVRAM().at(yIndex).at(xIndex) = buf.at(addr);
-                    }
-                }
-            }
+            gpu.LoadVRAM(buf);
         }
     }
 }
@@ -128,7 +121,7 @@ static void DrawVRAMControls(AppState& state) {
     ImGui::Separator();
 }
 
-static void UpdateVRAMTexture(AppState& state) {
+void ForceRefreshVRAM(AppState& state) {
     GPU& gpu = state.emulator.GetGPU();
     std::array<unsigned char, static_cast<size_t>(GPU::VRAM_HEIGHT) * static_cast<size_t>(GPU::VRAM_WIDTH) * 3>
         pixels{};
@@ -144,6 +137,10 @@ static void UpdateVRAMTexture(AppState& state) {
     glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void UpdateVRAMTexture(AppState& state) {
+    ForceRefreshVRAM(state);
 }
 
 

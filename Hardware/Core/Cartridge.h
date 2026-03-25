@@ -19,13 +19,23 @@ struct CartridgeConfig {
     std::optional<bool> gpuEnabled;
     std::optional<bool> cycleAccurate;
     std::optional<bool> sidEnabled;
+    std::optional<bool> espEnabled;
+};
+
+struct DeviceConfig {
+    std::string name;
+    uint16_t start;
+    uint16_t end;
 };
 
 struct Cartridge {
     CartridgeMetadata metadata;
     CartridgeConfig config;
+    std::vector<DeviceConfig> busDevices;
     std::vector<uint8_t> romData;
+    std::vector<uint8_t> vramData;
     std::string romFileName;
+    std::string vramFileName;
     bool loaded = false;
 };
 

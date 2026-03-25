@@ -62,14 +62,23 @@ bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::strin
     std::lock_guard<std::mutex> lock(emulationMutex);
     SetupHardware();
 
-    if (size != ROM_SIZE) {
-        errorMsg = "Error: ROM data size mismatch (expected 32KB, got " + std::to_string(size) + ")";
+    if (size != ROM_SIZE && size != 0) {
+        errorMsg = "Error: ROM data size mismatch (expected 32KB or 0, got " + std::to_string(size) + ")";
         std::cerr << errorMsg << "\n";
         return false;
     }
 
-    for (size_t i = 0; i < ROM_SIZE; ++i) {
-        rom.WriteDirect(static_cast<Word>(i), data[i]);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    if (size == ROM_SIZE) {
+        for (size_t i = 0; i < ROM_SIZE; ++i) {
+            rom.WriteDirect(static_cast<Word>(i), data[i]);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        }
+    } else if (size == 0) {
+        // VRAM only cartridge or empty ROM. Fill with HLT (0xDB) and set reset vector to self
+        for (size_t i = 0; i < ROM_SIZE; ++i) {
+            rom.WriteDirect(static_cast<Word>(i), 0xDB); 
+        }
+        rom.WriteDirect(0xFFFC, 0x00);
+        rom.WriteDirect(0xFFFD, 0x80); // Reset to 0x8000 (standard ROM start)
     }
 
     currentBinPath = name;
@@ -588,17 +597,40 @@ void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& l
 
 void Emulator::SetupHardware() {
     halted = false;
+    bus.ClearDevices();
     bus.Init();
     cpu.Reset();
     totalCycles = 0;
     rewindBuffer.clear();
 
-    if (bus.GetRegisteredDevices().empty()) {
+    if (cartridge.loaded && !cartridge.busDevices.empty()) {
+        for (const auto& dev : cartridge.busDevices) {
+            if (dev.name == "RAM") {
+                bus.RegisterDevice(dev.start, dev.end, &ram, true, false);
+            } else if (dev.name == "ROM") {
+                bus.RegisterDevice(dev.start, dev.end, &rom, true, false);
+            } else if (dev.name == "ACIA") {
+                bus.RegisterDevice(dev.start, dev.end, &acia, true, true);
+            } else if (dev.name == "VIA") {
+                bus.RegisterDevice(dev.start, dev.end, &via, true, true);
+            } else if (dev.name == "ESP8266") {
+                bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(false), true);
+            } else if (dev.name == "SID") {
+                bus.RegisterDevice(dev.start, dev.end, &sid, true, true);
+            } else if (dev.name == "GPU") {
+                bus.RegisterDevice(dev.start, dev.end, &gpu, true, true);
+            }
+        }
+        // Virtual devices (no bus address)
+        bus.RegisterVirtualDevice(&lcd, true);
+        bus.RegisterVirtualDevice(&sdcard, false);
+    } else {
+        // Default layout (v1.0)
         bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
         bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
         bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
         bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
-        bus.RegisterDevice(0x5004, 0x5007, &esp8266, false, true);
+        bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(false), true);
         bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
         bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
         bus.RegisterVirtualDevice(&lcd, true);
@@ -619,6 +651,11 @@ void Emulator::SetupHardware() {
     lcd.Reset();
     sdcard.Reset();
     esp8266.Reset();
+
+    // Load VRAM from cartridge if present
+    if (cartridge.loaded && !cartridge.vramData.empty()) {
+        gpu.LoadVRAM(cartridge.vramData);
+    }
 
     via.SetPortBCallback([this](Byte val) { HandleVIAPortB(val); });
 }
