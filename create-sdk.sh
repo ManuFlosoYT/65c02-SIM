@@ -15,6 +15,9 @@ get_rom_flags() {
     cube|fillVRAM|fullTest|game|room|testGPU|tetris|vga) flags="$flags --gpu true" ;;
   esac
   case $name in
+    room) flags="$flags --ips 100000000" ;;
+  esac
+  case $name in
     fullTest|tetris|testSID|eater) flags="$flags --sid true" ;;
   esac
   case $name in
