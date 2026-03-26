@@ -1,33 +1,68 @@
 #include "Libs/BIOS.h"
 #include "Libs/NET.h"
 
-void wait_and_print(int timeout_ms) {
-    int timeout = timeout_ms;
-    char c;
-    while (timeout > 0) {
-        while (net_has_data()) {
-            c = net_read_raw_byte();
-            bios_putchar(c);
-            timeout = timeout_ms; /* Reset timeout as long as we receive data */
+void net_send_cmd_fixed(const char* s) {
+    while (*s) {
+        if (*s != '\n') {
+            ESP8266_DATA = *s;
         }
-        delay(2);
-        timeout -= 10;
+        s++;
     }
 }
 
 int main(void) {
+    char req[512];
+    uint16_t i = 0;
+    uint16_t v = 0;
+    const char* p;
+    const char* host = "www.google.com";
+
     INIT_BUFFER();
+    print_str("--- ESP TCP 40 BYTES ---\n");
 
-    print_str("--- ESP8266 Virtual Device Test ---\n");
-    print_str("1. Sending AT...\n");
-    net_send_cmd("AT");
-    wait_and_print(200);
+    /* WiFi */
+    print_str("WiFi...");
+    net_send_cmd_fixed("AT+CWJAP=\"EmulatorNet\",\"password\"\r");
+    while (1) {
+        if (net_has_data()) {
+            char c = net_getc();
+            bios_putchar(c);
+            if (c == 'K') break; 
+        }
+    }
 
-    print_str("\n2. Fetching test.c from GitHub...\n");
-    net_send_cmd("AT+HTTPGET=\"https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/refs/heads/master/Binaries/test.c\"");
-    wait_and_print(1000);
+    /* TCP */
+    print_str("\nTCP...");
+    net_send_cmd_fixed("AT+CIPSTART=\"TCP\",\"www.google.com\",80\r");
+    while (1) {
+        if (net_has_data()) {
+            char c = net_getc();
+            bios_putchar(c);
+            if (c == 'K') break;
+        }
+    }
 
-    print_str("\n--- Test Finished ---\n");
+    /* GET (Correct 40 bytes) */
+    print_str("\nGET...");
+    i = 0;
+    p = "GET / HTTP/1.0\r\nHost: www.google.com\r\n\r\n";
+    while (*p) req[i++] = *p++;
+    
+    // length is 16 + 22 + 2 = 40 EXACTLY
+    net_send_cmd_fixed("AT+CIPSEND=40\r");
+    while (!(net_has_data() && net_getc() == '>'));
+
+    for (v = 0; v < i; v++) {
+        ESP8266_DATA = req[v];
+    }
+    
+    /* Stream response */
+    print_str("\n--- DATA ---\n");
+    while (1) {
+        if (net_has_data()) {
+            bios_putchar(net_getc());
+        }
+    }
 
     return 0;
 }
