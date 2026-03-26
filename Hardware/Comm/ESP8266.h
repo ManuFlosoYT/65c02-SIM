@@ -1,16 +1,53 @@
 #pragma once
 
+#include <array>
+#include <atomic>
+#include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
-#include <mutex>
-#include <atomic>
-#include <memory>
+
 #include <asio.hpp>
+#ifndef TARGET_WASM
+#include <asio/ssl.hpp>
+#endif
 
 #include "Hardware/Core/IBusDevice.h"
 
 namespace Hardware {
+
+static constexpr int kMaxConnections = 5;
+static constexpr int kDefaultServerTimeout = 180;
+
+enum class ATState : uint8_t {
+    Idle,
+    WaitingCIPSENDData,
+    PassthroughMode
+};
+
+enum class CWMode : uint8_t {
+    Station = 1,
+    SoftAP = 2,
+    StationAndAP = 3
+};
+
+struct ATConnection {
+    std::unique_ptr<asio::ip::tcp::socket> tcpSocket;
+#ifndef TARGET_WASM
+    std::unique_ptr<asio::ssl::stream<asio::ip::tcp::socket>> sslStream;
+#endif
+    std::unique_ptr<asio::ip::udp::socket> udpSocket;
+    asio::ip::udp::endpoint udpRemoteEndpoint;
+    int udpMode{0};
+    std::thread rxThread;
+    std::atomic<bool> active{false};
+    std::string protocol;
+    std::string remoteHost;
+    int remotePort{0};
+
+    void StopRxThread();
+};
 
 class ESP8266 : public IBusDevice {
    public:
@@ -21,81 +58,110 @@ class ESP8266 : public IBusDevice {
     ESP8266& operator=(const ESP8266&) = delete;
     ESP8266(ESP8266&&) = delete;
     ESP8266& operator=(ESP8266&&) = delete;
-    
+
     void Reset() override;
 
-    inline Byte Read(Word address) override;
+    Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
-    [[nodiscard]] inline std::string GetName() const override;
+    [[nodiscard]] std::string GetName() const override;
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
 
-    [[nodiscard]] bool HasIRQ() const { return (statusReg & 0x80) != 0; }
+    [[nodiscard]] bool HasIRQ() const { return (statusReg.load(std::memory_order_relaxed) & 0x80) != 0; }
 
     void Clock();
 
    private:
     void ProcessCommand();
     void EnqueueResponse(const std::string& response);
-    
-    void HandleATCommand(const std::string& cmd);
-    
-    void ConnectTCP(const std::string& host, int port);
-    void DisconnectTCP();
 
-    void HandleHTTPGet(const std::string& originalCmd);
-    void HttpGetTask(std::string url);
+    void DispatchATCommand(const std::string& upper, const std::string& original);
 
-    Byte statusReg;
+    // WiFi commands
+    void HandleCWMode(const std::string& cmd);
+    void HandleCWJAP(const std::string& cmd);
+    void HandleCWLAP();
+    void HandleCWQAP();
+    void HandleCIFSR();
+
+    // Connection commands
+    void HandleCIPSTART(const std::string& cmd);
+    void HandleCIPSEND(const std::string& cmd);
+    void HandleCIPCLOSE(const std::string& cmd);
+    void HandleCIPMUX(const std::string& cmd);
+    void HandleCIPSTATUS();
+    void HandleCIPSERVER(const std::string& cmd);
+
+    // System commands
+    void HandleGMR();
+    void HandlePing(const std::string& cmd);
+
+    // Connection management
+    void ConnectTCP(int linkId, const std::string& host, int port);
+    void ConnectUDP(int linkId, const std::string& host, int port, int localPort, int mode);
+#ifndef TARGET_WASM
+    void ConnectSSL(int linkId, const std::string& host, int port);
+#endif
+    void DisconnectLink(int linkId);
+    void DisconnectAll();
+    void RxLoopTCP(int linkId);
+#ifndef TARGET_WASM
+    void RxLoopSSL(int linkId);
+#endif
+    void RxLoopUDP(int linkId);
+    void SendDataOnLink(int linkId, const std::string& data);
+
+    // Server
+    void StartServer(int port);
+    void StopServer();
+    void AcceptLoop();
+
+    // Ping
+    void PingTask(const std::string& host);
+
+    // Helpers
+    [[nodiscard]] int FindFreeLinkId() const;
+    [[nodiscard]] bool IsAnyConnectionActive() const;
+    std::string ParseQuotedParam(const std::string& cmd, size_t& pos) const;
+    int ParseIntParam(const std::string& cmd, size_t& pos) const;
+
+    // Registers (memory-mapped)
+    std::atomic<Byte> statusReg;
     Byte cmdReg;
     Byte ctrlReg;
 
+    // AT state machine
+    ATState currentState{ATState::Idle};
     std::string commandBuffer;
     std::queue<Byte> rxQueue;
     std::mutex rxMutex;
-    
-    std::atomic<bool> connected;
+
+    // CIPSEND state
+    int cipsendLinkId{0};
+    int cipsendLength{0};
+    int cipsendReceived{0};
+    std::string cipsendBuffer;
+
+    // Config
+    bool echoEnabled{true};
+    bool muxEnabled{false};
+    bool wifiConnected{false};
+    CWMode cwMode{CWMode::Station};
+    std::string connectedSSID;
+
+    // Networking
     asio::io_context ioContext;
-    std::unique_ptr<asio::ip::tcp::socket> tcpSocket;
+#ifndef TARGET_WASM
+    asio::ssl::context sslContext;
+#endif
+    std::array<ATConnection, kMaxConnections> connections;
 
-    std::thread rxThread;
-    std::atomic<bool> threadRunning;
-    void RxLoop();
+    // Server
+    std::unique_ptr<asio::ip::tcp::acceptor> serverAcceptor;
+    std::thread acceptThread;
+    std::atomic<bool> serverRunning{false};
+    int serverTimeout{kDefaultServerTimeout};
 };
-
-}  // namespace Hardware
-
-
-
-namespace Hardware {
-
-inline std::string ESP8266::GetName() const { return "ESP8266"; }
-
-inline Byte ESP8266::Read(Word address) {
-    switch (address & 0x03) {
-        case 0: {
-            std::lock_guard<std::mutex> lock(rxMutex);
-            if (rxQueue.empty()) {
-                statusReg &= ~0x80;
-                return 0;
-            }
-            Byte byte_val = rxQueue.front();
-            rxQueue.pop();
-            if (rxQueue.empty()) {
-                statusReg &= ~0x80;
-            }
-            return byte_val;
-        }
-        case 1:
-            return statusReg;
-        case 2:
-            return cmdReg;
-        case 3:
-            return ctrlReg;
-        default:
-            return 0;
-    }
-}
 
 }  // namespace Hardware
