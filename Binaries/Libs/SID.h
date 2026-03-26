@@ -156,33 +156,33 @@
 // Helpers to write to SID
 #define SID_WRITE(offset, val) (*(volatile uint8_t*)(SID_BASE + offset) = (val))
 
-void sid_set_volume(uint8_t vol) { SID_WRITE(MODE_VOL, vol & 0x0F); }
+static void sid_set_volume(uint8_t vol) { SID_WRITE(MODE_VOL, vol & 0x0F); }
 
-void sid_voice_freq(uint8_t voice, uint16_t freq) {
+static void sid_voice_freq(uint8_t voice, uint16_t freq) {
     uint8_t offset = (voice - 1) * 7;
     SID_WRITE(offset + FREQ_LO_1, freq & 0xFF);
     SID_WRITE(offset + FREQ_HI_1, (freq >> 8) & 0xFF);
 }
 
-void sid_voice_adsr(uint8_t voice, uint8_t attack, uint8_t decay,
+static void sid_voice_adsr(uint8_t voice, uint8_t attack, uint8_t decay,
                     uint8_t sustain, uint8_t release) {
     uint8_t offset = (voice - 1) * 7;
     SID_WRITE(offset + AD_1, (attack << 4) | (decay & 0x0F));
     SID_WRITE(offset + SR_1, (sustain << 4) | (release & 0x0F));
 }
 
-void sid_voice_control(uint8_t voice, uint8_t ctrl) {
+static void sid_voice_control(uint8_t voice, uint8_t ctrl) {
     uint8_t offset = (voice - 1) * 7;
     SID_WRITE(offset + CTRL_1, ctrl);
 }
 
-void sid_voice_pw(uint8_t voice, uint16_t pw) {
+static void sid_voice_pw(uint8_t voice, uint16_t pw) {
     uint8_t offset = (voice - 1) * 7;
     SID_WRITE(offset + PW_LO_1, pw & 0xFF);
     SID_WRITE(offset + PW_HI_1, (pw >> 8) & 0x0F);
 }
 
-void sid_delay(uint16_t loop_count) {
+static void sid_delay(uint16_t loop_count) {
     volatile uint16_t i;
     for (i = 0; i < loop_count; i++);
 }

@@ -18,7 +18,7 @@ extern char __fastcall__ MONGETCHAR_NB(void);
 // Initializes the buffer.
 extern void __fastcall__ INIT_BUFFER(void);
 
-void print_str(const char* s) {
+static void print_str(const char* s) {
     while (*s) {
         if (*s == '\n') {
             /* Convert \n to \r\n for correct newline in terminal */
@@ -31,13 +31,13 @@ void print_str(const char* s) {
     }
 }
 
-void println(const char* s) {
+static void println(const char* s) {
     print_str(s);
     bios_putchar('\n');
 }
 
 /* Function to read a string from the keyboard */
-void read_line(char* buffer, int max_len) {
+static void read_line(char* buffer, int max_len) {
     char c;
     int i = 0;
 
@@ -63,13 +63,13 @@ void read_line(char* buffer, int max_len) {
     buffer[i] = '\0';
 }
 
-void print_hex_byte(unsigned char v) {
+static void print_hex_byte(unsigned char v) {
     const char hex[] = "0123456789ABCDEF";
     bios_putchar(hex[(v >> 4) & 0xF]);
     bios_putchar(hex[v & 0xF]);
 }
 
-void print_hex(unsigned int n) {
+static void print_hex(unsigned int n) {
     const char hex_chars[] = "0123456789ABCDEF";
     bios_putchar('0');
     bios_putchar('x');
@@ -81,7 +81,7 @@ void print_hex(unsigned int n) {
     bios_putchar(hex_chars[n & 0xF]);
 }
 
-void print_num(unsigned int n) {
+static void print_num(unsigned int n) {
     char buffer[10];
     int idx = 0;
     if (n == 0) {
@@ -104,7 +104,7 @@ void print_num(unsigned int n) {
  * If the GPU is enabled refer to GPU.h for the delay function.
  */
 #define ITERATIONS_PER_MS 4000
-void delay(unsigned int ms) {
+static void delay(unsigned int ms) {
     volatile unsigned int i;
     volatile unsigned int j;
 

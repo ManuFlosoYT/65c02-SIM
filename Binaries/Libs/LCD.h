@@ -14,7 +14,7 @@
    mode: 0 for Instruction, RS (0x10) for Data
    This function triggers the "WriteHook" in LCD.cpp
 */
-void lcd_send_nibble(unsigned char data, unsigned char mode) {
+static void lcd_send_nibble(unsigned char data, unsigned char mode) {
     data &= 0x0F;  // Ensure only low 4 bits
 
     // Prepare data and signals (Set RW=0, E=1)
@@ -28,7 +28,7 @@ void lcd_send_nibble(unsigned char data, unsigned char mode) {
 /*
    Sends a command (RS=0)
 */
-void lcd_instruction(unsigned char cmd) {
+static void lcd_instruction(unsigned char cmd) {
     lcd_send_nibble(cmd >> 4, 0);  // High nibble
     lcd_send_nibble(cmd, 0);       // Low nibble
 }
@@ -37,7 +37,7 @@ void lcd_instruction(unsigned char cmd) {
    Sends a character (RS=1)
    This triggers LCD::WriteCharToScreen in the simulator
 */
-void lcd_print_char(unsigned char c) {
+static void lcd_print_char(unsigned char c) {
     lcd_send_nibble(c >> 4, RS);
     lcd_send_nibble(c, RS);
 }
@@ -45,35 +45,35 @@ void lcd_print_char(unsigned char c) {
 /*
    Triggers: LCD::HandleCommand with cmd 0x01
 */
-void lcd_clear(void) { lcd_instruction(0x01); }
+static void lcd_clear(void) { lcd_instruction(0x01); }
 
 /*
    Triggers: LCD::HandleCommand with cmd 0x02
 */
-void lcd_return_home(void) { lcd_instruction(0x02); }
+static void lcd_return_home(void) { lcd_instruction(0x02); }
 
 /*
    Triggers: LCD::HandleCommand with cmd 0x06
 */
-void lcd_entry_mode_increment(void) { lcd_instruction(0x06); }
+static void lcd_entry_mode_increment(void) { lcd_instruction(0x06); }
 
 /*
    Triggers: LCD::HandleCommand with cmd 0x0C
 */
-void lcd_display_on_cursor_off(void) { lcd_instruction(0x0C); }
+static void lcd_display_on_cursor_off(void) { lcd_instruction(0x0C); }
 
 /*
    Triggers: LCD::HandleCommand with cmd 0x0E
 */
-void lcd_display_on_cursor_on(void) { lcd_instruction(0x0E); }
+static void lcd_display_on_cursor_on(void) { lcd_instruction(0x0E); }
 
 /*
    Triggers: LCD::WriteCharToScreen with '\n', which resets cursorX and
    increments cursorY
 */
-void lcd_newline(void) { lcd_print_char('\n'); }
+static void lcd_newline(void) { lcd_print_char('\n'); }
 
-void lcd_init(void) {
+static void lcd_init(void) {
     // Configure pins as output
     DDRB = 0xFF;
 
@@ -101,13 +101,13 @@ void lcd_init(void) {
     lcd_clear();
 }
 
-void lcd_print(const char* str) {
+static void lcd_print(const char* str) {
     while (*str) {
         lcd_print_char(*str++);
     }
 }
 
-void lcd_print_number(unsigned int num) {
+static void lcd_print_number(unsigned int num) {
     unsigned char hundreds, remainder, tens, units;
 
     hundreds = num / 100;

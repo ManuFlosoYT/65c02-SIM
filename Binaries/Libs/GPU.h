@@ -11,7 +11,7 @@
 #define GPU_HEIGHT 64
 
 // Writes a pixel to VRAM if coordinates are within bounds
-void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
+static void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
     unsigned short offset;
     unsigned char* vram;
 
@@ -25,7 +25,7 @@ void gpu_put_pixel(signed char x, signed char y, unsigned char color) {
     vram[offset] = color;
 }
 
-void gpu_draw_rect( signed char x, signed char y,
+static void gpu_draw_rect( signed char x, signed char y,
                     signed char w, signed char h,
                    unsigned char color) {
     signed char j;
@@ -61,21 +61,21 @@ void gpu_draw_rect( signed char x, signed char y,
 }
 
 // Fills the entire VRAM
-void gpu_fill_screen(unsigned char color) {
+static void gpu_fill_screen(unsigned char color) {
     unsigned char* vram = (unsigned char*)GPU_VRAM_START;
     memset(vram, color, GPU_STRIDE * GPU_HEIGHT);
 }
 
-int gpu_abs(int v) { return (v < 0) ? -v : v; }
+static int gpu_abs(int v) { return (v < 0) ? -v : v; }
 
-void gpu_swap_coord(signed char* a, signed char* b) {
+static void gpu_swap_coord(signed char* a, signed char* b) {
     signed char t = *a;
     *a = *b;
     *b = t;
 }
 
 // Draws a line using Bresenham's algorithm
-void gpu_draw_line( signed char x0, signed char y0, 
+static void gpu_draw_line( signed char x0, signed char y0, 
                     signed char x1, signed char y1, 
                     unsigned char color) {
                         
@@ -108,7 +108,7 @@ typedef short fixed_t;
 #define FROM_FIXED(x) ((x) >> 8)
 
 // Draws a triangle (Wireframe OR Filled)
-void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
+static void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
                   signed char y1, signed char x2, signed char y2,
                   unsigned char color, unsigned char fill) {
     fixed_t x_long, x_short;
@@ -230,7 +230,7 @@ void gpu_draw_tri(signed char x0, signed char y0, signed char x1,
 }
 
 #define GPU_ITERATIONS_PER_MS 19
-void GPUdelay(unsigned int ms) {
+static void GPUdelay(unsigned int ms) {
     volatile unsigned short i;
     volatile unsigned short j;
     for (i = 0; i < ms; i++) {
@@ -239,7 +239,7 @@ void GPUdelay(unsigned int ms) {
     }
 }
 
-void gpu_test_pattern() {
+static void gpu_test_pattern() {
     unsigned char r, c;
     unsigned char row_color;
     for (r = 0; r < GPU_HEIGHT; r++) {
