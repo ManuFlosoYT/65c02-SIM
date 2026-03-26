@@ -39,9 +39,9 @@ if [ "$NAME" == "all" ]; then
     done
     exit 0
 fi
+
 mkdir -p Binaries/build
 mkdir -p output
-
 
 if [ "$NAME" == "eater" ]; then
     echo "--- Compiling BASIC ---"
@@ -65,6 +65,58 @@ elif [ -f "Binaries/$NAME.s" ]; then
     mkdir -p output/rom
     cp "Binaries/build/$NAME.bin" "output/rom/$NAME.bin"
 
+elif [ "$NAME" == "microDOS" ]; then
+    echo "--- Compiling microDOS (Multi-module C) ---"
+
+    echo "  Compilando módulos en microDOS/..."
+    MICRODOS_OBJS=""
+    for f in Binaries/microDOS/*.c; do
+        if [ -f "$f" ]; then
+            mod_name=$(basename "${f%.c}")
+            cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+                -I "Binaries" -I "Binaries/microDOS" \
+                -o "Binaries/build/$mod_name.s" "$f"
+            MICRODOS_OBJS="$MICRODOS_OBJS Binaries/build/$mod_name.s"
+        fi
+    done
+
+    echo "  Compilando main..."
+    cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+        -I "Binaries" -I "Binaries/microDOS" \
+        -o "Binaries/build/microDOS.s" "Binaries/microDOS.c"
+
+    # Detect features and accumulate flags (excluding GPU)
+    CFG_FLAGS=""
+    if grep -r -q '#include "Libs/NET.h"' Binaries/microDOS/ Binaries/microDOS.c; then
+        echo "  [NET detected] Added --net to Linker"
+        CFG_FLAGS="$CFG_FLAGS --net"
+    fi
+
+    echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
+    cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/ff.s Binaries/Libs/fatfs/ff.c
+    cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/diskio.s Binaries/Libs/fatfs/diskio.c
+    cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/sd.s Binaries/Libs/SD.c
+    EXTRA_OBJS="Binaries/build/ff.s Binaries/build/diskio.s Binaries/build/sd.s"
+
+    echo "  Generating dynamic Linker CFG..."
+    python3 Linker/generate_cfg.py $CFG_FLAGS > "Binaries/build/C-Runtime-dynamic.cfg"
+    LINKER_CFG="Binaries/build/C-Runtime-dynamic.cfg"
+
+    echo "  Enlazando binario final..."
+    cl65 -g --cpu 65C02 -t none -C "$LINKER_CFG" \
+        -o "Binaries/build/microDOS.bin" \
+        -m "Binaries/build/microDOS.map" -vm \
+        -l "Binaries/build/microDOS.lst" \
+        -Wl -Ln,"Binaries/build/microDOS.lbl" \
+        -Wl --dbgfile,"Binaries/build/microDOS.dbg" \
+        Linker/bios.s Linker/C-Runtime.s \
+        "Binaries/build/microDOS.s" \
+        $MICRODOS_OBJS \
+        $EXTRA_OBJS
+
+    mkdir -p output/rom
+    cp "Binaries/build/microDOS.bin" "output/rom/microDOS.bin"
+    
 elif [ -f "Binaries/$NAME.c" ]; then
     echo "--- Compiling $NAME.c (C) ---"
     cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
