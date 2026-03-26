@@ -75,6 +75,7 @@ class ESP8266 : public IBusDevice {
    private:
     void ProcessCommand();
     void EnqueueResponse(const std::string& response);
+    void EnqueueLinkClosedResponse(int linkId);
 
     void DispatchATCommand(const std::string& upper, const std::string& original);
 
@@ -123,8 +124,12 @@ class ESP8266 : public IBusDevice {
     // Helpers
     [[nodiscard]] int FindFreeLinkId() const;
     [[nodiscard]] bool IsAnyConnectionActive() const;
-    std::string ParseQuotedParam(const std::string& cmd, size_t& pos) const;
-    int ParseIntParam(const std::string& cmd, size_t& pos) const;
+    static std::string ParseQuotedParam(const std::string& cmd, size_t& pos);
+    static int ParseIntParam(const std::string& cmd, size_t& pos);
+
+    // CIPSTART helpers
+    void ParseCIPSTARTParams(const std::string& params, int& linkId, std::string& type, std::string& host, int& port, size_t& pos) const;
+    void PerformConnection(int linkId, const std::string& type, const std::string& host, int port, const std::string& params, size_t pos);
 
     // Registers (memory-mapped)
     std::atomic<Byte> statusReg;
