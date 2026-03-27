@@ -1,14 +1,13 @@
 #include <string.h>
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
-#include "shell.h"
-#include "commands.h"
+#include "microDOS/shell.h"
+#include "microDOS/commands.h"
 
 int main(void) {
     char cwd[64];
-    int res;
+    int res = -1;
     
-    /* Asumo que esto es un macro definido en BIOS.h o similar */
     INIT_BUFFER();
 
     println("microDOS v1.1");
@@ -39,7 +38,9 @@ int main(void) {
         os_read_line(line, MAX_LINE);
         tokenize(line);
 
-        if (arg_count == 0) continue;
+        if (arg_count == 0) {
+            continue;
+        }
 
         if (strcmp(args[0], "ls") == 0) {
             cmd_ls();
@@ -55,8 +56,12 @@ int main(void) {
             cmd_rm();
         } else if (strcmp(args[0], "nano") == 0) {
             cmd_nano();
+        } else if (strcmp(args[0], "ping") == 0) {
+            cmd_ping();
+        } else if (strcmp(args[0], "wifi") == 0) {
+            cmd_wifi();
         } else if (strcmp(args[0], "help") == 0) {
-            println("Commands: ls, cd, mkdir, touch, cat, rm, nano, help, exit");
+            println("Commands: ls, cd, mkdir, touch, cat, rm, nano, ping, wifi, help, exit");
         } else if (strcmp(args[0], "exit") == 0) {
             break;
         } else {
