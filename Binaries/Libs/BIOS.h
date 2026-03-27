@@ -1,6 +1,10 @@
 #ifndef BIOS_H
 #define BIOS_H
 
+#ifndef __fastcall__
+#define __fastcall__
+#endif
+
 // Introduces a character from the serial port.
 // Returns the character in A.
 extern char __fastcall__ MONRDKEY(void);
