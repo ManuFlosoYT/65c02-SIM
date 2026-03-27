@@ -42,32 +42,12 @@ int main(void) {
             continue;
         }
 
-        if (strcmp(args[0], "ls") == 0) {
-            cmd_ls();
-        } else if (strcmp(args[0], "cat") == 0) {
-            cmd_cat();
-        } else if (strcmp(args[0], "touch") == 0) {
-            cmd_touch();
-        } else if (strcmp(args[0], "mkdir") == 0) {
-            cmd_mkdir();
-        } else if (strcmp(args[0], "cd") == 0) {
-            cmd_cd();
-        } else if (strcmp(args[0], "rm") == 0) {
-            cmd_rm();
-        } else if (strcmp(args[0], "nano") == 0) {
-            cmd_nano();
-        } else if (strcmp(args[0], "ping") == 0) {
-            cmd_ping();
-        } else if (strcmp(args[0], "wifi") == 0) {
-            cmd_wifi();
-        } else if (strcmp(args[0], "help") == 0) {
-            println("Commands: ls, cd, mkdir, touch, cat, rm, nano, ping, wifi, help, exit");
-        } else if (strcmp(args[0], "exit") == 0) {
+        if (strcmp(args[0], "exit") == 0) {
+            cmd_exit();
             break;
-        } else {
-            print_str("Unknown command: ");
-            println(args[0]);
         }
+
+        exec_command(args[0]);
     }
 
     return 0;
