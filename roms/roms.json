@@ -1,0 +1,43 @@
+{
+  "roms": [
+    "cube.65c",
+    "eater.65c",
+    "echo.65c",
+    "fillVRAM.65c",
+    "fullTest.65c",
+    "game.65c",
+    "mat.65c",
+    "mat64.65c",
+    "microDOS.65c",
+    "room.65c",
+    "test.65c",
+    "testGPU.65c",
+    "testNET.65c",
+    "testSD.65c",
+    "testSID.65c",
+    "testVIA.65c",
+    "tetris.65c",
+    "vga.65c"
+  ],
+  "midis": [
+    "awake.65c",
+    "cynthia.65c",
+    "fortnite.65c",
+    "fukashigi.65c",
+    "idol.65c",
+    "komi.65c",
+    "miku.65c",
+    "og.65c",
+    "overworld.65c",
+    "seishun.65c",
+    "sweeden.65c",
+    "test-me.65c",
+    "usseewa.65c"
+  ],
+  "vrams": [
+    "bocchi.65c",
+    "finch.65c",
+    "rick.65c",
+    "xdd.65c"
+  ]
+}
