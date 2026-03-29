@@ -15,6 +15,7 @@ bool CartridgeLoader::Load(const std::string& path, Cartridge& outCartridge, std
         return false;
     }
 
+    outCartridge.sourceZipPath = path;
     bool success = LoadInternal(&zip_archive, outCartridge, errorMsg);
     mz_zip_reader_end(&zip_archive);
     return success;
@@ -74,6 +75,28 @@ bool CartridgeLoader::LoadInternal(void* zip_archive_ptr, Cartridge& outCartridg
         if (outCartridge.romFileName.empty() && outCartridge.vramFileName.empty()) {
             errorMsg = "Cartridge is missing ROM/VRAM data";
             return false;
+        }
+
+        // Look for sdcard.img if version >= 3.0 or just generally for convenience
+        size_t sdSize = 0;
+        void* sdData = mz_zip_reader_extract_file_to_heap(zip_archive, "sdcard.img", &sdSize, 0);
+        if (sdData != nullptr) {
+            std::string tempPath;
+#ifdef TARGET_WASM
+            tempPath = "/tmp/sdcard.img";
+#else
+            tempPath = std::filesystem::temp_directory_path().string() + "/65c02sim_" + 
+                       std::filesystem::path(outCartridge.sourceZipPath).filename().string() + ".sdcard.img";
+#endif
+            FILE* sdFile = fopen(tempPath.c_str(), "wb");
+            if (sdFile != nullptr) {
+                if (fwrite(sdData, 1, sdSize, sdFile) != sdSize) {
+                    // Handle write error
+                }
+                fclose(sdFile);
+                outCartridge.sdCardPath = tempPath;
+            }
+            mz_free(sdData);
         }
 
         outCartridge.loaded = true;
@@ -170,6 +193,78 @@ bool CartridgeLoader::ReadVramData(void* zip_archive, const std::string& vramFil
     std::memcpy(outCartridge.vramData.data(), vramData, vramSize);
     mz_free(vramData);
     return true;
+}
+
+bool CartridgeLoader::SaveSDToZip(const Cartridge& cart) {
+    if (cart.sdCardPath.empty() || cart.sourceZipPath.empty()) {
+        return false;
+    }
+
+    // Miniz doesn't support easy in-place updates of a single file in a large ZIP efficiently 
+    // without rebuilding. We'll use a temporary file.
+    std::string tempZip = cart.sourceZipPath + ".tmp";
+    mz_zip_archive src_archive;
+    mz_zip_archive dst_archive;
+    memset(&src_archive, 0, sizeof(src_archive));
+    memset(&dst_archive, 0, sizeof(dst_archive));
+
+    if (mz_zip_reader_init_file(&src_archive, cart.sourceZipPath.c_str(), 0) == MZ_FALSE) {
+        return false;
+    }
+
+    if (mz_zip_writer_init_file(&dst_archive, tempZip.c_str(), 0) == MZ_FALSE) {
+        mz_zip_reader_end(&src_archive);
+        return false;
+    }
+
+    bool sdUpdated = false;
+    mz_uint numFiles = mz_zip_reader_get_num_files(&src_archive);
+    for (mz_uint i = 0; i < numFiles; i++) {
+        mz_zip_archive_file_stat file_stat;
+        if (mz_zip_reader_file_stat(&src_archive, i, &file_stat) == MZ_FALSE) {
+            continue;
+        }
+
+        if (strcmp(file_stat.m_filename, "sdcard.img") == 0) {
+            // Updated file from temp path
+            if (mz_zip_writer_add_file(&dst_archive, "sdcard.img", cart.sdCardPath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION) == MZ_FALSE) {
+                mz_zip_reader_end(&src_archive);
+                mz_zip_writer_end(&dst_archive);
+                std::filesystem::remove(tempZip);
+                return false;
+            }
+            sdUpdated = true;
+        } else {
+            // Copy existing file
+            if (mz_zip_writer_add_from_zip_reader(&dst_archive, &src_archive, i) == MZ_FALSE) {
+                mz_zip_reader_end(&src_archive);
+                mz_zip_writer_end(&dst_archive);
+                std::filesystem::remove(tempZip);
+                return false;
+            }
+        }
+    }
+
+    if (!sdUpdated) {
+        // If sdcard.img wasn't in original but we have it now (shouldn't happen in this flow but just in case)
+        if (mz_zip_writer_add_file(&dst_archive, "sdcard.img", cart.sdCardPath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION) == MZ_FALSE) {
+            mz_zip_reader_end(&src_archive);
+            mz_zip_writer_end(&dst_archive);
+            std::filesystem::remove(tempZip);
+            return false;
+        }
+    }
+
+    mz_zip_reader_end(&src_archive);
+    mz_zip_writer_finalize_archive(&dst_archive);
+    mz_zip_writer_end(&dst_archive);
+
+    try {
+        std::filesystem::rename(tempZip, cart.sourceZipPath);
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 } // namespace Core

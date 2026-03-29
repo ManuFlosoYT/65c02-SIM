@@ -37,6 +37,8 @@ struct Cartridge {
     std::vector<uint8_t> vramData;
     std::string romFileName;
     std::string vramFileName;
+    std::string sdCardPath;
+    std::string sourceZipPath;
     std::string version;
     bool loaded = false;
 };

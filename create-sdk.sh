@@ -2,7 +2,7 @@
 set -e
 
 # Core compilation
-chmod +x compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh
+chmod +x compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh create-microdos-cartridge.sh
 ./compile-bin.sh all
 ./image-to-bin.sh all
 ./midi-to-bin.sh all
@@ -22,7 +22,6 @@ get_rom_flags() {
   esac
   case $name in
     testNET) flags="$flags --esp true" ;;
-    microDOS) flags="$flags --esp true --sd true --sid true" ;;
   esac
   echo "$flags"
 }
@@ -32,9 +31,15 @@ echo "Packaging ROMs into cartridges..."
 for f in output/rom/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
+    if [ "$name" == "microDOS" ]; then
+        continue
+    fi
     ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" $(get_rom_flags "$name")
   fi
 done
+
+echo "Generating specialized microDOS cartridge..."
+./create-microdos-cartridge.sh
 
 # Package MIDIs
 echo "Packaging MIDIs into cartridges..."
@@ -64,7 +69,7 @@ fi
 echo "Creating SDK.zip..."
 rm -f SDK.zip 2> /dev/null
 zip -r SDK.zip Binaries/ Linker/ GPU/ SID/ output/ \
-    compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh \
+    compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh create-microdos-cartridge.sh \
     -x "Binaries/build/*" \
     -x "create-sdk.sh" \
     -x "SID/generator/__pycache__/*" \

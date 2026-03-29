@@ -10,6 +10,7 @@ class CartridgeLoader {
 public:
     static bool Load(const std::string& path, Cartridge& outCartridge, std::string& errorMsg);
     static bool LoadFromMemory(const uint8_t* data, size_t size, Cartridge& outCartridge, std::string& errorMsg);
+    static bool SaveSDToZip(const Cartridge& cart);
 
 private:
     static void ParseMetadata(const nlohmann::json& manifestJson, Cartridge& outCartridge);

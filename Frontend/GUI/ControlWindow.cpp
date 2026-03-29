@@ -363,7 +363,8 @@ static void DrawSettingsBasic(AppState& state) {
     ImGui::Separator();
     ImGui::TextUnformatted("SD Card Emulation");
 
-    // We only show SD Card state, but user must explicitly mount via file dialog.
+    bool cartridgeHasSD = !state.emulator.GetCartridge().sdCardPath.empty();
+
     bool sdMounted = state.emulator.GetSDCard().IsMounted();
     if (sdMounted) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
@@ -440,7 +441,12 @@ static void DrawSettingsBasic(AppState& state) {
             };
             WebFileUtils::open_browser_file_picker(".img");
         }
+        if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetItemTooltip("%s", "SD Card is managed by the active cartridge.");
+        }
+        ImGui::EndDisabled();
 #else
+        ImGui::BeginDisabled(cartridgeHasSD);
         if (ImGui::Button("Create New SD Image...")) {
             ImGuiFileDialog::Instance()->OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
@@ -449,6 +455,10 @@ static void DrawSettingsBasic(AppState& state) {
             ImGuiFileDialog::Instance()->OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
         }
+        if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetItemTooltip("%s", "SD Card is managed by the active cartridge.");
+        }
+        ImGui::EndDisabled();
 #endif
     }
 }

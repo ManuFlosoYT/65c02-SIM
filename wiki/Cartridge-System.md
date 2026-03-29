@@ -28,8 +28,19 @@ The `create-cartridge.sh` script is the primary tool for creating cartridges. It
 | `--sid` | Enable SID sound hardware (`true`/`false`) | `true` |
 | `--esp` | Enable ESP8266 WiFi module (`true`/`false`) | `false` |
 | `--sd` | Enable SD Card emulation (`true`/`false`) | `false` |
+| `--sd-image` | Path to an external SD image to bundle as `sdcard.img` | None |
 
-### Example: VRAM-only Cartridge
+### Cartridge Version 3.0 (Automatic SD)
+
+Version 3.0 introduces support for integrated SD card images. When a cartridge contains an `sdcard.img` file:
+1. The emulator extracts it automatically to a temporary path.
+2. The SD card is mounted and managed by the cartridge.
+3. **Persistence**: Any changes made to the SD card are saved back into the `.65c` (ZIP) archive when the cartridge is ejected or the application is closed.
+
+### Usage with SD Image
+```bash
+./create-cartridge.sh output/rom/microDOS.bin --sd-image output/img/microDOS.img --sd true
+```
 ```bash
 ./create-cartridge.sh --vram output/vram/logo.bin --name "LogoDemo" --gpu true
 ```
@@ -87,3 +98,13 @@ Hardware devices are registered on the bus dynamically based on the `config` sec
 
 ### Building via SDK
 The `create-sdk.sh` script automatically packages all binaries in the project using these flags, ensuring that system tools like `testNET` and `microDOS` have their respective hardware (WiFi/SD) enabled by default.
+
+## microDOS Special Automation: `create-microdos-cartridge.sh`
+
+For microDOS, a specialized script `create-microdos-cartridge.sh` is provided. This script:
+1. Compiles the microDOS kernel and all applications in `Binaries/Apps/`.
+2. Creates a fresh 32MB FAT16 SD image.
+3. Pre-populates the SD image with the compiled `.app` binaries in a `/bin` directory.
+4. Packages everything into a legal v3.0 `microDOS.65c` cartridge.
+
+**Dependencies**: Requires `dosfstools` and `mtools` installed on the host system.

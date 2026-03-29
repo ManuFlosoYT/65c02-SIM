@@ -9,6 +9,7 @@ DESCRIPTION=""
 VERSION="1.0"
 ROM_FILE=""
 VRAM_FILE=""
+SD_IMAGE=""
 IPS=1000000
 GPU="false"
 CYCLE="true"
@@ -25,6 +26,7 @@ while [[ "$#" -gt 0 ]]; do
         --version) VERSION="$2"; shift 2 ;;
         --rom) ROM_FILE="$2"; shift 2 ;;
         --vram) VRAM_FILE="$2"; shift 2 ;;
+        --sd-image) SD_IMAGE="$2"; shift 2 ;;
         --ips) IPS="$2"; shift 2 ;;
         --gpu) GPU="$2"; shift 2 ;;
         --cycle) CYCLE="$2"; shift 2 ;;
@@ -54,6 +56,7 @@ if [ -z "$ROM_FILE" ] && [ -z "$VRAM_FILE" ]; then
     echo "  --sid true/false"
     echo "  --esp true/false"
     echo "  --vram \"VRAM_FILE\""
+    echo "  --sd-image \"sdcard.img\""
     exit 1
 fi
 
@@ -107,6 +110,11 @@ fi
 if [ -n "$VRAM_FILE" ]; then
     cp "$VRAM_FILE" "$TEMP_DIR/vram.bin"
     FILES_TO_ZIP="$FILES_TO_ZIP vram.bin"
+fi
+
+if [ -n "$SD_IMAGE" ] && [ -f "$SD_IMAGE" ]; then
+    cp "$SD_IMAGE" "$TEMP_DIR/sdcard.img"
+    FILES_TO_ZIP="$FILES_TO_ZIP sdcard.img"
 fi
 
 # Package as ZIP but rename to .65c

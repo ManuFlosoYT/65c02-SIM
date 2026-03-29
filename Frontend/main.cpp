@@ -557,6 +557,9 @@ static void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>
 }
 
 static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
+    if (state.emulator.GetCartridge().loaded && !state.emulator.GetCartridge().sdCardPath.empty()) {
+        Core::CartridgeLoader::SaveSDToZip(state.emulator.GetCartridge());
+    }
     state.emulator.Stop();
     state.emulator.GetSID().Close();
     state.crtFilter.Destroy();
