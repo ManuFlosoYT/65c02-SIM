@@ -1,8 +1,15 @@
 #include "Hardware/Core/CartridgeLoader.h"
+
 #include <miniz.h>
+
+#include <cstring>
 #include <nlohmann/json.hpp>
 #include <vector>
-#include <cstring>
+
+namespace gsl {
+template <typename T>
+using owner = T;
+}
 
 namespace Core {
 
@@ -85,15 +92,17 @@ bool CartridgeLoader::LoadInternal(void* zip_archive_ptr, Cartridge& outCartridg
 #ifdef TARGET_WASM
             tempPath = "/tmp/sdcard.img";
 #else
-            tempPath = std::filesystem::temp_directory_path().string() + "/65c02sim_" + 
+            tempPath = std::filesystem::temp_directory_path().string() + "/65c02sim_" +
                        std::filesystem::path(outCartridge.sourceZipPath).filename().string() + ".sdcard.img";
 #endif
-            FILE* sdFile = fopen(tempPath.c_str(), "wb");
+            gsl::owner<FILE*> sdFile = fopen(tempPath.c_str(), "wb");
             if (sdFile != nullptr) {
                 if (fwrite(sdData, 1, sdSize, sdFile) != sdSize) {
                     // Handle write error
                 }
-                fclose(sdFile);
+                if (fclose(sdFile) != 0) {
+                    // Handle close error
+                }
                 outCartridge.sdCardPath = tempPath;
             }
             mz_free(sdData);
@@ -167,9 +176,11 @@ void CartridgeLoader::ParseBus(const nlohmann::json& manifestJson, Cartridge& ou
     }
 }
 
-bool CartridgeLoader::ReadRomData(void* zip_archive, const std::string& romFileName, Cartridge& outCartridge, std::string& errorMsg) {
+bool CartridgeLoader::ReadRomData(void* zip_archive, const std::string& romFileName, Cartridge& outCartridge,
+                                  std::string& errorMsg) {
     size_t romSize = 0;
-    void* romData = mz_zip_reader_extract_file_to_heap(static_cast<mz_zip_archive*>(zip_archive), romFileName.c_str(), &romSize, 0);
+    void* romData =
+        mz_zip_reader_extract_file_to_heap(static_cast<mz_zip_archive*>(zip_archive), romFileName.c_str(), &romSize, 0);
     if (romData == nullptr) {
         errorMsg = "Cartridge is missing ROM file: " + romFileName;
         return false;
@@ -181,9 +192,11 @@ bool CartridgeLoader::ReadRomData(void* zip_archive, const std::string& romFileN
     return true;
 }
 
-bool CartridgeLoader::ReadVramData(void* zip_archive, const std::string& vramFileName, Cartridge& outCartridge, std::string& errorMsg) {
+bool CartridgeLoader::ReadVramData(void* zip_archive, const std::string& vramFileName, Cartridge& outCartridge,
+                                   std::string& errorMsg) {
     size_t vramSize = 0;
-    void* vramData = mz_zip_reader_extract_file_to_heap(static_cast<mz_zip_archive*>(zip_archive), vramFileName.c_str(), &vramSize, 0);
+    void* vramData = mz_zip_reader_extract_file_to_heap(static_cast<mz_zip_archive*>(zip_archive), vramFileName.c_str(),
+                                                        &vramSize, 0);
     if (vramData == nullptr) {
         errorMsg = "Cartridge is missing VRAM file: " + vramFileName;
         return false;
@@ -200,7 +213,7 @@ bool CartridgeLoader::SaveSDToZip(const Cartridge& cart) {
         return false;
     }
 
-    // Miniz doesn't support easy in-place updates of a single file in a large ZIP efficiently 
+    // Miniz doesn't support easy in-place updates of a single file in a large ZIP efficiently
     // without rebuilding. We'll use a temporary file.
     std::string tempZip = cart.sourceZipPath + ".tmp";
     mz_zip_archive src_archive;
@@ -227,7 +240,8 @@ bool CartridgeLoader::SaveSDToZip(const Cartridge& cart) {
 
         if (strcmp(file_stat.m_filename, "sdcard.img") == 0) {
             // Updated file from temp path
-            if (mz_zip_writer_add_file(&dst_archive, "sdcard.img", cart.sdCardPath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION) == MZ_FALSE) {
+            if (mz_zip_writer_add_file(&dst_archive, "sdcard.img", cart.sdCardPath.c_str(), nullptr, 0,
+                                       MZ_BEST_COMPRESSION) == MZ_FALSE) {
                 mz_zip_reader_end(&src_archive);
                 mz_zip_writer_end(&dst_archive);
                 std::filesystem::remove(tempZip);
@@ -247,7 +261,8 @@ bool CartridgeLoader::SaveSDToZip(const Cartridge& cart) {
 
     if (!sdUpdated) {
         // If sdcard.img wasn't in original but we have it now (shouldn't happen in this flow but just in case)
-        if (mz_zip_writer_add_file(&dst_archive, "sdcard.img", cart.sdCardPath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION) == MZ_FALSE) {
+        if (mz_zip_writer_add_file(&dst_archive, "sdcard.img", cart.sdCardPath.c_str(), nullptr, 0,
+                                   MZ_BEST_COMPRESSION) == MZ_FALSE) {
             mz_zip_reader_end(&src_archive);
             mz_zip_writer_end(&dst_archive);
             std::filesystem::remove(tempZip);
@@ -267,4 +282,4 @@ bool CartridgeLoader::SaveSDToZip(const Cartridge& cart) {
     }
 }
 
-} // namespace Core
+}  // namespace Core
