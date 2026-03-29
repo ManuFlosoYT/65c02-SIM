@@ -2,6 +2,7 @@
 #include "../Libs/BIOS.h"
 #include "../Libs/SD.h"
 #include "shell.h"
+#include "msg.h"
 
 void cmd_ls(void) {
     SD_DIR dir;
@@ -16,7 +17,7 @@ void cmd_ls(void) {
     if (sd_opendir(&dir, path)) {
         while (sd_readdir(&dir, &fno)) {
             if (fno.fattrib & AM_DIR) {
-                print_str("[DIR]      ");
+                print_str("[D] ");
             } else {
                 sz = fno.fsize;
                 i = 9;
@@ -26,13 +27,14 @@ void cmd_ls(void) {
                     sz /= 10;
                 }
                 print_str(size_str);
-                print_str(" ");
+                print_str(M_SPACE);
             }
             println(fno.fname);
         }
         sd_closedir(&dir);
     } else {
-        println("ERROR: ls failed");
+        print_str(M_ERR); print_str("Could not open directory '");
+        print_str(path); println("'");
     }
 }
 
@@ -40,7 +42,7 @@ void cmd_cat(void) {
     SD_FILE fp;
     int c;
     if (arg_count < 2) {
-        println("Usage: cat <file>");
+        print_str(M_USE); println("cat <f>");
         return;
     }
     if (sd_open(&fp, args[1], SD_READ)) {
@@ -50,49 +52,59 @@ void cmd_cat(void) {
         println("");
         sd_close(&fp);
     } else {
-        println("ERROR: cat failed");
+        print_str(M_ERR); print_str("Could not read file '");
+        print_str(args[1]); println("'");
     }
 }
 
 void cmd_touch(void) {
     SD_FILE fp;
     if (arg_count < 2) {
-        println("Usage: touch <file>");
+        print_str(M_USE); println("touch <f>");
         return;
     }
     if (sd_open(&fp, args[1], SD_WRITE | SD_CREATE_ALWAYS)) {
         sd_close(&fp);
+        print_str("File created: "); println(args[1]);
     } else {
-        println("ERROR: touch failed");
+        print_str(M_ERR); print_str("Could not create file '");
+        print_str(args[1]); println("'");
     }
 }
 
 void cmd_mkdir(void) {
     if (arg_count < 2) {
-        println("Usage: mkdir <dir>");
+        print_str(M_USE); println("mkdir <d>");
         return;
     }
-    if (!sd_mkdir(args[1])) {
-        println("ERROR: mkdir failed");
+    if (sd_mkdir(args[1])) {
+        print_str("Directory created: "); println(args[1]);
+    } else {
+        print_str(M_ERR); print_str("Could not create directory '");
+        print_str(args[1]); println("'");
     }
 }
 
 void cmd_cd(void) {
     if (arg_count < 2) {
-        println("Usage: cd <dir>");
+        print_str(M_USE); println("cd <d>");
         return;
     }
     if (!sd_chdir(args[1])) {
-        println("ERROR: cd failed");
+        print_str(M_ERR); print_str("Could not change directory to '");
+        print_str(args[1]); println("'");
     }
 }
 
 void cmd_rm(void) {
     if (arg_count < 2) {
-        println("Usage: rm <path>");
+        print_str(M_USE); println("rm <p>");
         return;
     }
-    if (!sd_remove(args[1])) {
-        println("ERROR: rm failed");
+    if (sd_remove(args[1])) {
+        print_str("Removed: "); println(args[1]);
+    } else {
+        print_str(M_ERR); print_str("Could not remove '");
+        print_str(args[1]); println("'");
     }
 }

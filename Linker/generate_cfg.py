@@ -14,6 +14,9 @@ def generate_cfg(flags):
         (0x6000, 0x600F, "VIA")
     ]
     
+    if '--microDOS' in flags:
+        reserved_blocks.append((0x1000, 0x5FFF, "App Load Area (Reserved)"))
+        
     if '--gpu' in flags or '--double-buffer' in flags:
         reserved_blocks.append((0x2000, 0x3FFF, "GPU VRAM Front Buffer"))
         
@@ -76,8 +79,14 @@ def generate_cfg(flags):
     
     cfg.append("")
     cfg.append("    # Main ROM (C code + BASIC)")
-    cfg.append("    ROM:          start = $8000, size = $7FFA, type = ro, define = yes, file = %O, fill = yes, fillval = $FF;")
-    cfg.append("")
+    cfg.append("    ROM:          start = $8000, size = $7F90, type = ro, define = yes, file = %O, fill = yes, fillval = $FF;")
+
+    if '--microDOS' in flags:
+        cfg.append("    # Fixed-address jump table for app ABI (17 slots * 3 bytes = 51 bytes)")
+        cfg.append("    JUMPTABLE:    start = $FF90, size = $006A, type = ro, define = yes, file = %O, fill = yes, fillval = $FF;")
+    else:
+        cfg.append("    # Padding to reach vectors")
+        cfg.append("    ROM_PAD:      start = $FF90, size = $006A, type = ro, file = %O, fill = yes, fillval = $FF;")
     cfg.append("    # Hardware Vectors (6502 Reset/IRQ/NMI)")
     cfg.append("    RESETVEC:     start = $FFFA, size = $0006, type = ro, define = yes, file = %O, fill = yes, fillval = $FF;")
     cfg.append("}")
@@ -107,6 +116,10 @@ def generate_cfg(flags):
     cfg.append("    # BIOS (I/O routines)")
     cfg.append("    BIOS:         load = ROM, type = ro;")
     cfg.append("    ")
+    if '--microDOS' in flags:
+        cfg.append("    # App ABI jump table at fixed address $FF90")
+        cfg.append("    JUMPTABLE:    load = JUMPTABLE, type = ro;")
+        cfg.append("    ")
     cfg.append("    # C constructors / initialization")
     cfg.append("    STARTUP:      load = ROM, type = ro, optional = yes;")
     cfg.append("    ONCE:         load = ROM, type = ro, optional = yes;")
@@ -139,11 +152,13 @@ if __name__ == "__main__":
     parser.add_argument('--gpu', action='store_true', help='Reserve GPU VRAM')
     parser.add_argument('--double-buffer', action='store_true', help='Reserve GPU Double Buffer')
     parser.add_argument('--net', action='store_true', help='Reserve ESP8266')
+    parser.add_argument('--microDOS', action='store_true', help='Reserve App memory for microDOS')
     args = parser.parse_args()
     
     flags = []
     if args.gpu: flags.append('--gpu')
     if args.double_buffer: flags.append('--double-buffer')
     if args.net: flags.append('--net')
+    if args.microDOS: flags.append('--microDOS')
     
     print(generate_cfg(flags))

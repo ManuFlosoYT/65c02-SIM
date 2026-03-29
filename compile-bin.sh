@@ -14,12 +14,50 @@ list_programs() {
 }
 
 if [ -z "$1" ]; then
-    echo "Usage: $0 <program_name>"
+    echo "Usage: $0 <program_name> [--microDOS]"
     list_programs
     exit 1
 fi
 
 NAME=$1
+
+# --microDOS: compile a .c file as a microDOS .app binary
+if [ "$2" == "--microDOS" ]; then
+    echo "--- Compiling $NAME.app (microDOS App) ---"
+    SRC=""
+    if [ -f "Binaries/Apps/$NAME.c" ]; then
+        SRC="Binaries/Apps/$NAME.c"
+    elif [ -f "Binaries/$NAME.c" ]; then
+        SRC="Binaries/$NAME.c"
+    else
+        echo "Error: Could not find source for $NAME"
+        exit 1
+    fi
+
+    cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+        -I "Binaries" \
+        -o "Binaries/build/${NAME}_app.s" "$SRC"
+
+    python3 Linker/generate_app_cfg.py > "Binaries/build/app.cfg"
+
+    # Assemble and link without default libraries to avoid crt0 conflict
+    ca65 --cpu 65C02 -g -o "Binaries/build/App-Runtime.o" Linker/App-Runtime.s
+    ca65 --cpu 65C02 -g -o "Binaries/build/${NAME}_app.o" "Binaries/build/${NAME}_app.s"
+    
+    ld65 -C "Binaries/build/app.cfg" \
+        -o "Binaries/build/${NAME}.raw" \
+        -m "Binaries/build/${NAME}.map" \
+        "Binaries/build/App-Runtime.o" \
+        "Binaries/build/${NAME}_app.o" \
+        none.lib
+
+    # Prepend 4-byte header: magic $55 $44, entry offset $00 $00
+    mkdir -p output/apps
+    printf '\x55\x44\x00\x00' > "output/apps/${NAME}.app"
+    cat "Binaries/build/${NAME}.raw" >> "output/apps/${NAME}.app"
+    echo "App saved to output/apps/${NAME}.app"
+    exit 0
+fi
 
 if [ "$NAME" == "all" ]; then
     echo "--- Compiling ALL Targets ---"
@@ -91,12 +129,15 @@ elif [ "$NAME" == "microDOS" ]; then
         echo "  [NET detected] Added --net to Linker"
         CFG_FLAGS="$CFG_FLAGS --net"
     fi
+    CFG_FLAGS="$CFG_FLAGS --microDOS"
 
     echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
     cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/ff.s Binaries/Libs/fatfs/ff.c
     cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/diskio.s Binaries/Libs/fatfs/diskio.c
+    cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/bios_utils.s Binaries/Libs/BIOS.c
+    cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/net_utils.s Binaries/Libs/NET.c
     cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/sd.s Binaries/Libs/SD.c
-    EXTRA_OBJS="Binaries/build/ff.s Binaries/build/diskio.s Binaries/build/sd.s"
+    EXTRA_OBJS="Binaries/build/bios_utils.s Binaries/build/net_utils.s Binaries/build/ff.s Binaries/build/diskio.s Binaries/build/sd.s"
 
     echo "  Generating dynamic Linker CFG..."
     python3 Linker/generate_cfg.py $CFG_FLAGS > "Binaries/build/C-Runtime-dynamic.cfg"
@@ -109,7 +150,7 @@ elif [ "$NAME" == "microDOS" ]; then
         -l "Binaries/build/microDOS.lst" \
         -Wl -Ln,"Binaries/build/microDOS.lbl" \
         -Wl --dbgfile,"Binaries/build/microDOS.dbg" \
-        Linker/bios.s Linker/C-Runtime.s \
+        Linker/microdos_bios.s Linker/C-Runtime.s \
         "Binaries/build/microDOS.s" \
         $MICRODOS_OBJS \
         $EXTRA_OBJS
@@ -142,7 +183,8 @@ elif [ -f "Binaries/$NAME.c" ]; then
     LINKER_CFG="Binaries/build/C-Runtime-dynamic.cfg"
 
     # FatFs: if the program uses SD.h, compile ff.c and diskio.c
-    EXTRA_OBJS=""
+    cl65 -O --cpu 65C02 -t none -S -I "Binaries" -o Binaries/build/bios_utils.s Binaries/Libs/BIOS.c
+    EXTRA_OBJS="Binaries/build/bios_utils.s"
     if grep -q '#include "Libs/SD.h"' "Binaries/$NAME.c"; then
         echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
         cl65 -O --cpu 65C02 -t none -S \
@@ -151,7 +193,7 @@ elif [ -f "Binaries/$NAME.c" ]; then
             -o Binaries/build/diskio.s Binaries/Libs/fatfs/diskio.c
         cl65 -O --cpu 65C02 -t none -S \
             -o Binaries/build/sd.s Binaries/Libs/SD.c
-        EXTRA_OBJS="Binaries/build/ff.s Binaries/build/diskio.s Binaries/build/sd.s"
+        EXTRA_OBJS="$EXTRA_OBJS Binaries/build/ff.s Binaries/build/diskio.s Binaries/build/sd.s"
     fi
 
     cl65 -g --cpu 65C02 -t none -C "$LINKER_CFG" \

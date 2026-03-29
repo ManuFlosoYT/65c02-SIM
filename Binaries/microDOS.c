@@ -3,6 +3,7 @@
 #include "Libs/SD.h"
 #include "microDOS/shell.h"
 #include "microDOS/commands.h"
+#include "microDOS/msg.h"
 
 int main(void) {
     char cwd[64];
@@ -10,28 +11,28 @@ int main(void) {
     
     INIT_BUFFER();
 
-    println("microDOS v1.1");
-    println("Mounting SD...");
+    println("uDOS");
+    print_str("Mnt");
     
     if (!sd_is_present()) {
-        println("ERROR: SD Hardware not detected at 0x5100!");
+        print_str(M_ERR); println("HW");
         return 1;
     }
 
     res = sd_mount();
     if (res != 0) {
-        print_str("CRITICAL: Could not mount SD card: ");
+        print_str(M_ERR); print_str("m:");
         println(sd_error_string(res));
         return 1;
     }
 
-    println("Ready.");
+    println(M_RDY);
 
     while (1) {
         if (!sd_getcwd(cwd, 64)) {
             strcpy(cwd, "?");
         }
-        print_str("microDOS: ");
+        print_str(M_PROMPT);
         print_str(cwd);
         print_str(" > ");
 

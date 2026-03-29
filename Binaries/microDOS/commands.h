@@ -1,8 +1,6 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-#include "shell.h"
-
 typedef void (*cmd_func_t)(void);
 
 typedef struct {
@@ -10,19 +8,19 @@ typedef struct {
     cmd_func_t func;
 } command_t;
 
-/* Registry functions */
+/* Registry */
 void exec_command(const char* name);
+int  try_run_app(const char* name);
 
-/* Command prototypes */
+/* Built-in commands (kept in ROM) */
 void cmd_ls(void);
 void cmd_cat(void);
 void cmd_touch(void);
 void cmd_mkdir(void);
 void cmd_cd(void);
 void cmd_rm(void);
-void cmd_nano(void);
-void cmd_ping(void);
 void cmd_wifi(void);
+void cmd_run(void);
 void cmd_help(void);
 void cmd_exit(void);
 

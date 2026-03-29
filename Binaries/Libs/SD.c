@@ -15,26 +15,26 @@ int sd_mount(void) { return (int)f_mount(&_sd_fs, "", 1); }
 const char* sd_error_string(int res) {
     switch (res) {
         case FR_OK: return "OK";
-        case FR_DISK_ERR: return "DISK_ERR";
-        case FR_INT_ERR: return "INT_ERR";
-        case FR_NOT_READY: return "NOT_READY";
-        case FR_NO_FILE: return "NO_FILE";
-        case FR_NO_PATH: return "NO_PATH";
-        case FR_INVALID_NAME: return "INVALID_NAME";
-        case FR_DENIED: return "DENIED";
-        case FR_EXIST: return "EXIST";
-        case FR_INVALID_OBJECT: return "INVALID_OBJECT";
-        case FR_WRITE_PROTECTED: return "WRITE_PROTECTED";
-        case FR_INVALID_DRIVE: return "INVALID_DRIVE";
-        case FR_NOT_ENABLED: return "NOT_ENABLED";
-        case FR_NO_FILESYSTEM: return "NO_FILESYSTEM";
-        case FR_MKFS_ABORTED: return "MKFS_ABORTED";
-        case FR_TIMEOUT: return "TIMEOUT";
-        case FR_LOCKED: return "LOCKED";
-        case FR_NOT_ENOUGH_CORE: return "NOT_ENOUGH_CORE";
-        case FR_TOO_MANY_OPEN_FILES: return "TOO_MANY_OPEN_FILES";
-        case FR_INVALID_PARAMETER: return "INVALID_PARAMETER";
-        default: return "UNKNOWN";
+        case FR_DISK_ERR: return "Disk Error";
+        case FR_INT_ERR: return "Internal Error";
+        case FR_NOT_READY: return "Not Ready";
+        case FR_NO_FILE: return "File Not Found";
+        case FR_NO_PATH: return "Path Not Found";
+        case FR_INVALID_NAME: return "Invalid Name";
+        case FR_DENIED: return "Access Denied";
+        case FR_EXIST: return "Already Exists";
+        case FR_INVALID_OBJECT: return "Invalid Object";
+        case FR_WRITE_PROTECTED: return "Write Protected";
+        case FR_INVALID_DRIVE: return "Invalid Drive";
+        case FR_NOT_ENABLED: return "Volume Not Enabled";
+        case FR_NO_FILESYSTEM: return "No Filesystem";
+        case FR_MKFS_ABORTED: return "Mkfs Aborted";
+        case FR_TIMEOUT: return "Timeout";
+        case FR_LOCKED: return "Locked";
+        case FR_NOT_ENOUGH_CORE: return "Out of Memory";
+        case FR_TOO_MANY_OPEN_FILES: return "Too Many Open Files";
+        case FR_INVALID_PARAMETER: return "Invalid Parameter";
+        default: return "Unknown Error";
     }
 }
 
@@ -63,11 +63,10 @@ int sd_write(SD_FILE* fp, const void* buf, uint16_t len) {
 }
 
 int sd_puts(SD_FILE* fp, const char* str) {
-    while (*str) {
-        UINT bw;
-        if (f_write(fp, str, 1, &bw) != FR_OK || bw == 0) return 0;
-        str++;
-    }
+    UINT bw;
+    uint16_t len = 0;
+    while (str[len]) len++;
+    if (f_write(fp, str, len, &bw) != FR_OK || bw != len) return 0;
     return 1;
 }
 

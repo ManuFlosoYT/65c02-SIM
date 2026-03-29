@@ -1662,7 +1662,9 @@ static FRESULT dir_sdi(          /* FR_OK(0):succeeded, !=0:error */
     clst = dp->obj.sclust;                      /* Table start cluster (0:root) */
     if (clst == 0 && fs->fs_type >= FS_FAT32) { /* Replace cluster# 0 with root cluster# */
         clst = (DWORD)fs->dirbase;
-        if (FF_FS_EXFAT) dp->obj.stat = 0; /* exFAT: Root dir has an FAT chain */
+#if FF_FS_EXFAT
+        dp->obj.stat = 0; /* exFAT: Root dir has an FAT chain */
+#endif
     }
 
     if (clst == 0) {                                          /* Static table (root-directory on the FAT volume) */
@@ -1727,7 +1729,9 @@ static FRESULT dir_next(            /* FR_OK(0):succeeded, FR_NO_FILE:End of tab
                     if (clst == 1) return FR_INT_ERR;                     /* Internal error */
                     if (clst == 0xFFFFFFFF) return FR_DISK_ERR;           /* Disk error */
                     if (dir_clear(fs, clst) != FR_OK) return FR_DISK_ERR; /* Clean up the stretched table */
-                    if (FF_FS_EXFAT) dp->obj.stat |= 4;                   /* exFAT: The directory has been stretched */
+#if FF_FS_EXFAT
+                    dp->obj.stat |= 4;                   /* exFAT: The directory has been stretched */
+#endif
 #else
                     if (!stretch) dp->sect = 0; /* (this line is to suppress compiler warning) */
                     dp->sect = 0;
@@ -2955,7 +2959,11 @@ static FRESULT follow_path(                  /* FR_OK(0): successful, !=0: error
     FATFS* fs = dp->obj.fs;
 
 #if FF_FS_RPATH != 0
-    if (!IsSeparator(*path) && (FF_STR_VOLUME_ID != 2 || !IsTerminator(*path))) { /* Without heading separator */
+#if FF_STR_VOLUME_ID == 2
+    if (!IsSeparator(*path) && !IsTerminator(*path)) { /* Without heading separator (LFN/ID case) */
+#else
+    if (!IsSeparator(*path)) { /* Without heading separator (Standard SFN case) */
+#endif
         dp->obj.sclust = fs->cdir;                                                /* Start at the current directory */
     } else
 #endif
@@ -5426,7 +5434,9 @@ FRESULT f_expand(FIL* fp,     /* Pointer to the file object */
         if (opt) {                /* Is it allocated now? */
             fp->obj.sclust = scl; /* Update object allocation information */
             fp->obj.objsize = fsz;
-            if (FF_FS_EXFAT) fp->obj.stat = 2; /* Set status 'contiguous chain' */
+#if FF_FS_EXFAT
+            fp->obj.stat = 2; /* Set status 'contiguous chain' */
+#endif
             fp->flag |= FA_MODIFIED;
             if (fs->free_clst <= fs->n_fatent - 2) { /* Update FSINFO */
                 fs->free_clst -= tcl;
