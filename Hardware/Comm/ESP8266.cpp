@@ -717,6 +717,7 @@ void ESP8266::PingTask(const std::string& host) {
 void ESP8266::ConnectTCP(int linkId, const std::string& host, int port) {
     auto& conn = connections.at(linkId);
 
+    conn.StopRxThread();
     conn.tcpSocket = std::make_unique<asio::ip::tcp::socket>(ioContext);
     asio::ip::tcp::resolver resolver(ioContext);
     asio::error_code errCode;
@@ -757,6 +758,7 @@ void ESP8266::ConnectTCP(int linkId, const std::string& host, int port) {
 void ESP8266::ConnectUDP(int linkId, const std::string& host, int port, int localPort, int mode) {
     auto& conn = connections.at(linkId);
 
+    conn.StopRxThread();
     asio::ip::udp::resolver resolver(ioContext);
     asio::error_code errCode;
 
@@ -800,6 +802,7 @@ void ESP8266::ConnectUDP(int linkId, const std::string& host, int port, int loca
 void ESP8266::ConnectSSL(int linkId, const std::string& host, int port) {
     auto& conn = connections.at(linkId);
 
+    conn.StopRxThread();
     conn.sslStream = std::make_unique<asio::ssl::stream<asio::ip::tcp::socket>>(ioContext, sslContext);
 
     if (!SSL_set_tlsext_host_name(conn.sslStream->native_handle(), host.c_str())) {  // NOLINT
