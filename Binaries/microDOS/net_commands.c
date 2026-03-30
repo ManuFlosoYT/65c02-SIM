@@ -7,10 +7,27 @@
 
 void cmd_wifi(void) {
     char chr;
+    
+    if (arg_count == 1) {
+        println("Scanning for networks...");
+        net_cmd("AT+CWLAP");
+        while (1) {
+            if (net_has_data()) {
+                chr = (char)net_getc();
+                if (chr == '\r') continue;
+                bios_putchar(chr);
+                if (chr == 'K') break; /* OK */
+                if (chr == 'R') break; /* ERROR */
+            }
+        }
+        return;
+    }
+
     if (arg_count < 3) {
         print_str(M_USE); println("wifi <SSID> <Password>");
         return;
     }
+
     print_str("Connecting to ");
     print_str(args[1]);
     println("...");
