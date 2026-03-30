@@ -72,7 +72,7 @@ enum class DebuggerMode : std::uint8_t {
 
 struct DebuggerState {
     bool open = false;
-    DebuggerMode mode = DebuggerMode::Disassembly;
+    DebuggerMode mode = DebuggerMode::Settings;
 };
 
 struct UpdateState {
