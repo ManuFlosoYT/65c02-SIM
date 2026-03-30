@@ -53,10 +53,9 @@ is_cntc:
         ; Fall through
 ;!!! runs into "STOP"
 
-.zeropage
-
-READ_PTR:       .res 1
-WRITE_PTR:      .res 1
+; Variables moved out of linker arbitrary .zeropage to fixed locations
+READ_PTR  = $FC
+WRITE_PTR = $FD
 
 .segment "INPUT_BUFFER"
 INPUT_BUFFER:   .res $100
@@ -209,6 +208,7 @@ IRQ_HANDLER:
 .import _sd_open, _sd_read, _sd_write, _sd_close
 .import _sd_puts, _sd_getc, _sd_getcwd, _sd_chdir
 .import _net_send, _net_cmd, _net_send_num
+.import _os_load_app_page
 
 .export BIOS_JUMPTABLE
 .segment "JUMPTABLE"
@@ -230,3 +230,4 @@ BIOS_JUMPTABLE:
     jmp _net_send       ; $FFBA — void net_send(const char*)
     jmp _net_cmd        ; $FFBD — void net_cmd(const char*)
     jmp _net_send_num   ; $FFC0 — void net_send_num(uint16_t)
+    jmp _os_load_app_page ; $FFC3 — void os_load_app_page(uint8_t)

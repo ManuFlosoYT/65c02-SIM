@@ -15,7 +15,8 @@ def generate_cfg(flags):
     ]
     
     if '--microDOS' in flags:
-        reserved_blocks.append((0x1000, 0x5FFF, "App Load Area (Reserved)"))
+        reserved_blocks.append((0x1000, 0x47FF, "App Load Area (Reserved)"))
+        reserved_blocks.append((0x6010, 0x7BFF, "App RAM / BSS (Reserved)"))
         
     if '--gpu' in flags or '--double-buffer' in flags:
         reserved_blocks.append((0x2000, 0x3FFF, "GPU VRAM Front Buffer"))

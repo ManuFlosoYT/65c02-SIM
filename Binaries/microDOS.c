@@ -11,17 +11,17 @@ int main(void) {
     
     INIT_BUFFER();
 
-    println("uDOS");
-    print_str("Mnt");
+    println("microDOS");
+    print_str("Mounting SD Card...");
     
     if (!sd_is_present()) {
-        print_str(M_ERR); println("HW");
+        print_str(M_ERR); println("SD Card not found");
         return 1;
     }
 
     res = sd_mount();
     if (res != 0) {
-        print_str(M_ERR); print_str("m:");
+        print_str(M_ERR); print_str("Mounting failed: ");
         println(sd_error_string(res));
         return 1;
     }

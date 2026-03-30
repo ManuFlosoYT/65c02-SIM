@@ -51,10 +51,9 @@ if [ "$2" == "--microDOS" ]; then
         "Binaries/build/${NAME}_app.o" \
         none.lib
 
-    # Prepend 4-byte header: magic $55 $44, entry offset $00 $00
+    # El Linker ya incluye la cabecera uDOS generada en .segment "HEADER"
     mkdir -p output/apps
-    printf '\x55\x44\x00\x00' > "output/apps/${NAME}.app"
-    cat "Binaries/build/${NAME}.raw" >> "output/apps/${NAME}.app"
+    cp "Binaries/build/${NAME}.raw" "output/apps/${NAME}.app"
     echo "App saved to output/apps/${NAME}.app"
     exit 0
 fi

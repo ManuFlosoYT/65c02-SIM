@@ -30,4 +30,7 @@ void print_hex(unsigned int n);
 void print_num(unsigned int n);
 void delay(unsigned int ms);
 
+// Memoria Virtual Paginada
+void os_load_app_page(unsigned char page_id);
+
 #endif
