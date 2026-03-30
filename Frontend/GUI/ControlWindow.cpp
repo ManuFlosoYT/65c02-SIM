@@ -7,6 +7,8 @@
 #include "Frontend/GUI/Debugger/DebugMenu.h"
 #include "Frontend/GUI/SDUtils.h"
 #include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/CartridgeLoader.h"
+#include "Frontend/Control/CartridgeUtils.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #endif
@@ -28,8 +30,25 @@ static void HandleReset(AppState& state) {
     state.emulator.ClearProfiler();
 
     if (state.emulator.GetCartridge().loaded) {
-        // Reset cartridge state (full hardware re-init from manifest)
+        // Reset cartridge state (reload from disk if possible)
+        std::string path = state.emulator.GetCartridge().sourceZipPath;
+#ifndef TARGET_WASM
+        if (!path.empty()) {
+            std::string errorMsg;
+            Core::Cartridge cart;
+            if (Core::CartridgeLoader::Load(path, cart, errorMsg)) {
+                Control::ApplyCartridgeConfig(state, cart);
+                state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg);
+            } else {
+                std::cerr << "Failed to reload cartridge from " << path << ": " << errorMsg << "\n";
+                state.emulator.SetupHardware();
+            }
+        } else {
+            state.emulator.SetupHardware();
+        }
+#else
         state.emulator.SetupHardware();
+#endif
     } else if (state.rom.loaded) {
         std::string errorMsg;
 #ifdef TARGET_WASM
