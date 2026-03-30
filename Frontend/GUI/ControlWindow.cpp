@@ -3,20 +3,10 @@
 #include <ImGuiFileDialog.h>
 #include <imgui.h>
 
-#include <algorithm>
-#include <array>
-#include <chrono>   // NOLINT
-#include <cstdint>  // NOLINT
-#include <ctime>    // NOLINT
-#include <fstream>
-#include <iomanip>  // NOLINT
-#include <sstream>
-#include <string_view>
-
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
 #include "Frontend/GUI/SDUtils.h"
-#include "Hardware/Comm/SDCard.h"
+#include "Hardware/Core/Emulator.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #endif

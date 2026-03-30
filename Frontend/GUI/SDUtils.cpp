@@ -5,7 +5,7 @@
 #include <string_view>
 #include <cstdint>
 
-#include "Hardware/Comm/SDCard.h"
+#include "Hardware/Core/Emulator.h"
 
 namespace GUI {
 

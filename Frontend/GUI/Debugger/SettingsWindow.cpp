@@ -1,5 +1,4 @@
 #include "Frontend/GUI/Debugger/SettingsWindow.h"
-#include "Frontend/GUI/SDUtils.h"
 
 #include <ImGuiFileDialog.h>
 #include <imgui.h>
@@ -7,10 +6,8 @@
 #include <chrono>
 #include <ctime>
 #include <sstream>
-#include <filesystem>
-
-#include "Hardware/Comm/SDCard.h"
 #ifdef TARGET_WASM
+#include <fstream>
 #include "Frontend/web/WebFileUtils.h"
 #endif
 
@@ -60,13 +57,17 @@ static void DrawScriptingSettings(AppState& state) {
     ImGui::SeparatorText("Scripting");
 
     if (state.script.loaded) {
-        ImGui::TextColored(ImVec4(0.0F, 1.0F, 0.0F, 1.0F), "Script Loaded & Running");
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("Script Loaded & Running");
+        ImGui::PopStyleColor();
         if (ImGui::Button("Stop Script", ImVec2(-FLT_MIN, 0))) {
             state.emulator.GetScriptEngine().Stop();
             state.script.loaded = false;
         }
     } else {
-        ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "No Script Loaded");
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("No Script Loaded");
+        ImGui::PopStyleColor();
 #ifdef TARGET_WASM
         ImGui::BeginDisabled();
         if (ImGui::Button("Load & Run Script (.py)", ImVec2(-FLT_MIN, 0))) {
@@ -108,7 +109,9 @@ static void DrawSDCardSettings(AppState& state) {
     bool cartridgeHasSD = !state.emulator.GetCartridge().sdCardPath.empty();
     bool sdMounted = state.emulator.GetSDCard().IsMounted();
     if (sdMounted) {
-        ImGui::TextColored(ImVec4(0.0F, 1.0F, 0.0F, 1.0F), "SD Card Mounted");
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("SD Card Mounted");
+        ImGui::PopStyleColor();
 #ifdef TARGET_WASM
         if (ImGui::Button("Save Changes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
             std::string path = state.emulator.GetSDCard().GetMountedPath();
@@ -131,7 +134,9 @@ static void DrawSDCardSettings(AppState& state) {
         }
 #endif
     } else {
-        ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "SD Card Not Mounted");
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+        ImGui::TextUnformatted("SD Card Not Mounted");
+        ImGui::PopStyleColor();
         ImGui::BeginDisabled(cartridgeHasSD);
         if (ImGui::Button("Create New", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
 #ifdef TARGET_WASM
@@ -177,7 +182,10 @@ static void DrawSDCardSettings(AppState& state) {
         }
         ImGui::EndDisabled();
         if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetItemTooltip("%s", "SD Card is managed by the active cartridge.");
+            if (ImGui::BeginItemTooltip()) {
+                ImGui::TextUnformatted("SD Card is managed by the active cartridge.");
+                ImGui::EndTooltip();
+            }
         }
     }
 }
