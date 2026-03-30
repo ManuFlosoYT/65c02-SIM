@@ -1,10 +1,12 @@
 #include "Frontend/Control/CartridgeUtils.h"
+#include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #include "Hardware/Core/CartridgeLoader.h"
 
 namespace Control {
 
 void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
+    Console::Clear();
     // Save previous cartridge SD if it exists
     if (state.emulator.GetCartridge().loaded && !state.emulator.GetCartridge().sdCardPath.empty()) {
         Core::CartridgeLoader::SaveSDToZip(state.emulator.GetCartridge());

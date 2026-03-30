@@ -196,6 +196,7 @@ static void HandleROMFilePicker(AppState& state) {
             state.emulator.Pause();
             std::string errorMsg;
             if (state.emulator.Init(filePathName, errorMsg)) {
+                Console::Clear();
                 state.rom.bin = filePathName;
                 state.rom.loaded = true;
                 state.rom.symbols.Clear();
@@ -224,6 +225,7 @@ static void HandleCartridgeFilePicker(AppState& state) {
                     state.rom.bin = filePathName;
                     state.rom.loaded = true;
                     state.rom.symbols.Clear();
+                    state.emulator.ClearProfiler();
                 } else {
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }

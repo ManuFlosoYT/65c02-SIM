@@ -61,6 +61,7 @@ static void DrawSDKPopup(AppState& state) {
                                         state.rom.bin = filename;
                                         state.rom.loaded = true;
                                         state.rom.symbols.Clear();
+                                        state.emulator.ClearProfiler();
                                     }
                                 } else {
                                     printf("Failed to load cartridge: %s\n", errorMsg.c_str());
@@ -71,6 +72,7 @@ static void DrawSDKPopup(AppState& state) {
                                 std::string errorMsg;
                                 if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename,
                                                                   errorMsg)) {
+                                    Console::Clear();
                                     state.rom.bin = filename;
                                     state.rom.loaded = true;
                                     state.rom.symbols.Clear();
@@ -113,6 +115,7 @@ static void DrawConsoleButtonBar(AppState& state) {
             state.emulator.Pause();
             std::string errorMsg;
             if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename, errorMsg)) {
+                Console::Clear();
                 state.rom.bin = filename;
                 state.rom.loaded = true;
                 state.rom.symbols.Clear();
