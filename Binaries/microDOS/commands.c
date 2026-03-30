@@ -40,16 +40,16 @@ void cmd_help(void) {
     SD_INFO fno;
 
     println("microDOS Shell Commands:");
-    println("  ls [dir]        List directory contents");
-    println("  cd <dir>        Change working directory");
-    println("  mkdir <dir>     Create new directory");
-    println("  touch <file>    Create a new empty file");
-    println("  cat <file>      Display file contents");
-    println("  rm <path>       Remove file or directory");
-    println("  wifi <SSID> <PASSWORD>    Connect to WiFi network");
-    println("  run <app>       Load and execute SD application");
-    println("  help            Show this help information");
-    println("  exit            Reboot the system");
+    println("  ls [dir]: List directory contents");
+    println("  cd <dir>: Change working directory");
+    println("  mkdir <dir>: Create new directory");
+    println("  touch <file>: Create a new empty file");
+    println("  cat <file>: Display file contents");
+    println("  rm <path>: Remove file or directory");
+    println("  wifi <SSID> <PASSWORD>: Connect to WiFi network");
+    println("  run <app>: Load and execute SD application");
+    println("  help: Show this help information");
+    println("  exit: Reboot the system");
 
     println("\nApplications in /bin/:");
     if (sd_opendir(&dir, "/bin")) {
