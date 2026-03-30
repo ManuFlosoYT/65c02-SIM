@@ -240,8 +240,8 @@ static void DrawSettingsSaveState(AppState& state) {
 #endif
 }
 
-static void DrawSettingsCRT(AppState& state) {
-    ImGui::SeparatorText("Visuals (CRT Filters)");
+static void DrawSettingsCRTPart1(AppState& state) {
+    ImGui::SeparatorText("Visuals (CRT Part 1)");
     auto setCRTAll = [&](bool val) {
         state.crt.scanlines = state.crt.interlacing = state.crt.curvature = state.crt.chromatic = state.crt.blur =
             state.crt.shadowMask = state.crt.vignette = state.crt.cornerRounding = state.crt.glassGlare =
@@ -264,19 +264,26 @@ static void DrawSettingsCRT(AppState& state) {
     ImGui::Checkbox("Screen Curvature", &state.crt.curvature);
     ImGui::Checkbox("Chromatic Aberration", &state.crt.chromatic);
     ImGui::Checkbox("Phosphor Blur", &state.crt.blur);
+    ImGui::Spacing();
     ImGui::TextUnformatted("Screen Physicality");
     ImGui::Checkbox("Shadow Mask", &state.crt.shadowMask);
     ImGui::Checkbox("Vignette", &state.crt.vignette);
     ImGui::Checkbox("Corner Rounding", &state.crt.cornerRounding);
     ImGui::Checkbox("Glass Glare", &state.crt.glassGlare);
+}
+
+static void DrawSettingsCRTPart2(AppState& state) {
+    ImGui::SeparatorText("Visuals (CRT Part 2)");
     ImGui::TextUnformatted("Signal & Analog");
     ImGui::Checkbox("Color Bleeding", &state.crt.colorBleeding);
     ImGui::Checkbox("RF Noise", &state.crt.noise);
     ImGui::Checkbox("VSync Jitter", &state.crt.vsyncJitter);
     ImGui::Checkbox("Phosphor Decay", &state.crt.phosphorDecay);
+    ImGui::Spacing();
     ImGui::TextUnformatted("Lighting");
     ImGui::Checkbox("Bloom", &state.crt.bloom);
     ImGui::Checkbox("Halation", &state.crt.halation);
+    ImGui::Spacing();
     ImGui::TextUnformatted("Signal Advanced");
     ImGui::Checkbox("Ghosting (Echo)", &state.crt.ghosting);
     ImGui::Checkbox("Moiré Pattern", &state.crt.moire);
@@ -291,14 +298,16 @@ void DrawSettingsContent(AppState& state) {
         DrawEmulationSettings(state);
         ImGui::Spacing();
         DrawScriptingSettings(state);
-
-        ImGui::TableNextColumn();
+        ImGui::Spacing();
         DrawSDCardSettings(state);
         ImGui::Spacing();
         DrawSettingsSaveState(state);
 
         ImGui::TableNextColumn();
-        DrawSettingsCRT(state);
+        DrawSettingsCRTPart1(state);
+
+        ImGui::TableNextColumn();
+        DrawSettingsCRTPart2(state);
 
         ImGui::EndTable();
     }
