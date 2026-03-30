@@ -15,6 +15,7 @@
 
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
+#include "Frontend/GUI/SDUtils.h"
 #include "Hardware/Comm/SDCard.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
@@ -25,138 +26,6 @@ using namespace Core;
 using namespace Hardware;
 
 namespace GUI {
-
-static bool IsSDCardEnabled(AppState& state) {
-    auto& bus = state.emulator.GetMem();
-    const auto& devices = bus.GetRegisteredDevices();
-    for (const auto& reg : devices) {
-        if (reg.device == static_cast<IBusDevice*>(&state.emulator.GetSDCard())) {
-            return reg.enabled;
-        }
-    }
-    return false;
-}
-
-// Creates a blank FAT16 disk image (32 MB) in pure C++ — no host tools required.
-static bool CreateFAT16Image(const std::string& path) {
-    // Geometry for a 32 MB image
-    static constexpr uint32_t BYTES_PER_SECTOR = 512;
-    static constexpr uint32_t SECTORS_PER_CLUSTER = 8;
-    static constexpr uint32_t RESERVED_SECTORS = 4;
-    static constexpr uint32_t NUM_FATS = 2;
-    static constexpr uint32_t ROOT_ENTRIES = 512;
-    static constexpr uint32_t TOTAL_SECTORS = 65536;  // 32 MB
-    static constexpr uint32_t FAT_SECTORS = 32;       // ceil(8192 clusters * 2 bytes / 512)
-    static constexpr uint32_t ROOT_SECTORS = (ROOT_ENTRIES * 32) / BYTES_PER_SECTOR;
-
-    std::ofstream file(path, std::ios::binary | std::ios::trunc);
-    if (!file) {
-        return false;
-    }
-
-    // Pre-fill with zeros
-    std::string zero(BYTES_PER_SECTOR, '\0');
-    for (uint32_t i = 0; i < TOTAL_SECTORS; i++) {
-        file.write(zero.data(), BYTES_PER_SECTOR);
-    }
-    file.seekp(0, std::ios::beg);
-
-    // --- Boot sector (BPB) ---
-    std::array<char, BYTES_PER_SECTOR> boot{};
-    // Jump + NOP
-    boot[0] = static_cast<char>(0xEB);
-    boot[1] = static_cast<char>(0x3C);
-    boot[2] = static_cast<char>(0x90);
-    // OEM Name
-    std::string_view oem = "MSDOS5.0";
-    for (size_t i = 0; i < oem.length(); i++) {
-        boot.at(3 + i) = static_cast<char>(oem.at(i));
-    }
-    // Bytes per sector (512)
-    boot[11] = static_cast<char>(0x00);
-    boot[12] = static_cast<char>(0x02);
-    // Sectors per cluster
-    boot[13] = static_cast<char>(SECTORS_PER_CLUSTER);
-    // Reserved sectors
-    boot[14] = static_cast<char>(RESERVED_SECTORS & 0xFF);
-    boot[15] = static_cast<char>(RESERVED_SECTORS >> 8);
-    // Number of FATs
-    boot[16] = static_cast<char>(NUM_FATS);
-    // Root entry count
-    boot[17] = static_cast<char>(ROOT_ENTRIES & 0xFF);
-    boot[18] = static_cast<char>(ROOT_ENTRIES >> 8);
-    // Total sectors 16
-    boot[19] = static_cast<char>(0x00);
-    boot[20] = static_cast<char>(0x00);  // use 32-bit field
-    // Media type (fixed disk)
-    boot[21] = static_cast<char>(0xF8);
-    // FAT size in sectors
-    boot[22] = static_cast<char>(FAT_SECTORS & 0xFF);
-    boot[23] = static_cast<char>(FAT_SECTORS >> 8);
-    // Sectors per track / heads (63 / 255)
-    boot[24] = static_cast<char>(63);
-    boot[25] = static_cast<char>(0);
-    boot[26] = static_cast<char>(255);
-    boot[27] = static_cast<char>(0);
-    // Hidden sectors
-    boot[28] = boot[29] = boot[30] = boot[31] = static_cast<char>(0);
-    // Total sectors 32
-    boot[32] = static_cast<char>(TOTAL_SECTORS & 0xFF);
-    boot[33] = static_cast<char>((TOTAL_SECTORS >> 8) & 0xFF);
-    boot[34] = static_cast<char>((TOTAL_SECTORS >> 16) & 0xFF);
-    boot[35] = static_cast<char>((TOTAL_SECTORS >> 24) & 0xFF);
-    // Drive number, reserved, boot sig
-    boot[36] = static_cast<char>(0x80);
-    boot[37] = static_cast<char>(0x00);
-    boot[38] = static_cast<char>(0x29);
-    // Volume ID (arbitrary)
-    boot[39] = static_cast<char>(0xDE);
-    boot[40] = static_cast<char>(0xAD);
-    boot[41] = static_cast<char>(0xBE);
-    boot[42] = static_cast<char>(0xEF);
-    // Volume label
-    std::string_view label = "SD IMAGE   ";
-    for (size_t i = 0; i < label.length(); i++) {
-        boot.at(43 + i) = static_cast<char>(label.at(i));
-    }
-    // FS type string
-    std::string_view fstype = "FAT16   ";
-    for (size_t i = 0; i < fstype.length(); i++) {
-        boot.at(54 + i) = static_cast<char>(fstype.at(i));
-    }
-    // Boot signature
-    boot[510] = static_cast<char>(0x55);
-    boot[511] = static_cast<char>(0xAA);
-    file.write(boot.data(), BYTES_PER_SECTOR);
-
-    // --- FAT sectors (two copies) ---
-    // First two entries are reserved: 0xFFF8 (media) and 0xFFFF
-    std::array<char, BYTES_PER_SECTOR> fatSector{};
-    fatSector[0] = static_cast<char>(0xF8);
-    fatSector[1] = static_cast<char>(0xFF);  // FAT entry 0 (media)
-    fatSector[2] = static_cast<char>(0xFF);
-    fatSector[3] = static_cast<char>(0xFF);  // FAT entry 1
-
-    // Seek to first FAT
-    file.seekp(static_cast<std::streamoff>(RESERVED_SECTORS) * BYTES_PER_SECTOR, std::ios::beg);
-    file.write(fatSector.data(), BYTES_PER_SECTOR);
-    // Remaining FAT sectors already zero
-    std::array<char, BYTES_PER_SECTOR> zeroBuf{};
-    for (uint32_t size = 1; size < FAT_SECTORS; size++) {
-        file.write(zeroBuf.data(), BYTES_PER_SECTOR);
-    }
-
-    // Second FAT copy
-    file.write(fatSector.data(), BYTES_PER_SECTOR);
-    for (uint32_t size = 1; size < FAT_SECTORS; size++) {
-        file.write(zeroBuf.data(), BYTES_PER_SECTOR);
-    }
-
-    // Root directory is already zero-filled from the pre-fill step.
-    (void)ROOT_SECTORS;
-
-    return file.good();
-}
 
 static void HandleReset(AppState& state) {
     bool wasRunning = !state.emulator.IsPaused();
@@ -261,10 +130,6 @@ static void DrawAudioVideoControls(AppState& state) {
 
 static void DrawControlButtonBar(AppState& state) {
     if (ImGui::Button("Settings")) {
-        ImGui::OpenPopup("SettingsMenu");
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Debugger")) {
         state.debugger.open = true;
     }
     ImGui::SameLine();
@@ -277,302 +142,6 @@ static void DrawControlButtonBar(AppState& state) {
 
     ImGui::SameLine();
     DrawAudioVideoControls(state);
-}
-
-static void DrawSettingsBasic(AppState& state) {
-    bool cycleOverridden = state.emulator.GetCartridge().config.cycleAccurate.has_value();
-    ImGui::BeginDisabled(cycleOverridden);
-    if (ImGui::Checkbox("Cycle-Accurate", &state.emulation.cycleAccurate)) {
-        state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
-    }
-    ImGui::EndDisabled();
-    if (cycleOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
-            ImGui::TextUnformatted("Managed by Cartridge");
-            ImGui::EndTooltip();
-        }
-    }
-
-    ImGui::Checkbox("Force load savestate", &state.emulation.forceLoadSaveState);
-#ifdef TARGET_WASM
-    bool dummyAutoReload = false;
-    ImGui::BeginDisabled(true);
-    ImGui::Checkbox("Auto-Reload Bin", &dummyAutoReload);
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
-            ImGui::TextUnformatted("Auto-reload is not supported in the web build.");
-            ImGui::EndTooltip();
-        }
-    }
-#else
-    if (ImGui::Checkbox("Auto-Reload Bin", &state.emulation.autoReload)) {
-        state.emulator.SetAutoReload(state.emulation.autoReload);
-    }
-#endif
-
-    ImGui::Separator();
-    ImGui::TextUnformatted("Scripting");
-
-    if (state.script.loaded) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("Script Loaded & Running");
-        ImGui::PopStyleColor();
-        if (ImGui::Button("Stop Script")) {
-            state.emulator.GetScriptEngine().Stop();
-            state.script.loaded = false;
-        }
-    } else {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("No Script Loaded");
-        ImGui::PopStyleColor();
-#ifdef TARGET_WASM
-        ImGui::BeginDisabled();
-        if (ImGui::Button("Load & Run Script (.py)")) {
-            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-                std::string virtualPath = "/tmp/" + std::string(filename);
-                FILE* f = fopen(virtualPath.c_str(), "wb");
-                if (f) {
-                    fwrite(data, 1, size, f);
-                    fclose(f);
-                }
-
-                state.script.path = virtualPath;
-                state.script.loaded = true;
-                state.script.showConsole = true;
-                state.emulator.Pause();
-                state.emulator.GetScriptEngine().LoadAndRun(virtualPath);
-            };
-            WebFileUtils::open_browser_file_picker(".py");
-        }
-        ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            if (ImGui::BeginItemTooltip()) {
-                ImGui::TextUnformatted("Python scripting is not supported in the web build.");
-                ImGui::EndTooltip();
-            }
-        }
-#else
-        if (ImGui::Button("Load & Run Script (.py)")) {
-            ImGuiFileDialog::Instance()->OpenDialog("LoadScriptDlgKey", "Load Python Script", ".py", ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_None);
-        }
-#endif
-    }
-
-    ImGui::Separator();
-    ImGui::TextUnformatted("SD Card Emulation");
-
-    bool cartridgeHasSD = !state.emulator.GetCartridge().sdCardPath.empty();
-
-    bool sdMounted = state.emulator.GetSDCard().IsMounted();
-    if (sdMounted) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("SD Card Mounted");
-        ImGui::PopStyleColor();
-#ifdef TARGET_WASM
-        if (ImGui::Button("Save Changes (Download)")) {
-            std::string path = state.emulator.GetSDCard().GetMountedPath();
-            if (!path.empty()) {
-                std::ifstream ifs(path, std::ios::binary);
-                if (ifs.is_open()) {
-                    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-                    std::string filename = std::filesystem::path(path).filename().string();
-                    WebFileUtils::download_file(filename.c_str(), buffer.data(), buffer.size());
-                }
-            }
-        }
-        ImGui::SameLine();
-#endif
-        if (ImGui::Button(
-#ifdef TARGET_WASM
-            "Unmount & Save (Download)"
-#else
-            "Unmount SD Card"
-#endif
-        )) {
-#ifdef TARGET_WASM
-            std::string path = state.emulator.GetSDCard().GetMountedPath();
-            if (!path.empty()) {
-                std::ifstream ifs(path, std::ios::binary);
-                if (ifs.is_open()) {
-                    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-                    std::string filename = std::filesystem::path(path).filename().string();
-                    WebFileUtils::download_file(filename.c_str(), buffer.data(), buffer.size());
-                }
-            }
-#endif
-            state.emulator.GetSDCard().Unmount();
-        }
-    } else {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("SD Card Not Mounted");
-        ImGui::PopStyleColor();
-#ifdef TARGET_WASM
-        if (ImGui::Button("Create New SD Image...")) {
-            // Create a default image and download it
-            std::string tempPath = "/tmp/new_sd.img";
-            if (CreateFAT16Image(tempPath)) {
-                std::ifstream ifs(tempPath, std::ios::binary);
-                std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-                WebFileUtils::download_file("new_sd.img", buffer.data(), buffer.size());
-                
-                if (IsSDCardEnabled(state)) {
-                    state.emulator.GetSDCard().Mount(tempPath);
-                    state.popups.sdCardWebWarning = true;
-                }
-            }
-        }
-        if (ImGui::Button("Mount Image (IMG)")) {
-            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-                std::string virtualPath = "/tmp/" + std::string(filename);
-                FILE* f = fopen(virtualPath.c_str(), "wb");
-                if (f) {
-                    fwrite(data, 1, size, f);
-                    fclose(f);
-                }
-
-                if (IsSDCardEnabled(state)) {
-                    state.emulator.GetSDCard().Mount(virtualPath);
-                    state.popups.sdCardWebWarning = true;
-                } else {
-                    state.popups.sdCardDisabled = true;
-                }
-            };
-            WebFileUtils::open_browser_file_picker(".img");
-        }
-        if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetItemTooltip("%s", "SD Card is managed by the active cartridge.");
-        }
-        ImGui::EndDisabled();
-#else
-        ImGui::BeginDisabled(cartridgeHasSD);
-        if (ImGui::Button("Create New SD Image...")) {
-            ImGuiFileDialog::Instance()->OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
-        }
-        if (ImGui::Button("Mount Image (IMG)")) {
-            ImGuiFileDialog::Instance()->OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_None);
-        }
-        if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetItemTooltip("%s", "SD Card is managed by the active cartridge.");
-        }
-        ImGui::EndDisabled();
-#endif
-    }
-}
-
-static void DrawSettingsSaveState(AppState& state) {
-#ifdef TARGET_WASM
-    if (ImGui::Button("Save State")) {
-        std::string tempPath = "/tmp/save.savestate";
-        if (state.emulator.SaveState(tempPath)) {
-            std::ifstream ifs(tempPath, std::ios::binary);
-            std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-            WebFileUtils::download_file("emulator_state.savestate", buffer.data(), buffer.size());
-        }
-    }
-    if (ImGui::Button("Load State")) {
-        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-            std::string virtualPath = "/tmp/" + std::string(filename);
-            FILE* f = fopen(virtualPath.c_str(), "wb");
-            if (f) {
-                fwrite(data, 1, size, f);
-                fclose(f);
-            }
-
-            state.emulator.Pause();
-            state.emulator.LoadState(virtualPath, state.emulation.forceLoadSaveState);
-            state.rom.loaded = true;
-            state.emulation.gpuEnabled = state.emulator.IsGPUEnabled();
-            state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
-            state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
-            state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
-            state.rom.bin = state.emulator.GetCurrentBinPath();
-        };
-        WebFileUtils::open_browser_file_picker(".savestate");
-    }
-#else
-    if (ImGui::Button("Save State")) {
-        // Build default filename: SIM65C02SST_<bin>_<date>.savestate
-        std::string binName = "unknown";
-        if (!state.rom.bin.empty()) {
-            binName = std::filesystem::path(state.rom.bin).stem().string();
-        }
-        auto now = std::chrono::system_clock::now();
-        std::time_t timeValue = std::chrono::system_clock::to_time_t(now);
-        std::tm* timeStruct = std::localtime(&timeValue);
-        std::ostringstream dateStr;
-        dateStr << (timeStruct->tm_year + 1900) << (timeStruct->tm_mon + 1 < 10 ? "0" : "") << (timeStruct->tm_mon + 1)
-                << (timeStruct->tm_mday < 10 ? "0" : "") << timeStruct->tm_mday << "_"
-                << (timeStruct->tm_hour < 10 ? "0" : "") << timeStruct->tm_hour << (timeStruct->tm_min < 10 ? "0" : "")
-                << timeStruct->tm_min << (timeStruct->tm_sec < 10 ? "0" : "") << timeStruct->tm_sec;
-        std::string dateOutput = dateStr.str();
-        std::string defaultName = "SIM65C02SST_" + binName + "_" + dateOutput;
-        ImGuiFileDialog::Instance()->OpenDialog("SaveStateDlgKey", "Save State", ".savestate", ".", defaultName);
-        ImGui::CloseCurrentPopup();
-    }
-    if (ImGui::Button("Load State")) {
-        ImGuiFileDialog::Instance()->OpenDialog("LoadStateDlgKey", "Load State", ".savestate", ".");
-        ImGui::CloseCurrentPopup();
-    }
-#endif
-}
-
-static void DrawSettingsCRT(AppState& state) {
-    ImGui::TextUnformatted("CRT Filters (GPU)");
-    auto setCRTAll = [&](bool val) {
-        state.crt.scanlines = state.crt.interlacing = state.crt.curvature = state.crt.chromatic = state.crt.blur =
-            state.crt.shadowMask = state.crt.vignette = state.crt.cornerRounding = state.crt.glassGlare =
-                state.crt.colorBleeding = state.crt.noise = state.crt.vsyncJitter = state.crt.phosphorDecay =
-                    state.crt.bloom = state.crt.ghosting = state.crt.halation = state.crt.moire = val;
-        if (!val) {
-            state.crt.gamma = 2.75F;
-        }
-    };
-    if (ImGui::Button("All On")) {
-        setCRTAll(true);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("All Off")) {
-        setCRTAll(false);
-    }
-    ImGui::TextUnformatted("Essentials");
-    ImGui::Checkbox("Scanlines", &state.crt.scanlines);
-    ImGui::Checkbox("Interlacing", &state.crt.interlacing);
-    ImGui::Checkbox("Screen Curvature", &state.crt.curvature);
-    ImGui::Checkbox("Chromatic Aberration", &state.crt.chromatic);
-    ImGui::Checkbox("Phosphor Blur", &state.crt.blur);
-    ImGui::TextUnformatted("Screen Physicality");
-    ImGui::Checkbox("Shadow Mask", &state.crt.shadowMask);
-    ImGui::Checkbox("Vignette", &state.crt.vignette);
-    ImGui::Checkbox("Corner Rounding", &state.crt.cornerRounding);
-    ImGui::Checkbox("Glass Glare", &state.crt.glassGlare);
-    ImGui::TextUnformatted("Signal & Analog");
-    ImGui::Checkbox("Color Bleeding", &state.crt.colorBleeding);
-    ImGui::Checkbox("RF Noise", &state.crt.noise);
-    ImGui::Checkbox("VSync Jitter", &state.crt.vsyncJitter);
-    ImGui::Checkbox("Phosphor Decay", &state.crt.phosphorDecay);
-    ImGui::TextUnformatted("Lighting");
-    ImGui::Checkbox("Bloom", &state.crt.bloom);
-    ImGui::Checkbox("Halation", &state.crt.halation);
-    ImGui::TextUnformatted("Signal Advanced");
-    ImGui::Checkbox("Ghosting (Echo)", &state.crt.ghosting);
-    ImGui::Checkbox("Moiré Pattern", &state.crt.moire);
-    ImGui::SliderFloat("Gamma", &state.crt.gamma, 1.0F, 3.5F, "%.2f");
-}
-
-static void DrawSettingsPopup(AppState& state) {
-    if (ImGui::BeginPopup("SettingsMenu")) {
-        DrawSettingsBasic(state);
-        ImGui::Separator();
-        DrawSettingsSaveState(state);
-        ImGui::Separator();
-        DrawSettingsCRT(state);
-
-        ImGui::EndPopup();
-    }
 }
 
 static void DrawTargetIPS(AppState& state, float mainColWidth) {
@@ -798,8 +367,17 @@ static void HandleCreateSDDialog(AppState& state) {
             if (filePath.size() < 4 || filePath.substr(filePath.size() - 4) != ".img") {
                 filePath += ".img";
             }
-            if (CreateFAT16Image(filePath)) {
-                if (IsSDCardEnabled(state)) {
+            std::string tempPath = filePath;
+#ifdef TARGET_WASM
+            tempPath = "temp.img";
+#endif
+            if (GUI::CreateFAT16Image(tempPath)) {
+#ifdef TARGET_WASM
+                std::ifstream ifs(tempPath, std::ios::binary);
+                std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                WebFileUtils::download_file("new_sd.img", buffer.data(), buffer.size());
+#endif
+                if (GUI::IsSDCardEnabled(state)) {
                     state.emulator.GetSDCard().Mount(filePath);
                 } else {
                     state.popups.sdCardDisabled = true;
@@ -814,7 +392,7 @@ static void HandleMountSDDialog(AppState& state) {
     if (ImGuiFileDialog::Instance()->Display("MountSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-            if (IsSDCardEnabled(state)) {
+            if (GUI::IsSDCardEnabled(state)) {
                 state.emulator.GetSDCard().Mount(filePath);
             } else {
                 state.popups.sdCardDisabled = true;
@@ -877,7 +455,6 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     DrawControlButtonBar(state);
-    DrawSettingsPopup(state);
     DrawDebugMenu(state);
     DrawIPSSection(state, mainColWidth);
 

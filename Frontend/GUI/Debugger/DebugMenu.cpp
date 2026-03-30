@@ -10,19 +10,20 @@
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
 #include "Frontend/GUI/Debugger/MemoryLayoutWindow.h"
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
+#include "Frontend/GUI/Debugger/SettingsWindow.h"
 
 namespace GUI {
 
 namespace {
 
 void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
-    constexpr std::array<const char*, 4> modes = {"Disassembly", "Profiler", "Debugger", "Memory Layout"};
+    constexpr std::array<const char*, 5> modes = {"Settings", "Disassembly", "Profiler", "Debugger", "Memory Layout"};
     ImGui::BeginChild("DebugSidebar", ImVec2(sidebarWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2));
     for (size_t i = 0; i < modes.size(); i++) {
         bool selected = (state.debugger.mode == static_cast<Control::DebuggerMode>(i));
-        bool isDisabled = (i == 3 && state.emulator.GetCartridge().loaded); // Disable Memory Layout for cartridges
+        bool isDisabled = (i == 4 && state.emulator.GetCartridge().loaded); // Disable Memory Layout for cartridges
 
         if (isDisabled) {
             ImGui::BeginDisabled();
@@ -165,7 +166,9 @@ void DrawDebugMenu(Control::AppState& state) {
     // Content area
     ImGui::BeginChild("DebugContent", ImVec2(0, 0), ImGuiChildFlags_None);
 
-    if (state.debugger.mode == Control::DebuggerMode::Disassembly) {
+    if (state.debugger.mode == Control::DebuggerMode::Settings) {
+        DrawSettingsContent(state);
+    } else if (state.debugger.mode == Control::DebuggerMode::Disassembly) {
         DrawDisassemblerContent(state);
     } else if (state.debugger.mode == Control::DebuggerMode::Profiler) {
         DrawProfilerWindow(state);

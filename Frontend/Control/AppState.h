@@ -63,10 +63,11 @@ struct EmulationState {
 };
 
 enum class DebuggerMode : std::uint8_t {
-    Disassembly = 0,
-    Profiler = 1,
-    Debugger = 2,
-    MemoryLayout = 3
+    Settings = 0,
+    Disassembly = 1,
+    Profiler = 2,
+    Debugger = 3,
+    MemoryLayout = 4
 };
 
 struct DebuggerState {
