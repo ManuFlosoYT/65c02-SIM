@@ -55,12 +55,10 @@ static int load_and_run(const char* path) {
         app_hdr[0] != 'u' || app_hdr[1] != 'D' || app_hdr[2] != 'O' || app_hdr[3] != 'S' ||
         app_hdr[4] != 3) {
         sd_close(&active_app_file);
-        print_str(M_ERR); print_str("Invalid App Format / Not v3. Magic: ");
-        print_hex_byte(app_hdr[0]); print_str(" ");
-        print_hex_byte(app_hdr[1]); print_str(" ");
-        print_hex_byte(app_hdr[2]); print_str(" ");
-        print_hex_byte(app_hdr[3]); print_str(" v");
-        print_hex_byte(app_hdr[4]); println("");
+        print_str(M_ERR); print_str("Invalid Executable Format. Required: microDOS v3. Found: ");
+        bios_putchar((char)app_hdr[0]); bios_putchar((char)app_hdr[1]); 
+        bios_putchar((char)app_hdr[2]); bios_putchar((char)app_hdr[3]);
+        print_str(" version "); print_num(app_hdr[4]); println("");
         return 1;
     }
 
@@ -71,7 +69,7 @@ static int load_and_run(const char* path) {
     sd_seek(&active_app_file, 0);
     if (sd_read(&active_app_file, (void*)APP_LOAD_ADDR, core_size) != core_size) {
         sd_close(&active_app_file);
-        print_str(M_ERR); println("Error reading Resident Core");
+        print_str(M_ERR); println("Failed to read application resident core from SD");
         return 1;
     }
 
@@ -97,7 +95,7 @@ void cmd_run(void) {
     char path[64];
 
     if (arg_count < 2) {
-        print_str(M_USE); println("run <app>");
+        print_str(M_USE); println("run <app_name>");
         return;
     }
 
@@ -111,7 +109,7 @@ void cmd_run(void) {
     }
 
     if (!load_and_run(path)) {
-        print_str(M_ERR); println(path);
+        print_str(M_ERR); print_str("Application not found or inaccessible: "); println(path);
     }
 }
 

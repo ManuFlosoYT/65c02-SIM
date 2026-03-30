@@ -8,7 +8,7 @@
 void cmd_wifi(void) {
     char chr;
     if (arg_count < 3) {
-        print_str(M_USE); println("wifi <s> <p>");
+        print_str(M_USE); println("wifi <SSID> <Password>");
         return;
     }
     print_str("Connecting to ");
@@ -22,8 +22,8 @@ void cmd_wifi(void) {
             chr = (char)net_getc();
             if (chr == '\r') continue;
             bios_putchar(chr);
-            if (chr == 'K') { println(" [Connected OK]"); break; }
-            if (chr == 'R') { println(" [Connection Error]"); break; }
+            if (chr == 'K') { println(""); println("Success: WiFi connected and IP obtained"); break; }
+            if (chr == 'R') { println(""); println("Error: Could not connect to WiFi network"); break; }
         }
     }
 }

@@ -42,7 +42,7 @@ void cmd_cat(void) {
     SD_FILE fp;
     int c;
     if (arg_count < 2) {
-        print_str(M_USE); println("cat <f>");
+        print_str(M_USE); println("cat <filename>");
         return;
     }
     if (sd_open(&fp, args[1], SD_READ)) {
@@ -60,7 +60,7 @@ void cmd_cat(void) {
 void cmd_touch(void) {
     SD_FILE fp;
     if (arg_count < 2) {
-        print_str(M_USE); println("touch <f>");
+        print_str(M_USE); println("touch <filename>");
         return;
     }
     if (sd_open(&fp, args[1], SD_WRITE | SD_CREATE_ALWAYS)) {
@@ -74,7 +74,7 @@ void cmd_touch(void) {
 
 void cmd_mkdir(void) {
     if (arg_count < 2) {
-        print_str(M_USE); println("mkdir <d>");
+        print_str(M_USE); println("mkdir <directory>");
         return;
     }
     if (sd_mkdir(args[1])) {
@@ -87,7 +87,7 @@ void cmd_mkdir(void) {
 
 void cmd_cd(void) {
     if (arg_count < 2) {
-        print_str(M_USE); println("cd <d>");
+        print_str(M_USE); println("cd <directory>");
         return;
     }
     if (!sd_chdir(args[1])) {
@@ -98,7 +98,7 @@ void cmd_cd(void) {
 
 void cmd_rm(void) {
     if (arg_count < 2) {
-        print_str(M_USE); println("rm <p>");
+        print_str(M_USE); println("rm <path>");
         return;
     }
     if (sd_remove(args[1])) {

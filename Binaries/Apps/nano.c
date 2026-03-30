@@ -18,12 +18,12 @@ int main(void) {
     char** args = _args_ptr;
 
     if (arg_count < 2) {
-        print_str("U:"); println("nano <f>");
+        print_str("Usage: "); println("nano <filename>");
         return 1;
     }
 
     if (!sd_open(&fp, args[1], SD_WRITE | SD_CREATE_ALWAYS)) {
-        print_str("E:"); println("open");
+        print_str("Error: "); println("Could not open file");
         return 1;
     }
 

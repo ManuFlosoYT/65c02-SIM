@@ -18,7 +18,7 @@ int main(void) {
     char** args = _args_ptr;
 
     if (arg_count < 2) {
-        print_str("U:"); println("ping <h>");
+        print_str("Usage: "); println("ping <host>");
         return 1;
     }
 
@@ -59,14 +59,14 @@ int main(void) {
                     } else if (chr == 't') {
                         print_str("From ");
                         print_str(args[1]);
-                        println(": TMO");
+                        println(": Timeout");
                         lost++;
                         goto next_ping;
                     }
                 } else if (chr == 'E') {
                     print_str("From ");
                     print_str(args[1]);
-                    println(": E");
+                    println(": Network Error");
                     lost++;
                     goto next_ping;
                 }
