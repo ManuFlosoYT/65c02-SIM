@@ -22,7 +22,8 @@ namespace GUI {
 
 // Implemented in SDUtils.cpp
 
-static void DrawSettingsBasic(AppState& state) {
+static void DrawEmulationSettings(AppState& state) {
+    ImGui::SeparatorText("Emulation");
     bool cycleOverridden = state.emulator.GetCartridge().config.cycleAccurate.has_value();
     ImGui::BeginDisabled(cycleOverridden);
     if (ImGui::Checkbox("Cycle-Accurate", &state.emulation.cycleAccurate)) {
@@ -53,25 +54,22 @@ static void DrawSettingsBasic(AppState& state) {
         state.emulator.SetAutoReload(state.emulation.autoReload);
     }
 #endif
+}
 
-    ImGui::Separator();
-    ImGui::TextUnformatted("Scripting");
+static void DrawScriptingSettings(AppState& state) {
+    ImGui::SeparatorText("Scripting");
 
     if (state.script.loaded) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("Script Loaded & Running");
-        ImGui::PopStyleColor();
-        if (ImGui::Button("Stop Script")) {
+        ImGui::TextColored(ImVec4(0.0F, 1.0F, 0.0F, 1.0F), "Script Loaded & Running");
+        if (ImGui::Button("Stop Script", ImVec2(-FLT_MIN, 0))) {
             state.emulator.GetScriptEngine().Stop();
             state.script.loaded = false;
         }
     } else {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("No Script Loaded");
-        ImGui::PopStyleColor();
+        ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "No Script Loaded");
 #ifdef TARGET_WASM
         ImGui::BeginDisabled();
-        if (ImGui::Button("Load & Run Script (.py)")) {
+        if (ImGui::Button("Load & Run Script (.py)", ImVec2(-FLT_MIN, 0))) {
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
                 std::string virtualPath = "/tmp/" + std::string(filename);
                 FILE* f = fopen(virtualPath.c_str(), "wb");
@@ -96,24 +94,23 @@ static void DrawSettingsBasic(AppState& state) {
             }
         }
 #else
-        if (ImGui::Button("Load & Run Script (.py)")) {
+        if (ImGui::Button("Load & Run Script (.py)", ImVec2(-FLT_MIN, 0))) {
             ImGuiFileDialog::Instance()->OpenDialog("LoadScriptDlgKey", "Load Python Script", ".py", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
         }
 #endif
     }
+}
 
-    ImGui::Separator();
-    ImGui::TextUnformatted("SD Card Emulation");
+static void DrawSDCardSettings(AppState& state) {
+    ImGui::SeparatorText("Storage (SD Card)");
 
     bool cartridgeHasSD = !state.emulator.GetCartridge().sdCardPath.empty();
     bool sdMounted = state.emulator.GetSDCard().IsMounted();
     if (sdMounted) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("SD Card Mounted");
-        ImGui::PopStyleColor();
+        ImGui::TextColored(ImVec4(0.0F, 1.0F, 0.0F, 1.0F), "SD Card Mounted");
 #ifdef TARGET_WASM
-        if (ImGui::Button("Save Changes (Download)")) {
+        if (ImGui::Button("Save Changes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
             std::string path = state.emulator.GetSDCard().GetMountedPath();
             if (!path.empty()) {
                 std::ifstream ifs(path, std::ios::binary);
@@ -125,33 +122,19 @@ static void DrawSettingsBasic(AppState& state) {
             }
         }
         ImGui::SameLine();
-#endif
-        if (ImGui::Button(
-#ifdef TARGET_WASM
-            "Unmount & Save (Download)"
-#else
-            "Unmount SD Card"
-#endif
-        )) {
-#ifdef TARGET_WASM
-            std::string path = state.emulator.GetSDCard().GetMountedPath();
-            if (!path.empty()) {
-                std::ifstream ifs(path, std::ios::binary);
-                if (ifs.is_open()) {
-                    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-                    std::string filename = std::filesystem::path(path).filename().string();
-                    WebFileUtils::download_file(filename.c_str(), buffer.data(), buffer.size());
-                }
-            }
-#endif
+        if (ImGui::Button("Unmount", ImVec2(-FLT_MIN, 0))) {
             state.emulator.GetSDCard().Unmount();
         }
+#else
+        if (ImGui::Button("Unmount SD Card", ImVec2(-FLT_MIN, 0))) {
+            state.emulator.GetSDCard().Unmount();
+        }
+#endif
     } else {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("SD Card Not Mounted");
-        ImGui::PopStyleColor();
+        ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "SD Card Not Mounted");
+        ImGui::BeginDisabled(cartridgeHasSD);
+        if (ImGui::Button("Create New", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
 #ifdef TARGET_WASM
-        if (ImGui::Button("Create New SD Image...")) {
             std::string tempPath = "/tmp/new_sd.img";
             if (GUI::CreateFAT16Image(tempPath)) {
                 std::ifstream ifs(tempPath, std::ios::binary);
@@ -163,8 +146,14 @@ static void DrawSettingsBasic(AppState& state) {
                     state.popups.sdCardWebWarning = true;
                 }
             }
+#else
+            ImGuiFileDialog::Instance()->OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+#endif
         }
-        if (ImGui::Button("Mount Image (IMG)")) {
+        ImGui::SameLine();
+        if (ImGui::Button("Mount IMG", ImVec2(-FLT_MIN, 0))) {
+#ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
                 std::string virtualPath = "/tmp/" + std::string(filename);
                 FILE* f = fopen(virtualPath.c_str(), "wb");
@@ -181,32 +170,23 @@ static void DrawSettingsBasic(AppState& state) {
                 }
             };
             WebFileUtils::open_browser_file_picker(".img");
-        }
-        if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetItemTooltip("%s", "SD Card is managed by the active cartridge.");
-        }
-        ImGui::EndDisabled();
 #else
-        ImGui::BeginDisabled(cartridgeHasSD);
-        if (ImGui::Button("Create New SD Image...")) {
-            ImGuiFileDialog::Instance()->OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
-        }
-        if (ImGui::Button("Mount Image (IMG)")) {
             ImGuiFileDialog::Instance()->OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
+#endif
         }
+        ImGui::EndDisabled();
         if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetItemTooltip("%s", "SD Card is managed by the active cartridge.");
         }
-        ImGui::EndDisabled();
-#endif
     }
 }
 
 static void DrawSettingsSaveState(AppState& state) {
+    ImGui::SeparatorText("Save States");
+
 #ifdef TARGET_WASM
-    if (ImGui::Button("Save State")) {
+    if (ImGui::Button("Save State", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
         std::string tempPath = "/tmp/save.savestate";
         if (state.emulator.SaveState(tempPath)) {
             std::ifstream ifs(tempPath, std::ios::binary);
@@ -214,7 +194,8 @@ static void DrawSettingsSaveState(AppState& state) {
             WebFileUtils::download_file("emulator_state.savestate", buffer.data(), buffer.size());
         }
     }
-    if (ImGui::Button("Load State")) {
+    ImGui::SameLine();
+    if (ImGui::Button("Load State", ImVec2(-FLT_MIN, 0))) {
         WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
             std::string virtualPath = "/tmp/" + std::string(filename);
             FILE* f = fopen(virtualPath.c_str(), "wb");
@@ -235,7 +216,7 @@ static void DrawSettingsSaveState(AppState& state) {
         WebFileUtils::open_browser_file_picker(".savestate");
     }
 #else
-    if (ImGui::Button("Save State")) {
+    if (ImGui::Button("Save State", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
         std::string binName = "unknown";
         if (!state.rom.bin.empty()) {
             binName = std::filesystem::path(state.rom.bin).stem().string();
@@ -252,14 +233,15 @@ static void DrawSettingsSaveState(AppState& state) {
         std::string defaultName = "SIM65C02SST_" + binName + "_" + dateOutput;
         ImGuiFileDialog::Instance()->OpenDialog("SaveStateDlgKey", "Save State", ".savestate", ".", defaultName);
     }
-    if (ImGui::Button("Load State")) {
+    ImGui::SameLine();
+    if (ImGui::Button("Load State", ImVec2(-FLT_MIN, 0))) {
         ImGuiFileDialog::Instance()->OpenDialog("LoadStateDlgKey", "Load State", ".savestate", ".");
     }
 #endif
 }
 
 static void DrawSettingsCRT(AppState& state) {
-    ImGui::TextUnformatted("CRT Filters (GPU)");
+    ImGui::SeparatorText("Visuals (CRT Filters)");
     auto setCRTAll = [&](bool val) {
         state.crt.scanlines = state.crt.interlacing = state.crt.curvature = state.crt.chromatic = state.crt.blur =
             state.crt.shadowMask = state.crt.vignette = state.crt.cornerRounding = state.crt.glassGlare =
@@ -269,11 +251,11 @@ static void DrawSettingsCRT(AppState& state) {
             state.crt.gamma = 2.75F;
         }
     };
-    if (ImGui::Button("All On")) {
+    if (ImGui::Button("All On", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
         setCRTAll(true);
     }
     ImGui::SameLine();
-    if (ImGui::Button("All Off")) {
+    if (ImGui::Button("All Off", ImVec2(-FLT_MIN, 0))) {
         setCRTAll(false);
     }
     ImGui::TextUnformatted("Essentials");
@@ -304,11 +286,22 @@ static void DrawSettingsCRT(AppState& state) {
 void DrawSettingsContent(AppState& state) {
     ImGui::BeginChild("SettingsContent", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     
-    DrawSettingsBasic(state);
-    ImGui::Separator();
-    DrawSettingsSaveState(state);
-    ImGui::Separator();
-    DrawSettingsCRT(state);
+    if (ImGui::BeginTable("SettingsLayoutTable", 3, ImGuiTableFlags_None)) {
+        ImGui::TableNextColumn();
+        DrawEmulationSettings(state);
+        ImGui::Spacing();
+        DrawScriptingSettings(state);
+
+        ImGui::TableNextColumn();
+        DrawSDCardSettings(state);
+        ImGui::Spacing();
+        DrawSettingsSaveState(state);
+
+        ImGui::TableNextColumn();
+        DrawSettingsCRT(state);
+
+        ImGui::EndTable();
+    }
 
     ImGui::EndChild();
 }
