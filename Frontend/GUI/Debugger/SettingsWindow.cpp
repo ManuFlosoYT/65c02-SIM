@@ -5,7 +5,11 @@
 
 #include <chrono>
 #include <ctime>
+#include <iterator>
 #include <sstream>
+#include <vector>
+
+#include "Frontend/GUI/SDUtils.h"
 #ifdef TARGET_WASM
 #include <fstream>
 #include "Frontend/web/WebFileUtils.h"
