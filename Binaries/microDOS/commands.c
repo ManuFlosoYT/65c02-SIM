@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "../Libs/BIOS.h"
+#include "../Libs/SD.h"
 #include <string.h>
 
 static const command_t command_table[] = {
@@ -35,6 +36,9 @@ void exec_command(const char* name) {
 }
 
 void cmd_help(void) {
+    SD_DIR dir;
+    SD_INFO fno;
+
     println("microDOS Shell Commands:");
     println("  ls [dir]        List directory contents");
     println("  cd <dir>        Change working directory");
@@ -42,11 +46,22 @@ void cmd_help(void) {
     println("  touch <file>    Create a new empty file");
     println("  cat <file>      Display file contents");
     println("  rm <path>       Remove file or directory");
-    println("  wifi <S> <P>    Connect to WiFi network");
+    println("  wifi <SSID> <PASSWORD>    Connect to WiFi network");
     println("  run <app>       Load and execute SD application");
     println("  help            Show this help information");
     println("  exit            Reboot the system");
-    println("\nNote: .app files in /bin/ can be launched by name.");
+
+    println("\nApplications in /bin/:");
+    if (sd_opendir(&dir, "/bin")) {
+        while (sd_readdir(&dir, &fno)) {
+            if (!(fno.fattrib & AM_DIR)) {
+                print_str("  "); println(fno.fname);
+            }
+        }
+        sd_closedir(&dir);
+    } else {
+        println("  (Directory /bin not found)");
+    }
 }
 
 void cmd_exit(void) {
