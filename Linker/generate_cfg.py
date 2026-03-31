@@ -8,12 +8,13 @@ def generate_cfg(flags):
     
     # Base reservations
     reserved_blocks = [
-        (0x4800, 0x481F, "SID"),
         (0x5000, 0x5003, "ACIA"),
-        (0x5004, 0x5007, "ESP8266"),
         (0x6000, 0x600F, "VIA")
     ]
     
+    if '--sid' in flags:
+        reserved_blocks.append((0x4800, 0x481F, "SID"))
+
     if '--microDOS' in flags:
         reserved_blocks.append((0x1000, 0x47FF, "App Load Area (Reserved)"))
         reserved_blocks.append((0x6010, 0x7BFF, "App RAM / BSS (Reserved)"))
@@ -153,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument('--gpu', action='store_true', help='Reserve GPU VRAM')
     parser.add_argument('--double-buffer', action='store_true', help='Reserve GPU Double Buffer')
     parser.add_argument('--net', action='store_true', help='Reserve ESP8266')
+    parser.add_argument('--sid', action='store_true', help='Reserve SID')
     parser.add_argument('--microDOS', action='store_true', help='Reserve App memory for microDOS')
     args = parser.parse_args()
     
@@ -160,6 +162,7 @@ if __name__ == "__main__":
     if args.gpu: flags.append('--gpu')
     if args.double_buffer: flags.append('--double-buffer')
     if args.net: flags.append('--net')
+    if args.sid: flags.append('--sid')
     if args.microDOS: flags.append('--microDOS')
     
     print(generate_cfg(flags))

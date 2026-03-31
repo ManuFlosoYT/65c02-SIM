@@ -128,6 +128,10 @@ elif [ "$NAME" == "microDOS" ]; then
         echo "  [NET detected] Added --net to Linker"
         CFG_FLAGS="$CFG_FLAGS --net"
     fi
+    if grep -r -q '#include ".*SID.h"' Binaries/microDOS/; then
+        echo "  [SID detected] Added --sid to Linker"
+        CFG_FLAGS="$CFG_FLAGS --sid"
+    fi
     CFG_FLAGS="$CFG_FLAGS --microDOS"
 
     echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
@@ -175,6 +179,10 @@ elif [ -f "Binaries/$NAME.c" ]; then
     if grep -q '#include "Libs/NET.h"' "Binaries/$NAME.c"; then
         echo "  [NET detected] Added --net to Linker"
         CFG_FLAGS="$CFG_FLAGS --net"
+    fi
+    if grep -q '#include "Libs/SID.h"' "Binaries/$NAME.c"; then
+        echo "  [SID detected] Added --sid to Linker"
+        CFG_FLAGS="$CFG_FLAGS --sid"
     fi
 
     echo "  Generating dynamic Linker CFG..."

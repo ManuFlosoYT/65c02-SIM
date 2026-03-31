@@ -209,6 +209,7 @@ IRQ_HANDLER:
 .import _sd_puts, _sd_getc, _sd_getcwd, _sd_chdir
 .import _net_send, _net_cmd, _net_send_num
 .import _os_load_app_page
+.import _sid_write, _sid_reset
 
 .export BIOS_JUMPTABLE
 .segment "JUMPTABLE"
@@ -231,3 +232,5 @@ BIOS_JUMPTABLE:
     jmp _net_cmd        ; $FFBD — void net_cmd(const char*)
     jmp _net_send_num   ; $FFC0 — void net_send_num(uint16_t)
     jmp _os_load_app_page ; $FFC3 — void os_load_app_page(uint8_t)
+    jmp _sid_write      ; $FFC6 — void sid_write(uint8_t,uint8_t)
+    jmp _sid_reset      ; $FFC9 — void sid_reset(void)

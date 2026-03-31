@@ -86,6 +86,8 @@ def generate_cfg(flags):
     cfg.append(f"    _net_cmd:        type = weak, value = ${JUMPTABLE + 0x2D:04X};")
     cfg.append(f"    _net_send_num:   type = weak, value = ${JUMPTABLE + 0x30:04X};")
     cfg.append(f"    _os_load_app_page: type = weak, value = ${JUMPTABLE + 0x33:04X};")
+    cfg.append(f"    _sid_write:       type = weak, value = ${JUMPTABLE + 0x36:04X};")
+    cfg.append(f"    _sid_reset:       type = weak, value = ${JUMPTABLE + 0x39:04X};")
     cfg.append("}")
     cfg.append("")
     return "\n".join(cfg)

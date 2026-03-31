@@ -39,8 +39,8 @@ void cmd_wifi(void) {
             chr = (char)net_getc();
             if (chr == '\r') continue;
             bios_putchar(chr);
-            if (chr == 'K') { println(""); println("Success: WiFi connected and IP obtained"); break; }
-            if (chr == 'R') { println(""); println("Error: Could not connect to WiFi network"); break; }
+            if (chr == 'K') { println(""); println("Success: IP obtained"); break; }
+            if (chr == 'R') { println(""); println("Error: Could not connect to network"); break; }
         }
     }
 }

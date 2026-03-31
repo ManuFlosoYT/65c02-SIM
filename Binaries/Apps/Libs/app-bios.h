@@ -57,4 +57,63 @@ void net_send(const char* s);
 void net_cmd(const char* s);
 void net_send_num(uint16_t n);
 
+/* SID BIOS API */
+void sid_write(uint8_t reg, uint8_t val);
+void sid_reset(void);
+
+// SID Register Offsets
+#define FREQ_LO_1 0x00
+#define FREQ_HI_1 0x01
+#define PW_LO_1   0x02
+#define PW_HI_1   0x03
+#define CTRL_1    0x04
+#define AD_1      0x05
+#define SR_1      0x06
+
+#define FREQ_LO_2 0x07
+#define FREQ_HI_2 0x08
+#define PW_LO_2   0x09
+#define PW_HI_2   0x0A
+#define CTRL_2    0x0B
+#define AD_2      0x0C
+#define SR_2      0x0D
+
+#define FREQ_LO_3 0x0E
+#define FREQ_HI_3 0x0F
+#define PW_LO_3   0x10
+#define PW_HI_3   0x11
+#define CTRL_3    0x12
+#define AD_3      0x13
+#define SR_3      0x14
+
+#define FC_LO     0x15
+#define FC_HI     0x16
+#define RES_FILT  0x17
+#define MODE_VOL  0x18
+
+// Waveforms
+#define WAVE_GATE  0x01
+#define WAVE_TRI   0x10
+#define WAVE_SAW   0x20
+#define WAVE_PULSE 0x40
+#define WAVE_NOISE 0x80
+
+// Common Notes
+#define NOTE_C3  0x0892
+#define NOTE_Cs3 0x0914
+#define NOTE_D3  0x099E
+#define NOTE_Ds3 0x0A32
+#define NOTE_E3  0x0ACC
+#define NOTE_F3  0x0B71
+#define NOTE_Fs3 0x0C1F
+#define NOTE_G3  0x0CD8
+#define NOTE_Gs3 0x0D9C
+#define NOTE_A3  0x0E6A
+#define NOTE_As3 0x0F47
+#define NOTE_B3  0x102F
+#define NOTE_C4  0x1124
+#define NOTE_E4  0x1599
+#define NOTE_G4  0x19B0
+#define NOTE_C5  0x2249
+
 #endif /* APP_BIOS_H */
