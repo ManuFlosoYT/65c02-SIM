@@ -36,7 +36,7 @@ int main(void) {
         return 1;
     }
     sd_puts(&fp, "Hello from the 65C02 simulator!\n");
-    sd_puts(&fp, "FatFs + SPI bit-bang works.\n");
+    sd_puts(&fp, "FatFs + MMIO SPI works.\n");
     sd_close(&fp);
     println("OK: written");
 

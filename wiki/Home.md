@@ -18,7 +18,7 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 | **GPU**   | Custom graphics controller with 7.5 KB of VRAM          |
 | **SID**   | Sound synthesis chip (3 oscillators + ADSR)             |
 | **LCD**   | 2×16 character LCD display                              |
-| **SD**    | [SD Card](SD-Card) interface via SPI bit-banging        |
+| **SD**    | [SD Card](SD-Card) interface via Dedicated MMIO SPI Controller |
 
 ## General architecture
 

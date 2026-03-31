@@ -112,15 +112,15 @@ public:
 0x4800 – 0x481F   SID (Sound chip registers)
 0x5000 – 0x5003   ACIA (serial communication registers)
 0x5004 – 0x5007   ESP8266 (Network chip registers)
+0x5008 – 0x500B   SD Card (Storage registers)
 0x6000 – 0x600F   VIA (I/O registers)
 0x8000 – 0xFFFF   ROM (32 KB, read-only)
 0xFFFC – 0xFFFD   RESET vector
 0xFFFE – 0xFFFF   IRQ/BRK vector
 ```
 
-> **Note on Virtual Devices:** Components like the **LCD** and **SD Card** are not directly mapped to memory addresses. Instead, they are controlled via the **VIA Port B** (`0x6000`):
+> **Note on Virtual Devices:** Components like the **LCD** are not directly mapped to memory addresses. Instead, they are controlled via the **VIA Port B** (`0x6000`):
 > - **LCD**: Receives commands and data directly through Port B pins.
-> - **SD Card**: Uses Port B pins for SPI bit-banging: `PB0` (MOSI), `PB1` (MISO), `PB2` (CLK), `PB3` (CS).
 >
 > ROM occupies the upper half of the address space. Write attempts to `addr >= 0x8000` are silently ignored.
 
@@ -147,6 +147,8 @@ using ReadHook  = Byte (*)(void*, Word);
 | `0x5001`          | `ACIA_STATUS`        | ACIA — status          |
 | `0x5002`          | `ACIA_CMD`           | ACIA — command         |
 | `0x5003`          | `ACIA_CTRL`          | ACIA — control         |
+| `0x5008`          | `SD_CTRL`            | SD Card — control      |
+| `0x5009`          | `SD_DATA`            | SD Card — SPI data     |
 | `0x6000`          | `PORTB`              | VIA — Port B           |
 | `0x6001`          | `PORTA`              | VIA — Port A           |
 | `0x6002`          | `DDRB`               | VIA — Data Direction B |

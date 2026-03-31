@@ -1,6 +1,8 @@
 # SD Card Emulation
 
-The emulator includes a high-level emulation of an SD Card interface through SPI (Serial Peripheral Interface) bit-banging. This allows programs to store and retrieve data from a virtual SD card image file in FAT16 format.
+The emulator includes a high-level emulation of an SD Card interface using a dedicated **Memory Mapped I/O (MMIO)** SPI controller. This allows programs to store and retrieve data from a virtual SD card image file (FAT16 format) using the standard **SPI (Serial Peripheral Interface)** protocol.
+
+The system emulates the behavior of **SDSC** (Standard Capacity) and **SDHC** (High Capacity) cards.
 
 ## Technical Specifications
 
@@ -17,31 +19,29 @@ The emulator includes a high-level emulation of an SD Card interface through SPI
   - `CMD58` (READ_OCR)
   - `ACMD41` (SD_SEND_OP_COND)
 
-## Hardware Interface (VIA Wiring)
+## Memory Mapped I/O Interface
 
-The SD Card hardware is not memory-mapped directly. Instead, it is connected to the **VIA (6522)** chip on **Port B**. The 65C02 communicates with the card by bit-banging the SPI protocol through the following pins:
+The SD Card hardware is directly memory-mapped, providing a much higher performance interface compared to the previous bit-banging method. It occupies the address range `0x5008`–`0x500B`.
 
-| VIA Pin | Function | Description |
-| ------- | -------- | ----------- |
-| **PB0** | **MOSI** | Master Out Slave In |
-| **PB1** | **MISO** | Master In Slave Out |
-| **PB2** | **SCK**  | Serial Clock |
-| **PB3** | **CS**   | Chip Select (Active Low) |
+### Registers
+
+| Address | Name | Access | Description |
+| ------- | ---- | ------ | ----------- |
+| **0x5008** | **SD_CTRL** | R/W | **Read:** Bit 0: 1 if card is mounted, 0 otherwise.<br>**Write:** Bit 0: 1 to select card (/CS Low), 0 to deselect (/CS High). |
+| **0x5009** | **SD_DATA** | R/W | **Write:** Initiates an SPI transfer (MOSI).<br>**Read:** Returns the last byte received from the card (MISO). |
 
 > [!NOTE]
-> The emulator automatically handles the bit-sync and byte-exchange when it detects activity on these pins, provided the SD Card hardware is enabled.
+> Unlike the old bit-banging interface, this dedicated controller handles the clocking and bit-shifting automatically. Writing a byte to `SD_DATA` immediately completes a full 8-bit SPI transfer.
 
 ## Enabling the Hardware
 
-By default, the SD Card hardware is **disabled** to maintain a simpler environment for basic 6502 learning. To use the SD Card in your programs, follow these steps:
+By default, the SD Card hardware is **disabled** in the configuration. To use the SD Card:
 
-1.  Open the **Memory Layout** window from the emulator's GUI.
-2.  Scroll down to the **Virtual Devices** section.
-3.  Find the **SD Card** entry and check the **Enabled** box. (It will collide with the **LCD** as both use **PORTB**)
-4.  Click the **Apply & Reset Emulator** button at the bottom of the window.
-5.  Click the **Settings** button and create/choose a `.img` file for the SD Card.
+1.  Open the **Settings** window (accessible from the Debugger menu).
+2.  In the **Storage (SD Card)** section, select or create an `.img` file.
+3.  Ensure the SD Card is enabled in the **Memory Layout** (where it will appear at its dedicated `0x5008` address).
 
-The emulator will now allow SPI communication through VIA Port B.
+The emulator will automatically mount the image if a file with the same name as the ROM but with `.sd` extension exists in the same folder.
 
 > [!NOTE]
 > Try running the `testSD` program from the SDK to test the SD Card functionality.
@@ -55,5 +55,24 @@ The project's SDK includes a high-level wrapper for the FatFs library. You can u
 - `sd_open()` / `sd_read()` / `sd_write()`
 - `sd_chdir()` / `sd_getcwd()`
 
-### Low-level Access
-If you are writing assembly code, you must manually manipulate the VIA Port B registers (`0x6000`, `0x6002`) to clock bits in and out.
+### Low-level Access (MMIO)
+If you are writing assembly code, you no longer need to manipulate VIA pins. Simply use the MMIO registers:
+
+```assembly
+; SD Card Registers
+SD_CTRL = $5008
+SD_DATA = $5009
+
+; Select the card
+LDA #$01
+STA SD_CTRL
+
+; Transfer a byte
+LDA #$40        ; CMD0
+STA SD_DATA     ; Write starts transfer
+LDA SD_DATA     ; Read returns MISO byte
+
+; Deselect the card
+LDA #$00
+STA SD_CTRL
+```
