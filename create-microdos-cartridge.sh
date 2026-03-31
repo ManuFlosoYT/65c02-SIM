@@ -35,13 +35,25 @@ truncate -s 32M "$SD_PATH"
 # -n: Volume label
 mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
 
-# 4. Populate SD Card with /bin and apps
+# 4. Compile MIDs to .sid for microDOS
+echo "  Compiling raw SID files..."
+./midi-to-bin.sh all --microDOS
+
+# 5. Populate SD Card with /bin, /sid, and apps
 echo "  Populating SD Card..."
 # Use mtools (mmd, mcopy) to manipulate the raw image
 mmd -i "$SD_PATH" ::/bin
+mmd -i "$SD_PATH" ::/sid
+
 for app in output/apps/*.app; do
     if [ -f "$app" ]; then
         mcopy -i "$SD_PATH" "$app" ::/bin/
+    fi
+done
+
+for sidfile in output/midi/*.sid; do
+    if [ -f "$sidfile" ]; then
+        mcopy -i "$SD_PATH" "$sidfile" ::/sid/
     fi
 done
 

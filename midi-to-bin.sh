@@ -9,10 +9,18 @@ fi
 
 echo "--- MIDI to BIN Automation (Smart Optimization) ---"
 
-# Input Handling
 target_file=""
+MICRO_DOS=false
 
-if [ "$1" == "all" ]; then
+# Check for --microDOS flag
+for arg in "$@"; do
+    if [ "$arg" == "--microDOS" ]; then
+        MICRO_DOS=true
+    fi
+done
+
+# Input Handling (filter out --microDOS flag)
+if [ "$1" == "all" ] || [ "$2" == "all" ]; then
     shopt -s nullglob
     files=(SID/*.mid SID/*.midi)
     shopt -u nullglob
@@ -65,8 +73,17 @@ for midi_file in "${files[@]}"; do
     filename_no_ext="${filename%.*}"
     clean_name="${filename_no_ext// /}"
     
-    success=false
-    
+    if [ "$MICRO_DOS" = true ]; then
+        echo ">> Generating Raw SID Bytes Mode: L1"
+        if ! python3 SID/generator/midi_to_sid.py "$midi_file" --mode "l1" --microDOS; then
+            echo "   [!] Conversion script failed. Skipping."
+            exit -1
+        fi
+        echo "   [OK] Compilation SUCCESS! (Raw format)"
+        success=true
+        continue
+    fi
+
     for mode in "${MODES[@]}"; do
         echo ">> Attempting Mode: $mode"
         
