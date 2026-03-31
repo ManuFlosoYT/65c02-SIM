@@ -11,23 +11,40 @@
 #define _args_ptr  ((char**)(*(uint16_t*)0x61))
 
 #define BUF_SIZE 512
+#define SD_READ_LOOPS 500 // Assuming sd_read takes ~500 loops (~8-10ms)
 
 static void do_delay(uint16_t loops) {
     volatile uint16_t i;
-    // CC65 volatile 16-bit comparison and increment takes around 60-70 cycles.
-    // The original ASM loop took exactly 15 cycles.
-    // We divide loops by 4 to approximate the right time.
     loops >>= 2;
     for (i = 0; i < loops; i++) {
     }
 }
 
+// Global buffer variables to avoid heavy stack usage
+static SD_FILE file;
+static uint8_t buffers[2][BUF_SIZE];
+static int b_len[2] = {0, 0};
+static uint16_t b_idx = 0;
+static uint8_t active_buf = 0;
+
+static uint8_t next_byte(void) {
+    if (b_idx >= b_len[active_buf]) {
+        // Active buffer drained
+        b_len[active_buf] = 0; 
+        active_buf ^= 1; // Swap
+        b_idx = 0;
+        
+        // If the new active buffer is empty, force sync load
+        if (b_len[active_buf] == 0) {
+            b_len[active_buf] = sd_read(&file, buffers[active_buf], BUF_SIZE);
+            if (b_len[active_buf] <= 0) return 0xFF; // EOF signal
+        }
+    }
+    return buffers[active_buf][b_idx++];
+}
+
 int main(void) {
-    SD_FILE file;
-    uint8_t buffer[BUF_SIZE];
-    uint16_t b_idx = 0;
-    int b_len = 0;
-    uint8_t cmd, l1, l2, val;
+    uint8_t cmd, l1, l2, val, inactive_buf;
     char path[32];
     char** args = (char**)(uintptr_t)_args_ptr;
     uint8_t pathp, argp;
@@ -41,9 +58,9 @@ int main(void) {
 
     if (sd_open(&file, args[1], SD_READ) == 0) {
         strcpy(path, "/sid/");
-        
         pathp = 5;
         argp = 0;
+        
         while(args[1][argp] && pathp < 28) {
             path[pathp++] = args[1][argp++];
         }
@@ -52,10 +69,8 @@ int main(void) {
         if (pathp > 4 && 
            !(path[pathp-4] == '.' && path[pathp-3] == 's' && 
              path[pathp-2] == 'i' && path[pathp-1] == 'd')) {
-            path[pathp++] = '.';
-            path[pathp++] = 's';
-            path[pathp++] = 'i';
-            path[pathp++] = 'd';
+            path[pathp++] = '.'; path[pathp++] = 's';
+            path[pathp++] = 'i'; path[pathp++] = 'd';
             path[pathp] = '\0';
         }
 
@@ -69,42 +84,35 @@ int main(void) {
     print_str("Playing -> ");
     println(args[1]);
     
+    // Initial Pre-loading of double buffer
+    b_len[0] = sd_read(&file, buffers[0], BUF_SIZE);
+    b_len[1] = sd_read(&file, buffers[1], BUF_SIZE);
+    active_buf = 0;
+    b_idx = 0;
+    
     sid_reset();
 
     while (1) {
-        if (b_idx >= b_len) {
-            b_len = sd_read(&file, buffer, BUF_SIZE);
-            b_idx = 0;
-            if (b_len == 0) break;
-        }
-        
-        cmd = buffer[b_idx++];
+        cmd = next_byte();
+        if (cmd == 0xFF) break;
         
         if (cmd < 0x20) {
-            if (b_idx >= b_len) {
-                b_len = sd_read(&file, buffer, BUF_SIZE);
-                b_idx = 0;
-                if (b_len == 0) break;
-            }
-            val = buffer[b_idx++];
+            val = next_byte();
+            if (val == 0xFF && b_len[active_buf] <= 0) break;
             sid_write(cmd, val);
         } else if (cmd == 0x81) {
-            if (b_idx < b_len) { l1 = buffer[b_idx++]; } 
-            else { 
-                b_len = sd_read(&file, buffer, BUF_SIZE); b_idx = 0; 
-                if (b_len > 0) l1 = buffer[b_idx++]; else break;
-            }
-            
-            if (b_idx < b_len) { l2 = buffer[b_idx++]; } 
-            else { 
-                b_len = sd_read(&file, buffer, BUF_SIZE); b_idx = 0; 
-                if (b_len > 0) l2 = buffer[b_idx++]; else break;
-            }
-            
+            l1 = next_byte();
+            l2 = next_byte();
             loops = (uint16_t)l1 | ((uint16_t)l2 << 8);
+            
+            // Background Loading during delay! (Latency Hiding)
+            inactive_buf = active_buf ^ 1;
+            if (b_len[inactive_buf] == 0 && loops > SD_READ_LOOPS) {
+                b_len[inactive_buf] = sd_read(&file, buffers[inactive_buf], BUF_SIZE);
+                loops -= SD_READ_LOOPS; // Compensate delay for time taken to read!
+            }
+            
             do_delay(loops);
-        } else if (cmd == 0xFF) {
-            break;
         } else {
             println("Stream warning: Unrecognized byte.");
             break;
