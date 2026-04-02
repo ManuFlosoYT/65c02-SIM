@@ -10,8 +10,10 @@
 #define arg_count  (*(volatile uint8_t*)0x60)
 #define _args_ptr  ((char**)(*(uint16_t*)0x61))
 
-#define BUF_SIZE 256
-#define SD_READ_COST 928
+#define CHUNK_SIZE 64
+#define NUM_BUFS 32
+#define SD_CHUNK_COST 363
+#define SID_WRITE_CREDIT 4
 
 static void do_delay(uint16_t loops) {
     volatile uint16_t i;
@@ -20,32 +22,31 @@ static void do_delay(uint16_t loops) {
     }
 }
 
-// Global buffer variables to avoid heavy stack usage
 static SD_FILE file;
-static uint8_t buffers[2][BUF_SIZE];
-static int b_len[2] = {0, 0};
-static uint16_t b_idx = 0;
-static uint8_t active_buf = 0;
+static uint8_t buffers[NUM_BUFS][CHUNK_SIZE];
+static uint8_t head = 0;
+static uint8_t tail = 0;
+static uint8_t count = 0;
+static uint8_t b_idx = 0;
 static uint16_t credit = 0;
 
 static uint8_t next_byte(void) {
-    if (b_idx >= b_len[active_buf]) {
-        // Active buffer drained
-        b_len[active_buf] = 0; 
-        active_buf ^= 1; // Swap
+    if (b_idx >= CHUNK_SIZE) {
+        tail = (tail + 1) % NUM_BUFS;
+        count--;
         b_idx = 0;
-        
-        // If the new active buffer is empty, force sync load
-        if (b_len[active_buf] == 0) {
-            b_len[active_buf] = sd_read(&file, buffers[active_buf], BUF_SIZE);
-            if (b_len[active_buf] <= 0) return 0xFF; // EOF signal
-        }
     }
-    return buffers[active_buf][b_idx++];
+    if (count == 0) {
+        int r = sd_read(&file, buffers[head], CHUNK_SIZE);
+        if (r <= 0) return 0xFF;
+        head = (head + 1) % NUM_BUFS;
+        count++;
+    }
+    return buffers[tail][b_idx++];
 }
 
 int main(void) {
-    uint8_t cmd, l1, l2, val, inactive_buf;
+    uint8_t cmd, l1, l2, val, i;
     char path[32];
     char** args = (char**)(uintptr_t)_args_ptr;
     uint8_t pathp, argp;
@@ -85,39 +86,49 @@ int main(void) {
     print_str("Playing -> ");
     println(args[1]);
     
-    // Initial Pre-loading of double buffer
-    b_len[0] = sd_read(&file, buffers[0], BUF_SIZE);
-    b_len[1] = sd_read(&file, buffers[1], BUF_SIZE);
-    active_buf = 0;
-    b_idx = 0;
+    head = 0; tail = 0; count = 0; b_idx = 0; credit = 0;
+    for (i = 0; i < NUM_BUFS; i++) {
+        if (sd_read(&file, buffers[head], CHUNK_SIZE) <= 0) break;
+        head = (head + 1) % NUM_BUFS;
+        count++;
+    }
     
     sid_reset();
 
     while (1) {
+        if (count < NUM_BUFS && credit >= SD_CHUNK_COST) {
+            if (sd_read(&file, buffers[head], CHUNK_SIZE) > 0) {
+                head = (head + 1) % NUM_BUFS;
+                count++;
+                credit -= SD_CHUNK_COST;
+            }
+        }
+
         cmd = next_byte();
         if (cmd == 0xFF) break;
         
         if (cmd < 0x20) {
             val = next_byte();
-            if (val == 0xFF && b_len[active_buf] <= 0) break;
+            if (val == 0xFF && count == 0) break;
             sid_write(cmd, val);
+            credit += SID_WRITE_CREDIT;
         } else if (cmd == 0x81) {
             l1 = next_byte();
             l2 = next_byte();
             loops = (uint16_t)l1 | ((uint16_t)l2 << 8);
-            
-            inactive_buf = active_buf ^ 1;
 
             if (credit < 0xFFFF - loops)
                 credit += loops;
             else
                 credit = 0xFFFF;
 
-            if (b_len[inactive_buf] == 0 && credit >= SD_READ_COST) {
-                b_len[inactive_buf] = sd_read(&file, buffers[inactive_buf], BUF_SIZE);
-                credit -= SD_READ_COST;
+            while (count < NUM_BUFS && credit >= SD_CHUNK_COST) {
+                if (sd_read(&file, buffers[head], CHUNK_SIZE) <= 0) break;
+                head = (head + 1) % NUM_BUFS;
+                count++;
+                credit -= SD_CHUNK_COST;
             }
-            
+
             do_delay(loops);
         } else {
             println("Stream warning: Unrecognized byte.");
