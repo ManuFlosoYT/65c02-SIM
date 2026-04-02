@@ -43,14 +43,14 @@ char bios_getchar(void);
 void bios_putchar(char c);
 
 /* SD */
-int sd_open(SD_FILE* fp, const char* path, uint8_t mode);
-int sd_read(SD_FILE* fp, void* buf, uint16_t len);
-int sd_write(SD_FILE* fp, const void* buf, uint16_t len);
-int sd_close(SD_FILE* fp);
-int sd_puts(SD_FILE* fp, const char* s);
-int sd_getc(SD_FILE* fp);
-int sd_getcwd(char* buf, uint16_t len);
-int sd_chdir(const char* path);
+uint8_t  sd_open(SD_FILE* fp, const char* path, uint8_t mode);
+int16_t  sd_read(SD_FILE* fp, void* buf, uint16_t len);
+int16_t  sd_write(SD_FILE* fp, const void* buf, uint16_t len);
+uint8_t  sd_close(SD_FILE* fp);
+uint8_t  sd_puts(SD_FILE* fp, const char* s);
+int16_t  sd_getc(SD_FILE* fp);
+uint8_t  sd_getcwd(char* buf, uint16_t len);
+uint8_t  sd_chdir(const char* path);
 
 /* NET */
 void net_send(const char* s);

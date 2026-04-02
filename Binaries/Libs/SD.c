@@ -46,23 +46,23 @@ int sd_is_present(void) { return (SD_CTRL & SD_STAT_MOUNTED); }
    File I/O
    ----------------------------------------------------------------------- */
 
-int sd_open(SD_FILE* fp, const char* path, uint8_t mode) { return (f_open(fp, path, mode) == FR_OK); }
+uint8_t sd_open(SD_FILE* fp, const char* path, uint8_t mode) { return (f_open(fp, path, mode) == FR_OK); }
 
-int sd_close(SD_FILE* fp) { return (f_close(fp) == FR_OK); }
+uint8_t sd_close(SD_FILE* fp) { return (f_close(fp) == FR_OK); }
 
-int sd_read(SD_FILE* fp, void* buf, uint16_t len) {
+int16_t sd_read(SD_FILE* fp, void* buf, uint16_t len) {
     UINT br;
     if (f_read(fp, buf, len, &br) != FR_OK) return -1;
-    return (int)br;
+    return (int16_t)br;
 }
 
-int sd_write(SD_FILE* fp, const void* buf, uint16_t len) {
+int16_t sd_write(SD_FILE* fp, const void* buf, uint16_t len) {
     UINT bw;
     if (f_write(fp, buf, len, &bw) != FR_OK) return -1;
-    return (int)bw;
+    return (int16_t)bw;
 }
 
-int sd_puts(SD_FILE* fp, const char* str) {
+uint8_t sd_puts(SD_FILE* fp, const char* str) {
     UINT bw;
     uint16_t len = 0;
     while (str[len]) len++;
@@ -70,11 +70,11 @@ int sd_puts(SD_FILE* fp, const char* str) {
     return 1;
 }
 
-int sd_getc(SD_FILE* fp) {
+int16_t sd_getc(SD_FILE* fp) {
     uint8_t c;
     UINT br;
     if (f_read(fp, &c, 1, &br) != FR_OK || br == 0) return -1;
-    return (int)c;
+    return (int16_t)c;
 }
 
 int sd_seek(SD_FILE* fp, uint32_t pos) { return (f_lseek(fp, pos) == FR_OK); }
@@ -102,16 +102,16 @@ void sd_closedir(SD_DIR* dp) { f_closedir(dp); }
    Filesystem utilities
    ----------------------------------------------------------------------- */
 
-int sd_exists(const char* path) {
+uint8_t sd_exists(const char* path) {
     FILINFO fno;
     return (f_stat(path, &fno) == FR_OK);
 }
 
-int sd_remove(const char* path) { return (f_unlink(path) == FR_OK); }
+uint8_t sd_remove(const char* path) { return (f_unlink(path) == FR_OK); }
 
-int sd_rename(const char* old_path, const char* new_path) { return (f_rename(old_path, new_path) == FR_OK); }
+uint8_t sd_rename(const char* old_path, const char* new_path) { return (f_rename(old_path, new_path) == FR_OK); }
 
-int sd_mkdir(const char* path) { return (f_mkdir(path) == FR_OK); }
+uint8_t sd_mkdir(const char* path) { return (f_mkdir(path) == FR_OK); }
 
-int sd_chdir(const char* path) { return (f_chdir(path) == FR_OK); }
-int sd_getcwd(char* buf, uint16_t len) { return (f_getcwd(buf, len) == FR_OK); }
+uint8_t sd_chdir(const char* path) { return (f_chdir(path) == FR_OK); }
+uint8_t sd_getcwd(char* buf, uint16_t len) { return (f_getcwd(buf, len) == FR_OK); }

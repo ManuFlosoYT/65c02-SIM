@@ -40,12 +40,12 @@ void sd_unmount(void);
 int sd_is_present(void);
 
 /* File I/O */
-int sd_open(SD_FILE* fp, const char* path, uint8_t mode);
-int sd_close(SD_FILE* fp);
-int sd_read(SD_FILE* fp, void* buf, uint16_t len);
-int sd_write(SD_FILE* fp, const void* buf, uint16_t len);
-int sd_puts(SD_FILE* fp, const char* str);
-int sd_getc(SD_FILE* fp);
+uint8_t  sd_open(SD_FILE* fp, const char* path, uint8_t mode);
+uint8_t  sd_close(SD_FILE* fp);
+int16_t  sd_read(SD_FILE* fp, void* buf, uint16_t len);
+int16_t  sd_write(SD_FILE* fp, const void* buf, uint16_t len);
+uint8_t  sd_puts(SD_FILE* fp, const char* str);
+int16_t  sd_getc(SD_FILE* fp);
 int sd_seek(SD_FILE* fp, uint32_t pos);
 uint32_t sd_tell(SD_FILE* fp);
 uint32_t sd_size(SD_FILE* fp);
@@ -57,11 +57,11 @@ int sd_readdir(SD_DIR* dp, SD_INFO* fno);
 void sd_closedir(SD_DIR* dp);
 
 /* Filesystem */
-int sd_exists(const char* path);
-int sd_remove(const char* path);
-int sd_rename(const char* old_path, const char* new_path);
-int sd_mkdir(const char* path);
-int sd_chdir(const char* path);
-int sd_getcwd(char* buf, uint16_t len);
+uint8_t  sd_exists(const char* path);
+uint8_t  sd_remove(const char* path);
+uint8_t  sd_rename(const char* old_path, const char* new_path);
+uint8_t  sd_mkdir(const char* path);
+uint8_t  sd_chdir(const char* path);
+uint8_t  sd_getcwd(char* buf, uint16_t len);
 
 #endif /* SD_H */

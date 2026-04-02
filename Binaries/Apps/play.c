@@ -8,7 +8,7 @@
 
 // Argument mapping from microDOS init wrapper
 #define arg_count  (*(volatile uint8_t*)0x60)
-#define _args_ptr  ((char**)(*(uint16_t*)0x61))
+#define _args_ptr  (*(uint16_t*)0x61)
 
 #define CHUNK_SIZE 64
 #define NUM_BUFS 32
@@ -30,7 +30,7 @@ static uint8_t count = 0;
 static uint8_t b_idx = 0;
 static uint16_t credit = 0;
 static uint8_t eof_reached = 0;
-static int r = 0;
+static int8_t r = 0;
 
 static uint8_t next_byte(void) {
     if (b_idx >= CHUNK_SIZE) {
