@@ -10,8 +10,8 @@
 #define arg_count  (*(volatile uint8_t*)0x60)
 #define _args_ptr  ((char**)(*(uint16_t*)0x61))
 
-#define BUF_SIZE 512
-#define SD_READ_LOOPS 500 // Assuming sd_read takes ~500 loops (~8-10ms)
+#define BUF_SIZE 256
+#define SD_READ_COST 928
 
 static void do_delay(uint16_t loops) {
     volatile uint16_t i;
@@ -26,6 +26,7 @@ static uint8_t buffers[2][BUF_SIZE];
 static int b_len[2] = {0, 0};
 static uint16_t b_idx = 0;
 static uint8_t active_buf = 0;
+static uint16_t credit = 0;
 
 static uint8_t next_byte(void) {
     if (b_idx >= b_len[active_buf]) {
@@ -105,11 +106,16 @@ int main(void) {
             l2 = next_byte();
             loops = (uint16_t)l1 | ((uint16_t)l2 << 8);
             
-            // Background Loading during delay! (Latency Hiding)
             inactive_buf = active_buf ^ 1;
-            if (b_len[inactive_buf] == 0 && loops > SD_READ_LOOPS) {
+
+            if (credit < 0xFFFF - loops)
+                credit += loops;
+            else
+                credit = 0xFFFF;
+
+            if (b_len[inactive_buf] == 0 && credit >= SD_READ_COST) {
                 b_len[inactive_buf] = sd_read(&file, buffers[inactive_buf], BUF_SIZE);
-                loops -= SD_READ_LOOPS; // Compensate delay for time taken to read!
+                credit -= SD_READ_COST;
             }
             
             do_delay(loops);
