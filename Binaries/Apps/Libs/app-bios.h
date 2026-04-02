@@ -61,6 +61,9 @@ void net_send_num(uint16_t n);
 void sid_write(uint8_t reg, uint8_t val);
 void sid_reset(void);
 
+/* Virtual Paged Memory */
+void os_load_app_page(uint8_t page_id);
+
 // SID Register Offsets
 #define FREQ_LO_1 0x00
 #define FREQ_HI_1 0x01
