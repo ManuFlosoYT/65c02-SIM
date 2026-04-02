@@ -430,7 +430,7 @@ set(ICON_RESOURCE_RC "${CMAKE_CURRENT_BINARY_DIR}/generated/resource.rc")
 add_custom_command(
     OUTPUT "${ICON_PNG}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-    COMMAND ${MAGICK_EXECUTABLE} -background none "${ICON_SVG}" -resize 256x256 "${ICON_PNG}"
+    COMMAND ${MAGICK_EXECUTABLE} -background none "RSVG:${ICON_SVG}" -resize 256x256 "${ICON_PNG}"
     DEPENDS "${ICON_SVG}"
     COMMENT "Generating PNG icon from SVG"
     VERBATIM
@@ -440,7 +440,7 @@ add_custom_command(
 add_custom_command(
     OUTPUT "${ICON_ICO}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-    COMMAND ${MAGICK_EXECUTABLE} -background none "${ICON_SVG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
+    COMMAND ${MAGICK_EXECUTABLE} -background none "RSVG:${ICON_SVG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
     DEPENDS "${ICON_SVG}"
     COMMENT "Generating Windows ICO from SVG"
     VERBATIM
