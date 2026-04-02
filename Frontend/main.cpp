@@ -291,7 +291,10 @@ static void HandleDialogs(AppState& state) {
 }
 
 static void DrawROMAndStatePopups(AppState& state) {
-    if (ImGui::BeginPopupModal("ErrorLoadingROM", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("ErrorLoadingROM", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::TextUnformatted("Error loading ROM. Please check the file.");
         if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
@@ -299,7 +302,8 @@ static void DrawROMAndStatePopups(AppState& state) {
         ImGui::EndPopup();
     }
 
-    if (ImGui::BeginPopupModal("ErrorSavingState", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("ErrorSavingState", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::TextUnformatted("Error saving state. Please check your permissions.");
         if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
@@ -307,7 +311,8 @@ static void DrawROMAndStatePopups(AppState& state) {
         ImGui::EndPopup();
     }
 
-    if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         auto result = state.emulator.GetLastLoadResult();
         if (result == SavestateLoadResult::VersionMismatch || result == SavestateLoadResult::HashMismatch) {
             ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.0F, 1.0F), "Warning: Savestate compatibility issue");  // NOLINT
@@ -340,12 +345,15 @@ static void DrawROMAndStatePopups(AppState& state) {
 }
 
 static void DrawSDCardPopups(AppState& state) {
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+
     if (state.popups.sdCardDisabled) {
         ImGui::OpenPopup("SD Card Disabled");
         state.popups.sdCardDisabled = false;
     }
 
-    if (ImGui::BeginPopupModal("SD Card Disabled", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("SD Card Disabled", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::TextUnformatted("The SD Card device is currently disabled in the Memory Layout.");
         ImGui::TextUnformatted("Please enable it in the Memory Layout (Debugger -> Memory Layout) to use it.");
         ImGui::Spacing();
@@ -360,7 +368,8 @@ static void DrawSDCardPopups(AppState& state) {
         state.popups.sdCardWebWarning = false;
     }
 
-    if (ImGui::BeginPopupModal("SD Card Web Warning", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("SD Card Web Warning", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::TextUnformatted("SD Card Mounted (Web Port)");
         ImGui::Separator();
         ImGui::TextUnformatted("Due to browser security limitations, changes made to the SD card");
@@ -377,7 +386,10 @@ static void DrawSDCardPopups(AppState& state) {
 }
 
 static void DrawCartridgePopups(AppState& state) {
-    if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+
+    if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         const auto& cart = state.emulator.GetCartridge();
         if (cart.loaded) {
             std::string nameLine = "Name: " + cart.metadata.name;
@@ -387,9 +399,7 @@ static void DrawCartridgePopups(AppState& state) {
             ImGui::TextUnformatted(authorLine.c_str());
             ImGui::TextUnformatted(versionLine.c_str());
             ImGui::Separator();
-            ImGui::PushTextWrapPos(0.0F);
             ImGui::TextUnformatted(cart.metadata.description.c_str());
-            ImGui::PopTextWrapPos();
         }
         ImGui::Separator();
         if (ImGui::Button("OK", ImVec2(120, 0))) {
