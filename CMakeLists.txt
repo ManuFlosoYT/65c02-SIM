@@ -418,6 +418,7 @@ add_custom_command(
 # ---------------------------------------------------------------------------
 # App Icon Generation (Windows Resource + SDL3 Pixel Header)
 # ---------------------------------------------------------------------------
+find_program(RSVG_CONVERT_EXECUTABLE NAMES rsvg-convert)
 find_program(MAGICK_EXECUTABLE NAMES magick convert REQUIRED)
 
 set(ICON_SVG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/Assets/65c02-sim.svg")
@@ -427,22 +428,33 @@ set(ICON_PIXELS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/IconPixels.h")
 set(ICON_RESOURCE_RC "${CMAKE_CURRENT_BINARY_DIR}/generated/resource.rc")
 
 # SVG -> PNG (256x256)
-add_custom_command(
-    OUTPUT "${ICON_PNG}"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-    COMMAND ${MAGICK_EXECUTABLE} -background none "RSVG:${ICON_SVG}" -resize 256x256 "${ICON_PNG}"
-    DEPENDS "${ICON_SVG}"
-    COMMENT "Generating PNG icon from SVG"
-    VERBATIM
-)
+if(RSVG_CONVERT_EXECUTABLE)
+    add_custom_command(
+        OUTPUT "${ICON_PNG}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        COMMAND ${RSVG_CONVERT_EXECUTABLE} --width=256 --height=256 --keep-aspect-ratio "${ICON_SVG}" --output "${ICON_PNG}"
+        DEPENDS "${ICON_SVG}"
+        COMMENT "Generating PNG icon from SVG (using rsvg-convert)"
+        VERBATIM
+    )
+else()
+    add_custom_command(
+        OUTPUT "${ICON_PNG}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        COMMAND ${MAGICK_EXECUTABLE} -background none "${ICON_SVG}" -resize 256x256 "${ICON_PNG}"
+        DEPENDS "${ICON_SVG}"
+        COMMENT "Generating PNG icon from SVG (using ImageMagick)"
+        VERBATIM
+    )
+endif()
 
-# SVG -> ICO (multi-size)
+# PNG -> ICO (multi-size)
 add_custom_command(
     OUTPUT "${ICON_ICO}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-    COMMAND ${MAGICK_EXECUTABLE} -background none "RSVG:${ICON_SVG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
-    DEPENDS "${ICON_SVG}"
-    COMMENT "Generating Windows ICO from SVG"
+    COMMAND ${MAGICK_EXECUTABLE} "${ICON_PNG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
+    DEPENDS "${ICON_PNG}"
+    COMMENT "Generating Windows ICO from PNG"
     VERBATIM
 )
 
