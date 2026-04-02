@@ -29,6 +29,8 @@ static uint8_t tail = 0;
 static uint8_t count = 0;
 static uint8_t b_idx = 0;
 static uint16_t credit = 0;
+static uint8_t eof_reached = 0;
+static int r = 0;
 
 static uint8_t next_byte(void) {
     if (b_idx >= CHUNK_SIZE) {
@@ -37,8 +39,9 @@ static uint8_t next_byte(void) {
         b_idx = 0;
     }
     if (count == 0) {
-        int r = sd_read(&file, buffers[head], CHUNK_SIZE);
-        if (r <= 0) return 0xFF;
+        if (eof_reached) return 0xFF;
+        r = sd_read(&file, buffers[head], CHUNK_SIZE);
+        if (r <= 0) { eof_reached = 1; return 0xFF; }
         head = (head + 1) % NUM_BUFS;
         count++;
     }
@@ -96,11 +99,13 @@ int main(void) {
     sid_reset();
 
     while (1) {
-        if (count < NUM_BUFS && credit >= SD_CHUNK_COST) {
+        if (!eof_reached && count < NUM_BUFS && credit >= SD_CHUNK_COST) {
             if (sd_read(&file, buffers[head], CHUNK_SIZE) > 0) {
                 head = (head + 1) % NUM_BUFS;
                 count++;
                 credit -= SD_CHUNK_COST;
+            } else {
+                eof_reached = 1;
             }
         }
 
@@ -122,8 +127,11 @@ int main(void) {
             else
                 credit = 0xFFFF;
 
-            while (count < NUM_BUFS && credit >= SD_CHUNK_COST) {
-                if (sd_read(&file, buffers[head], CHUNK_SIZE) <= 0) break;
+            while (!eof_reached && count < NUM_BUFS && credit >= SD_CHUNK_COST) {
+                if (sd_read(&file, buffers[head], CHUNK_SIZE) <= 0) {
+                    eof_reached = 1;
+                    break;
+                }
                 head = (head + 1) % NUM_BUFS;
                 count++;
                 credit -= SD_CHUNK_COST;
