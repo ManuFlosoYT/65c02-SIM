@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <span>
 #include <functional>
 #include <vector>
 
@@ -83,6 +84,11 @@ class Bus : public ISerializable {
 
     inline void WriteDirect(Word address, Byte data);
     [[nodiscard]] inline Byte ReadDirect(Word address) const;
+
+    template <bool Debug = false>
+    inline void ReadBlock(Word address, std::span<Byte> buffer);
+    template <bool Debug = false>
+    inline void WriteBlock(Word address, std::span<const Byte> buffer);
 
     void AddGlobalWriteHook(const BusWriteHook& hook);
     void AddGlobalReadHook(const BusReadHook& hook);
@@ -213,6 +219,22 @@ inline void Bus::Write(Word address, Byte data) {
         Write<true>(address, data);
     } else {
         Write<false>(address, data);
+    }
+}
+
+template <bool Debug>
+inline void Bus::ReadBlock(Word address, std::span<Byte> buffer) {
+    Word current = address;
+    for (auto& val : buffer) {
+        val = Read<Debug>(current++);
+    }
+}
+
+template <bool Debug>
+inline void Bus::WriteBlock(Word address, std::span<const Byte> buffer) {
+    Word current = address;
+    for (const auto& val : buffer) {
+        Write<Debug>(current++, val);
     }
 }
 
