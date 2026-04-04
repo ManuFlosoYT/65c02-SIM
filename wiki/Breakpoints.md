@@ -149,9 +149,23 @@ Use **Clear All** to remove all breakpoints at once.
 - Breakpoints are **volatile** — they are not saved in savestates and are lost when the emulator is closed.
 - Having active breakpoints forces the `Debug=true` code path, which has a minimal performance overhead.
 
+## Scripting API Integration
+
+Breakpoints can also be managed programmatically using the **Python Scripting API**. This allows for automated regressions, TAS development, and advanced debugging.
+
+Common tasks available via script:
+- Add a breakpoint with a complex `dict` configuration.
+- List all active breakpoints and their hit counts.
+- Remove or clear breakpoints during execution.
+
+For the full list of scriptable breakpoint functions and constants, see the [Scripting documentation](file:///home/manu/Documents/GitHub/65c02-SIM/wiki/Scripting.md#8-advanced-breakpoints).
+
+---
+
 ## Technical Details
 
 - **Backend**: `Hardware/Core/BreakpointManager.h` / `BreakpointManager.cpp`
 - **UI**: `Frontend/GUI/Debugger/BreakpointWindow.h` / `BreakpointWindow.cpp`
-- **Integration**: Breakpoints are evaluated in `Emulator::EmulateSlice()` after each `Step()` call.
+- **Scripting**: `Hardware/Scripting/ScriptEngine.cpp` (`py_emu_add_breakpoint`, etc.)
+- **Integration**: Breakpoints are evaluated in `Emulator::EmulateSlice()` after each instruction step.
 - **Watchpoints**: Use the `Bus::AddGlobalWriteHook()` mechanism to receive write notifications.

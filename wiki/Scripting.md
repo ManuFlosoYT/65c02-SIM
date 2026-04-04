@@ -56,102 +56,131 @@ print('Test passed!')
 "
 ```
 
-### Example: Run a script headlessly
-
-```bash
-./SIM_65C02 --headless --script ScriptingAPI/test_api.py --run-cycles 500
-```
-
 ---
 
 ## Python API Reference (`emu` module)
 
-All scripting is done via the `emu` built-in module, which is automatically available in every script — no import needed... unless PocketPy requires it (use `import emu` to be safe).
+All scripting is done via the `emu` built-in module, which is automatically available in every script.
 
-### `emu.pause()`
-Pauses the emulator's CPU execution. The main render loop continues, but no instructions are executed.
+### 1. Basic Control
+- **`emu.pause()`**: Pauses CPU execution.
+- **`emu.resume()`**: Resumes CPU execution.
+- **`emu.reset()`**: Performs a hardware reset (vectors at `$FFFC-$FFFD`).
 
+### 2. Memory Bus
+- **`emu.read_mem(address: int) -> int`**: Reads a single byte (0-255).
+- **`emu.write_mem(address: int, value: int)`**: Writes a single byte.
+
+### 3. CPU Registers
+Full programmatic access to all CPU registers:
+- `emu.get_a()` / `emu.set_a(val)`
+- `emu.get_x()` / `emu.set_x(val)`
+- `emu.get_y()` / `emu.set_y(val)`
+- `emu.get_pc()` / `emu.set_pc(val)`
+- `emu.get_sp()` / `emu.set_sp(val)`
+- `emu.get_status()` / `emu.set_status(val)`
+
+### 4. Execution Timing
+- **`emu.wait_cycles(n: int)`**: Blocks script thread until CPU has executed `n` cycles.
+- **`emu.wait_instructions(n: int)`**: Blocks until `n` instructions are executed.
+- **`emu.step_instruction()`**: Advances the CPU by exactly one instruction.
+- **`emu.step()`**: Advances the CPU by one phase (internal cycle).
+
+### 5. Hardware Configuration
+Toggle peripherals programmatically to optimize performance or test failure cases:
+- `emu.set_gpu_enabled(bool)`
+- `emu.set_sd_enabled(bool)`
+- `emu.set_esp_enabled(bool)`
+- `emu.set_cycle_accurate(bool)`: Toggles cycle-accurate mode (high latency vs. high performance).
+
+### 6. Metrics & Performance
+- **`emu.get_cycles() -> int`**: Returns the count of cycles since power-on.
+- **`emu.get_ips() -> int`**: Returns the current instructions per second.
+- **`emu.set_target_ips(ips: int)`**: Dynamically changes the emulation speed limit.
+
+### 7. Multimedia & Input
+- **`emu.inject_key(key: str)`**: Injects a key character into the emulator's keyboard buffer.
+- **`emu.start_audio_recording(filename: str)`**: Starts recording SID audio to a WAV file.
+- **`emu.stop_audio_recording()`**: Stops and finalizes the audio recording.
+- **`emu.load_cartridge(path: str)`**: Loads and mounts a `.cart` or `.bin` file into the emulator at runtime.
+
+### 8. Advanced Breakpoints
+The scripting API allows creating complex, multi-condition breakpoints that are identical to those available in the UI.
+
+- **`emu.add_breakpoint(config: dict) -> int`**: Creates a new breakpoint and returns its unique ID.
+- **`emu.remove_breakpoint(id: int)`**: Deletes a breakpoint.
+- **`emu.list_breakpoints() -> list`**: Returns a list of dictionaries with all currently active breakpoints.
+- **`emu.clear_breakpoints()`**: Removes all breakpoints.
+
+#### Breakpoint Config Dictionary Structure
 ```python
-emu.pause()
+id = emu.add_breakpoint({
+    "label": "My Complex Breakpoint",
+    "enabled": True,
+    "compoundOp": emu.LOGIC_AND,
+    "conditions": [
+        {
+            "type": emu.BP_TYPE_REG,
+            "reg": emu.REG_A,
+            "op": emu.OP_EQUAL,
+            "value": 0xFF
+        },
+        {
+            "type": emu.BP_TYPE_PC,
+            "address": 0x8050
+        }
+    ]
+})
 ```
+
+#### Breakpoint Constants
+| Constant Category | Values |
+|---|---|
+| **`BP_TYPE`** | `PC`, `REG`, `FLAG`, `MEM`, `WATCH` |
+| **`REG`** | `A`, `X`, `Y`, `SP`, `PC` |
+| **`OP`** | `EQUAL`, `NOT_EQUAL`, `LESS`, `LESS_EQUAL`, `GREATER`, `GREATER_EQUAL` |
+| **`LOGIC`** | `AND`, `OR` |
 
 ---
 
-### `emu.resume()`
-Resumes the CPU execution from a paused state.
-
-```python
-emu.resume()
-```
-
----
-
-### `emu.read_mem(address) → int`
-Reads a single byte from the emulator's memory bus at the given 16-bit address.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `address` | `int` | 16-bit address (0x0000–0xFFFF) |
-
-```python
-val = emu.read_mem(0x0200)
-print(hex(val))  # e.g. 0x42
-```
-
----
-
-### `emu.write_mem(address, value)`
-Writes a single byte to the emulator's memory bus.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `address` | `int` | 16-bit address (0x0000–0xFFFF) |
-| `value` | `int` | Byte value (0–255) |
-
-```python
-emu.write_mem(0x0200, 42)
-```
-
----
-
-### `emu.wait_cycles(n)`
-Blocks the script thread until the emulator has executed `n` more cycles.
-
-- If the CPU is **paused**, it will step it manually for `n` cycles.
-- If the CPU is **running**, it will sleep proportionally (based on ms).
-
-| Parameter | Type | Description |
-|---|---|---|
-| `n` | `int` | Number of cycles to wait |
-
-```python
-emu.wait_cycles(1000)
-```
-
----
-
-## Full Example Script
+## Full Example: Automated Testing
+This script sets up a breakpoint, injects code, and verifies that the CPU stops at the right time.
 
 ```python
 import emu
 
+# 1. Setup Environment
 emu.pause()
+emu.clear_breakpoints()
+emu.reset()
 
-# Inject a small 6502 program: LDA #$42, STA $0200, BRK
-program = [0xA9, 0x42, 0x8D, 0x00, 0x02, 0x00]
+# 2. Inject Code: LDA #$99, STA $0200, BRK
+program = [0xA9, 0x99, 0x8D, 0x00, 0x02, 0x00]
 for i, byte in enumerate(program):
     emu.write_mem(0x0000 + i, byte)
 
-# Verify the writes
-for i, expected in enumerate(program):
-    actual = emu.read_mem(0x0000 + i)
-    assert actual == expected, f"Mismatch at {hex(i)}: {hex(actual)} != {hex(expected)}"
-    print(f"  0x{i:04X}: {hex(actual)} OK")
+# 3. Add conditional breakpoint for STA instruction
+emu.add_breakpoint({
+    "label": "Stop on STA",
+    "conditions": [
+        {
+            "type": emu.BP_TYPE_PC,
+            "address": 0x0002
+        }
+    ]
+})
 
+# 4. Execute and Wait
+emu.set_pc(0x0000)
 emu.resume()
-emu.wait_cycles(100)
+emu.wait_cycles(100) # Give it time to hit
 
-print("Script finished.")
+# 5. Verify
+if emu.get_a() == 0x99:
+    print("Success: Final Accumulator value is $99")
+else:
+    print(f"Error: Final Accumulator value is {hex(emu.get_a())}")
+
 emu.pause()
 ```
 
@@ -160,6 +189,5 @@ emu.pause()
 ## Architecture Notes
 
 - Scripts run in a **dedicated background thread** so the GUI and emulator aren't blocked.
-- All `print()` output is captured by a custom PocketPy callback and pushed to a **thread-safe queue** (`std::deque<std::string>` + `std::mutex`), which the GUI reads each frame and renders in the Script Console window.
-- The `ScriptEngine` class lives in `Hardware/Scripting/ScriptEngine.{h,cpp}` and is owned by `Core::Emulator`.
-- The Script Console window is implemented in `Frontend/GUI/ScriptConsoleWindow.{h,cpp}`.
+- All `print()` output is captured by a custom PocketPy callback and pushed to a thread-safe queue.
+- The `ScriptEngine` class lives in `Hardware/Scripting/ScriptEngine.{h,cpp}`.
