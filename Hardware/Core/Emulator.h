@@ -55,6 +55,10 @@ class Emulator {
     int Step();
     template <bool Debug>
     int Step();
+
+    void TriggerIRQ();
+    void TriggerNMI();
+
     void InjectKey(char key);
 
     void SetOutputCallback(std::function<void(char)> callback);
@@ -125,6 +129,9 @@ class Emulator {
 
    private:
     void ThreadLoop();
+
+    std::atomic<bool> pendingIRQ{false};
+    std::atomic<bool> pendingNMI{false};
 
     void HandleVIAPortB(Byte val);
 

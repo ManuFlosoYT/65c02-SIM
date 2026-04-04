@@ -150,8 +150,11 @@ int Emulator::Step() {
 
     via.Clock();
 
-    bool irq = acia.HasIRQ() || via.isIRQAsserted();
-    if (irq) {
+    bool irq = acia.HasIRQ() || via.isIRQAsserted() || this->pendingIRQ.exchange(false);
+    if (this->pendingNMI.exchange(false)) {
+        cpu.NMI<Debug>(bus);
+        cpu.waiting = false;
+    } else if (irq) {
         if (cpu.I == 0) {
             cpu.IRQ<Debug>(bus);
         }
@@ -160,24 +163,22 @@ int Emulator::Step() {
         return 0;
     }
 
-    // Check input atomically only every ~10,000 steps (roughly 0.1s at 100K IPS)
-    static int inputCheckCounter = 0;
-    if (++inputCheckCounter >= 10000) {
-        inputCheckCounter = 0;
-        if (hasInput.load(std::memory_order_relaxed)) {
-            std::lock_guard<std::mutex> lock(bufferMutex);
-            if (!inputBuffer.empty() && !acia.HasIRQ() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
-                char chr = inputBuffer.front();
-                inputBuffer.pop_front();
+    // Check input atomically. 
+    // To ensure determinism for TAS/Scripts, we process input as soon as it's available 
+    // instead of waiting for a 10,000 cycle threshold.
+    if (hasInput.load(std::memory_order_relaxed)) {
+        std::lock_guard<std::mutex> lock(bufferMutex);
+        if (!inputBuffer.empty() && !acia.HasIRQ() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
+            char chr = inputBuffer.front();
+            inputBuffer.pop_front();
 
-                acia.ReceiveData(chr);
-                cpu.IRQ<Debug>(bus);
+            acia.ReceiveData(chr);
+            cpu.IRQ<Debug>(bus);
 
-                baudDelay = 2000;
-            }
-            if (inputBuffer.empty()) {
-                hasInput.store(false, std::memory_order_relaxed);
-            }
+            baudDelay = 2000;
+        }
+        if (inputBuffer.empty()) {
+            hasInput.store(false, std::memory_order_relaxed);
         }
     }
     return res;
@@ -196,6 +197,9 @@ void Emulator::InjectKey(char key) {
 }
 
 void Emulator::SetOutputCallback(std::function<void(char)> callback) { acia.SetOutputCallback(std::move(callback)); }
+
+void Emulator::TriggerIRQ() { this->pendingIRQ.store(true); }
+void Emulator::TriggerNMI() { this->pendingNMI.store(true); }
 
 void Emulator::SetupHardware() {
     halted = false;

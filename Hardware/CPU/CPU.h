@@ -61,6 +61,10 @@ class CPU : public ISerializable {
     void IRQ(Bus& bus);
 
     template <bool Debug>
+    void NMI(Bus& bus);
+    void NMI(Bus& bus);
+
+    template <bool Debug>
     int Dispatch(Bus& bus);
 
     [[nodiscard]] Byte GetStatus() const;
@@ -180,6 +184,18 @@ inline void Hardware::CPU::IRQ(Bus& bus) {
         PC = ReadWord<Debug>(0xFFFE, bus);
         UpdatePagePtr(bus);
     }
+}
+
+template <bool Debug>
+inline void Hardware::CPU::NMI(Bus& bus) {
+    waiting = false;
+    PushWord<Debug>(PC, bus);
+    B = 0;
+    PushByte<Debug>(GetStatus(), bus);
+    I = 1;
+    D = 0;
+    PC = ReadWord<Debug>(0xFFFA, bus);
+    UpdatePagePtr(bus);
 }
 
 template <bool Debug>
@@ -358,4 +374,12 @@ inline void Hardware::CPU::IRQ(Bus& bus) {
         return;
     }
     IRQ<false>(bus);
+}
+
+inline void Hardware::CPU::NMI(Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        NMI<true>(bus);
+        return;
+    }
+    NMI<false>(bus);
 }
