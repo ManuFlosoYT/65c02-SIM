@@ -1,5 +1,5 @@
 #include "IDEWindow.h"
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #include <fstream>
 #include <sstream>
 #include <array>
@@ -10,6 +10,8 @@
 #endif
 
 namespace GUI {
+
+using Frontend::CustomFileDialog;
 
 namespace {
     TextEditor& GetTextEditor() {
@@ -68,12 +70,12 @@ namespace {
 
 static void DrawFileToolbar(Control::AppState& state) {
     if (ImGui::Button("Open File")) {
-        ImGuiFileDialog::Instance()->OpenDialog("IDE_OpenFile", "Open Source File", ".c,.s,.asm,.*", ".");
+        CustomFileDialog::OpenDialog("IDE_OpenFile", "Open Source File", ".c,.s,.asm,.*", ".");
     }
     ImGui::SameLine();
     if (ImGui::Button("Save")) {
         if (state.ide.currentFilePath.empty()) {
-            ImGuiFileDialog::Instance()->OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
+            CustomFileDialog::OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
         } else {
             std::ofstream out(state.ide.currentFilePath);
             if (out) {
@@ -86,7 +88,7 @@ static void DrawFileToolbar(Control::AppState& state) {
     }
     ImGui::SameLine();
     if (ImGui::Button("Save As")) {
-        ImGuiFileDialog::Instance()->OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
+        CustomFileDialog::OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
     }
     
     ImGui::SameLine();
@@ -172,7 +174,7 @@ static void HandleCompileAndExport(Control::AppState& state) {
         state.ide.exportBinary = result.binary;
         state.ide.exportDbgPath = result.dbgFile;
         state.ide.outputLog += "\nCompilation successful. Choose where to save the .bin file.";
-        ImGuiFileDialog::Instance()->OpenDialog("IDE_ExportBinDlg", "Export Binary As", ".bin", ".");
+        CustomFileDialog::OpenDialog("IDE_ExportBinDlg", "Export Binary As", ".bin", ".");
     }
 #endif
 }
@@ -209,9 +211,9 @@ static void DrawToolbar(Control::AppState& state) {
 }
 
 static void HandleOpenFile(Control::AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("IDE_OpenFile", ImGuiWindowFlags_NoCollapse, ImVec2(700.0F, 400.0F))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            state.ide.currentFilePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("IDE_OpenFile")) {
+        if (CustomFileDialog::IsOk()) {
+            state.ide.currentFilePath = CustomFileDialog::GetFilePathName();
             std::ifstream fileIn(state.ide.currentFilePath);
             if (fileIn) {
                 std::ostringstream stringStream;
@@ -232,14 +234,14 @@ static void HandleOpenFile(Control::AppState& state) {
                 state.ide.outputLog = "Failed to open " + state.ide.currentFilePath;
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleSaveFile(Control::AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("IDE_SaveFile", ImGuiWindowFlags_NoCollapse, ImVec2(700.0F, 400.0F))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            state.ide.currentFilePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("IDE_SaveFile")) {
+        if (CustomFileDialog::IsOk()) {
+            state.ide.currentFilePath = CustomFileDialog::GetFilePathName();
             std::ofstream fileOut(state.ide.currentFilePath);
             if (fileOut) {
                 fileOut << state.ide.code;
@@ -248,14 +250,14 @@ static void HandleSaveFile(Control::AppState& state) {
                 state.ide.outputLog = "Failed to save " + state.ide.currentFilePath;
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleExportFile(Control::AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("IDE_ExportBinDlg", ImGuiWindowFlags_NoCollapse, ImVec2(700.0F, 400.0F))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string exportPath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("IDE_ExportBinDlg")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string exportPath = CustomFileDialog::GetFilePathName();
             std::ofstream fileOut(exportPath, std::ios::binary);
             if (fileOut && !state.ide.exportBinary.empty()) {
                 fileOut.write(reinterpret_cast<const char*>(state.ide.exportBinary.data()), // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
@@ -280,7 +282,7 @@ static void HandleExportFile(Control::AppState& state) {
             state.ide.exportBinary.clear();
             state.ide.exportDbgPath.clear();
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 

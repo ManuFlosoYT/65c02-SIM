@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Debugger/DebugMenu.h"
 
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #include <imgui.h>
 
 #include <array>
@@ -109,7 +109,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
             
             if (!initSuccess) {
                 state.rom.loaded = false;
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+                Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
             } else {
                 state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
             }

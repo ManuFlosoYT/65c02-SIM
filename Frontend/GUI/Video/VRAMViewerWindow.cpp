@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #include <fstream>
@@ -89,8 +89,8 @@ static void DrawVRAMControls(AppState& state) {
     bool cartLoaded = state.emulator.GetCartridge().loaded;
     ImGui::BeginDisabled(cartLoaded);
     if (ImGui::Button("Load Image")) {
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseVRAMImageKey", "Choose VRAM Image", ".bin", ".", "");
+        if (!Frontend::CustomFileDialog::IsOpened()) {
+            Frontend::CustomFileDialog::OpenDialog("ChooseVRAMImageKey", "Choose VRAM Image", ".bin", ".", "");
         }
     }
     ImGui::EndDisabled();
@@ -103,7 +103,7 @@ static void DrawVRAMControls(AppState& state) {
 
     ImGui::SameLine();
     if (ImGui::Button("Capture VRAM")) {
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
+        if (!Frontend::CustomFileDialog::IsOpened()) {
             time_t currentTime = time(nullptr);
             struct tm* tmInfo = localtime(&currentTime);
             std::array<char, 64> filenameBuffer{};
@@ -112,7 +112,7 @@ static void DrawVRAMControls(AppState& state) {
                                            "65C02-SIM_VRAM_CAPTURE_%Y-%m-%d-%H-%M-%S.", tmInfo));
             }
 
-            ImGuiFileDialog::Instance()->OpenDialog("SaveVRAMImageKey", "Save VRAM Image", ".bmp", ".",
+            Frontend::CustomFileDialog::OpenDialog("SaveVRAMImageKey", "Save VRAM Image", ".bmp", ".",
                                                     filenameBuffer.data());
         }
     }
@@ -146,26 +146,24 @@ void UpdateVRAMTexture(AppState& state) {
 
 #ifndef TARGET_WASM
 static void HandleVRAMLoadDialog(AppState& state) {
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (!ImGuiFileDialog::Instance()->Display("ChooseVRAMImageKey")) {
+    if (!Frontend::CustomFileDialog::Display("ChooseVRAMImageKey")) {
         return;
     }
 
-    if (ImGuiFileDialog::Instance()->IsOk()) {
-        std::string imgPath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (Frontend::CustomFileDialog::IsOk()) {
+        std::string imgPath = Frontend::CustomFileDialog::GetFilePathName();
         LoadVRAMFromFile(imgPath, state);
     }
-    ImGuiFileDialog::Instance()->Close();
+    Frontend::CustomFileDialog::Close();
 }
 
 static void HandleVRAMSaveDialog(AppState& state) {
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (!ImGuiFileDialog::Instance()->Display("SaveVRAMImageKey")) {
+    if (!Frontend::CustomFileDialog::Display("SaveVRAMImageKey")) {
         return;
     }
 
-    if (ImGuiFileDialog::Instance()->IsOk()) {
-        std::string imgPath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (Frontend::CustomFileDialog::IsOk()) {
+        std::string imgPath = Frontend::CustomFileDialog::GetFilePathName();
 
         std::vector<unsigned char> pixels;
         int capW = 0;
@@ -200,7 +198,7 @@ static void HandleVRAMSaveDialog(AppState& state) {
             SDL_DestroySurface(surface);
         }
     }
-    ImGuiFileDialog::Instance()->Close();
+    Frontend::CustomFileDialog::Close();
 }
 #endif
 

@@ -1,7 +1,8 @@
 #include "Frontend/GUI/ControlWindow.h"
-
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #include <imgui.h>
+
+using Frontend::CustomFileDialog;
 
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
@@ -65,7 +66,7 @@ static void HandleReset(AppState& state) {
             std::cerr << "Error resetting ROM: " << errorMsg << '\n';
             state.rom.loaded = false;
 #ifndef TARGET_WASM
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+            CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
 #endif
         } else {
             state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
@@ -256,12 +257,12 @@ static void DrawStartRecordingButton(AppState& state) {
     if (ImGui::Button("Start Recording", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         if (state.emulation.recordingSettings.type == RecordingType::Audio) {
             const char* ext = (state.emulation.recordingSettings.audioFormat == Control::AudioFormat::OPUS) ? ".ogg" : ".flac";
-            ImGuiFileDialog::Instance()->OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ext, ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+            CustomFileDialog::OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ext, ".", "", 1, nullptr,
+                                         ImGuiFileDialogFlags_ConfirmOverwrite);
         } else {
             std::string ext = (state.emulation.recordingSettings.format == VideoFormat::MP4) ? ".mp4" : ".mkv";
-            ImGuiFileDialog::Instance()->OpenDialog("RecordVideoDlgKey", "Save Video Recording", ext.c_str(), ".", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+            CustomFileDialog::OpenDialog("RecordVideoDlgKey", "Save Video Recording", ext.c_str(), ".", "", 1, nullptr,
+                                         ImGuiFileDialogFlags_ConfirmOverwrite);
         }
         ImGui::CloseCurrentPopup();
     }
@@ -369,9 +370,9 @@ static void DrawIPSSection(AppState& state, float mainColWidth) {
 }
 
 static void HandleCreateSDDialog(AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("CreateSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("CreateSDDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
             // Ensure .img extension
             if (filePath.size() < 4 || filePath.substr(filePath.size() - 4) != ".img") {
                 filePath += ".img";
@@ -393,28 +394,28 @@ static void HandleCreateSDDialog(AppState& state) {
                 }
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleMountSDDialog(AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("MountSDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("MountSDDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
             if (GUI::IsSDCardEnabled(state)) {
                 state.emulator.GetSDCard().Mount(filePath);
             } else {
                 state.popups.sdCardDisabled = true;
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleLoadScriptDialog(AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("LoadScriptDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("LoadScriptDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
             state.script.path = filePath;
             state.script.loaded = true;
             state.script.showConsole = true;
@@ -422,28 +423,28 @@ static void HandleLoadScriptDialog(AppState& state) {
             state.emulator.GetScriptEngine().LoadAndRun(filePath);
             ImGui::CloseCurrentPopup();
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleRecordAudioDialog(AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("RecordSIDDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("RecordSIDDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
             state.emulator.GetSID().StartRecording(filePath);
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleRecordVideoDialog(AppState& state) {
-    if (ImGuiFileDialog::Instance()->Display("RecordVideoDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("RecordVideoDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
             state.emulation.recordingVideoPath = filePath;
             state.emulation.isRecordingVideo = true;
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 

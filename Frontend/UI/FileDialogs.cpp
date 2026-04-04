@@ -1,6 +1,5 @@
 #include "Frontend/UI/UIModules.h"
-#include <ImGuiFileDialog.h>
-#include <imgui.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #include "Frontend/Control/AppState.h"
 #include "Frontend/Control/Console.h"
 #include "Frontend/Control/CartridgeUtils.h"
@@ -13,10 +12,9 @@ using namespace Core;
 namespace Frontend {
 
 static void HandleROMFilePicker(AppState& state) {
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("ChooseFileDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePathName = CustomFileDialog::GetFilePathName();
             state.emulator.Pause();
             std::string errorMsg;
             if (state.emulator.Init(filePathName, errorMsg)) {
@@ -30,15 +28,14 @@ static void HandleROMFilePicker(AppState& state) {
                 ImGui::OpenPopup("ErrorLoadingROM");
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleCartridgeFilePicker(AppState& state) {
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGuiFileDialog::Instance()->Display("ChooseCartridgeDlgKey")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("ChooseCartridgeDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePathName = CustomFileDialog::GetFilePathName();
             state.emulator.Pause();
             std::string errorMsg;
             Core::Cartridge cart;
@@ -58,29 +55,27 @@ static void HandleCartridgeFilePicker(AppState& state) {
                 ImGui::OpenPopup("ErrorLoadingROM");
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleSaveStateFilePicker(AppState& state) {
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGuiFileDialog::Instance()->Display("SaveStateDlgKey")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("SaveStateDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePathName = CustomFileDialog::GetFilePathName();
             state.emulator.Pause();
             if (!state.emulator.SaveState(filePathName)) {
                 ImGui::OpenPopup("ErrorSavingState");
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 
 static void HandleLoadStateFilePicker(AppState& state) {
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGuiFileDialog::Instance()->Display("LoadStateDlgKey")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (CustomFileDialog::Display("LoadStateDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePathName = CustomFileDialog::GetFilePathName();
             state.emulator.Pause();
             state.emulator.LoadState(filePathName, state.emulation.forceLoadSaveState);
             auto loadResult = state.emulator.GetLastLoadResult();
@@ -101,7 +96,7 @@ static void HandleLoadStateFilePicker(AppState& state) {
                 ImGui::OpenPopup("SavestateFeedback");
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        CustomFileDialog::Close();
     }
 }
 

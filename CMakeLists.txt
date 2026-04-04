@@ -70,9 +70,12 @@ FetchContent_MakeAvailable(imgui)
 FetchContent_Declare(
     ImGuiFileDialog
     GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
-    GIT_TAG v0.6.4
+    GIT_TAG v0.6.7
 )
 FetchContent_MakeAvailable(ImGuiFileDialog)
+if(TARGET ImGuiFileDialog)
+    target_include_directories(ImGuiFileDialog PUBLIC ${imgui_SOURCE_DIR})
+endif()
 
 FetchContent_Declare(
     ImGuiColorTextEdit
@@ -589,6 +592,8 @@ target_include_directories(SIM_65C02 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${imguifiledialog_SOURCE_DIR}
     ${imguicolortextedit_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
     ${FFMPEG_INCLUDE_DIRS}
 )
@@ -621,4 +626,3 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
         gtest_discover_tests(unit_tests)
     endif()
 endif()
-

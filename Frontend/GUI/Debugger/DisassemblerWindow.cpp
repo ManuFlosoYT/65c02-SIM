@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
 
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #include <fstream>
@@ -105,9 +105,7 @@ void DrawDisassemblerContent(Control::AppState& state) {
         ImGui::SetTooltip("Debug symbols (.dbg) are not supported in the web build.");
     }
 #else
-    if (ImGui::Button("Load Symbols (.dbg)")) {
-        ImGuiFileDialog::Instance()->OpenDialog("LoadDbgDlgKey", "Load Debug Symbols", ".dbg", ".");
-    }
+        Frontend::CustomFileDialog::OpenDialog("LoadDbgDlgKey", "Load Debug Symbols", ".dbg", ".");
 #endif
     
     if (state.rom.symbols.IsLoaded()) {
@@ -119,12 +117,12 @@ void DrawDisassemblerContent(Control::AppState& state) {
     }
     
 #ifndef TARGET_WASM
-    if (ImGuiFileDialog::Instance()->Display("LoadDbgDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2(700, 400))) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (Frontend::CustomFileDialog::Display("LoadDbgDlgKey")) {
+        if (Frontend::CustomFileDialog::IsOk()) {
+            std::string filePath = Frontend::CustomFileDialog::GetFilePathName();
             state.rom.symbols.LoadFromFile(filePath);
         }
-        ImGuiFileDialog::Instance()->Close();
+        Frontend::CustomFileDialog::Close();
     }
 #endif
 

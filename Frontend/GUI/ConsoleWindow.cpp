@@ -1,6 +1,6 @@
 #include "Frontend/GUI/ConsoleWindow.h"
 
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
 
 #include <string>
@@ -128,8 +128,8 @@ static void DrawConsoleButtonBar(AppState& state) {
         };
         WebFileUtils::open_browser_file_picker(".bin");
 #else
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+        if (!Frontend::CustomFileDialog::IsOpened()) {
+            Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
         }
 #endif
     }
@@ -156,12 +156,14 @@ static void DrawConsoleButtonBar(AppState& state) {
                 fwrite(data, 1, size, f);
                 fclose(f);
             }
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseCartridgeDlgKey", "Load Cartridge", ".65c", ".");
+            // In WASM, we don't use CustomFileDialog for the actual picking, 
+            // but we might use it to show progress or similar if needed.
+            // For now, let's keep it simple.
         };
         WebFileUtils::open_browser_file_picker(".65c");
 #else
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseCartridgeDlgKey", "Choose Cartridge", ".65c", ".");
+        if (!Frontend::CustomFileDialog::IsOpened()) {
+            Frontend::CustomFileDialog::OpenDialog("ChooseCartridgeDlgKey", "Choose Cartridge", ".65c", ".");
         }
 #endif
         }

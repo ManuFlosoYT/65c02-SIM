@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
 
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #endif
@@ -106,26 +106,26 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
     }
 #else
     if (ImGui::Button("Export RAW")) {
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
+        if (!Frontend::CustomFileDialog::IsOpened()) {
             time_t rawTime = time(nullptr);
             struct tm* tm_info = localtime(&rawTime);
             std::array<char, 64> filenameBuffer{};
             if (strftime(filenameBuffer.data(), filenameBuffer.size(), "65C02-SIM_PROFILER_RAW_%Y-%m-%d-%H-%M-%S.",
                          tm_info) > 0) {
-                ImGuiFileDialog::Instance()->OpenDialog("SaveProfilerRawKey", "Save Profiler Raw Data", ".txt", ".",
+                Frontend::CustomFileDialog::OpenDialog("SaveProfilerRawKey", "Save Profiler Raw Data", ".txt", ".",
                                                         filenameBuffer.data());
             }
         }
     }
     ImGui::SameLine();
     if (ImGui::Button("Export as BMP")) {
-        if (!ImGuiFileDialog::Instance()->IsOpened()) {
+        if (!Frontend::CustomFileDialog::IsOpened()) {
             time_t rawTime = time(nullptr);
             struct tm* tm_info = localtime(&rawTime);
             std::array<char, 64> filenameBuffer{};
             if (strftime(filenameBuffer.data(), filenameBuffer.size(), "65C02-SIM_PROFILER_EXPORT_%Y-%m-%d-%H-%M-%S.",
                          tm_info) > 0) {
-                ImGuiFileDialog::Instance()->OpenDialog("SaveProfilerImageKey", "Save Profiler Heatmap", ".bmp", ".",
+                Frontend::CustomFileDialog::OpenDialog("SaveProfilerImageKey", "Save Profiler Heatmap", ".bmp", ".",
                                                         filenameBuffer.data());
             }
         }
@@ -136,10 +136,9 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
 #ifndef TARGET_WASM
 void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned char> pixels) {
     // Profiler Image Save Dialog
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGuiFileDialog::Instance()->Display("SaveProfilerImageKey")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string imgPath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (Frontend::CustomFileDialog::Display("SaveProfilerImageKey")) {
+        if (Frontend::CustomFileDialog::IsOk()) {
+            std::string imgPath = Frontend::CustomFileDialog::GetFilePathName();
 
             SDL_Surface* surface = SDL_CreateSurfaceFrom(256, 256, SDL_PIXELFORMAT_RGB24, pixels.data(), 256 * 3);
             if (surface != nullptr) {
@@ -147,14 +146,13 @@ void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned 
                 SDL_DestroySurface(surface);
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        Frontend::CustomFileDialog::Close();
     }
 
     // Profiler Raw Save Dialog
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGuiFileDialog::Instance()->Display("SaveProfilerRawKey")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+    if (Frontend::CustomFileDialog::Display("SaveProfilerRawKey")) {
+        if (Frontend::CustomFileDialog::IsOk()) {
+            std::string filePath = Frontend::CustomFileDialog::GetFilePathName();
 
             std::ofstream outFile(filePath);
             if (outFile.is_open()) {
@@ -168,7 +166,7 @@ void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned 
                 outFile.close();
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        Frontend::CustomFileDialog::Close();
     }
 }
 #endif

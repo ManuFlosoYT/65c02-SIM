@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Debugger/SettingsWindow.h"
 
-#include <ImGuiFileDialog.h>
+#include "Frontend/UI/CustomFileDialog.h"
 #include <imgui.h>
 
 #include <chrono>
@@ -100,7 +100,7 @@ static void DrawScriptingSettings(AppState& state) {
         }
 #else
         if (ImGui::Button("Load & Run Script (.py)", ImVec2(-FLT_MIN, 0))) {
-            ImGuiFileDialog::Instance()->OpenDialog("LoadScriptDlgKey", "Load Python Script", ".py", ".", 1, nullptr,
+            Frontend::CustomFileDialog::OpenDialog("LoadScriptDlgKey", "Load Python Script", ".py", ".", "", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
         }
 #endif
@@ -156,7 +156,7 @@ static void DrawSDCardSettings(AppState& state) {
                 }
             }
 #else
-            ImGuiFileDialog::Instance()->OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", 1, nullptr,
+            Frontend::CustomFileDialog::OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", "", 1, nullptr,
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
 #endif
         }
@@ -180,7 +180,7 @@ static void DrawSDCardSettings(AppState& state) {
             };
             WebFileUtils::open_browser_file_picker(".img");
 #else
-            ImGuiFileDialog::Instance()->OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", 1, nullptr,
+            Frontend::CustomFileDialog::OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", "", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
 #endif
         }
@@ -243,11 +243,11 @@ static void DrawSettingsSaveState(AppState& state) {
                 << timeStruct->tm_min << (timeStruct->tm_sec < 10 ? "0" : "") << timeStruct->tm_sec;
         std::string dateOutput = dateStr.str();
         std::string defaultName = "SIM65C02SST_" + binName + "_" + dateOutput;
-        ImGuiFileDialog::Instance()->OpenDialog("SaveStateDlgKey", "Save State", ".savestate", ".", defaultName);
+        Frontend::CustomFileDialog::OpenDialog("SaveStateDlgKey", "Save State", ".savestate", ".", defaultName);
     }
     ImGui::SameLine();
     if (ImGui::Button("Load State", ImVec2(-FLT_MIN, 0))) {
-        ImGuiFileDialog::Instance()->OpenDialog("LoadStateDlgKey", "Load State", ".savestate", ".");
+        Frontend::CustomFileDialog::OpenDialog("LoadStateDlgKey", "Load State", ".savestate", ".");
     }
 #endif
 }
