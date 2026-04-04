@@ -88,6 +88,7 @@ class Emulator {
     Hardware::ESP8266& GetESP8266();
     Hardware::ScriptEngine& GetScriptEngine();
     Hardware::BreakpointManager& GetBreakpointManager();
+    std::mutex& GetMutex() { return emulationMutex; }
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
