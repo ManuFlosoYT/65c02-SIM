@@ -1,9 +1,73 @@
 include(FetchContent)
 
+# ==============================================================================
+# Dependency Versions & URLs
+# ==============================================================================
+
+# Google Test
+set(GTEST_URL "https://github.com/google/googletest/archive/refs/heads/main.zip")
+
+# SDL3
+set(SDL3_REPO "https://github.com/libsdl-org/SDL.git")
+set(SDL3_TAG "release-3.4.x")
+
+# ImGui
+set(IMGUI_REPO "https://github.com/ocornut/imgui.git")
+set(IMGUI_TAG "docking")
+
+# ImGuiFileDialog
+set(IMGUI_FILE_DIALOG_REPO "https://github.com/aiekick/ImGuiFileDialog.git")
+set(IMGUI_FILE_DIALOG_TAG "v0.6.8")
+
+# ImGuiColorTextEdit
+set(IMGUI_COLOR_TEXT_EDIT_REPO "https://github.com/BalazsJako/ImGuiColorTextEdit.git")
+set(IMGUI_COLOR_TEXT_EDIT_TAG "master")
+
+# JSON
+set(JSON_URL "https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz")
+
+# PicoSHA2
+set(PICOSHA2_URL "https://raw.githubusercontent.com/okdshin/PicoSHA2/master/picosha2.h")
+
+# Glad
+set(GLAD_REPO "https://github.com/Dav1dde/glad.git")
+set(GLAD_TAG "v2.0.8")
+
+# Miniz
+set(MINIZ_REPO "https://github.com/richgel999/miniz.git")
+set(MINIZ_TAG "3.1.1")
+
+# SndFile
+set(SNDFILE_REPO "https://github.com/libsndfile/libsndfile.git")
+set(SNDFILE_TAG "1.2.2")
+
+# FFmpeg (Windows)
+set(FFMPEG_WIN_URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip")
+
+# ASIO
+set(ASIO_URL "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-38-0.tar.gz")
+
+# cpp-httplib
+set(HTTPLIB_REPO "https://github.com/yhirose/cpp-httplib.git")
+set(HTTPLIB_TAG "v0.41.0")
+
+# PocketPy
+set(POCKETPY_REPO "https://github.com/pocketpy/pocketpy.git")
+set(POCKETPY_TAG "v2.1.8")
+
+# cc65
+set(CC65_REPO "https://github.com/cc65/cc65.git")
+set(CC65_TAG "V2.19")
+
+# cc65 Snapshot (Windows)
+set(CC65_SNAPSHOT_URL "https://sourceforge.net/projects/cc65/files/cc65-snapshot-win32.zip/download")
+
+# ==============================================================================
+
 # Google Test
 FetchContent_Declare(
     googletest
-    URL https://github.com/google/googletest/archive/refs/heads/main.zip
+    URL ${GTEST_URL}
 )
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
@@ -15,8 +79,8 @@ set(SDL_TEST OFF CACHE BOOL "Build SDL3 test" FORCE)
 
 FetchContent_Declare(
     SDL3
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG release-3.4.x
+    GIT_REPOSITORY ${SDL3_REPO}
+    GIT_TAG ${SDL3_TAG}
 )
 set(CMAKE_WARN_DEPRECATED OFF)
 FetchContent_MakeAvailable(SDL3)
@@ -25,16 +89,16 @@ set(CMAKE_WARN_DEPRECATED ON)
 # ImGui
 FetchContent_Declare(
     imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG docking
+    GIT_REPOSITORY ${IMGUI_REPO}
+    GIT_TAG ${IMGUI_TAG}
 )
 FetchContent_MakeAvailable(imgui)
 
 # ImGuiFileDialog
 FetchContent_Declare(
     ImGuiFileDialog
-    GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
-    GIT_TAG v0.6.7
+    GIT_REPOSITORY ${IMGUI_FILE_DIALOG_REPO}
+    GIT_TAG ${IMGUI_FILE_DIALOG_TAG}
 )
 FetchContent_MakeAvailable(ImGuiFileDialog)
 if(TARGET ImGuiFileDialog)
@@ -44,22 +108,22 @@ endif()
 # ImGuiColorTextEdit
 FetchContent_Declare(
     ImGuiColorTextEdit
-    GIT_REPOSITORY https://github.com/BalazsJako/ImGuiColorTextEdit.git
-    GIT_TAG master
+    GIT_REPOSITORY ${IMGUI_COLOR_TEXT_EDIT_REPO}
+    GIT_TAG ${IMGUI_COLOR_TEXT_EDIT_TAG}
 )
 FetchContent_MakeAvailable(ImGuiColorTextEdit)
 
 # JSON
 FetchContent_Declare(
     json
-    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+    URL ${JSON_URL}
 )
 FetchContent_MakeAvailable(json)
 
 # PicoSHA2
 FetchContent_Declare(
     picosha2
-    URL https://raw.githubusercontent.com/okdshin/PicoSHA2/master/picosha2.h
+    URL ${PICOSHA2_URL}
     DOWNLOAD_NO_EXTRACT TRUE
 )
 FetchContent_MakeAvailable(picosha2)
@@ -67,8 +131,8 @@ FetchContent_MakeAvailable(picosha2)
 # Glad
 FetchContent_Declare(
     glad
-    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
-    GIT_TAG v2.0.8
+    GIT_REPOSITORY ${GLAD_REPO}
+    GIT_TAG ${GLAD_TAG}
     SOURCE_SUBDIR cmake
 )
 FetchContent_MakeAvailable(glad)
@@ -77,8 +141,8 @@ glad_add_library(glad_gl REPRODUCIBLE API "gl:core=3.3" EXTENSIONS "GL_3DFX_mult
 # Miniz
 FetchContent_Declare(
     miniz
-    GIT_REPOSITORY https://github.com/richgel999/miniz.git
-    GIT_TAG 2.2.0
+    GIT_REPOSITORY ${MINIZ_REPO}
+    GIT_TAG ${MINIZ_TAG}
     PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_miniz.cmake
 )
 FetchContent_MakeAvailable(miniz)
@@ -89,8 +153,8 @@ find_package(OpenGL REQUIRED)
 # SndFile
 FetchContent_Declare(
     sndfile
-    GIT_REPOSITORY https://github.com/libsndfile/libsndfile.git
-    GIT_TAG 1.2.2
+    GIT_REPOSITORY ${SNDFILE_REPO}
+    GIT_TAG ${SNDFILE_TAG}
     PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sndfile.cmake
 )
 
@@ -130,7 +194,7 @@ if(NOT EMSCRIPTEN)
         set(FFMPEG_LIBRARIES "")
         FetchContent_Declare(
             ffmpeg_win
-            URL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip
+            URL ${FFMPEG_WIN_URL}
         )
         FetchContent_MakeAvailable(ffmpeg_win) 
         
@@ -191,15 +255,15 @@ endif()
 # ASIO
 FetchContent_Declare(
     asio
-    URL https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-30-2.tar.gz
+    URL ${ASIO_URL}
 )
 FetchContent_MakeAvailable(asio)
 
 # cpp-httplib
 FetchContent_Declare(
     httplib
-    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-    GIT_TAG v0.15.3
+    GIT_REPOSITORY ${HTTPLIB_REPO}
+    GIT_TAG ${HTTPLIB_TAG}
 )
 set(HTTPLIB_REQUIRE_OPENSSL OFF CACHE BOOL "" FORCE) 
 set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
@@ -212,8 +276,8 @@ endif()
 # PocketPy
 FetchContent_Declare(
     pocketpy
-    GIT_REPOSITORY https://github.com/pocketpy/pocketpy.git
-    GIT_TAG v2.0.0
+    GIT_REPOSITORY ${POCKETPY_REPO}
+    GIT_TAG ${POCKETPY_TAG}
 )
 set(PKPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(pocketpy)
@@ -222,14 +286,14 @@ FetchContent_MakeAvailable(pocketpy)
 if(NOT EMSCRIPTEN)
     FetchContent_Declare(
         cc65
-        GIT_REPOSITORY https://github.com/cc65/cc65.git
-        GIT_TAG V2.19
+        GIT_REPOSITORY ${CC65_REPO}
+        GIT_TAG ${CC65_TAG}
     )
     FetchContent_MakeAvailable(cc65)
 
     FetchContent_Declare(
         cc65_snapshot
-        URL https://sourceforge.net/projects/cc65/files/cc65-snapshot-win32.zip/download
+        URL ${CC65_SNAPSHOT_URL}
     )
     FetchContent_MakeAvailable(cc65_snapshot)
 endif()
