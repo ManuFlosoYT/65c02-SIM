@@ -155,15 +155,15 @@ static bool py_emu_step_instruction(int argc, py_StackRef argv) {
             emu.Step();
         }
     }
-    py_newnone(py_retval());
+    py_newnone(py_retval());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
     return true;
 }
 
 static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    int64_t count = py_toint(py_arg(0));
+    int64_t count = py_toint(py_arg(0));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     for (int64_t i = 0; i < count; ++i) {
         py_emu_step_instruction(0, nullptr);
     }
@@ -185,10 +185,10 @@ static bool py_emu_get_pc(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_pc(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetCPU().PC = static_cast<uint16_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().PC = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -200,10 +200,10 @@ static bool py_emu_get_sp(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_sp(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetCPU().SP = static_cast<uint16_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().SP = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -215,10 +215,10 @@ static bool py_emu_get_a(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_a(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetCPU().A = static_cast<uint8_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().A = static_cast<uint8_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -230,10 +230,10 @@ static bool py_emu_get_x(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_x(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetCPU().X = static_cast<uint8_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().X = static_cast<uint8_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -245,10 +245,10 @@ static bool py_emu_get_y(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_y(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetCPU().Y = static_cast<uint8_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().Y = static_cast<uint8_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -260,46 +260,46 @@ static bool py_emu_get_status(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_status(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetCPU().SetStatus(static_cast<uint8_t>(py_toint(py_arg(0))));
+    engine->GetEmulator().GetCPU().SetStatus(static_cast<uint8_t>(py_toint(py_arg(0))));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_gpu_enabled(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_bool);   // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetGPUEnabled(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetGPUEnabled(py_tobool(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_sd_enabled(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_bool);   // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetSDEnabled(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetSDEnabled(py_tobool(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_esp_enabled(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_bool);   // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetESPEnabled(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetESPEnabled(py_tobool(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_cycle_accurate(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_bool);   // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetCycleAccurate(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetCycleAccurate(py_tobool(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -317,31 +317,31 @@ static bool py_emu_get_ips(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_target_ips(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetTargetIPS(static_cast<int>(py_toint(py_arg(0))));
+    engine->GetEmulator().SetTargetIPS(static_cast<int>(py_toint(py_arg(0))));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_inject_key(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_str);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_str);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    const char* str = py_tostr(py_arg(0));
-    if (str != nullptr && str[0] != '\0') {
-        engine->GetEmulator().InjectKey(str[0]);
+    const char* str = py_tostr(py_arg(0));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    if (str != nullptr && *str != '\0') {
+        engine->GetEmulator().InjectKey(*str);
     }
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_start_audio_recording(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_str);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_str);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetSID().StartRecording(py_tostr(py_arg(0)));
+    engine->GetEmulator().GetSID().StartRecording(py_tostr(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -354,10 +354,10 @@ static bool py_emu_stop_audio_recording(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_load_cartridge(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_str);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_str);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::string path = py_tostr(py_arg(0));
+    std::string path = py_tostr(py_arg(0));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::string error;
     Core::Cartridge cart;
     if (Core::CartridgeLoader::Load(path, cart, error)) {
@@ -370,49 +370,52 @@ static bool py_emu_load_cartridge(int argc, py_StackRef argv) {
     return true;
 }
 
+static void ParseBreakCondition(py_Ref cond_dict, Hardware::BreakCondition& cond) {
+    if (py_dict_getitem_by_str(cond_dict, "type") == 1) {
+        cond.type = static_cast<Hardware::BreakpointType>(py_toint(py_retval()));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    }
+    if (py_dict_getitem_by_str(cond_dict, "reg") == 1) {
+        cond.reg = static_cast<Hardware::RegisterId>(py_toint(py_retval()));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    }
+    if (py_dict_getitem_by_str(cond_dict, "flag") == 1) {
+        cond.flag = static_cast<Hardware::FlagId>(py_toint(py_retval()));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    }
+    if (py_dict_getitem_by_str(cond_dict, "op") == 1) {
+        cond.op = static_cast<Hardware::CompareOp>(py_toint(py_retval()));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    }
+    if (py_dict_getitem_by_str(cond_dict, "address") == 1) {
+        cond.address = static_cast<uint16_t>(py_toint(py_retval()));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    }
+    if (py_dict_getitem_by_str(cond_dict, "value") == 1) {
+        cond.value = static_cast<uint16_t>(py_toint(py_retval()));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    }
+}
+
 static bool py_emu_add_breakpoint(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_dict);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_dict);   // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    py_Ref dict = py_arg(0);
+    py_Ref dict = py_arg(0);         // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
     Hardware::Breakpoint breakpoint;
-    
-    if(py_dict_getitem_by_str(dict, "label") == 1) {
+    if (py_dict_getitem_by_str(dict, "label") == 1) {
         breakpoint.label = py_tostr(py_retval());
     }
-    if(py_dict_getitem_by_str(dict, "enabled") == 1) {
+    if (py_dict_getitem_by_str(dict, "enabled") == 1) {
         breakpoint.enabled = py_tobool(py_retval());
     }
-    if(py_dict_getitem_by_str(dict, "compoundOp") == 1) {
-        breakpoint.compoundOp = (Hardware::LogicOp)py_toint(py_retval());
+    if (py_dict_getitem_by_str(dict, "compoundOp") == 1) {
+        breakpoint.compoundOp = static_cast<Hardware::LogicOp>(py_toint(py_retval()));
     }
 
-    if(py_dict_getitem_by_str(dict, "conditions") == 1) {
-        py_assign(py_r1(), py_retval()); // Keep conditions list in r1
+    if (py_dict_getitem_by_str(dict, "conditions") == 1) {
+        py_assign(py_r1(), py_retval());
         int len = py_list_len(py_r1());
-        for(int i=0; i<len; ++i) {
+        for (int i = 0; i < len; ++i) {
             py_Ref cond_dict = py_list_getitem(py_r1(), i);
-            if(py_isdict(cond_dict)) {
+            if (py_isdict(cond_dict)) {
                 Hardware::BreakCondition cond;
-                if(py_dict_getitem_by_str(cond_dict, "type") == 1) {
-                    cond.type = (Hardware::BreakpointType)py_toint(py_retval());
-                }
-                if(py_dict_getitem_by_str(cond_dict, "reg") == 1) {
-                    cond.reg = (Hardware::RegisterId)py_toint(py_retval());
-                }
-                if(py_dict_getitem_by_str(cond_dict, "flag") == 1) {
-                    cond.flag = (Hardware::FlagId)py_toint(py_retval());
-                }
-                if(py_dict_getitem_by_str(cond_dict, "op") == 1) {
-                    cond.op = (Hardware::CompareOp)py_toint(py_retval());
-                }
-                if(py_dict_getitem_by_str(cond_dict, "address") == 1) {
-                    cond.address = (uint16_t)py_toint(py_retval());
-                }
-                if(py_dict_getitem_by_str(cond_dict, "value") == 1) {
-                    cond.value = (uint16_t)py_toint(py_retval());
-                }
+                ParseBreakCondition(cond_dict, cond);
                 breakpoint.conditions.push_back(cond);
             }
         }
@@ -424,10 +427,10 @@ static bool py_emu_add_breakpoint(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_remove_breakpoint(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetBreakpointManager().RemoveBreakpoint((uint32_t)py_toint(py_arg(0)));
+    engine->GetEmulator().GetBreakpointManager().RemoveBreakpoint(static_cast<uint32_t>(py_toint(py_arg(0))));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
 }
@@ -439,17 +442,32 @@ static bool py_emu_clear_breakpoints(int argc, py_StackRef argv) {
     return true;
 }
 
+static void SerializeBreakCondition(py_Ref out_dict, const Hardware::BreakCondition& cond) {
+    py_newint(py_r0(), static_cast<int64_t>(cond.type));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_dict_setitem_by_str(out_dict, "type", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_newint(py_r0(), static_cast<int64_t>(cond.reg));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_dict_setitem_by_str(out_dict, "reg", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_newint(py_r0(), static_cast<int64_t>(cond.flag));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_dict_setitem_by_str(out_dict, "flag", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_newint(py_r0(), static_cast<int64_t>(cond.op));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_dict_setitem_by_str(out_dict, "op", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_newint(py_r0(), static_cast<int64_t>(cond.address));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_dict_setitem_by_str(out_dict, "address", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_newint(py_r0(), static_cast<int64_t>(cond.value));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_dict_setitem_by_str(out_dict, "value", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+}
+
 static bool py_emu_list_breakpoints(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto& breakpoints = engine->GetEmulator().GetBreakpointManager().GetBreakpoints();
+    const auto& breakpoints = engine->GetEmulator().GetBreakpointManager().GetBreakpoints();
     
     py_newlist(py_retval());
     py_assign(py_r2(), py_retval()); // Keep the outer list in r2
 
-    for(const auto& breakpoint : breakpoints) {
+    for (const auto& breakpoint : breakpoints) {
         py_newdict(py_r3()); // Create dict for this BP
         
-        py_newint(py_r0(), breakpoint.id);
+        py_newint(py_r0(), static_cast<int64_t>(breakpoint.id));
         py_dict_setitem_by_str(py_r3(), "id", py_r0());
         
         py_newstr(py_r0(), breakpoint.label.c_str());
@@ -458,32 +476,14 @@ static bool py_emu_list_breakpoints(int argc, py_StackRef argv) {
         py_newbool(py_r0(), breakpoint.enabled);
         py_dict_setitem_by_str(py_r3(), "enabled", py_r0());
         
-        py_newint(py_r0(), (int)breakpoint.compoundOp);
+        py_newint(py_r0(), static_cast<int64_t>(breakpoint.compoundOp));
         py_dict_setitem_by_str(py_r3(), "compoundOp", py_r0());
 
         // conditions list
         py_newlist(py_r4()); 
-        for(const auto& cond : breakpoint.conditions) {
+        for (const auto& cond : breakpoint.conditions) {
             py_newdict(py_r5());
-            
-            py_newint(py_r0(), (int)cond.type);
-            py_dict_setitem_by_str(py_r5(), "type", py_r0());
-            
-            py_newint(py_r0(), (int)cond.reg);
-            py_dict_setitem_by_str(py_r5(), "reg", py_r0());
-            
-            py_newint(py_r0(), (int)cond.flag);
-            py_dict_setitem_by_str(py_r5(), "flag", py_r0());
-            
-            py_newint(py_r0(), (int)cond.op);
-            py_dict_setitem_by_str(py_r5(), "op", py_r0());
-            
-            py_newint(py_r0(), cond.address);
-            py_dict_setitem_by_str(py_r5(), "address", py_r0());
-            
-            py_newint(py_r0(), cond.value);
-            py_dict_setitem_by_str(py_r5(), "value", py_r0());
-            
+            SerializeBreakCondition(py_r5(), cond);
             py_list_append(py_r4(), py_r5());
         }
         py_dict_setitem_by_str(py_r3(), "conditions", py_r4());
@@ -542,7 +542,7 @@ void ScriptEngine::ScriptThread(const std::string& filepath) {
     py_bindfunc(mod, "list_breakpoints", py_emu_list_breakpoints);
 
     auto set_const = [&](const char* name, int val) {
-        py_newint(py_r0(), val);
+        py_newint(py_r0(), static_cast<int64_t>(val));
         py_setdict(mod, py_name(name), py_r0());
     };
 
