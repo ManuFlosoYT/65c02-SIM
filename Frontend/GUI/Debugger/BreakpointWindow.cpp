@@ -80,7 +80,7 @@ Hardware::BreakCondition BuildConditionFromForm(const BreakpointFormState& form)
 }
 
 void DrawConditionForm(BreakpointFormState& form) {
-    ImGui::PushItemWidth(120);
+    ImGui::PushItemWidth(160);
     ImGui::Combo("Type", &form.typeIndex, kTypeNames.data(), static_cast<int>(kTypeNames.size()));
     ImGui::PopItemWidth();
 
@@ -308,7 +308,9 @@ void DrawBreakpointWindow(Control::AppState& state) {
     std::string activeText = "(" + std::to_string(activeCount) + " active)";
     ImGui::TextUnformatted(activeText.c_str());
     ImGui::PopStyleColor();
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x - 70.0F);
+    float clearBtnWidth = ImGui::CalcTextSize("Clear All").x + (ImGui::GetStyle().FramePadding.x * 2.0F);
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - clearBtnWidth + ImGui::GetCursorPosX() -
+                    ImGui::GetStyle().ItemSpacing.x);
     if (ImGui::Button("Clear All") && !manager.GetBreakpoints().empty()) {
         manager.ClearAll();
     }
@@ -339,7 +341,7 @@ void DrawBreakpointWindow(Control::AppState& state) {
     ImGui::SameLine();
 
     constexpr std::array<const char*, 2> logicOps = {"AND", "OR"};
-    ImGui::PushItemWidth(60);
+    ImGui::PushItemWidth(75);
     ImGui::Combo("Logic##compound", &form.compoundOpIndex, logicOps.data(), static_cast<int>(logicOps.size()));
     ImGui::PopItemWidth();
 
