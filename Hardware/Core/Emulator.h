@@ -17,6 +17,7 @@
 #include "Hardware/Comm/VIA.h"
 #include "Hardware/Comm/ESP8266.h"
 #include "Hardware/Scripting/ScriptEngine.h"
+#include "Hardware/Core/BreakpointManager.h"
 #include "Hardware/Core/Bus.h"
 #include "Hardware/Memory/RAM.h"
 #include "Hardware/Memory/ROM.h"
@@ -82,6 +83,7 @@ class Emulator {
     Hardware::SDCard& GetSDCard();
     Hardware::ESP8266& GetESP8266();
     Hardware::ScriptEngine& GetScriptEngine();
+    Hardware::BreakpointManager& GetBreakpointManager();
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
@@ -152,6 +154,7 @@ class Emulator {
     Hardware::SDCard sdcard;
     Hardware::ESP8266 esp8266;
     Hardware::ScriptEngine scriptEngine;
+    Hardware::BreakpointManager breakpointManager;
 
     ConsoleSerializable consoleSerializable;
     std::vector<ISerializable*> components;
@@ -233,6 +236,7 @@ inline Hardware::ROM& Core::Emulator::GetROM() { return rom; }
 inline Hardware::SDCard& Core::Emulator::GetSDCard() { return sdcard; }
 inline Hardware::ESP8266& Core::Emulator::GetESP8266() { return esp8266; }
 inline Hardware::ScriptEngine& Core::Emulator::GetScriptEngine() { return scriptEngine; }
+inline Hardware::BreakpointManager& Core::Emulator::GetBreakpointManager() { return breakpointManager; }
 
 inline void Core::Emulator::SetCycleAccurate(bool enabled) { cpu.SetCycleAccurate(enabled); }
 inline bool Core::Emulator::IsCycleAccurate() const { return cpu.IsCycleAccurate(); }

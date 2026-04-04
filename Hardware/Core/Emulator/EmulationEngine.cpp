@@ -94,41 +94,45 @@ void Emulator::ThreadLoop() {
 }
 
 void Emulator::EmulateSlice(int instructionsPerSlice) {
-    bool hooks = bus.HasActiveHooks();
+    bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
     std::lock_guard<std::mutex> lock(emulationMutex);
     SaveStateToBuffer();
-    if (hooks) {
-        for (int i = 0; i < instructionsPerSlice; ++i) {
-            int res = Step<true>();
-            if (res != 0) {
-                Pause();
+
+    auto runStep = [this](bool useHooks) -> int {
+        int res = useHooks ? Step<true>() : Step<false>();
+        if (res != 0) {
+            Pause();
 #ifndef TARGET_WASM
-                if (totalCycles > totalCyclesAtLastResume) {
-                    sid.StopRecording();
-                }
-#endif
-                halted = true;
-                std::cerr << "Emulator stopped with code: " << res << '\n';
-                break;
+            if (totalCycles > totalCyclesAtLastResume) {
+                sid.StopRecording();
             }
-        }
-    } else {
-        for (int i = 0; i < instructionsPerSlice; ++i) {
-            int res = Step<false>();
-            if (res != 0) {
-                Pause();
-#ifndef TARGET_WASM
-                if (totalCycles > totalCyclesAtLastResume) {
-                    sid.StopRecording();
-                }
 #endif
-                halted = true;
-                std::cerr << "Emulator stopped with code: " << res << '\n';
+            halted = true;
+            std::cerr << "Emulator stopped with code: " << res << '\n';
+        }
+        return res;
+    };
+
+    for (int i = 0; i < instructionsPerSlice; ++i) {
+        int res = runStep(hooks);
+        if (res != 0) {
+            break;
+        }
+
+        if (breakpointManager.HasActiveBreakpoints()) {
+            uint16_t wpAddr = 0;
+            breakpointManager.ConsumeWatchpointHit(wpAddr);
+
+            uint32_t hitId = breakpointManager.Evaluate(cpu, bus);
+            if (hitId > 0) {
+                Pause();
+                sid.SetEmulationPaused(true);
                 break;
             }
         }
     }
 }
+
 
 void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck) {
 #ifndef TARGET_WASM

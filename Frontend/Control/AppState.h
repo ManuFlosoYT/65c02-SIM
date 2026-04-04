@@ -67,7 +67,8 @@ enum class DebuggerMode : std::uint8_t {
     Disassembly = 1,
     Profiler = 2,
     Debugger = 3,
-    MemoryLayout = 4
+    Breakpoints = 4,
+    MemoryLayout = 5
 };
 
 struct DebuggerState {

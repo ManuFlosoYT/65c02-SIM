@@ -261,6 +261,10 @@ void Emulator::SetupHardware() {
     }
 
     via.SetPortBCallback([this](Byte val) { HandleVIAPortB(val); });
+
+    if (breakpointManager.HasWatchpoints()) {
+        bus.AddGlobalWriteHook([this](Word addr, Byte data) { breakpointManager.NotifyWrite(addr, data); });
+    }
 }
 
 void Emulator::HandleVIAPortB(Byte val) {

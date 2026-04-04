@@ -90,6 +90,20 @@ Located at the bottom of the debugger window, these tools allow for batch operat
 - **Range Selection**: Define a Start and End address in hexadecimal.
 - **Fill Random Junk**: Populate the specified range with random bytes. This is particularly useful for stress-testing memory management or visualizing memory patterns in the Profiler.
 
+### 4. Breakpoints
+
+The **Breakpoints** tab provides a full conditional breakpoint system. You can define breakpoints that pause execution based on:
+
+- **PC Address** — when execution reaches a specific address.
+- **Register values** — when A, X, Y, SP, or PC satisfy a comparison.
+- **CPU flags** — when a status flag (C, Z, I, D, B, V, N) has a specific value.
+- **Memory contents** — when a memory address contains a specific value.
+- **Memory watchpoints** — when a memory address is written to.
+
+Conditions can be combined with **AND/OR** logic for compound breakpoints.
+
+See the dedicated [Breakpoints](Breakpoints) page for full documentation.
+
 ## Technical Implementation
 
 - **File Location**: `Frontend/GUI/Debugger/`
