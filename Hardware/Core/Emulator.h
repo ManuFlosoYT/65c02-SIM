@@ -106,7 +106,7 @@ class Emulator {
     bool IsHalted() const;
 
     [[nodiscard]] uint64_t GetTotalCycles() const { return totalCycles; }
-
+    [[nodiscard]] uint64_t GetTotalInstructions() const { return totalInstructions; }
     void SetTargetIPS(int ips);
     int GetTargetIPS() const;
     int GetActualIPS() const;
@@ -188,6 +188,7 @@ class Emulator {
     std::condition_variable pauseCV;
     std::recursive_mutex emulationMutex;  // mutex for thread safety during reset/step (recursive to support re-entrancy from script hooks)
     std::atomic<uint64_t> totalCycles{0};
+    std::atomic<uint64_t> totalInstructions{0};
     uint64_t totalCyclesAtLastResume{0};
 
     std::string currentBinPath;
