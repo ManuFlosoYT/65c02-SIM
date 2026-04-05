@@ -111,68 +111,75 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         lastSaveTime = now;
     }
 
-    // Use safety lock only if Python API or active hooks/breakpoints require it
     bool safetyRequired = scriptEngine.IsScriptRunning() || hooks;
-
     bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
     bool hasComplex = breakpointManager.HasComplexBreakpoints();
 
     while (remaining > 0) {
-        int currentBatch = std::min(remaining, MAX_BATCH_SIZE);
+        int currentBatchSize = std::min(remaining, MAX_BATCH_SIZE);
+        int batchInstructions = 0;
+        int stepsInBatch = 0;
+
         {
-            // Conditional lock: only acquire if safety is required (unlikely for hot path)
             std::unique_lock<std::recursive_mutex> lock(emulationMutex, std::defer_lock);
             if (safetyRequired) [[unlikely]] {
                 lock.lock();
             }
-
-            int batchInstructions = 0;
-            for (int i = 0; i < currentBatch; ++i) {
-                bool isNew = (cpu.remainingCycles == 0);
-                int res = 0;
-                
-                if (hooks) [[unlikely]] {
-                    res = Step<true>();
-                } else {
-                    res = Step<false>();
-                }
-                
-                if (isNew) {
-                    batchInstructions++;
-                }
-
-                if (res != 0) {
-                    totalCycles.fetch_add(i+1, std::memory_order_relaxed);
-                    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                    handleStop(res);
-                    return totalExecuted;
-                }
-                
-                // ONLY evaluate if there are actual breakpoints active
-                if (hasBreakpoints) [[unlikely]] {
-                    if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
-                        if (breakpointManager.Evaluate(cpu, bus) > 0) {
-                            totalCycles.fetch_add(i+1, std::memory_order_relaxed);
-                            totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                            handleStop(0);
-                            return totalExecuted;
-                        }
-                    }
-                }
-                totalExecuted++;
-            }
-            totalCycles.fetch_add(currentBatch, std::memory_order_relaxed);
-            totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+            stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions);
         }
-        remaining -= currentBatch;
-        
-        // At high frequencies, yield between batches to let UI thread catch the mutex
+
+        totalExecuted += stepsInBatch;
+        remaining -= stepsInBatch;
+
+        if (stepsInBatch < currentBatchSize) {
+            break;
+        }
+
         if (instructionsPerSlice > MAX_BATCH_SIZE) {
             std::this_thread::yield();
         }
     }
 
     return totalExecuted;
+}
+
+int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions) {
+    for (int i = 0; i < count; ++i) {
+        bool isNew = (cpu.remainingCycles == 0);
+        int res = 0;
+        
+        if (hooks) [[unlikely]] {
+            res = Step<true>();
+        } else {
+            res = Step<false>();
+        }
+        
+        if (isNew) {
+            batchInstructions++;
+        }
+
+        if (res != 0) {
+            totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
+            totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+            handleStop(res);
+            return i + 1;
+        }
+        
+        if (hasBreakpoints) [[unlikely]] {
+            if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
+                if (breakpointManager.Evaluate(cpu, bus) > 0) {
+                    totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
+                    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+                    handleStop(0);
+                    return i + 1;
+                }
+            }
+        }
+    }
+    
+    totalCycles.fetch_add(count, std::memory_order_relaxed);
+    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+    return count;
 }
 
 void Emulator::handleStop(int code) {
