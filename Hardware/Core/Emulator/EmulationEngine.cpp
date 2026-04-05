@@ -62,7 +62,7 @@ void Emulator::ThreadLoop() {
             currentTarget = 1;
         }
 
-        int sliceDurationMs = 10;
+        int sliceDurationMs = 15;
         double targetPerSlice = (double)currentTarget / (1000.0 / sliceDurationMs);
 
         instructionAccumulator += targetPerSlice;
@@ -87,6 +87,7 @@ void Emulator::ThreadLoop() {
             std::this_thread::sleep_until(nextSliceTime);
         } else {
             nextSliceTime = sleepCheckTime;
+            std::this_thread::yield();
         }
 
         CheckAutoReload(lastWatchCheck);
@@ -94,25 +95,16 @@ void Emulator::ThreadLoop() {
 }
 
 void Emulator::EmulateSlice(int instructionsPerSlice) {
-    bool scriptActive = scriptEngine.IsScriptRunning() || headless;
-    bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
-
-    if (scriptActive) {
-        EmulateDeterministic(instructionsPerSlice, hooks);
-    } else {
-        EmulateResponsive(instructionsPerSlice, hooks);
-    }
-}
-
-void Emulator::EmulateDeterministic(int count, bool hooks) {
+    bool hooks = bus.HasActiveHooks() || breakpointManager.HasAnyBreakpointsFast();
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+
     auto now = std::chrono::steady_clock::now();
     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count() >= 50) {
         SaveStateToBuffer();
         lastSaveTime = now;
     }
 
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < instructionsPerSlice; ++i) {
         int res = hooks ? Step<true>() : Step<false>();
         if (res != 0) {
             handleStop(res);
@@ -123,39 +115,6 @@ void Emulator::EmulateDeterministic(int count, bool hooks) {
             handleStop(0);
             break;
         }
-    }
-}
-
-void Emulator::EmulateResponsive(int count, bool hooks) {
-    int remaining = count;
-    const int BATCH_SIZE = 4096;
-
-    while (remaining > 0) {
-        int currentBatch = std::min(remaining, BATCH_SIZE);
-        {
-            std::lock_guard<std::recursive_mutex> lock(emulationMutex);
-            auto now = std::chrono::steady_clock::now();
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count() >= 50) {
-                SaveStateToBuffer();
-                lastSaveTime = now;
-            }
-
-            for (int i = 0; i < currentBatch; ++i) {
-                int res = hooks ? Step<true>() : Step<false>();
-                if (res != 0) {
-                    handleStop(res);
-                    remaining = 0;
-                    break;
-                }
-
-                if (hooks && breakpointManager.Evaluate(cpu, bus) > 0) {
-                    handleStop(0);
-                    remaining = 0;
-                    break;
-                }
-            }
-        }
-        remaining -= currentBatch;
     }
 }
 

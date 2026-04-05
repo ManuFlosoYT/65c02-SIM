@@ -144,8 +144,6 @@ class Emulator {
     void LoadInternalState(std::istream& stateStream);
 
     void EmulateSlice(int instructionsPerSlice);
-    void EmulateDeterministic(int count, bool hooks);
-    void EmulateResponsive(int count, bool hooks);
     void handleStop(int code);
     void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
 

@@ -95,7 +95,6 @@ bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::strin
 
 int Emulator::Step() {
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
-    SaveStateToBuffer();
 
     int res = 0;
     bool hooks = bus.HasActiveHooks();
@@ -142,10 +141,10 @@ int Emulator::Step() {
     }
 
     if (isNewInstruction) {
-        totalInstructions++;
+        totalInstructions.fetch_add(1, std::memory_order_relaxed);
     }
 
-    totalCycles++;
+    totalCycles.fetch_add(1, std::memory_order_relaxed);
 
     if (baudDelay > 0) {
         baudDelay--;
@@ -153,13 +152,15 @@ int Emulator::Step() {
 
     via.Clock();
 
-    bool irq = acia.HasIRQ() || via.isIRQAsserted() || this->pendingIRQ.exchange(false);
-    if (this->pendingNMI.exchange(false)) {
+    bool irq = acia.HasIRQ() || via.isIRQAsserted() || this->pendingIRQ.load(std::memory_order_relaxed);
+    if (this->pendingNMI.load(std::memory_order_relaxed)) {
+        this->pendingNMI.store(false, std::memory_order_relaxed);
         cpu.NMI<Debug>(bus);
         cpu.waiting = false;
     } else if (irq) {
         if (cpu.I == 0) {
             cpu.IRQ<Debug>(bus);
+            this->pendingIRQ.store(false, std::memory_order_relaxed);
         }
         cpu.waiting = false;
     } else if (cpu.waiting) {
