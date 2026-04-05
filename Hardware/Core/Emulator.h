@@ -128,6 +128,8 @@ class Emulator {
     void ClearCartridge() { cartridge = Cartridge(); }
 
     void SetupHardware();
+    void SetHeadless(bool isHeadless) { headless = isHeadless; }
+    [[nodiscard]] bool IsHeadless() const { return headless; }
 
    private:
     void ThreadLoop();
@@ -176,6 +178,7 @@ class Emulator {
     bool gpuEnabled = false;
     bool espEnabled = false;
     bool sdEnabled = false;
+    bool headless = false;
 
     // Threading control
     std::atomic<bool> running{false};
