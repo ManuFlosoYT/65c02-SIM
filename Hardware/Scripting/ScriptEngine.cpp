@@ -64,7 +64,7 @@ void ScriptEngine::Stop() {
 
 static bool py_emu_pause(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().Pause();
     py_newnone(py_retval());
     return true;
@@ -72,7 +72,7 @@ static bool py_emu_pause(int argc, py_StackRef argv) {
 
 static bool py_emu_resume(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().Resume();
     py_newnone(py_retval());
     return true;
@@ -95,7 +95,7 @@ static bool py_emu_read_mem(int argc, py_StackRef argv) {
     PY_CHECK_ARG_TYPE(0, tp_int);  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     uint8_t val = engine->GetEmulator().GetMem().Read(addr);
     py_newint(py_retval(), val);
     return true;
@@ -108,7 +108,7 @@ static bool py_emu_write_mem(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto val = static_cast<uint8_t>(py_toint(py_arg(1)));     // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetMem().Write(addr, val);
     py_newnone(py_retval());
     return true;
@@ -127,7 +127,7 @@ static bool py_emu_read_mem_block(int argc, py_StackRef argv) {
     auto len = static_cast<size_t>(py_toint(py_arg(1)));
 
     unsigned char* buffer = py_newbytes(py_retval(), (int)len);
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetMem().ReadBlock(addr, std::span<uint8_t>(buffer, len));
     return true;
 }
@@ -149,8 +149,47 @@ static bool py_emu_write_mem_block(int argc, py_StackRef argv) {
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetMem().WriteBlock(addr, std::span<const uint8_t>(buffer, static_cast<size_t>(size)));
+    py_newnone(py_retval());
+    return true;
+}
+
+static bool py_emu_write_mem_direct(int argc, py_StackRef argv) {
+    PY_CHECK_ARGC(2);             // NOLINT(cppcoreguidelines-pro-type-vararg)
+    PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    PY_CHECK_ARG_TYPE(1, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
+    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto val = static_cast<uint8_t>(py_toint(py_arg(1)));    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
+    engine->GetEmulator().GetMem().WriteDirect(addr, val);
+    py_newnone(py_retval());
+    return true;
+}
+
+static bool py_emu_write_mem_block_direct(int argc, py_StackRef argv) {
+    if (argc < 2) {
+        return false;
+    }
+    PY_CHECK_ARG_TYPE(0, tp_int);  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    PY_CHECK_ARG_TYPE(1, tp_bytes);  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
+    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
+    int size = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    const uint8_t* buffer = py_tobytes(py_arg(1), &size);
+    if (buffer == nullptr) {
+        return false;
+    }
+
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
+    for (int i = 0; i < size; ++i) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        engine->GetEmulator().GetMem().WriteDirect(static_cast<uint16_t>(addr + i), buffer[i]);
+    }
     py_newnone(py_retval());
     return true;
 }
@@ -174,7 +213,7 @@ static bool py_emu_load_bin(int argc, py_StackRef argv) {
     }
 
     std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     for (size_t i = 0; i < buffer.size(); ++i) {
         engine->GetEmulator().GetMem().WriteDirect(static_cast<uint16_t>(addr + i), buffer[i]);
     }
@@ -184,7 +223,7 @@ static bool py_emu_load_bin(int argc, py_StackRef argv) {
 
 static bool py_emu_trigger_irq(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().TriggerIRQ();
     py_newnone(py_retval());
     return true;
@@ -192,7 +231,7 @@ static bool py_emu_trigger_irq(int argc, py_StackRef argv) {
 
 static bool py_emu_trigger_nmi(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().TriggerNMI();
     py_newnone(py_retval());
     return true;
@@ -206,7 +245,7 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
 
     if (engine->GetEmulator().IsPaused() || !engine->GetEmulator().IsRunning()) {
         for (int64_t i = 0; i < cycles; i++) {
-            std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+            std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
             engine->GetEmulator().Step();
         }
     } else {
@@ -223,7 +262,7 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
 
 static bool py_emu_step(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().Step<true>();
     py_newnone(py_retval());
     return true;
@@ -231,7 +270,7 @@ static bool py_emu_step(int argc, py_StackRef argv) {
 
 static bool py_emu_step_instruction(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     auto& cpu = engine->GetEmulator().GetCPU();
     auto& bus = engine->GetEmulator().GetMem();
     cpu.Step<true>(bus);
@@ -249,7 +288,7 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
     auto count = static_cast<int>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     
     for (int i = 0; i < count; ++i) {
-        std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+        std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
         auto& cpu = engine->GetEmulator().GetCPU();
         auto& bus = engine->GetEmulator().GetMem();
         cpu.Step<true>(bus);
@@ -263,15 +302,25 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
 
 static bool py_emu_reset(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().SetupHardware();
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
+    engine->GetEmulator().Reset();
+
+    // Manual pull reset vectors for the Python API to ensure PC is set correctly
+    // because the C++ hardware implementation of CPU::Reset() is hardcoded to 0xFFFC.
+    auto& bus = engine->GetEmulator().GetMem();
+    auto& cpu = engine->GetEmulator().GetCPU();
+    uint16_t low = bus.Read(0xFFFC);
+    uint16_t high = bus.Read(0xFFFD);
+    cpu.PC = static_cast<uint16_t>(low | (high << 8));
+    cpu.SP = 0xFD;
+
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_get_pc(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     py_newint(py_retval(), engine->GetEmulator().GetCPU().PC);
     return true;
 }
@@ -280,7 +329,7 @@ static bool py_emu_set_pc(int argc, py_StackRef argv) {
     PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
     PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetCPU().PC = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     engine->GetEmulator().GetCPU().UpdatePagePtr(engine->GetEmulator().GetMem());
     py_newnone(py_retval());
@@ -289,7 +338,7 @@ static bool py_emu_set_pc(int argc, py_StackRef argv) {
 
 static bool py_emu_get_sp(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     py_newint(py_retval(), engine->GetEmulator().GetCPU().SP);
     return true;
 }
@@ -298,7 +347,7 @@ static bool py_emu_set_sp(int argc, py_StackRef argv) {
     PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
     PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetCPU().SP = static_cast<uint16_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
@@ -306,7 +355,7 @@ static bool py_emu_set_sp(int argc, py_StackRef argv) {
 
 static bool py_emu_get_a(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     py_newint(py_retval(), engine->GetEmulator().GetCPU().A);
     return true;
 }
@@ -315,7 +364,7 @@ static bool py_emu_set_a(int argc, py_StackRef argv) {
     PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
     PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetCPU().A = static_cast<uint8_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
@@ -323,7 +372,7 @@ static bool py_emu_set_a(int argc, py_StackRef argv) {
 
 static bool py_emu_get_x(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     py_newint(py_retval(), engine->GetEmulator().GetCPU().X);
     return true;
 }
@@ -332,7 +381,7 @@ static bool py_emu_set_x(int argc, py_StackRef argv) {
     PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
     PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetCPU().X = static_cast<uint8_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
@@ -340,7 +389,7 @@ static bool py_emu_set_x(int argc, py_StackRef argv) {
 
 static bool py_emu_get_y(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     py_newint(py_retval(), engine->GetEmulator().GetCPU().Y);
     return true;
 }
@@ -349,7 +398,7 @@ static bool py_emu_set_y(int argc, py_StackRef argv) {
     PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
     PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetCPU().Y = static_cast<uint8_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
@@ -357,7 +406,7 @@ static bool py_emu_set_y(int argc, py_StackRef argv) {
 
 static bool py_emu_get_status(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     py_newint(py_retval(), engine->GetEmulator().GetCPU().GetStatus());
     return true;
 }
@@ -366,7 +415,7 @@ static bool py_emu_set_status(int argc, py_StackRef argv) {
     PY_CHECK_ARGC(1);             // NOLINT(cppcoreguidelines-pro-type-vararg)
     PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::lock_guard<std::mutex> lock(engine->GetEmulator().GetMutex());
+    std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetCPU().SetStatus(static_cast<uint8_t>(py_toint(py_arg(0))));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     py_newnone(py_retval());
     return true;
@@ -614,6 +663,8 @@ void ScriptEngine::ScriptThread(const std::string& filepath) {
     py_bindfunc(mod, "write_mem", py_emu_write_mem);
     py_bindfunc(mod, "read_mem_block", py_emu_read_mem_block);
     py_bindfunc(mod, "write_mem_block", py_emu_write_mem_block);
+    py_bindfunc(mod, "write_mem_direct", py_emu_write_mem_direct);
+    py_bindfunc(mod, "write_mem_block_direct", py_emu_write_mem_block_direct);
     py_bindfunc(mod, "load_bin", py_emu_load_bin);
     py_bindfunc(mod, "wait_cycles", py_emu_wait_cycles);
     
