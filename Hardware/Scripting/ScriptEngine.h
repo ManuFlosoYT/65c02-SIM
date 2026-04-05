@@ -24,6 +24,7 @@ class ScriptEngine {
 
     bool LoadAndRun(const std::string& filepath);
     void Stop();
+    [[nodiscard]] bool IsScriptRunning() const { return isRunning.load(); }
 
     [[nodiscard]] std::deque<std::string> GetOutput() const;
     void ClearOutput();

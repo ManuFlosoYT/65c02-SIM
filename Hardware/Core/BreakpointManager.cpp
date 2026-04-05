@@ -1,6 +1,5 @@
 #include "Hardware/Core/BreakpointManager.h"
 
-#include <algorithm>
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
@@ -11,12 +10,14 @@ uint32_t BreakpointManager::AddBreakpoint(Breakpoint breakpoint) {
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
     breakpoint.id = nextId++;
     breakpoints.push_back(std::move(breakpoint));
+    UpdateFastPath();
     return breakpoints.back().id;
 }
 
 void BreakpointManager::RemoveBreakpoint(uint32_t breakpointId) {
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
     std::erase_if(breakpoints, [breakpointId](const Breakpoint& entry) { return entry.id == breakpointId; });
+    UpdateFastPath();
 }
 
 void BreakpointManager::SetEnabled(uint32_t breakpointId, bool enabled) {
@@ -27,15 +28,20 @@ void BreakpointManager::SetEnabled(uint32_t breakpointId, bool enabled) {
             break;
         }
     }
+    UpdateFastPath();
 }
 
 void BreakpointManager::ClearAll() {
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
     breakpoints.clear();
     watchpointTriggered = false;
+    UpdateFastPath();
 }
 
 uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
+    if (!hasAnyBreakpoints.load(std::memory_order_relaxed)) {
+        return 0;
+    }
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
     for (auto& entry : breakpoints) {
         if (!entry.enabled || entry.conditions.empty()) {
@@ -62,6 +68,7 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
             entry.hitCount++;
             if (entry.hitOnce) {
                 entry.enabled = false;
+                UpdateFastPath();
             }
             return entry.id;
         }
@@ -70,8 +77,7 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
 }
 
 bool BreakpointManager::HasActiveBreakpoints() const {
-    std::lock_guard<std::recursive_mutex> lock(bpMutex);
-    return std::ranges::any_of(breakpoints, [](const Breakpoint& entry) { return entry.enabled; });
+    return hasAnyBreakpoints.load(std::memory_order_relaxed);
 }
 
 bool BreakpointManager::HasWatchpoints() const {
@@ -200,6 +206,23 @@ bool BreakpointManager::Compare(CompareOp compareOp, uint16_t lhs, uint16_t rhs)
             return lhs >= rhs;
     }
     return false;
+}
+
+void BreakpointManager::UpdateFastPath() {
+    fastPathBreakpoints.reset();
+    bool any = false;
+    for (const auto& breakpointEntry : breakpoints) {
+        if (!breakpointEntry.enabled) {
+            continue;
+        }
+        any = true;
+        for (const auto& cond : breakpointEntry.conditions) {
+            if (cond.type == BreakpointType::PCAddress) {
+                fastPathBreakpoints.set(cond.address);
+            }
+        }
+    }
+    hasAnyBreakpoints.store(any, std::memory_order_relaxed);
 }
 
 }  // namespace Hardware

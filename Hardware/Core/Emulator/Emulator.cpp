@@ -216,6 +216,7 @@ void Emulator::SetupHardware() {
     cpu.Reset();
     totalCycles = 0;
     rewindBuffer.clear();
+    lastSaveTime = std::chrono::steady_clock::now();
 
     if (cartridge.loaded && !cartridge.busDevices.empty()) {
         for (const auto& dev : cartridge.busDevices) {

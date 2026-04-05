@@ -1,4 +1,6 @@
 #pragma once
+#include <atomic>
+#include <bitset>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -58,10 +60,18 @@ class BreakpointManager {
     void NotifyWrite(uint16_t address, uint8_t value);
     bool ConsumeWatchpointHit(uint16_t& hitAddress);
 
+    [[nodiscard]] bool HasAnyBreakpointsFast() const { return hasAnyBreakpoints.load(std::memory_order_relaxed); }
+    [[nodiscard]] bool IsPCBreakpoint(uint16_t address) const { return fastPathBreakpoints.test(address); }
+
    private:
+    void UpdateFastPath();
+
     mutable std::recursive_mutex bpMutex;
     std::vector<Breakpoint> breakpoints;
     uint32_t nextId = 1;
+
+    std::atomic<bool> hasAnyBreakpoints{false};
+    std::bitset<65536> fastPathBreakpoints;
 
     bool watchpointTriggered = false;
     uint16_t watchpointAddress = 0;

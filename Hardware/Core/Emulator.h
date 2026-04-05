@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
@@ -143,6 +144,9 @@ class Emulator {
     void LoadInternalState(std::istream& stateStream);
 
     void EmulateSlice(int instructionsPerSlice);
+    void EmulateDeterministic(int count, bool hooks);
+    void EmulateResponsive(int count, bool hooks);
+    void handleStop(int code);
     void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
 
     void SaveStateToBuffer();
@@ -193,6 +197,8 @@ class Emulator {
     std::atomic<uint64_t> totalCycles{0};
     std::atomic<uint64_t> totalInstructions{0};
     uint64_t totalCyclesAtLastResume{0};
+
+    std::chrono::steady_clock::time_point lastSaveTime;
 
     std::string currentBinPath;
     std::filesystem::file_time_type lastBinModificationTime;

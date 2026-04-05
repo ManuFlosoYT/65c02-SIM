@@ -94,48 +94,83 @@ void Emulator::ThreadLoop() {
 }
 
 void Emulator::EmulateSlice(int instructionsPerSlice) {
+    bool scriptActive = scriptEngine.IsScriptRunning() || headless;
+    bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
+
+    if (scriptActive) {
+        EmulateDeterministic(instructionsPerSlice, hooks);
+    } else {
+        EmulateResponsive(instructionsPerSlice, hooks);
+    }
+}
+
+void Emulator::EmulateDeterministic(int count, bool hooks) {
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
-    static auto lastSaveTime = std::chrono::steady_clock::now();
     auto now = std::chrono::steady_clock::now();
     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count() >= 50) {
         SaveStateToBuffer();
         lastSaveTime = now;
     }
 
-    bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
-
-    auto runStep = [this](bool useHooks) -> int {
-        int res = useHooks ? Step<true>() : Step<false>();
+    for (int i = 0; i < count; ++i) {
+        int res = hooks ? Step<true>() : Step<false>();
         if (res != 0) {
-            Pause();
-#ifndef TARGET_WASM
-            if (totalCycles > totalCyclesAtLastResume) {
-                sid.StopRecording();
-            }
-#endif
-            halted = true;
-            std::cerr << "Emulator stopped with code: " << res << '\n';
-            sid.SetEmulationPaused(true);
-        }
-        return res;
-    };
-
-    for (int i = 0; i < instructionsPerSlice; ++i) {
-        int res = runStep(hooks);
-        if (res != 0) {
+            handleStop(res);
             break;
         }
 
-        // Ensure breakpoints work for both script and frontend
-        if (hooks) {
-            uint32_t hitId = breakpointManager.Evaluate(cpu, bus);
-            if (hitId > 0) {
-                Pause();
-                sid.SetEmulationPaused(true);
-                break;
-            }
+        if (hooks && breakpointManager.Evaluate(cpu, bus) > 0) {
+            handleStop(0);
+            break;
         }
     }
+}
+
+void Emulator::EmulateResponsive(int count, bool hooks) {
+    int remaining = count;
+    const int BATCH_SIZE = 4096;
+
+    while (remaining > 0) {
+        int currentBatch = std::min(remaining, BATCH_SIZE);
+        {
+            std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+            auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count() >= 50) {
+                SaveStateToBuffer();
+                lastSaveTime = now;
+            }
+
+            for (int i = 0; i < currentBatch; ++i) {
+                int res = hooks ? Step<true>() : Step<false>();
+                if (res != 0) {
+                    handleStop(res);
+                    remaining = 0;
+                    break;
+                }
+
+                if (hooks && breakpointManager.Evaluate(cpu, bus) > 0) {
+                    handleStop(0);
+                    remaining = 0;
+                    break;
+                }
+            }
+        }
+        remaining -= currentBatch;
+    }
+}
+
+void Emulator::handleStop(int code) {
+    Pause();
+#ifndef TARGET_WASM
+    if (totalCycles > totalCyclesAtLastResume) {
+        sid.StopRecording();
+    }
+#endif
+    halted = true;
+    if (code != 0) {
+        std::cerr << "Emulator stopped with code: " << code << '\n';
+    }
+    sid.SetEmulationPaused(true);
 }
 
 
