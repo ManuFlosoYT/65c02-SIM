@@ -115,6 +115,7 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     bool safetyRequired = scriptEngine.IsScriptRunning() || hooks;
 
     bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
+    bool hasComplex = breakpointManager.HasComplexBreakpoints();
 
     while (remaining > 0) {
         int currentBatch = std::min(remaining, MAX_BATCH_SIZE);
@@ -148,11 +149,15 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
                 }
                 
                 // ONLY evaluate if there are actual breakpoints active
-                if (hasBreakpoints && breakpointManager.Evaluate(cpu, bus) > 0) {
-                    totalCycles.fetch_add(i+1, std::memory_order_relaxed);
-                    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                    handleStop(0);
-                    return totalExecuted;
+                if (hasBreakpoints) [[unlikely]] {
+                    if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
+                        if (breakpointManager.Evaluate(cpu, bus) > 0) {
+                            totalCycles.fetch_add(i+1, std::memory_order_relaxed);
+                            totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+                            handleStop(0);
+                            return totalExecuted;
+                        }
+                    }
                 }
                 totalExecuted++;
             }

@@ -61,6 +61,7 @@ class BreakpointManager {
     bool ConsumeWatchpointHit(uint16_t& hitAddress);
 
     [[nodiscard]] bool HasAnyBreakpointsFast() const { return hasAnyBreakpoints.load(std::memory_order_relaxed); }
+    [[nodiscard]] bool HasComplexBreakpoints() const { return hasComplexBreakpoints.load(std::memory_order_relaxed); }
     [[nodiscard]] bool IsPCBreakpoint(uint16_t address) const { return fastPathBreakpoints.test(address); }
 
    private:
