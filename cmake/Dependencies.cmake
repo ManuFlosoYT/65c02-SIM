@@ -282,19 +282,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(asio)
 
-if(WIN32)
-    set(HTTPLIB_PATCH PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_httplib.cmake)
-endif()
-
 # cpp-httplib
 FetchContent_Declare(
     httplib
     GIT_REPOSITORY ${HTTPLIB_REPO}
     GIT_TAG ${HTTPLIB_TAG}
-    ${HTTPLIB_PATCH}
 )
 set(HTTPLIB_REQUIRE_OPENSSL OFF CACHE BOOL "" FORCE) 
 set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
+if(WIN32)
+    set(HTTPLIB_USE_NON_BLOCKING_GETADDRINFO OFF CACHE BOOL "" FORCE)
+endif()
 FetchContent_MakeAvailable(httplib)
 if(TARGET httplib AND NOT EMSCRIPTEN)
     target_compile_definitions(httplib INTERFACE CPPHTTPLIB_OPENSSL_SUPPORT)
