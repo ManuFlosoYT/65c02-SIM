@@ -187,7 +187,7 @@ class Emulator {
     std::mutex threadMutex;
     std::condition_variable pauseCV;
     std::recursive_mutex emulationMutex;  // mutex for thread safety during reset/step (recursive to support re-entrancy from script hooks)
-    uint64_t totalCycles{0};
+    std::atomic<uint64_t> totalCycles{0};
     uint64_t totalCyclesAtLastResume{0};
 
     std::string currentBinPath;
