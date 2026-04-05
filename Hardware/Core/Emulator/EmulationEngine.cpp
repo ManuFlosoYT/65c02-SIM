@@ -62,7 +62,7 @@ void Emulator::ThreadLoop() {
             currentTarget = 1;
         }
 
-        int sliceDurationMs = 15;
+        int sliceDurationMs = 10;
         double targetPerSlice = (double)currentTarget / (1000.0 / sliceDurationMs);
 
         instructionAccumulator += targetPerSlice;
