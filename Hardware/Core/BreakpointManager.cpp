@@ -8,16 +8,19 @@
 namespace Hardware {
 
 uint32_t BreakpointManager::AddBreakpoint(Breakpoint breakpoint) {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     breakpoint.id = nextId++;
     breakpoints.push_back(std::move(breakpoint));
     return breakpoints.back().id;
 }
 
 void BreakpointManager::RemoveBreakpoint(uint32_t breakpointId) {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     std::erase_if(breakpoints, [breakpointId](const Breakpoint& entry) { return entry.id == breakpointId; });
 }
 
 void BreakpointManager::SetEnabled(uint32_t breakpointId, bool enabled) {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     for (auto& entry : breakpoints) {
         if (entry.id == breakpointId) {
             entry.enabled = enabled;
@@ -27,11 +30,13 @@ void BreakpointManager::SetEnabled(uint32_t breakpointId, bool enabled) {
 }
 
 void BreakpointManager::ClearAll() {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     breakpoints.clear();
     watchpointTriggered = false;
 }
 
 uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     for (auto& entry : breakpoints) {
         if (!entry.enabled || entry.conditions.empty()) {
             continue;
@@ -65,10 +70,12 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
 }
 
 bool BreakpointManager::HasActiveBreakpoints() const {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     return std::ranges::any_of(breakpoints, [](const Breakpoint& entry) { return entry.enabled; });
 }
 
 bool BreakpointManager::HasWatchpoints() const {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     for (const auto& entry : breakpoints) {
         if (!entry.enabled) {
             continue;
@@ -86,14 +93,15 @@ std::vector<Breakpoint>& BreakpointManager::GetBreakpoints() { return breakpoint
 const std::vector<Breakpoint>& BreakpointManager::GetBreakpoints() const { return breakpoints; }
 
 void BreakpointManager::NotifyWrite(uint16_t address, uint8_t /*value*/) {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     for (const auto& entry : breakpoints) {
         if (!entry.enabled) {
             continue;
         }
         for (const auto& cond : entry.conditions) {
             if (cond.type == BreakpointType::MemoryWatchpoint && cond.address == address) {
-                watchpointTriggered = true;
                 watchpointAddress = address;
+                watchpointTriggered = true;
                 return;
             }
         }
@@ -101,6 +109,7 @@ void BreakpointManager::NotifyWrite(uint16_t address, uint8_t /*value*/) {
 }
 
 bool BreakpointManager::ConsumeWatchpointHit(uint16_t& hitAddress) {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
     if (watchpointTriggered) {
         hitAddress = watchpointAddress;
         watchpointTriggered = false;

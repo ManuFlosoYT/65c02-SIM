@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -58,6 +59,7 @@ class BreakpointManager {
     bool ConsumeWatchpointHit(uint16_t& hitAddress);
 
    private:
+    mutable std::recursive_mutex bpMutex;
     std::vector<Breakpoint> breakpoints;
     uint32_t nextId = 1;
 
