@@ -243,16 +243,19 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     auto cycles = static_cast<int64_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
-    if (engine->GetEmulator().IsPaused() || !engine->GetEmulator().IsRunning()) {
-        for (int64_t i = 0; i < cycles; i++) {
-            std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-            engine->GetEmulator().Step();
-        }
-    } else {
-        uint64_t startCycles = engine->GetEmulator().GetTotalCycles();
-        uint64_t targetCycles = startCycles + static_cast<uint64_t>(cycles);
-        while (engine->GetEmulator().GetTotalCycles() < targetCycles) {
-            std::this_thread::yield();
+    auto& emu = engine->GetEmulator();
+    uint64_t startCycles = emu.GetTotalCycles();
+    uint64_t targetCycles = startCycles + static_cast<uint64_t>(cycles);
+
+    while (emu.GetTotalCycles() < targetCycles && !emu.IsPaused() && emu.IsRunning()) {
+        std::this_thread::yield();
+    }
+
+    // If still not reached target and we are NOT running in background thread, step manually
+    if (emu.GetTotalCycles() < targetCycles && (emu.IsPaused() || !emu.IsRunning())) {
+        while (emu.GetTotalCycles() < targetCycles) {
+            std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
+            emu.Step();
         }
     }
     
@@ -263,7 +266,15 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
 static bool py_emu_step(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().Step<true>();
+    auto& emu = engine->GetEmulator();
+
+    // Step at least once
+    emu.Step<true>();
+    // If instruction isn't finished, loop until it is
+    while (emu.GetCPU().remainingCycles > 0) {
+        emu.Step<true>();
+    }
+    
     py_newnone(py_retval());
     return true;
 }
@@ -287,13 +298,19 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     auto count = static_cast<int>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     
+    auto& emu = engine->GetEmulator();
+    std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
+    
     for (int i = 0; i < count; ++i) {
-        std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-        auto& cpu = engine->GetEmulator().GetCPU();
-        auto& bus = engine->GetEmulator().GetMem();
-        cpu.Step<true>(bus);
-        while (cpu.remainingCycles > 0) {
-            cpu.Step<true>(bus);
+        // Exit early if emulator was paused/stopped by another thread (or a breakpoint)
+        if (emu.IsPaused() || !emu.IsRunning()) {
+            break;
+        }
+
+        // Execute one full instruction
+        emu.Step<true>();
+        while (emu.GetCPU().remainingCycles > 0) {
+            emu.Step<true>();
         }
     }
     py_newnone(py_retval());
