@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(SIM_65C02)
 
-# modularized configuration
 include(cmake/CompilerOptions.cmake)
 include(cmake/Dependencies.cmake)
 include(cmake/EmbeddedResources.cmake)
