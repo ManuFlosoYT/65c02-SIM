@@ -119,16 +119,22 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     while (remaining > 0) {
         int currentBatch = std::min(remaining, MAX_BATCH_SIZE);
         {
-            // Conditional lock: only acquire if safety is required
+            // Conditional lock: only acquire if safety is required (unlikely for hot path)
             std::unique_lock<std::recursive_mutex> lock(emulationMutex, std::defer_lock);
-            if (safetyRequired) {
+            if (safetyRequired) [[unlikely]] {
                 lock.lock();
             }
 
             int batchInstructions = 0;
             for (int i = 0; i < currentBatch; ++i) {
                 bool isNew = (cpu.remainingCycles == 0);
-                int res = hooks ? Step<true>() : Step<false>();
+                int res = 0;
+                
+                if (hooks) [[unlikely]] {
+                    res = Step<true>();
+                } else {
+                    res = Step<false>();
+                }
                 
                 if (isNew) {
                     batchInstructions++;
