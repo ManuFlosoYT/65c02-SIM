@@ -143,7 +143,7 @@ class Emulator {
     bool LoadComponentsState(std::istream& stateStream);
     void LoadInternalState(std::istream& stateStream);
 
-    void EmulateSlice(int instructionsPerSlice);
+    int EmulateSlice(int instructionsPerSlice);
     void handleStop(int code);
     void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
 
