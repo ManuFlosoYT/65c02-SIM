@@ -244,16 +244,18 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
     auto cycles = static_cast<int64_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
     auto& emu = engine->GetEmulator();
-    uint64_t startCycles = emu.GetTotalCycles();
-    uint64_t targetCycles = startCycles + static_cast<uint64_t>(cycles);
+    
+    // Determine wait mode AT THE START to avoid race conditions during the loop
+    bool wasRunningAtStart = emu.IsRunning() && !emu.IsPaused();
+    uint64_t targetCycles = emu.GetTotalCycles() + static_cast<uint64_t>(cycles);
 
-    // 1. If running in background, busy-wait until target or pause
-    while (emu.IsRunning() && !emu.IsPaused() && emu.GetTotalCycles() < targetCycles) {
-        std::this_thread::yield();
-    }
-
-    // 2. If we are NOT running in background OR we hit a pause but still need to finish cycles
-    if (emu.GetTotalCycles() < targetCycles && (!emu.IsRunning() || emu.IsPaused())) {
+    if (wasRunningAtStart) {
+        // ASYNCHRONOUS WAIT: Busy-wait until target or external pause (breakpoint)
+        while (emu.GetTotalCycles() < targetCycles && !emu.IsPaused() && emu.IsRunning()) {
+            std::this_thread::yield();
+        }
+    } else {
+        // SYNCHRONOUS WAIT: Manually step until target reached
         while (emu.GetTotalCycles() < targetCycles) {
             std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
             emu.Step();
@@ -301,17 +303,23 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
     
     auto& emu = engine->GetEmulator();
     
-    for (int i = 0; i < count; ++i) {
-        // Only break early if it's an asynchronous background pause (e.g. hit a breakpoint)
-        if (emu.IsRunning() && emu.IsPaused()) {
-            break;
-        }
+    // Determine wait mode AT THE START
+    bool wasRunningAtStart = emu.IsRunning() && !emu.IsPaused();
+    uint64_t targetCount = emu.GetTotalInstructions() + static_cast<uint64_t>(count);
 
-        // Always step manually if not in background OR not yet paused
-        std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
-        emu.Step<true>();
-        while (emu.GetCPU().remainingCycles > 0) {
+    if (wasRunningAtStart) {
+        // ASYNCHRONOUS WAIT: Busy-wait until target reached or external pause
+        while (emu.GetTotalInstructions() < targetCount && !emu.IsPaused() && emu.IsRunning()) {
+            std::this_thread::yield();
+        }
+    } else {
+        // SYNCHRONOUS WAIT: Manually step instructions
+        while (emu.GetTotalInstructions() < targetCount) {
+            std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
             emu.Step<true>();
+            while (emu.GetCPU().remainingCycles > 0) {
+                emu.Step<true>();
+            }
         }
     }
     py_newnone(py_retval());
