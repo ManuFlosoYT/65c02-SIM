@@ -19,6 +19,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     endif()
 endif()
 
+if(WIN32)
+    add_compile_definitions(_WIN32_WINNT=0x0A00 WINVER=0x0A00)
+endif()
+
 if(EMSCRIPTEN)
     add_compile_definitions(TARGET_WASM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -sUSE_PTHREADS=1")
