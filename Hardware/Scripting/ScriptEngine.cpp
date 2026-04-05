@@ -622,18 +622,18 @@ static bool py_emu_clear_breakpoints(int argc, py_StackRef argv) {
 }
 
 static void SerializeBreakCondition(py_Ref out_dict, const Hardware::BreakCondition& cond) {
-    py_newint(py_r0(), static_cast<int64_t>(cond.type));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_dict_setitem_by_str(out_dict, "type", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_newint(py_r0(), static_cast<int64_t>(cond.reg));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_dict_setitem_by_str(out_dict, "reg", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_newint(py_r0(), static_cast<int64_t>(cond.flag));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_dict_setitem_by_str(out_dict, "flag", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_newint(py_r0(), static_cast<int64_t>(cond.op));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_dict_setitem_by_str(out_dict, "op", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_newint(py_r0(), static_cast<int64_t>(cond.address));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_dict_setitem_by_str(out_dict, "address", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_newint(py_r0(), static_cast<int64_t>(cond.value));  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
-    py_dict_setitem_by_str(out_dict, "value", py_r0());  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-type-cstyle-cast)
+    py_newint(py_getreg(10), static_cast<int64_t>(cond.type)); 
+    py_dict_setitem_by_str(out_dict, "type", py_getreg(10));
+    py_newint(py_getreg(10), static_cast<int64_t>(cond.reg));
+    py_dict_setitem_by_str(out_dict, "reg", py_getreg(10));
+    py_newint(py_getreg(10), static_cast<int64_t>(cond.flag));
+    py_dict_setitem_by_str(out_dict, "flag", py_getreg(10));
+    py_newint(py_getreg(10), static_cast<int64_t>(cond.op));
+    py_dict_setitem_by_str(out_dict, "op", py_getreg(10));
+    py_newint(py_getreg(10), static_cast<int64_t>(cond.address));
+    py_dict_setitem_by_str(out_dict, "address", py_getreg(10));
+    py_newint(py_getreg(10), static_cast<int64_t>(cond.value));
+    py_dict_setitem_by_str(out_dict, "value", py_getreg(10));
 }
 
 static bool py_emu_list_breakpoints(int argc, py_StackRef argv) {
@@ -674,6 +674,10 @@ static bool py_emu_list_breakpoints(int argc, py_StackRef argv) {
 }
 
 void ScriptEngine::ScriptThread(const std::string& filepath) {
+    if (emulatorRef.IsHeadless()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
     py_initialize();
     py_setvmctx(this);
     py_callbacks()->print = py_custom_print;

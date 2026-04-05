@@ -172,7 +172,10 @@ void Emulator::Rewind() {
     }
 }
 
-bool Emulator::CanRewind() const { return !rewindBuffer.empty(); }
+bool Emulator::CanRewind() const { 
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    return !rewindBuffer.empty(); 
+}
 
 bool Emulator::LoadComponentsState(std::istream& stateStream) {
     for (auto* component : components) {
@@ -216,6 +219,7 @@ void Emulator::LoadInternalState(std::istream& stateStream) {
 }
 
 void Emulator::SaveStateToBuffer() {
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     std::stringstream stateStream;
     for (auto* component : components) {
         if (!component->SaveState(stateStream)) {
@@ -229,10 +233,13 @@ void Emulator::SaveStateToBuffer() {
     int tIPS = targetIPS.load();
     stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));  // NOLINT
 
-    size_t qSize = inputBuffer.size();
-    stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
-    for (char chr : inputBuffer) {
-        stateStream.write(&chr, 1);
+    {
+        std::lock_guard<std::mutex> bufferLock(bufferMutex);
+        size_t qSize = inputBuffer.size();
+        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
+        for (char chr : inputBuffer) {
+            stateStream.write(&chr, 1);
+        }
     }
 
     size_t binPathLen = currentBinPath.length();

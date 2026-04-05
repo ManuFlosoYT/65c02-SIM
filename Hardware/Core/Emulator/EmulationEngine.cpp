@@ -122,7 +122,9 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
 
     for (int i = 0; i < instructionsPerSlice; ++i) {
         int res = runStep(hooks);
-        if (res != 0) break;
+        if (res != 0) {
+            break;
+        }
 
         // Ensure breakpoints work for both script and frontend
         if (hooks) {
