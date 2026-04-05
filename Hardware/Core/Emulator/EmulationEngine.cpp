@@ -94,7 +94,6 @@ void Emulator::ThreadLoop() {
 }
 
 void Emulator::EmulateSlice(int instructionsPerSlice) {
-    bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     static auto lastSaveTime = std::chrono::steady_clock::now();
     auto now = std::chrono::steady_clock::now();
