@@ -200,7 +200,7 @@ inline void Bus::WriteDirect(Word address, Byte data) {
     } else {
         const auto& slot = deviceMap[address];  // NOLINT
         if (slot.device != nullptr) {
-            slot.device->Write(slot.offset, data);
+            slot.device->WriteDirect(slot.offset, data);
         }
     }
 }

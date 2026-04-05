@@ -20,6 +20,7 @@ class IBusDevice : public ISerializable {
 
     virtual Byte Read(Word address) = 0;
     virtual void Write(Word address, Byte data) = 0;
+    virtual void WriteDirect(Word address, Byte data) { Write(address, data); }
 
     [[nodiscard]] virtual std::string GetName() const = 0;
 

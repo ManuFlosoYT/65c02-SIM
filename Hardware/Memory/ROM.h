@@ -25,7 +25,7 @@ class ROM : public IBusDevice {
     [[nodiscard]] bool IsReadOnly() const override { return true; }
 
     void Load(const std::vector<Byte>& buffer, Word offset = 0);
-    void WriteDirect(Word address, Byte data);
+    void WriteDirect(Word address, Byte data) override;
 
    private:
     std::vector<Byte> data;
