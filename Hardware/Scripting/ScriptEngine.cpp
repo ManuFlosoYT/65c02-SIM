@@ -247,12 +247,13 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
     uint64_t startCycles = emu.GetTotalCycles();
     uint64_t targetCycles = startCycles + static_cast<uint64_t>(cycles);
 
-    while (emu.GetTotalCycles() < targetCycles && !emu.IsPaused() && emu.IsRunning()) {
+    // 1. If running in background, busy-wait until target or pause
+    while (emu.IsRunning() && !emu.IsPaused() && emu.GetTotalCycles() < targetCycles) {
         std::this_thread::yield();
     }
 
-    // If still not reached target and we are NOT running in background thread, step manually
-    if (emu.GetTotalCycles() < targetCycles && (emu.IsPaused() || !emu.IsRunning())) {
+    // 2. If we are NOT running in background OR we hit a pause but still need to finish cycles
+    if (emu.GetTotalCycles() < targetCycles && (!emu.IsRunning() || emu.IsPaused())) {
         while (emu.GetTotalCycles() < targetCycles) {
             std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
             emu.Step();
@@ -299,15 +300,15 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
     auto count = static_cast<int>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     
     auto& emu = engine->GetEmulator();
-    std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
     
     for (int i = 0; i < count; ++i) {
-        // Exit early if emulator was paused/stopped by another thread (or a breakpoint)
-        if (emu.IsPaused() || !emu.IsRunning()) {
+        // Only break early if it's an asynchronous background pause (e.g. hit a breakpoint)
+        if (emu.IsRunning() && emu.IsPaused()) {
             break;
         }
 
-        // Execute one full instruction
+        // Always step manually if not in background OR not yet paused
+        std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
         emu.Step<true>();
         while (emu.GetCPU().remainingCycles > 0) {
             emu.Step<true>();
