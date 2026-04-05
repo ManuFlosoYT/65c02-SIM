@@ -96,7 +96,14 @@ void Emulator::ThreadLoop() {
 void Emulator::EmulateSlice(int instructionsPerSlice) {
     bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
-    SaveStateToBuffer();
+    static auto lastSaveTime = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count() >= 50) {
+        SaveStateToBuffer();
+        lastSaveTime = now;
+    }
+
+    bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
 
     auto runStep = [this](bool useHooks) -> int {
         int res = useHooks ? Step<true>() : Step<false>();
@@ -109,20 +116,17 @@ void Emulator::EmulateSlice(int instructionsPerSlice) {
 #endif
             halted = true;
             std::cerr << "Emulator stopped with code: " << res << '\n';
+            sid.SetEmulationPaused(true);
         }
         return res;
     };
 
     for (int i = 0; i < instructionsPerSlice; ++i) {
         int res = runStep(hooks);
-        if (res != 0) {
-            break;
-        }
+        if (res != 0) break;
 
-        if (breakpointManager.HasActiveBreakpoints()) {
-            uint16_t wpAddr = 0;
-            breakpointManager.ConsumeWatchpointHit(wpAddr);
-
+        // Ensure breakpoints work for both script and frontend
+        if (hooks) {
             uint32_t hitId = breakpointManager.Evaluate(cpu, bus);
             if (hitId > 0) {
                 Pause();
