@@ -17,7 +17,7 @@ Emulator::Emulator() : cpu(), scriptEngine(*this) {
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     if (bin.empty()) {
-        std::lock_guard<std::mutex> lock(emulationMutex);
+        std::lock_guard<std::recursive_mutex> lock(emulationMutex);
         SetupHardware();
         currentBinPath = "";
         return true;
@@ -53,7 +53,7 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 }
 
 bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::string& name, std::string& errorMsg) {
-    std::lock_guard<std::mutex> lock(emulationMutex);
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     SetupHardware();
 
     if (size != ROM_SIZE && size != 0) {
@@ -94,10 +94,8 @@ bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::strin
 }
 
 int Emulator::Step() {
-    {
-        std::lock_guard<std::mutex> lock(emulationMutex);
-        SaveStateToBuffer();
-    }
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    SaveStateToBuffer();
 
     int res = 0;
     bool hooks = bus.HasActiveHooks();
@@ -200,6 +198,11 @@ void Emulator::SetOutputCallback(std::function<void(char)> callback) { acia.SetO
 
 void Emulator::TriggerIRQ() { this->pendingIRQ.store(true); }
 void Emulator::TriggerNMI() { this->pendingNMI.store(true); }
+
+void Emulator::Reset() {
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    SetupHardware();
+}
 
 void Emulator::SetupHardware() {
     halted = false;

@@ -95,7 +95,7 @@ void Emulator::ThreadLoop() {
 
 void Emulator::EmulateSlice(int instructionsPerSlice) {
     bool hooks = bus.HasActiveHooks() || breakpointManager.HasActiveBreakpoints();
-    std::lock_guard<std::mutex> lock(emulationMutex);
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     SaveStateToBuffer();
 
     auto runStep = [this](bool useHooks) -> int {

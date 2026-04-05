@@ -45,6 +45,7 @@ class Emulator {
 
     bool Init(const std::string& binPath, std::string& errorMsg);
     bool InitFromMemory(const uint8_t* data, size_t size, const std::string& name, std::string& errorMsg);
+    void Reset();
 
     bool SaveState(const std::string& filename);
     bool LoadState(const std::string& filename, bool forceLoad = false);
@@ -88,7 +89,7 @@ class Emulator {
     Hardware::ESP8266& GetESP8266();
     Hardware::ScriptEngine& GetScriptEngine();
     Hardware::BreakpointManager& GetBreakpointManager();
-    std::mutex& GetMutex() { return emulationMutex; }
+    std::recursive_mutex& GetMutex() { return emulationMutex; }
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
@@ -185,7 +186,7 @@ class Emulator {
     std::thread emulatorThread;
     std::mutex threadMutex;
     std::condition_variable pauseCV;
-    std::mutex emulationMutex;  // mutex for thread safety during reset/step
+    std::recursive_mutex emulationMutex;  // mutex for thread safety during reset/step (recursive to support re-entrancy from script hooks)
     uint64_t totalCycles{0};
     uint64_t totalCyclesAtLastResume{0};
 
@@ -217,21 +218,21 @@ inline const Hardware::Bus& Core::Emulator::GetMem() const { return bus; }
 inline Hardware::Bus& Core::Emulator::GetMem() { return bus; }
 inline Hardware::GPU& Core::Emulator::GetGPU() { return gpu; }
 inline void Core::Emulator::SetGPUEnabled(bool enabled) { 
-    std::lock_guard<std::mutex> lock(emulationMutex);
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     gpuEnabled = enabled; 
     SetupHardware();
 }
 inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
 
 inline void Core::Emulator::SetESPEnabled(bool enabled) {
-    std::lock_guard<std::mutex> lock(emulationMutex);
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     espEnabled = enabled;
     SetupHardware();
 }
 inline bool Core::Emulator::IsESPEnabled() const { return espEnabled; }
 
 inline void Core::Emulator::SetSDEnabled(bool enabled) {
-    std::lock_guard<std::mutex> lock(emulationMutex);
+    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     sdEnabled = enabled;
     SetupHardware();
 }
