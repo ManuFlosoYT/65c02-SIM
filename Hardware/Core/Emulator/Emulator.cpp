@@ -131,6 +131,7 @@ template <bool Debug>
 int Emulator::Step() {
     int res = 0;
 
+    bool isNewInstruction = (cpu.remainingCycles == 0);
     if (gpuEnabled) {
         gpu.Clock();
         if (gpu.IsInBlankingInterval()) {
@@ -138,6 +139,10 @@ int Emulator::Step() {
         }
     } else {
         res = cpu.Step<Debug>(bus);
+    }
+
+    if (isNewInstruction) {
+        totalInstructions++;
     }
 
     totalCycles++;
