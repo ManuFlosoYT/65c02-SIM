@@ -1,5 +1,12 @@
 include(FetchContent)
 
+if(WIN32 AND NOT MSVC)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+    set(PKG_CONFIG_EXECUTABLE "" CACHE FILEPATH "Disabled for Windows cross-build" FORCE)
+endif()
+
 # ==============================================================================
 # Dependency Versions & URLs
 # ==============================================================================
@@ -99,6 +106,7 @@ FetchContent_Declare(
     ImGuiFileDialog
     GIT_REPOSITORY ${IMGUI_FILE_DIALOG_REPO}
     GIT_TAG ${IMGUI_FILE_DIALOG_TAG}
+    PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_imguifiledialog.cmake
 )
 FetchContent_MakeAvailable(ImGuiFileDialog)
 if(TARGET ImGuiFileDialog)
@@ -148,7 +156,14 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(miniz)
 
 # OpenGL
-find_package(OpenGL REQUIRED)
+if(WIN32 AND NOT MSVC)
+    if(NOT TARGET OpenGL::GL)
+        add_library(OpenGL::GL INTERFACE IMPORTED)
+        target_link_libraries(OpenGL::GL INTERFACE opengl32)
+    endif()
+else()
+    find_package(OpenGL REQUIRED)
+endif()
 
 # SndFile
 FetchContent_Declare(
@@ -163,6 +178,8 @@ set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(ENABLE_EXTERNAL_LIBS ON CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+
 set(CMAKE_WARN_DEPRECATED OFF)
 FetchContent_MakeAvailable(sndfile)
 set(CMAKE_WARN_DEPRECATED ON)
@@ -183,10 +200,16 @@ if(WIN32)
 endif()
 
 if(NOT EMSCRIPTEN)
-    find_package(OpenSSL REQUIRED)
-    find_package(ZLIB REQUIRED)
-    find_package(PkgConfig REQUIRED)
+    if(WIN32 AND NOT MSVC)
+        find_package(OpenSSL REQUIRED)
+        find_package(ZLIB REQUIRED)
+    else()
+        find_package(OpenSSL REQUIRED)
+        find_package(ZLIB REQUIRED)
+        find_package(PkgConfig REQUIRED)
+    endif()
 endif()
+
 
 # FFmpeg Logic
 if(NOT EMSCRIPTEN)
@@ -259,11 +282,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(asio)
 
+if(WIN32)
+    set(HTTPLIB_PATCH PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_httplib.cmake)
+endif()
+
 # cpp-httplib
 FetchContent_Declare(
     httplib
     GIT_REPOSITORY ${HTTPLIB_REPO}
     GIT_TAG ${HTTPLIB_TAG}
+    ${HTTPLIB_PATCH}
 )
 set(HTTPLIB_REQUIRE_OPENSSL OFF CACHE BOOL "" FORCE) 
 set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
@@ -278,9 +306,16 @@ FetchContent_Declare(
     pocketpy
     GIT_REPOSITORY ${POCKETPY_REPO}
     GIT_TAG ${POCKETPY_TAG}
+    PATCH_COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_pocketpy.cmake"
 )
 set(PKPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(pocketpy)
+
+if(TARGET pocketpy AND WIN32)
+    # Ensure pocketpy knows it's targeting Windows and links correctly
+    target_compile_definitions(pocketpy PUBLIC PK_ENABLE_OS=1)
+    target_link_libraries(pocketpy ws2_32)
+endif()
 
 # cc65
 if(NOT EMSCRIPTEN)
@@ -296,4 +331,10 @@ if(NOT EMSCRIPTEN)
         URL ${CC65_SNAPSHOT_URL}
     )
     FetchContent_MakeAvailable(cc65_snapshot)
+endif()
+
+if(WIN32 AND NOT MSVC)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 endif()
