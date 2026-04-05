@@ -111,10 +111,18 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         lastSaveTime = now;
     }
 
+    // Use safety lock only if Python API or active hooks/breakpoints require it
+    bool safetyRequired = scriptEngine.IsScriptRunning() || hooks;
+
     while (remaining > 0) {
         int currentBatch = std::min(remaining, MAX_BATCH_SIZE);
         {
-            std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+            // Conditional lock: only acquire if safety is required
+            std::unique_lock<std::recursive_mutex> lock(emulationMutex, std::defer_lock);
+            if (safetyRequired) {
+                lock.lock();
+            }
+
             for (int i = 0; i < currentBatch; ++i) {
                 int res = hooks ? Step<true>() : Step<false>();
                 if (res != 0) {

@@ -42,6 +42,13 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
     if (!hasAnyBreakpoints.load(std::memory_order_relaxed)) {
         return 0;
     }
+
+    // Lock-free check for the most common case: No PC breakpoint at this address
+    // and no complex breakpoints (registers, memory, etc.) active.
+    if (!fastPathBreakpoints.test(cpu.PC) && !hasComplexBreakpoints.load(std::memory_order_relaxed)) {
+        return 0;
+    }
+
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
     for (auto& entry : breakpoints) {
         if (!entry.enabled || entry.conditions.empty()) {
@@ -211,6 +218,7 @@ bool BreakpointManager::Compare(CompareOp compareOp, uint16_t lhs, uint16_t rhs)
 void BreakpointManager::UpdateFastPath() {
     fastPathBreakpoints.reset();
     bool any = false;
+    bool complex = false;
     for (const auto& breakpointEntry : breakpoints) {
         if (!breakpointEntry.enabled) {
             continue;
@@ -219,10 +227,13 @@ void BreakpointManager::UpdateFastPath() {
         for (const auto& cond : breakpointEntry.conditions) {
             if (cond.type == BreakpointType::PCAddress) {
                 fastPathBreakpoints.set(cond.address);
+            } else {
+                complex = true;
             }
         }
     }
     hasAnyBreakpoints.store(any, std::memory_order_relaxed);
+    hasComplexBreakpoints.store(complex, std::memory_order_relaxed);
 }
 
 }  // namespace Hardware

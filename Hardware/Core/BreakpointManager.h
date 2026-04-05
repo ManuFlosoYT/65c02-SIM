@@ -71,6 +71,7 @@ class BreakpointManager {
     uint32_t nextId = 1;
 
     std::atomic<bool> hasAnyBreakpoints{false};
+    std::atomic<bool> hasComplexBreakpoints{false};
     std::bitset<65536> fastPathBreakpoints;
 
     bool watchpointTriggered = false;
