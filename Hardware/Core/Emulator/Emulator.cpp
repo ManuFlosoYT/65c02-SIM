@@ -139,13 +139,7 @@ int Emulator::Step() {
     } else {
         res = cpu.Step<Debug>(bus);
     }
-
-    if (isNewInstruction) {
-        totalInstructions.fetch_add(1, std::memory_order_relaxed);
-    }
-
-    totalCycles.fetch_add(1, std::memory_order_relaxed);
-
+    
     if (baudDelay > 0) {
         baudDelay--;
     }

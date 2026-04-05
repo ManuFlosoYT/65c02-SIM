@@ -78,6 +78,7 @@ class BreakpointManager {
     uint16_t watchpointAddress = 0;
 
     [[nodiscard]] bool EvaluateCondition(const BreakCondition& cond, const CPU& cpu, const Bus& bus) const;
+    [[nodiscard]] bool CheckBreakpoint(const Breakpoint& breakpoint, const CPU& cpu, const Bus& bus) const;
     static bool Compare(CompareOp compareOp, uint16_t lhs, uint16_t rhs);
 };
 

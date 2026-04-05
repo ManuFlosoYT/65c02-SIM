@@ -55,23 +55,7 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
             continue;
         }
 
-        bool result = (entry.compoundOp == LogicOp::And);
-        for (const auto& cond : entry.conditions) {
-            bool condResult = EvaluateCondition(cond, cpu, bus);
-            if (entry.compoundOp == LogicOp::And) {
-                if (!condResult) {
-                    result = false;
-                    break;
-                }
-            } else {
-                if (condResult) {
-                    result = true;
-                    break;
-                }
-            }
-        }
-
-        if (result) {
+        if (CheckBreakpoint(entry, cpu, bus)) {
             entry.hitCount++;
             if (entry.hitOnce) {
                 entry.enabled = false;
@@ -81,6 +65,23 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
         }
     }
     return 0;
+}
+
+bool BreakpointManager::CheckBreakpoint(const Breakpoint& breakpoint, const CPU& cpu, const Bus& bus) const {
+    bool result = (breakpoint.compoundOp == LogicOp::And);
+    for (const auto& cond : breakpoint.conditions) {
+        bool condResult = EvaluateCondition(cond, cpu, bus);
+        if (breakpoint.compoundOp == LogicOp::And) {
+            if (!condResult) {
+                return false;
+            }
+        } else {
+            if (condResult) {
+                return true;
+            }
+        }
+    }
+    return result;
 }
 
 bool BreakpointManager::HasActiveBreakpoints() const {
@@ -133,8 +134,9 @@ bool BreakpointManager::ConsumeWatchpointHit(uint16_t& hitAddress) {
 
 bool BreakpointManager::EvaluateCondition(const BreakCondition& cond, const CPU& cpu, const Bus& bus) const {
     switch (cond.type) {
-        case BreakpointType::PCAddress:
+        case BreakpointType::PCAddress: {
             return cpu.PC == cond.address;
+        }
 
         case BreakpointType::RegisterCondition: {
             uint16_t regVal = 0;

@@ -114,6 +114,8 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     // Use safety lock only if Python API or active hooks/breakpoints require it
     bool safetyRequired = scriptEngine.IsScriptRunning() || hooks;
 
+    bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
+
     while (remaining > 0) {
         int currentBatch = std::min(remaining, MAX_BATCH_SIZE);
         {
@@ -123,18 +125,33 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
                 lock.lock();
             }
 
+            int batchInstructions = 0;
             for (int i = 0; i < currentBatch; ++i) {
+                bool isNew = (cpu.remainingCycles == 0);
                 int res = hooks ? Step<true>() : Step<false>();
+                
+                if (isNew) {
+                    batchInstructions++;
+                }
+
                 if (res != 0) {
+                    totalCycles.fetch_add(i+1, std::memory_order_relaxed);
+                    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
                     handleStop(res);
                     return totalExecuted;
                 }
-                if (hooks && breakpointManager.Evaluate(cpu, bus) > 0) {
+                
+                // ONLY evaluate if there are actual breakpoints active
+                if (hasBreakpoints && breakpointManager.Evaluate(cpu, bus) > 0) {
+                    totalCycles.fetch_add(i+1, std::memory_order_relaxed);
+                    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
                     handleStop(0);
                     return totalExecuted;
                 }
                 totalExecuted++;
             }
+            totalCycles.fetch_add(currentBatch, std::memory_order_relaxed);
+            totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
         }
         remaining -= currentBatch;
         
