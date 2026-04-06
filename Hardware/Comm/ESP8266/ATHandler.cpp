@@ -70,7 +70,13 @@ void ESP8266::HandleCWMode(const std::string& cmd) {
         return;
     }
 
-    int mode = std::stoi(cmd.substr(pos + 1));
+    int mode = 0;
+    try {
+        mode = std::stoi(cmd.substr(pos + 1));
+    } catch (...) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
     cwMode = static_cast<CWMode>(mode);
     EnqueueResponse("\r\nOK\r\n");
 }
@@ -230,7 +236,13 @@ void ESP8266::HandleCIPCLOSE(const std::string& cmd) {
         return;
     }
 
-    int linkId = std::stoi(cmd.substr(pos + 1));
+    int linkId = -1;
+    try {
+        linkId = std::stoi(cmd.substr(pos + 1));
+    } catch (...) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
     if (linkId == 5) {
         DisconnectAll();
         EnqueueResponse("\r\nOK\r\n");
@@ -249,7 +261,13 @@ void ESP8266::HandleCIPMUX(const std::string& cmd) {
         return;
     }
 
-    int mode = std::stoi(cmd.substr(pos + 1));
+    int mode = 0;
+    try {
+        mode = std::stoi(cmd.substr(pos + 1));
+    } catch (...) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
     if (mode == 1 && IsAnyConnectionActive()) {
         EnqueueResponse("\r\nLink is builded\r\nERROR\r\n");
         return;
