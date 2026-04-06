@@ -123,10 +123,7 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         int stepsInBatch = 0;
 
         {
-            std::unique_lock<std::recursive_mutex> lock(emulationMutex, std::defer_lock);
-            if (safetyRequired) [[unlikely]] {
-                lock.lock();
-            }
+            std::lock_guard<std::recursive_mutex> lock(emulationMutex);
             stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions);
         }
 
