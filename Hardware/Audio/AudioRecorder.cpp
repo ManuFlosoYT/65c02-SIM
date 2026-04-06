@@ -82,7 +82,7 @@ void AudioRecorder::PushAudio(const int16_t* data, size_t numSamples) {
 }
 
 void AudioRecorder::WorkerThread() {
-    while (running || !audioQueue.empty()) {
+    while (true) {
         std::vector<int16_t> chunk;
         
         {
