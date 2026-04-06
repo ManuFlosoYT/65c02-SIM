@@ -458,6 +458,7 @@ bool SDCard::SaveState(std::ostream& out) const {
 bool SDCard::LoadState(std::istream& inStream) {
     size_t pathLen = 0;
     PodRead(inStream, pathLen);
+    if (pathLen > 4096) { return false; }
     currentPath.resize(pathLen);
     inStream.read(currentPath.data(), static_cast<std::streamsize>(pathLen));
 
@@ -469,6 +470,7 @@ bool SDCard::LoadState(std::istream& inStream) {
 
     size_t respSize = 0;
     PodRead(inStream, respSize);
+    if (respSize > 16384) { return false; }
     response_buffer.resize(respSize);
     if (respSize > 0) {
         BufferRead(inStream, response_buffer.data(), respSize);
