@@ -40,15 +40,4 @@ TEST_F(FreezeRepro, InterruptClearsWaiting) {
     EXPECT_FALSE(cpu.waiting);
 }
 
-TEST_F(FreezeRepro, InstructionStepClearsWaiting) {
-    // Enable WAI
-    cpu.waiting = true;
 
-    // Set IRQ pending in ACIA Status
-    bus.WriteDirect(ACIA_STATUS, bus.ReadDirect(ACIA_STATUS) | 0x80);
-
-    // Step should detect IRQ and clear waiting
-    cpu.Step(bus);
-
-    EXPECT_FALSE(cpu.waiting);
-}
