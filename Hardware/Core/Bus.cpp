@@ -198,8 +198,8 @@ void Bus::UpdateCache() {
 
         if (pageIsUniform) {
             Byte* rawPtr = firstDevice->GetRawMemory();
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            Byte* memoryBase = rawPtr + deviceMap.at(page << 8).offset - (page << 8);
+            std::span<Byte> rawSpan(rawPtr, 65536);
+            Byte* memoryBase = &rawSpan[deviceMap.at(page << 8).offset];
 
             pageReadMap.at(page) = memoryBase;
             if (!firstDevice->IsReadOnly()) {
