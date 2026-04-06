@@ -163,19 +163,54 @@ void CartridgeLoader::ParseBus(const nlohmann::json& manifestJson, Cartridge& ou
                     try {
                         return static_cast<uint16_t>(std::stoul(jsonObj[key].get<std::string>(), nullptr, 0));
                     } catch (...) {
-                        return 0;
+                        throw std::runtime_error("Invalid address format for " + key);
                     }
                 }
             }
-            return 0;
+            throw std::runtime_error("Missing address field: " + key);
         };
 
         for (const auto& devJson : manifestJson["bus"]) {
             DeviceConfig dev;
-            dev.name = devJson.value("name", "Unknown");
+            dev.name = devJson.value("name", "");
+            if (dev.name.empty()) {
+                throw std::runtime_error("Device missing name in bus configuration");
+            }
+            
+            // Validate against known list
+            if (dev.name != "RAM" && dev.name != "ROM" && dev.name != "VIA" && 
+                dev.name != "WAI_DEVICE" && dev.name != "LCD" && dev.name != "ESP32" && 
+                dev.name != "ACIA" && dev.name != "GPU" && dev.name != "SID") {
+                throw std::runtime_error("Unknown device name: " + dev.name);
+            }
+            
             dev.start = parseAddr(devJson, "start");
             dev.end = parseAddr(devJson, "end");
+            
+            if (dev.start > dev.end) {
+                throw std::runtime_error("Invalid address range for device " + dev.name + ": start > end");
+            }
+            
             outCartridge.busDevices.push_back(dev);
+        }
+        
+        // Ensure minimum requirements are met (RAM and ROM support)
+        bool hasRAM = false;
+        bool hasROM = false;
+        for (const auto& dev : outCartridge.busDevices) {
+            if (dev.name == "RAM") {
+                hasRAM = true;
+            }
+            if (dev.name == "ROM") {
+                hasROM = true;
+            }
+        }
+        
+        if (!hasRAM) {
+            throw std::runtime_error("Manifest bus configuration is missing RAM device");
+        }
+        if (!hasROM) {
+            throw std::runtime_error("Manifest bus configuration is missing ROM device");
         }
     }
 }
