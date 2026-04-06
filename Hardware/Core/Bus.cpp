@@ -72,10 +72,12 @@ bool Bus::LoadState(std::istream& inStream) {
                 std::cerr << "Memory map mismatch! Savestate: " << name << " [0x" << std::hex << startAddress << "-0x"
                           << endAddress << "], Current: " << reg.device->GetName() << " [0x" << reg.startAddress
                           << "-0x" << reg.endAddress << "]" << std::dec << '\n';
+                return false;
             }
         } else {
             std::cerr << "Memory map mismatch! Savestate has more devices (" << deviceCount
                       << ") than current configuration (" << registeredDevices.size() << ")" << '\n';
+            return false;
         }
     }
 
