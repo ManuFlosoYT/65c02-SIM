@@ -131,6 +131,7 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         }
 
         totalExecuted += batchInstructions;
+        totalExecuted += stepsInBatch;
         remaining -= stepsInBatch;
 
         if (stepsInBatch < currentBatchSize) {
