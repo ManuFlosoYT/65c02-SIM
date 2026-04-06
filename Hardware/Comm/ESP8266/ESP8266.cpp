@@ -141,6 +141,7 @@ bool ESP8266::LoadState(std::istream& inStream) {
 
     size_t cmdLen = 0;
     inStream.read(reinterpret_cast<char*>(&cmdLen), sizeof(cmdLen));  // NOLINT
+    if (cmdLen > 8192) { return false; }
     commandBuffer.assign(cmdLen, '\0');
     inStream.read(commandBuffer.data(), static_cast<std::streamsize>(cmdLen));
 
@@ -151,6 +152,7 @@ bool ESP8266::LoadState(std::istream& inStream) {
 
     size_t ssidLen = 0;
     inStream.read(reinterpret_cast<char*>(&ssidLen), sizeof(ssidLen));  // NOLINT
+    if (ssidLen > 33) { return false; }
     connectedSSID.assign(ssidLen, '\0');
     inStream.read(connectedSSID.data(), static_cast<std::streamsize>(ssidLen));
 
