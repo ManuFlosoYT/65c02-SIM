@@ -103,12 +103,14 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     int remaining = instructionsPerSlice;
     int totalExecuted = 0;
 
-    // Save state once per slice (50ms interval)
-    auto now = std::chrono::steady_clock::now();
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count() >= 50) {
+    // Save state roughly every 1s
+    // Calculating how many slice loops (10ms each) fit in 1000ms
+    static int sliceCounter = 0;
+    sliceCounter++;
+    if (sliceCounter >= (1000 / 10)) {
         std::lock_guard<std::recursive_mutex> lock(emulationMutex);
         SaveStateToBuffer();
-        lastSaveTime = now;
+        sliceCounter = 0;
     }
 
     bool safetyRequired = scriptEngine.IsScriptRunning() || hooks;
