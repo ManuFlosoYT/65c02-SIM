@@ -93,7 +93,11 @@ void ESP8266::ConnectUDP(int linkId, const std::string& host, int port, int loca
     if (localPort > 0) {
         asio::error_code bindErrCode;
         bindErrCode = conn.udpSocket->bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), static_cast<unsigned short>(localPort)), bindErrCode);
-        (void)bindErrCode;
+        if (bindErrCode) {
+            conn.udpSocket.reset();
+            EnqueueResponse("\r\nERROR\r\n");
+            return;
+        }
     }
 
     asio::ip::udp::resolver resolver(ioContext);
@@ -205,7 +209,8 @@ void ESP8266::SendDataOnLink(int linkId, const std::string& data) {
     }
 
     if (sendErrCode) {
-        // Error recorded in sendErrCode
+        conn.active = false;
+        EnqueueResponse("\r\nSEND FAIL\r\n");
     }
 }
 
