@@ -19,8 +19,8 @@ protected:
     CPU cpu;
 };
 
-// BBSx: Branch if bit x of Accumulator is Set (1).
-// 2-byte instruction: Opcode, Offset.
+// BBSx: Branch if bit x of Zero Page memory is Set (1).
+// 3-byte instruction: Opcode, ZeroPage, Offset.
 // Address Mode: Relative
 
 TEST_F(BBS_Test, BBS0_BranchTaken) {
@@ -28,18 +28,19 @@ TEST_F(BBS_Test, BBS0_BranchTaken) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BBS0);
-    bus.Write(0x4001, 0x04);     // Offset +4
-    bus.Write(0x4002, INS_JAM);  // Stop if not taken
+    bus.Write(0x4001, 0x10);     // ZP Address
+    bus.Write(0x4002, 0x04);     // Offset +4
+    bus.Write(0x4003, INS_JAM);  // Stop if not taken
 
-    // Accumulator Value: Bit 0 is 1
-    cpu.A = 0x01;  // 0000 0001
+    // Memory Value: Bit 0 is 1
+    bus.WriteDirect(0x0010, 0x01);  // 0000 0001
 
-    // Target: PC (after fetch offset at 0xFFFD -> 0xFFFE) + 4 = 0x0002
-    bus.Write(0x4006, INS_JAM);
+    // Target: PC = 0x4003. 0x4003 + 4 = 0x4007
+    bus.Write(0x4007, INS_JAM);
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.PC, 0x4007);  // 0x0002 + 1 (Stop fetch) = 0x0003
+    EXPECT_EQ(cpu.PC, 0x4008); 
 }
 
 TEST_F(BBS_Test, BBS0_BranchNotTaken) {
@@ -47,15 +48,16 @@ TEST_F(BBS_Test, BBS0_BranchNotTaken) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BBS0);
-    bus.Write(0x4001, 0x04);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4001, 0x10);     // ZP Address
+    bus.Write(0x4002, 0x04);
+    bus.Write(0x4003, INS_JAM);  // Stop
 
-    // Accumulator Value: Bit 0 is 0
-    cpu.A = 0xFE;  // 1111 1110
+    // Memory Value: Bit 0 is 0
+    bus.WriteDirect(0x0010, 0xFE);  // 1111 1110
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.PC, 0x4003);  // 0xFFFE + 1 (Stop fetch) = 0xFFFF
+    EXPECT_EQ(cpu.PC, 0x4004); 
 }
 
 TEST_F(BBS_Test, BBS7_BranchTaken) {
@@ -63,18 +65,19 @@ TEST_F(BBS_Test, BBS7_BranchTaken) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BBS7);
-    bus.Write(0x4001, 0x05);     // Offset +5
-    bus.Write(0x4002, INS_JAM);  // Stop if not taken
+    bus.Write(0x4001, 0x20);     // ZP Address
+    bus.Write(0x4002, 0x05);     // Offset +5
+    bus.Write(0x4003, INS_JAM);  // Stop if not taken
 
-    // Accumulator Value: Bit 7 is 1
-    cpu.A = 0x80;  // 1000 0000
+    // Memory Value: Bit 7 is 1
+    bus.WriteDirect(0x0020, 0x80);  // 1000 0000
 
-    // Target: PC (0xFFFE) + 5 = 0x0003
-    bus.Write(0x4007, INS_JAM);
+    // Target: PC = 0x4003. 0x4003 + 5 = 0x4008
+    bus.Write(0x4008, INS_JAM);
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.PC, 0x4008);  // 0x0003 + 1 (Stop fetch) = 0x0004
+    EXPECT_EQ(cpu.PC, 0x4009); 
 }
 
 TEST_F(BBS_Test, BBS7_BranchNotTaken) {
@@ -82,13 +85,14 @@ TEST_F(BBS_Test, BBS7_BranchNotTaken) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BBS7);
-    bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4001, 0x20);
+    bus.Write(0x4002, 0x05);
+    bus.Write(0x4003, INS_JAM);  // Stop
 
-    // Accumulator Value: Bit 7 is 0
-    cpu.A = 0x7F;  // 0111 1111
+    // Memory Value: Bit 7 is 0
+    bus.WriteDirect(0x0020, 0x7F);  // 0111 1111
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.PC, 0x4003);  // 0xFFFE + 1 (Stop fetch) = 0xFFFF
+    EXPECT_EQ(cpu.PC, 0x4004); 
 }
