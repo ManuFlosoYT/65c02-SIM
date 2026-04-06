@@ -26,10 +26,13 @@ bool Emulator::SaveState(const std::string& filename) {
     int tIPS = targetIPS.load();
     stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));  // NOLINT
 
-    size_t qSize = inputBuffer.size();
-    stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
-    for (char chr : inputBuffer) {
-        stateStream.write(&chr, 1);
+    {
+        std::lock_guard<std::mutex> bufferLock(bufferMutex);
+        size_t qSize = inputBuffer.size();
+        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
+        for (char chr : inputBuffer) {
+            stateStream.write(&chr, 1);
+        }
     }
 
     size_t binPathLen = currentBinPath.length();
