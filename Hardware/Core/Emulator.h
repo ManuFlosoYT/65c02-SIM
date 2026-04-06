@@ -141,7 +141,7 @@ class Emulator {
     void HandleVIAPortB(Byte val);
 
     bool LoadComponentsState(std::istream& stateStream);
-    void LoadInternalState(std::istream& stateStream);
+    bool LoadInternalState(std::istream& stateStream);
 
     int EmulateSlice(int instructionsPerSlice);
     int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions);
