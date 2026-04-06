@@ -96,6 +96,11 @@ void ESP8266::HandleCWJAP(const std::string& cmd) {
     std::string ssid = ParseQuotedParam(cmd, start);
     // std::string pwd = ParseQuotedParam(cmd, start); // Password ignored in simulation
 
+    if (ssid.empty()) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
+
     connectedSSID = ssid;
     wifiConnected = true;
     EnqueueResponse("\r\nWIFI CONNECTED\r\nWIFI GOT IP\r\nOK\r\n");
@@ -158,6 +163,11 @@ void ESP8266::HandleCIPSTART(const std::string& cmd) {
             EnqueueResponse("\r\nID ERROR\r\nERROR\r\n");
             return;
         }
+        
+        if (host.empty()) {
+            EnqueueResponse("\r\nERROR\r\n");
+            return;
+        }
 
         PerformConnection(linkId, type, host, port, params, ppos);
 
@@ -211,6 +221,11 @@ void ESP8266::HandleCIPSEND(const std::string& cmd) {
     } else {
         cipsendLinkId = 0;
         cipsendLength = ParseIntParam(params, ppos);
+    }
+
+    if (cipsendLength <= 0) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
     }
 
     if (cipsendLinkId < 0 || cipsendLinkId >= kMaxConnections || !connections.at(cipsendLinkId).active) {
@@ -383,6 +398,9 @@ void ESP8266::EnqueueLinkClosedResponse(int linkId) {
 
 void ESP8266::EnqueueResponse(const std::string& response) {
     std::lock_guard<std::mutex> lock(rxMutex);
+    if (rxQueue.size() + response.length() > 65536) {
+        return; // Prevent OOM from excessive unchecked UART output
+    }
     for (char chr : response) {
         rxQueue.push(static_cast<Byte>(chr));
     }
