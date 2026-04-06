@@ -97,6 +97,9 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
 
     uint32_t versionLen = 0;
     inFile.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));  // NOLINT
+    if (versionLen > 64) {
+        return false;
+    }
     lastLoadVersion.assign(versionLen, '\0');
     inFile.read(lastLoadVersion.data(), static_cast<std::streamsize>(versionLen));
 
