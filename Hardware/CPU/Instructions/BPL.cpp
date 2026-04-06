@@ -9,6 +9,8 @@ template <bool Debug>
 void BPL::Execute(CPU& cpu, Bus& bus) {
     int8_t dir = cpu.FetchByte<Debug>(bus);
     if(cpu.N == 0) {
+        cpu.remainingCycles++;
+        cpu.AddPageCrossPenalty(cpu.PC, static_cast<Word>(cpu.PC + dir));
         cpu.PC += dir;
         cpu.UpdatePagePtr(bus);
     }
