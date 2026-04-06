@@ -157,11 +157,7 @@ inline int Hardware::CPU::Step(Bus& bus) {
     }
 
     if (waiting) {
-        if ((bus.Read<Debug>(ACIA_STATUS) & 0x80) != 0) {
-            waiting = false;
-        } else {
-            return 0;
-        }
+        return 0;
     }
 
     if (cycleAccurate && remainingCycles > 0) {
@@ -174,6 +170,7 @@ inline int Hardware::CPU::Step(Bus& bus) {
 
 template <bool Debug>
 inline void Hardware::CPU::IRQ(Bus& bus) {
+    if (cycleAccurate) { remainingCycles += 7; }
     waiting = false;
     if (!I) {
         PushWord<Debug>(PC, bus);
@@ -188,6 +185,7 @@ inline void Hardware::CPU::IRQ(Bus& bus) {
 
 template <bool Debug>
 inline void Hardware::CPU::NMI(Bus& bus) {
+    if (cycleAccurate) { remainingCycles += 7; }
     waiting = false;
     PushWord<Debug>(PC, bus);
     B = 0;
@@ -210,6 +208,7 @@ inline Hardware::Byte Hardware::CPU::GetStatus() const {
     status |= I << 2;
     status |= D << 3;
     status |= B << 4;
+    status |= 1 << 5;
     status |= V << 6;
     status |= N << 7;
     return status;
