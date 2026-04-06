@@ -63,6 +63,7 @@ bool Bus::LoadState(std::istream& inStream) {
 
         uint32_t nameLen = 0;
         inStream.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));  // NOLINT
+        if (nameLen > 256) { return false; }
         std::string name(nameLen, '\0');
         inStream.read(name.data(), nameLen);
 
