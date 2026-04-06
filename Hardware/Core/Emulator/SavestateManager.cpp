@@ -28,14 +28,14 @@ bool Emulator::SaveState(const std::string& filename) {
 
     {
         std::lock_guard<std::mutex> bufferLock(bufferMutex);
-        size_t qSize = inputBuffer.size();
+        auto qSize = static_cast<uint32_t>(inputBuffer.size());
         stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
         for (char chr : inputBuffer) {
             stateStream.write(&chr, 1);
         }
     }
 
-    size_t binPathLen = currentBinPath.length();
+    auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
     stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
     stateStream.write(currentBinPath.c_str(), static_cast<std::streamsize>(binPathLen));
 
@@ -200,7 +200,7 @@ bool Emulator::LoadInternalState(std::istream& stateStream) {
     stateStream.read(reinterpret_cast<char*>(&tIPS), sizeof(tIPS));  // NOLINT
     targetIPS.store(tIPS);
 
-    size_t qSize = 0;
+    uint32_t qSize = 0;
     stateStream.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));  // NOLINT
     if (qSize > 10ULL * 1024 * 1024) { return false; }
     std::lock_guard<std::mutex> lock(bufferMutex);
@@ -212,7 +212,7 @@ bool Emulator::LoadInternalState(std::istream& stateStream) {
     }
     hasInput.store(!inputBuffer.empty());
 
-    size_t binPathLen = 0;
+    uint32_t binPathLen = 0;
     stateStream.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
     if (binPathLen > 4096) { return false; }
     currentBinPath.assign(binPathLen, '\0');
@@ -241,14 +241,14 @@ void Emulator::SaveStateToBuffer() {
 
     {
         std::lock_guard<std::mutex> bufferLock(bufferMutex);
-        size_t qSize = inputBuffer.size();
+        auto qSize = static_cast<uint32_t>(inputBuffer.size());
         stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
         for (char chr : inputBuffer) {
             stateStream.write(&chr, 1);
         }
     }
 
-    size_t binPathLen = currentBinPath.length();
+    auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
     stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
     stateStream.write(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
     bool autoReload = autoReloadRequested.load();
