@@ -139,7 +139,7 @@ inline Byte Bus::Read(Word address) {
     Byte data = 0;
 
     if (Byte* memoryBase = pageReadMap[address >> 8]) {  // NOLINT
-        data = memoryBase[address];                      // NOLINT
+        data = memoryBase[address & 0xFF];                      // NOLINT
     } else {
         const auto& slot = deviceMap[address];  // NOLINT
         if (slot.device != nullptr) {
@@ -159,7 +159,7 @@ inline Byte Bus::Read(Word address) {
 
 inline Byte Bus::ReadDirect(Word address) const {
     if (Byte* memoryBase = pageReadMap[address >> 8]) {  // NOLINT
-        return memoryBase[address];                      // NOLINT
+        return memoryBase[address & 0xFF];                      // NOLINT
     }
     const auto& slot = deviceMap[address];  // NOLINT
     if (slot.device != nullptr) {
@@ -177,7 +177,7 @@ inline void Bus::Write(Word address, Byte data) {
     }
 
     if (Byte* memoryBase = pageWriteMap[address >> 8]) {  // NOLINT
-        memoryBase[address] = data;                       // NOLINT
+        memoryBase[address & 0xFF] = data;                       // NOLINT
     } else {
         const auto& slot = deviceMap[address];  // NOLINT
         if (slot.device != nullptr) {
@@ -196,7 +196,7 @@ inline void Bus::Write(Word address, Byte data) {
 
 inline void Bus::WriteDirect(Word address, Byte data) {
     if (Byte* memoryBase = pageWriteMap[address >> 8]) {  // NOLINT
-        memoryBase[address] = data;                       // NOLINT
+        memoryBase[address & 0xFF] = data;                       // NOLINT
     } else {
         const auto& slot = deviceMap[address];  // NOLINT
         if (slot.device != nullptr) {
