@@ -12,6 +12,8 @@ void BRK::Execute(CPU& cpu, Bus& bus) {
     cpu.PushWord<Debug>(cpu.PC + 1, bus);
     Byte processorStatus = cpu.GetStatus();
     cpu.PushByte<Debug>(processorStatus, bus);
+    cpu.I = 1;
+    cpu.D = 0;
     cpu.PC = cpu.ReadWord<Debug>(0xFFFE, bus);
     cpu.UpdatePagePtr(bus);
 }
