@@ -37,6 +37,6 @@ TEST_F(PHP_Test, PHP) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x01FF), 0xDF);
+    EXPECT_EQ(bus.ReadDirect(0x01FF), 0xFF);
     EXPECT_EQ(cpu.SP, 0x01FE);
 }
