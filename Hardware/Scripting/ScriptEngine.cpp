@@ -49,6 +49,11 @@ void ScriptEngine::AppendOutput(const std::string& text) {
 }
 
 bool ScriptEngine::LoadAndRun(const std::string& filepath) {
+    std::ifstream testFile(filepath);
+    if (!testFile.good()) {
+        return false;
+    }
+    
     Stop();
     isRunning = true;
     workerThread = std::thread(&ScriptEngine::ScriptThread, this, filepath);
@@ -252,7 +257,7 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
     if (wasRunningAtStart) {
         // ASYNCHRONOUS WAIT: Busy-wait until target or external pause (breakpoint)
         while (emu.GetTotalCycles() < targetCycles && !emu.IsPaused() && emu.IsRunning() && !emu.IsHalted()) {
-            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
     } else {
         // SYNCHRONOUS WAIT: Manually step until target reached
@@ -313,7 +318,7 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
     if (wasRunningAtStart) {
         // ASYNCHRONOUS WAIT: Busy-wait until target reached or external pause
         while (emu.GetTotalInstructions() < targetCount && !emu.IsPaused() && emu.IsRunning()) {
-            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
     } else {
         // SYNCHRONOUS WAIT: Manually step instructions
