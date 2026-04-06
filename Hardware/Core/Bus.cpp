@@ -92,8 +92,10 @@ void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
     if (enabled && !ignoreCollision) {
         for (int i = startAddress; i <= (int)endAddress; ++i) {
             if (deviceMap.at(i).device != nullptr) {
+                std::array<char, 10> hexStr{};
+                snprintf(hexStr.data(), hexStr.size(), "%04X", i); // NOLINT
                 throw std::runtime_error("Memory collision detected while registering device: " + device->GetName() +
-                                         " at address 0x" + std::to_string(i));
+                                         " at address 0x" + hexStr.data());
             }
         }
     }
@@ -139,7 +141,7 @@ void Bus::RebuildDeviceMap() {
     deviceMap.fill({nullptr, 0});
 
     for (const auto& reg : registeredDevices) {
-        if (reg.isVirtual) continue;
+        if (reg.isVirtual) { continue; }
         if (reg.enabled && !reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
                 if (deviceMap.at(i).device != nullptr) {
@@ -155,7 +157,7 @@ void Bus::RebuildDeviceMap() {
     }
 
     for (const auto& reg : registeredDevices) {
-        if (reg.isVirtual) continue;
+        if (reg.isVirtual) { continue; }
         if (reg.enabled && reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
                 deviceMap.at(i).device = reg.device;
