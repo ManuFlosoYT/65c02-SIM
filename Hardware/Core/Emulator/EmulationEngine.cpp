@@ -130,7 +130,6 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
             stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions);
         }
 
-        totalExecuted += batchInstructions;
         totalExecuted += stepsInBatch;
         remaining -= stepsInBatch;
 
