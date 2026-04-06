@@ -18,11 +18,19 @@ ESP8266::ESP8266()
 }
 
 ESP8266::~ESP8266() {
+    if (pingThread.joinable()) {
+        stopPing.store(true);
+        pingThread.join();
+    }
     DisconnectAll();
     StopServer();
 }
 
 void ESP8266::Reset() {
+    if (pingThread.joinable()) {
+        stopPing.store(true);
+        pingThread.join();
+    }
     statusReg = 0;
     cmdReg = 0;
     ctrlReg = 0;
@@ -100,7 +108,8 @@ std::string ESP8266::GetName() const { return "ESP8266"; }
 void ESP8266::Clock() {}
 
 bool ESP8266::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&statusReg), sizeof(statusReg));  // NOLINT
+    Byte sReg = statusReg.load();
+    out.write(reinterpret_cast<const char*>(&sReg), sizeof(sReg));  // NOLINT
     out.write(reinterpret_cast<const char*>(&cmdReg), sizeof(cmdReg));        // NOLINT
     out.write(reinterpret_cast<const char*>(&ctrlReg), sizeof(ctrlReg));      // NOLINT
 
@@ -124,7 +133,9 @@ bool ESP8266::LoadState(std::istream& inStream) {
     DisconnectAll();
     StopServer();
 
-    inStream.read(reinterpret_cast<char*>(&statusReg), sizeof(statusReg));  // NOLINT
+    Byte sReg = 0;
+    inStream.read(reinterpret_cast<char*>(&sReg), sizeof(sReg));  // NOLINT
+    statusReg.store(sReg);
     inStream.read(reinterpret_cast<char*>(&cmdReg), sizeof(cmdReg));        // NOLINT
     inStream.read(reinterpret_cast<char*>(&ctrlReg), sizeof(ctrlReg));      // NOLINT
 
