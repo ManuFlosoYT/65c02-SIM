@@ -32,7 +32,7 @@ static Word ADC_Decimal(CPU& cpu, Byte dato) {
         sumaNibbleAlto += 6;
     }
 
-    return (sumaNibbleAlto << 4) | sumaNibbleBajo;
+    return (sumaNibbleAlto << 4) | (sumaNibbleBajo & 0x0F);
 }
 
 template <bool Debug>
