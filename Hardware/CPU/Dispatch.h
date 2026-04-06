@@ -345,8 +345,8 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     }
 
     // Assign cycle accuracy offsets
-    if (cpu.cycleAccurate && entry.baseCycles > 0) {
-        cpu.remainingCycles = entry.baseCycles - 1;
+    if (entry.baseCycles > 0) {
+        cpu.remainingCycles += entry.baseCycles - 1;
     }
 
     // Error handling
