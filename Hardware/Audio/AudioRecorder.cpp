@@ -73,6 +73,9 @@ void AudioRecorder::PushAudio(const int16_t* data, size_t numSamples) {
     
     {
         std::lock_guard<std::mutex> lock(queueMutex);
+        if (audioQueue.size() >= 1000) {
+            audioQueue.pop(); // Drop oldest chunk if OOM-bound
+        }
         audioQueue.push(std::move(chunk));
     }
     cv.notify_one();
