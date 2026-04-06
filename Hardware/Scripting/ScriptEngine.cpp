@@ -247,6 +247,10 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
     PY_CHECK_ARG_TYPE(0, tp_int);  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     auto cycles = static_cast<int64_t>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    if (cycles <= 0) {
+        py_newnone(py_retval());
+        return true;
+    }
 
     auto& emu = engine->GetEmulator();
     
@@ -308,6 +312,10 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
     PY_CHECK_ARG_TYPE(0, tp_int);    // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     auto count = static_cast<int>(py_toint(py_arg(0)));  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    if (count <= 0) {
+        py_newnone(py_retval());
+        return true;
+    }
     
     auto& emu = engine->GetEmulator();
     
