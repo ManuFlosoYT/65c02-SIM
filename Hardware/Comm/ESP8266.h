@@ -120,6 +120,8 @@ class ESP8266 : public IBusDevice {
 
     // Ping
     void PingTask(const std::string& host);
+    std::thread pingThread;
+    std::atomic<bool> stopPing{false};
 
     // Helpers
     [[nodiscard]] int FindFreeLinkId() const;
