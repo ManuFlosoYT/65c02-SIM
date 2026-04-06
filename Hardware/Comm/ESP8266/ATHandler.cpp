@@ -131,7 +131,7 @@ void ESP8266::HandleCIPSTART(const std::string& cmd) {
     try {
         if (muxEnabled) {
             linkId = ParseIntParam(params, ppos);
-            if (params[ppos] == ',') {
+            if (ppos < params.size() && params[ppos] == ',') {
                 ppos++;
             }
         } else {
@@ -139,11 +139,11 @@ void ESP8266::HandleCIPSTART(const std::string& cmd) {
         }
 
         type = ParseQuotedParam(params, ppos);
-        if (params[ppos] == ',') {
+        if (ppos < params.size() && params[ppos] == ',') {
             ppos++;
         }
         host = ParseQuotedParam(params, ppos);
-        if (params[ppos] == ',') {
+        if (ppos < params.size() && params[ppos] == ',') {
             ppos++;
         }
         port = ParseIntParam(params, ppos);
@@ -198,7 +198,7 @@ void ESP8266::HandleCIPSEND(const std::string& cmd) {
 
     if (muxEnabled) {
         cipsendLinkId = ParseIntParam(params, ppos);
-        if (params[ppos] == ',') {
+        if (ppos < params.size() && params[ppos] == ',') {
             ppos++;
         }
         cipsendLength = ParseIntParam(params, ppos);
@@ -306,12 +306,24 @@ void ESP8266::HandlePing(const std::string& cmd) {
         return;
     }
 
+    if (pingThread.joinable()) {
+        stopPing.store(true);
+        pingThread.join();
+    }
+    stopPing.store(false);
+
     std::string host = ParseQuotedParam(cmd, pos);
-    std::thread([this, host]() { PingTask(host); }).detach();
+    pingThread = std::thread(&ESP8266::PingTask, this, host);
 }
 
 void ESP8266::PingTask(const std::string& host) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    int loops = 50;
+    while (loops-- > 0) {
+        if (stopPing.load()) {
+            return;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
     EnqueueResponse("\r\n+71\r\nOK\r\n");
 }
 
