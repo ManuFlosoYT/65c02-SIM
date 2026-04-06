@@ -54,7 +54,6 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 
 bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::string& name, std::string& errorMsg) {
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
-    SetupHardware();
 
     if (size != ROM_SIZE && size != 0) {
         errorMsg = "Error: ROM data size mismatch (expected 32KB or 0, got " + std::to_string(size) + ")";
@@ -288,12 +287,10 @@ void Emulator::SetupHardware() {
 
 void Emulator::HandleVIAPortB(Byte val) {
     bool is_lcd_enabled = false;
-    bool is_sd_enabled = false;
     for (const auto& dev : bus.GetRegisteredDevices()) {
         if (dev.device == &lcd && dev.enabled) {
             is_lcd_enabled = true;
-        } else if (dev.device == static_cast<IBusDevice*>(&sdcard) && dev.enabled) {
-            is_sd_enabled = true;
+            break;
         }
     }
 
