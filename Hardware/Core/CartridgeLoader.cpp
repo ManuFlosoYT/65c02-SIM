@@ -130,22 +130,22 @@ void CartridgeLoader::ParseMetadata(const nlohmann::json& manifestJson, Cartridg
 void CartridgeLoader::ParseConfig(const nlohmann::json& manifestJson, Cartridge& outCartridge) {
     if (manifestJson.contains("config")) {
         const auto& configObj = manifestJson["config"];
-        if (configObj.contains("target_ips")) {
+        if (configObj.contains("target_ips") && configObj["target_ips"].is_number()) {
             outCartridge.config.targetIPS = configObj["target_ips"].get<int>();
         }
-        if (configObj.contains("gpu_enabled")) {
+        if (configObj.contains("gpu_enabled") && configObj["gpu_enabled"].is_boolean()) {
             outCartridge.config.gpuEnabled = configObj["gpu_enabled"].get<bool>();
         }
-        if (configObj.contains("cycle_accurate")) {
+        if (configObj.contains("cycle_accurate") && configObj["cycle_accurate"].is_boolean()) {
             outCartridge.config.cycleAccurate = configObj["cycle_accurate"].get<bool>();
         }
-        if (configObj.contains("sid_enabled")) {
+        if (configObj.contains("sid_enabled") && configObj["sid_enabled"].is_boolean()) {
             outCartridge.config.sidEnabled = configObj["sid_enabled"].get<bool>();
         }
-        if (configObj.contains("esp_enabled")) {
+        if (configObj.contains("esp_enabled") && configObj["esp_enabled"].is_boolean()) {
             outCartridge.config.espEnabled = configObj["esp_enabled"].get<bool>();
         }
-        if (configObj.contains("sd_enabled")) {
+        if (configObj.contains("sd_enabled") && configObj["sd_enabled"].is_boolean()) {
             outCartridge.config.sdEnabled = configObj["sd_enabled"].get<bool>();
         }
     }
@@ -160,7 +160,11 @@ void CartridgeLoader::ParseBus(const nlohmann::json& manifestJson, Cartridge& ou
                     return jsonObj[key].get<uint16_t>();
                 }
                 if (jsonObj[key].is_string()) {
-                    return static_cast<uint16_t>(std::stoul(jsonObj[key].get<std::string>(), nullptr, 0));
+                    try {
+                        return static_cast<uint16_t>(std::stoul(jsonObj[key].get<std::string>(), nullptr, 0));
+                    } catch (...) {
+                        return 0;
+                    }
                 }
             }
             return 0;
