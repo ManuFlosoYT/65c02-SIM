@@ -1,4 +1,5 @@
 #include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/CartridgeLoader.h"
 
 #include <chrono>
 #include <iostream>
@@ -20,6 +21,9 @@ void Emulator::Stop() {
 #ifndef TARGET_WASM
     sid.StopRecording();
 #endif
+    if (cartridge.loaded && !cartridge.sdCardPath.empty()) {
+        Core::CartridgeLoader::SaveSDToZip(cartridge);
+    }
     Resume();
     if (emulatorThread.joinable()) {
         emulatorThread.join();
