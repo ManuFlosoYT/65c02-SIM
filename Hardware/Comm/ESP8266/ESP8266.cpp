@@ -36,8 +36,11 @@ void ESP8266::Reset() {
     ctrlReg = 0;
     currentState = ATState::Idle;
     commandBuffer.clear();
-    while (!rxQueue.empty()) {
-        rxQueue.pop();
+    {
+        std::lock_guard<std::mutex> lock(rxMutex);
+        while (!rxQueue.empty()) {
+            rxQueue.pop();
+        }
     }
     cipsendBuffer.clear();
     echoEnabled = true;
@@ -113,7 +116,7 @@ bool ESP8266::SaveState(std::ostream& out) const {
     out.write(reinterpret_cast<const char*>(&cmdReg), sizeof(cmdReg));        // NOLINT
     out.write(reinterpret_cast<const char*>(&ctrlReg), sizeof(ctrlReg));      // NOLINT
 
-    size_t cmdLen = commandBuffer.length();
+    auto cmdLen = static_cast<uint32_t>(commandBuffer.length());
     out.write(reinterpret_cast<const char*>(&cmdLen), sizeof(cmdLen));  // NOLINT
     out.write(commandBuffer.c_str(), static_cast<std::streamsize>(cmdLen));
 
@@ -122,7 +125,7 @@ bool ESP8266::SaveState(std::ostream& out) const {
     out.write(reinterpret_cast<const char*>(&wifiConnected), sizeof(wifiConnected));  // NOLINT
     out.write(reinterpret_cast<const char*>(&cwMode), sizeof(cwMode));                // NOLINT
 
-    size_t ssidLen = connectedSSID.length();
+    auto ssidLen = static_cast<uint32_t>(connectedSSID.length());
     out.write(reinterpret_cast<const char*>(&ssidLen), sizeof(ssidLen));  // NOLINT
     out.write(connectedSSID.c_str(), static_cast<std::streamsize>(ssidLen));
 
@@ -139,7 +142,7 @@ bool ESP8266::LoadState(std::istream& inStream) {
     inStream.read(reinterpret_cast<char*>(&cmdReg), sizeof(cmdReg));        // NOLINT
     inStream.read(reinterpret_cast<char*>(&ctrlReg), sizeof(ctrlReg));      // NOLINT
 
-    size_t cmdLen = 0;
+    uint32_t cmdLen = 0;
     inStream.read(reinterpret_cast<char*>(&cmdLen), sizeof(cmdLen));  // NOLINT
     if (cmdLen > 8192) { return false; }
     commandBuffer.assign(cmdLen, '\0');
@@ -150,7 +153,7 @@ bool ESP8266::LoadState(std::istream& inStream) {
     inStream.read(reinterpret_cast<char*>(&wifiConnected), sizeof(wifiConnected));  // NOLINT
     inStream.read(reinterpret_cast<char*>(&cwMode), sizeof(cwMode));                // NOLINT
 
-    size_t ssidLen = 0;
+    uint32_t ssidLen = 0;
     inStream.read(reinterpret_cast<char*>(&ssidLen), sizeof(ssidLen));  // NOLINT
     if (ssidLen > 33) { return false; }
     connectedSSID.assign(ssidLen, '\0');
