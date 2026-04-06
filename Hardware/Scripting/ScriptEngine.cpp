@@ -251,12 +251,15 @@ static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
 
     if (wasRunningAtStart) {
         // ASYNCHRONOUS WAIT: Busy-wait until target or external pause (breakpoint)
-        while (emu.GetTotalCycles() < targetCycles && !emu.IsPaused() && emu.IsRunning()) {
+        while (emu.GetTotalCycles() < targetCycles && !emu.IsPaused() && emu.IsRunning() && !emu.IsHalted()) {
             std::this_thread::yield();
         }
     } else {
         // SYNCHRONOUS WAIT: Manually step until target reached
         while (emu.GetTotalCycles() < targetCycles) {
+            if (emu.IsHalted() || !emu.IsRunning()) {
+                break;
+            }
             std::lock_guard<std::recursive_mutex> lock(emu.GetMutex());
             emu.Step();
         }
@@ -540,6 +543,7 @@ static bool py_emu_load_cartridge(int argc, py_StackRef argv) {
     std::string error;
     Core::Cartridge cart;
     if (Core::CartridgeLoader::Load(path, cart, error)) {
+        std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
         engine->GetEmulator().SetCartridge(cart);
         engine->GetEmulator().SetupHardware();
     } else {
