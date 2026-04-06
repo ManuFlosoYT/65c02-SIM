@@ -129,15 +129,18 @@ int Emulator::Step() {
 template <bool Debug>
 int Emulator::Step() {
     int res = 0;
+    bool cpuStepped = false;
 
     bool isNewInstruction = (cpu.remainingCycles == 0);
     if (gpuEnabled) {
         gpu.Clock();
         if (gpu.IsInBlankingInterval()) {
             res = cpu.Step<Debug>(bus);
+            cpuStepped = true;
         }
     } else {
         res = cpu.Step<Debug>(bus);
+        cpuStepped = true;
     }
     
     if (baudDelay > 0) {
@@ -145,6 +148,14 @@ int Emulator::Step() {
     }
 
     via.Clock();
+
+    if (cpuStepped && !cpu.cycleAccurate && isNewInstruction) {
+        int extraCycles = cpu.remainingCycles;
+        for (int i = 0; i < extraCycles; ++i) {
+            via.Clock();
+        }
+        cpu.remainingCycles = 0;
+    }
 
     bool irq = acia.HasIRQ() || via.isIRQAsserted() || this->pendingIRQ.load(std::memory_order_relaxed);
     if (this->pendingNMI.load(std::memory_order_relaxed)) {
