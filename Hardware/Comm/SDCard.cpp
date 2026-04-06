@@ -428,7 +428,7 @@ void SDCard::WriteBlockToImage() {
 }
 
 bool SDCard::SaveState(std::ostream& out) const {
-    size_t pathLen = currentPath.length();
+    auto pathLen = static_cast<uint32_t>(currentPath.length());
     PodWrite(out, pathLen);
     out.write(currentPath.c_str(), static_cast<std::streamsize>(pathLen));
 
@@ -438,7 +438,7 @@ bool SDCard::SaveState(std::ostream& out) const {
     BufferWrite(out, cmd_buffer.data(), sizeof(cmd_buffer));
     PodWrite(out, cmd_bytes_received);
 
-    size_t respSize = response_buffer.size();
+    auto respSize = static_cast<uint32_t>(response_buffer.size());
     PodWrite(out, respSize);
     if (respSize > 0) {
         BufferWrite(out, response_buffer.data(), respSize);
@@ -456,7 +456,7 @@ bool SDCard::SaveState(std::ostream& out) const {
 }
 
 bool SDCard::LoadState(std::istream& inStream) {
-    size_t pathLen = 0;
+    uint32_t pathLen = 0;
     PodRead(inStream, pathLen);
     if (pathLen > 4096) { return false; }
     currentPath.resize(pathLen);
@@ -468,7 +468,7 @@ bool SDCard::LoadState(std::istream& inStream) {
     BufferRead(inStream, cmd_buffer.data(), sizeof(cmd_buffer));
     PodRead(inStream, cmd_bytes_received);
 
-    size_t respSize = 0;
+    uint32_t respSize = 0;
     PodRead(inStream, respSize);
     if (respSize > 16384) { return false; }
     response_buffer.resize(respSize);
