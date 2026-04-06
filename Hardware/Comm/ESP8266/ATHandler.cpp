@@ -11,7 +11,7 @@ void ESP8266::ProcessCommand() {
 
     std::string original = commandBuffer;
     std::string upper = commandBuffer;
-    std::ranges::transform(upper, upper.begin(), ::toupper);
+    std::ranges::transform(upper, upper.begin(), [](unsigned char chr) { return std::toupper(chr); });
 
     if (echoEnabled) {
         EnqueueResponse(original + "\r\n");
