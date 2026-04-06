@@ -146,7 +146,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     bool structuralSuccess = LoadComponentsState(stateStream);
 
     if (structuralSuccess) {
-        LoadInternalState(stateStream);
+        structuralSuccess = LoadInternalState(stateStream);
     }
 
     if (!structuralSuccess || (!stateStream.good() && !stateStream.eof())) {
@@ -189,7 +189,7 @@ bool Emulator::LoadComponentsState(std::istream& stateStream) {
     return true;
 }
 
-void Emulator::LoadInternalState(std::istream& stateStream) {
+bool Emulator::LoadInternalState(std::istream& stateStream) {
     stateStream.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
 
     bool gpuE = false;
@@ -202,6 +202,7 @@ void Emulator::LoadInternalState(std::istream& stateStream) {
 
     size_t qSize = 0;
     stateStream.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));  // NOLINT
+    if (qSize > 10ULL * 1024 * 1024) { return false; }
     std::lock_guard<std::mutex> lock(bufferMutex);
     inputBuffer.clear();
     for (size_t i = 0; i < qSize; ++i) {
@@ -213,12 +214,14 @@ void Emulator::LoadInternalState(std::istream& stateStream) {
 
     size_t binPathLen = 0;
     stateStream.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
+    if (binPathLen > 4096) { return false; }
     currentBinPath.assign(binPathLen, '\0');
     stateStream.read(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
 
     bool autoReload = false;
     stateStream.read(reinterpret_cast<char*>(&autoReload), sizeof(autoReload));  // NOLINT
     autoReloadRequested.store(autoReload);
+    return true;
 }
 
 void Emulator::SaveStateToBuffer() {
