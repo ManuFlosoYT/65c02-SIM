@@ -223,37 +223,46 @@ void Emulator::SetupHardware() {
     rewindBuffer.clear();
     lastSaveTime = std::chrono::steady_clock::now();
 
-    if (cartridge.loaded && !cartridge.busDevices.empty()) {
-        for (const auto& dev : cartridge.busDevices) {
-            if (dev.name == "RAM") {
-                bus.RegisterDevice(dev.start, dev.end, &ram, true, false);
-            } else if (dev.name == "ROM") {
-                bus.RegisterDevice(dev.start, dev.end, &rom, true, false);
-            } else if (dev.name == "ACIA") {
-                bus.RegisterDevice(dev.start, dev.end, &acia, true, true);
-            } else if (dev.name == "VIA") {
-                bus.RegisterDevice(dev.start, dev.end, &via, true, true);
-            } else if (dev.name == "ESP8266") {
-                bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
-            } else if (dev.name == "SID") {
-                bus.RegisterDevice(dev.start, dev.end, &sid, true, true);
-            } else if (dev.name == "GPU") {
-                bus.RegisterDevice(dev.start, dev.end, &gpu, true, true);
+    try {
+        if (cartridge.loaded && !cartridge.busDevices.empty()) {
+            for (const auto& dev : cartridge.busDevices) {
+                if (dev.name == "RAM") {
+                    bus.RegisterDevice(dev.start, dev.end, &ram, true, false);
+                } else if (dev.name == "ROM") {
+                    bus.RegisterDevice(dev.start, dev.end, &rom, true, false);
+                } else if (dev.name == "ACIA") {
+                    bus.RegisterDevice(dev.start, dev.end, &acia, true, true);
+                } else if (dev.name == "VIA") {
+                    bus.RegisterDevice(dev.start, dev.end, &via, true, true);
+                } else if (dev.name == "ESP8266") {
+                    bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
+                } else if (dev.name == "SID") {
+                    bus.RegisterDevice(dev.start, dev.end, &sid, true, true);
+                } else if (dev.name == "GPU") {
+                    bus.RegisterDevice(dev.start, dev.end, &gpu, true, true);
+                }
             }
+            // MMIO SD device
+            bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
+        } else {
+            // Default layout (v1.0)
+            bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
+            bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
+            bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
+            bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
+            bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
+            bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
+            bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
+            bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
+            bus.RegisterVirtualDevice(&lcd, true);
         }
-        // MMIO SD device
-        bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-    } else {
-        // Default layout (v1.0)
-        bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
-        bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
-        bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
-        bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
-        bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
-        bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-        bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
-        bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
-        bus.RegisterVirtualDevice(&lcd, true);
+    } catch (const std::exception& e) {
+        std::cerr << "Exception during SetupHardware: " << e.what() << '\n';
+        if (cartridge.loaded) {
+            cartridge.loaded = false;
+            SetupHardware(); // Retry with default layout
+            return;
+        }
     }
 
     acia.Reset();
