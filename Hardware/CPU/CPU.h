@@ -170,9 +170,9 @@ inline int Hardware::CPU::Step(Bus& bus) {
 
 template <bool Debug>
 inline void Hardware::CPU::IRQ(Bus& bus) {
-    if (cycleAccurate) { remainingCycles += 7; }
     waiting = false;
     if (!I) {
+        if (cycleAccurate) { remainingCycles += 7; }
         PushWord<Debug>(PC, bus);
         B = 0;
         PushByte<Debug>(GetStatus(), bus);
