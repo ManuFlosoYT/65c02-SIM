@@ -27,6 +27,13 @@ void DrawUpdatePopup(AppState& state) {
         ImGui::TextUnformatted("A new version of SIM_65C02 is available!");
         ImGui::TextUnformatted(("Latest Version: " + state.update.latestVersionTag).c_str());
         ImGui::TextUnformatted(("Current Version: " + std::string(PROJECT_VERSION)).c_str());
+        ImGui::NewLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.8F, 0.0F, 1.0F)); // Warning color (yellow/gold)
+        ImGui::PushTextWrapPos(0.0F);
+        ImGui::TextUnformatted("WARNING: Please delete the SDK directory before updating to ensure a clean replacement.");
+        ImGui::PopTextWrapPos();
+        ImGui::PopStyleColor();
+
         ImGui::Separator();
 
         ImGui::NewLine();
