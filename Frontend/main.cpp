@@ -30,6 +30,7 @@
 #endif
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/UI/UIModules.h"
+#include "Frontend/Control/SDKManager.h"
 
 // Dedicated GPU
 #if defined(__linux__) && !defined(TARGET_WASM)
@@ -368,6 +369,11 @@ int main(int argc, char* argv[]) {
 
     static AppState state;
     state.emulator.GetSID().Init(sidSampleRate);
+
+#ifndef TARGET_WASM
+    SDKManager::ExtractBundledSDK();
+    SDKManager::ScanExtractedSDK(state);
+#endif
 
 #ifndef TARGET_WASM
     // Check for updates
