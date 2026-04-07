@@ -77,11 +77,26 @@ static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files
             path += subfolder;
             path += "/";
             path += file;
-            std::ifstream inputStream(path, std::ios::binary);
-            if (inputStream) {
-                std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(inputStream)),
-                                            std::istreambuf_iterator<char>());
-                HandleSDKFileLoading(state, file, buffer.data(), static_cast<int>(buffer.size()));
+            
+            std::string errorMsg;
+            Core::Cartridge cart;
+            state.emulator.Pause();
+            if (Core::CartridgeLoader::Load(path, cart, errorMsg)) {
+                Control::ApplyCartridgeConfig(state, cart);
+                if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
+                    Console::Clear();
+                    state.rom.bin = path;
+                    state.rom.loaded = true;
+                    state.rom.symbols.Clear();
+                    state.emulator.ClearProfiler();
+                    ImGui::OpenPopup("Cartridge Loaded");
+                } else {
+                    std::cerr << "SDK: InitFromMemory failed for " << file << ": " << errorMsg << "\n";
+                    ImGui::OpenPopup("ErrorLoadingROM");
+                }
+            } else {
+                std::cerr << "SDK: Failed to load SDK cartridge " << file << ": " << errorMsg << "\n";
+                ImGui::OpenPopup("ErrorLoadingROM");
             }
 #endif
             ImGui::CloseCurrentPopup();
