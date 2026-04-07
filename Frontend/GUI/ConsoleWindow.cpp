@@ -23,6 +23,7 @@ using namespace Hardware;
 #else
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/CartridgeUtils.h"
+#include "Frontend/Control/SDKManager.h"
 #endif
 
 namespace GUI {
