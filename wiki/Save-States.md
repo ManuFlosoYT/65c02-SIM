@@ -14,7 +14,7 @@ The components serialized include:
 - **SID**: Oscillator settings, envelope states, and volume.
 - **ACIA**: Data, status, command, and control registers.
 - **LCD Controller**: Display RAM, cursor position, and controller modes.
-- **GPU**: Pixel coordinates and rendering state (VRAM is restored automatically from main memory to save 7.5KB of space).
+- **GPU**: Pixel coordinates, rendering state, and its own VRAM memory space.
 - **Console Window**: The current terminal history and cursor position.
 
 The save operation happens synchronously with the `emulationMutex` locked, making it completely thread-safe and guaranteeing absolute consistency across components.
