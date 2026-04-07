@@ -131,7 +131,7 @@ target_include_directories(SIM_65C02 PRIVATE
 
 add_dependencies(SIM_65C02 crt_shaders app_icons)
 if(NOT EMSCRIPTEN)
-    add_dependencies(SIM_65C02 embedded_compilers)
+    add_dependencies(SIM_65C02 embedded_compilers sdk_resource)
 endif()
 
 target_compile_definitions(SIM_65C02 PRIVATE 
