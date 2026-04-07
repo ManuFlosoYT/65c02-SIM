@@ -110,4 +110,4 @@ See the dedicated [Breakpoints](Breakpoints) page for full documentation.
 - **Profiling Logic**: `Frontend/GUI/Debugger/ProfilerWindow.cpp`
 - **Disassembly Logic**: `Hardware/CPU/Disassembler.cpp`
 - **Disassembly UI**: `Frontend/GUI/Debugger/DisassemblerWindow.cpp`
-- **Hardware Integration**: `Hardware/Mem.h` (using `profilerCounts` array and `profilingEnabled` flag).
+- **Hardware Integration**: `Hardware/Core/Bus.h` (using `profilerCounts` array and `profilingEnabled` flag).
