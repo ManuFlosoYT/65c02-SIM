@@ -72,7 +72,7 @@ static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files
             };
             WebFileUtils::fetch_file(url.c_str(), file.c_str());
 #else
-            std::string path = "output/";
+            std::string path = "SDK/";
             path += subfolder;
             path += "/";
             path += file;
@@ -97,7 +97,12 @@ static void DrawSDKPopup(AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
     if (ImGui::BeginPopupModal("SDK ROMs", nullptr, ImGuiWindowFlags_None)) {
         if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
+#ifdef TARGET_WASM
             ImGui::TextUnformatted("Loading ROM list...");
+#else
+            ImGui::TextUnformatted("No SDK resources found in 'SDK/' directory.");
+            ImGui::TextUnformatted("Ensure SDK.zip was present at build time.");
+#endif
         } else {
             ImGui::Columns(3, "SDKColumns", true);
             ImGui::Separator();
@@ -210,6 +215,9 @@ static void DrawConsoleButtonBar(AppState& state) {
             state.sdk.showPopup = true;
         }
 #else
+        if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
+            SDKManager::ScanExtractedSDK(state);
+        }
         state.sdk.showPopup = true;
 #endif
     }
