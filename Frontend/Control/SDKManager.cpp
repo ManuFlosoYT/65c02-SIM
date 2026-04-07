@@ -6,12 +6,7 @@
 #include <iostream>
 
 #if !defined(TARGET_WASM)
-#if __has_include("generated/sdk_zip.h")
-#include "generated/sdk_zip.h"
-#else
-// Fallback if not yet generated or for local dev without SDK.zip
-static const std::vector<uint8_t> sdk_zip_data = {};
-#endif
+#include "sdk_zip.h"
 #endif
 
 namespace fs = std::filesystem;
