@@ -15,6 +15,9 @@ public:
     static void ParseMetadata(const nlohmann::json& manifestJson, Cartridge& outCartridge);
     static void ParseConfig(const nlohmann::json& manifestJson, Cartridge& outCartridge);
     static void ParseBus(const nlohmann::json& manifestJson, Cartridge& outCartridge);
+    static void ValidateBusRequirements(const std::vector<DeviceConfig>& busDevices);
+    static DeviceConfig ParseDeviceConfig(const nlohmann::json& devJson);
+    static uint16_t ParseAddress(const nlohmann::json& jsonObj, const std::string& key);
 
 private:
     static bool ReadRomData(void* zip_archive, const std::string& romFileName, Cartridge& outCartridge, std::string& errorMsg);

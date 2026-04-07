@@ -152,66 +152,74 @@ void CartridgeLoader::ParseConfig(const nlohmann::json& manifestJson, Cartridge&
 }
 
 void CartridgeLoader::ParseBus(const nlohmann::json& manifestJson, Cartridge& outCartridge) {
-    outCartridge.busDevices.clear();
-    if (manifestJson.contains("bus") && manifestJson["bus"].is_array()) {
-        auto parseAddr = [](const nlohmann::json& jsonObj, const std::string& key) -> uint16_t {
-            if (jsonObj.contains(key)) {
-                if (jsonObj[key].is_number()) {
-                    return jsonObj[key].get<uint16_t>();
-                }
-                if (jsonObj[key].is_string()) {
-                    try {
-                        return static_cast<uint16_t>(std::stoul(jsonObj[key].get<std::string>(), nullptr, 0));
-                    } catch (...) {
-                        throw std::runtime_error("Invalid address format for " + key);
-                    }
-                }
-            }
-            throw std::runtime_error("Missing address field: " + key);
-        };
+    if (!manifestJson.contains("bus") || !manifestJson["bus"].is_array()) {
+        return;
+    }
 
-        for (const auto& devJson : manifestJson["bus"]) {
-            DeviceConfig dev;
-            dev.name = devJson.value("name", "");
-            if (dev.name.empty()) {
-                throw std::runtime_error("Device missing name in bus configuration");
-            }
-            
-            // Validate against known list
-            if (dev.name != "RAM" && dev.name != "ROM" && dev.name != "VIA" && 
-                dev.name != "WAI_DEVICE" && dev.name != "LCD" && dev.name != "ESP32" && 
-                dev.name != "ACIA" && dev.name != "GPU" && dev.name != "SID") {
-                throw std::runtime_error("Unknown device name: " + dev.name);
-            }
-            
-            dev.start = parseAddr(devJson, "start");
-            dev.end = parseAddr(devJson, "end");
-            
-            if (dev.start > dev.end) {
-                throw std::runtime_error("Invalid address range for device " + dev.name + ": start > end");
-            }
-            
-            outCartridge.busDevices.push_back(dev);
+    outCartridge.busDevices.clear();
+    for (const auto& devJson : manifestJson["bus"]) {
+        outCartridge.busDevices.push_back(ParseDeviceConfig(devJson));
+    }
+
+    ValidateBusRequirements(outCartridge.busDevices);
+}
+
+uint16_t CartridgeLoader::ParseAddress(const nlohmann::json& jsonObj, const std::string& key) {
+    if (jsonObj.contains(key)) {
+        if (jsonObj[key].is_number()) {
+            return jsonObj[key].get<uint16_t>();
         }
-        
-        // Ensure minimum requirements are met (RAM and ROM support)
-        bool hasRAM = false;
-        bool hasROM = false;
-        for (const auto& dev : outCartridge.busDevices) {
-            if (dev.name == "RAM") {
-                hasRAM = true;
-            }
-            if (dev.name == "ROM") {
-                hasROM = true;
+        if (jsonObj[key].is_string()) {
+            try {
+                return static_cast<uint16_t>(std::stoul(jsonObj[key].get<std::string>(), nullptr, 0));
+            } catch (...) {
+                throw std::runtime_error("Invalid address format for " + key);
             }
         }
-        
-        if (!hasRAM) {
-            throw std::runtime_error("Manifest bus configuration is missing RAM device");
+    }
+    throw std::runtime_error("Missing address field: " + key);
+}
+
+DeviceConfig CartridgeLoader::ParseDeviceConfig(const nlohmann::json& devJson) {
+    DeviceConfig dev;
+    dev.name = devJson.value("name", "");
+    if (dev.name.empty()) {
+        throw std::runtime_error("Device missing name in bus configuration");
+    }
+
+    // Validate against known list
+    if (dev.name != "RAM" && dev.name != "ROM" && dev.name != "VIA" && dev.name != "WAI_DEVICE" && dev.name != "LCD" &&
+        dev.name != "ESP32" && dev.name != "ACIA" && dev.name != "GPU" && dev.name != "SID") {
+        throw std::runtime_error("Unknown device name: " + dev.name);
+    }
+
+    dev.start = ParseAddress(devJson, "start");
+    dev.end = ParseAddress(devJson, "end");
+
+    if (dev.start > dev.end) {
+        throw std::runtime_error("Invalid address range for device " + dev.name + ": start > end");
+    }
+
+    return dev;
+}
+
+void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& busDevices) {
+    bool hasRAM = false;
+    bool hasROM = false;
+
+    for (const auto& dev : busDevices) {
+        if (dev.name == "RAM") {
+            hasRAM = true;
+        } else if (dev.name == "ROM") {
+            hasROM = true;
         }
-        if (!hasROM) {
-            throw std::runtime_error("Manifest bus configuration is missing ROM device");
-        }
+    }
+
+    if (!hasRAM) {
+        throw std::runtime_error("Manifest bus configuration is missing RAM device");
+    }
+    if (!hasROM) {
+        throw std::runtime_error("Manifest bus configuration is missing ROM device");
     }
 }
 
