@@ -5,7 +5,6 @@
 
 #include <string>
 #include <vector>
-#include <fstream>
 #include <span>
 
 #include "Frontend/Control/Console.h"
@@ -147,8 +146,7 @@ static void DrawSDKPopup(AppState& state) {
     }
 }
 
-static void DrawConsoleButtonBar(AppState& state) {
-    bool cartLoaded = state.emulator.GetCartridge().loaded;
+static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
     ImGui::BeginDisabled(cartLoaded);
     if (ImGui::Button("Load ROM")) {
 #ifdef TARGET_WASM
@@ -183,34 +181,36 @@ static void DrawConsoleButtonBar(AppState& state) {
             ImGui::EndTooltip();
         }
     }
+}
 
-    ImGui::SameLine();
+static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
     const char* cartBtnText = cartLoaded ? "Eject Cartridge" : "Load Cartridge (.65c)";
     if (ImGui::Button(cartBtnText)) {
         if (cartLoaded) {
             state.emulator.ClearCartridge();
         } else {
 #ifdef TARGET_WASM
-        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-            // Write to virtual FS
-            std::string virtualPath = "/tmp/";
-            virtualPath += filename;
-            FILE* f = fopen(virtualPath.c_str(), "wb");
-            if (f) {
-                fwrite(data, 1, static_cast<size_t>(size), f);
-                fclose(f);
-            }
-        };
-        WebFileUtils::open_browser_file_picker(".65c");
+            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+                // Write to virtual FS
+                std::string virtualPath = "/tmp/";
+                virtualPath += filename;
+                FILE* f = fopen(virtualPath.c_str(), "wb");
+                if (f) {
+                    fwrite(data, 1, static_cast<size_t>(size), f);
+                    fclose(f);
+                }
+            };
+            WebFileUtils::open_browser_file_picker(".65c");
 #else
-        if (!Frontend::CustomFileDialog::IsOpened()) {
-            Frontend::CustomFileDialog::OpenDialog("ChooseCartridgeDlgKey", "Choose Cartridge", ".65c", ".");
-        }
+            if (!Frontend::CustomFileDialog::IsOpened()) {
+                Frontend::CustomFileDialog::OpenDialog("ChooseCartridgeDlgKey", "Choose Cartridge", ".65c", ".");
+            }
 #endif
         }
     }
+}
 
-    ImGui::SameLine();
+static void DrawSDKButton(AppState& state) {
     if (ImGui::Button("SDK")) {
 #ifdef TARGET_WASM
         if (!state.sdk.loaded) {
@@ -237,15 +237,10 @@ static void DrawConsoleButtonBar(AppState& state) {
         state.sdk.showPopup = true;
 #endif
     }
-    DrawSDKPopup(state);
-
-    ImGui::SameLine();
-    if (ImGui::Button("Copy Output")) {
-        ImGui::OpenPopup("CopyConsoleOutput");
-    }
+}
 
 #ifndef TARGET_WASM
-    ImGui::SameLine();
+static void DrawIDEButton(AppState& state, bool cartLoaded) {
     ImGui::BeginDisabled(cartLoaded);
     if (ImGui::Button("Open IDE")) {
         state.ide.open = !state.ide.open;
@@ -260,7 +255,31 @@ static void DrawConsoleButtonBar(AppState& state) {
             ImGui::EndTooltip();
         }
     }
+}
 #endif
+
+static void DrawConsoleButtonBar(AppState& state) {
+    bool cartLoaded = state.emulator.GetCartridge().loaded;
+
+    DrawLoadROMButton(state, cartLoaded);
+
+    ImGui::SameLine();
+    DrawLoadCartridgeButton(state, cartLoaded);
+
+    ImGui::SameLine();
+    DrawSDKButton(state);
+    DrawSDKPopup(state);
+
+    ImGui::SameLine();
+    if (ImGui::Button("Copy Output")) {
+        ImGui::OpenPopup("CopyConsoleOutput");
+    }
+
+#ifndef TARGET_WASM
+    ImGui::SameLine();
+    DrawIDEButton(state, cartLoaded);
+#endif
+
     ImGui::Separator();
 }
 
