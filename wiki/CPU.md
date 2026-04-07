@@ -93,7 +93,7 @@ PopByte:  SP > 0x01FF → SP = 0x0100
 
 ## Instruction dispatch
 
-Dispatch is handled in `Hardware/CPU/Dispatch.cpp`. Each opcode has its own class in `Hardware/CPU/Instructions/`, allowing the compiler to apply inline expansion or LTO.
+Dispatch is handled in `Hardware/CPU/Dispatch.h`. Each opcode has its own class in `Hardware/CPU/Instructions/`, allowing the compiler to apply inline expansion or LTO.
 
 ```
 Dispatch(cpu, mem)
