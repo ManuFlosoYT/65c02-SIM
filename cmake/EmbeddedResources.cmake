@@ -149,27 +149,14 @@ if(NOT EMSCRIPTEN)
     set(SDK_ZIP "${CMAKE_CURRENT_SOURCE_DIR}/SDK.zip")
     set(SDK_ZIP_H "${CMAKE_CURRENT_BINARY_DIR}/generated/sdk_zip.h")
 
-    if(EXISTS "${SDK_ZIP}")
-        add_custom_command(
-            OUTPUT "${SDK_ZIP_H}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-            COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "${SDK_ZIP}" "sdk_zip_data" "${SDK_ZIP_H}"
-            DEPENDS "${SDK_ZIP}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
-            COMMENT "Embedding SDK.zip"
-            VERBATIM
-        )
-    else()
-        # Fallback for local builds without SDK.zip
-        add_custom_command(
-            OUTPUT "${SDK_ZIP_H}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-            COMMAND ${CMAKE_COMMAND} -E echo "#pragma once" > "${SDK_ZIP_H}"
-            COMMAND ${CMAKE_COMMAND} -E echo "#include <vector>" >> "${SDK_ZIP_H}"
-            COMMAND ${CMAKE_COMMAND} -E echo "#include <cstdint>" >> "${SDK_ZIP_H}"
-            COMMAND ${CMAKE_COMMAND} -E echo "static const std::vector<uint8_t> sdk_zip_data = {};" >> "${SDK_ZIP_H}"
-            COMMENT "Creating empty SDK resource (SDK.zip not found)"
-            VERBATIM
-        )
-    endif()
+    # The script now handles missing SDK.zip by creating an empty vector at build-time.
+    add_custom_command(
+        OUTPUT "${SDK_ZIP_H}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "${SDK_ZIP}" "sdk_zip_data" "${SDK_ZIP_H}"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
+        COMMENT "Embedding SDK.zip (if found)"
+        VERBATIM
+    )
     add_custom_target(sdk_resource DEPENDS "${SDK_ZIP_H}")
 endif()

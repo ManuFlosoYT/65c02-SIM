@@ -9,8 +9,12 @@ input_file = sys.argv[1]
 var_name = sys.argv[2]
 output_header = sys.argv[3]
 
-with open(input_file, 'rb') as f:
-    data = f.read()
+data = b''
+if os.path.exists(input_file):
+    with open(input_file, 'rb') as f:
+        data = f.read()
+else:
+    print(f"Warning: {input_file} not found, generating empty vector.")
 
 out = []
 out.append("#pragma once\n")
