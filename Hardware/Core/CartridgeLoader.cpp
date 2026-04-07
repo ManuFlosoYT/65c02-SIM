@@ -189,7 +189,8 @@ DeviceConfig CartridgeLoader::ParseDeviceConfig(const nlohmann::json& devJson) {
 
     // Validate against known list
     if (dev.name != "RAM" && dev.name != "ROM" && dev.name != "VIA" && dev.name != "WAI_DEVICE" && dev.name != "LCD" &&
-        dev.name != "ESP32" && dev.name != "ACIA" && dev.name != "GPU" && dev.name != "SID") {
+        dev.name != "ESP32" && dev.name != "ESP8266" && dev.name != "ACIA" && dev.name != "GPU" && dev.name != "SID" && 
+        dev.name != "SD Card") {
         throw std::runtime_error("Unknown device name: " + dev.name);
     }
 
