@@ -34,6 +34,9 @@ void SDKManager::ExtractBundledSDK() {
         return;
     }
 
+    fs::create_directories("SDK");
+
+    int extracted_count = 0;
     int file_count = (int)mz_zip_reader_get_num_files(&zip_archive);
     for (int i = 0; i < file_count; i++) {
         mz_zip_archive_file_stat file_stat;
@@ -41,23 +44,37 @@ void SDKManager::ExtractBundledSDK() {
             continue;
         }
 
+        std::string filename = file_stat.m_filename;
+        if (filename.starts_with("output/")) {
+            filename = filename.substr(7); // Strip "output/"
+        }
+
+        if (filename.empty()) {
+            continue;
+        }
+
+        fs::path target_path = fs::path("SDK") / filename;
+
         if (mz_zip_reader_is_file_a_directory(&zip_archive, static_cast<mz_uint>(i)) != 0) {
-            fs::create_directories(file_stat.m_filename);
+            fs::create_directories(target_path);
             continue;
         }
 
         // Ensure parent directories exist
-        fs::path file_path(file_stat.m_filename);
-        if (file_path.has_parent_path()) {
-            fs::create_directories(file_path.parent_path());
+        if (target_path.has_parent_path()) {
+            fs::create_directories(target_path.parent_path());
         }
 
         // Extract file (this will overwrite if it exists)
-        if (mz_zip_reader_extract_to_file(&zip_archive, static_cast<mz_uint>(i), file_stat.m_filename, 0) == 0) {
-            std::cerr << "SDKManager: Failed to extract " << file_stat.m_filename << "\n";
+        if (mz_zip_reader_extract_to_file(&zip_archive, static_cast<mz_uint>(i), target_path.string().c_str(), 0) ==
+            0) {
+            std::cerr << "SDKManager: Failed to extract " << target_path << "\n";
+        } else {
+            extracted_count++;
         }
     }
 
+    std::cout << "SDKManager: Extracted " << extracted_count << " files to SDK/ directory" << "\n";
     mz_zip_reader_end(&zip_archive);
 #endif
 }
@@ -79,9 +96,16 @@ void SDKManager::ScanExtractedSDK(AppState& state) {
         std::ranges::sort(list);
     };
 
-    scan_dir("output/cartridge", state.sdk.roms, ".65c");
-    scan_dir("output/midi", state.sdk.midis, ".65c");
-    scan_dir("output/vram", state.sdk.vrams, ".65c");
+    scan_dir("SDK/cartridge", state.sdk.roms, ".65c");
+    scan_dir("SDK/midi", state.sdk.midis, ".65c");
+    scan_dir("SDK/vram", state.sdk.vrams, ".65c");
+
+    if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
+        std::cerr << "SDKManager: No SDK resources found in SDK/ subfolders" << "\n";
+    } else {
+        std::cout << "SDKManager: Found " << state.sdk.roms.size() << " ROMs, " << state.sdk.midis.size()
+                  << " MIDIs, " << state.sdk.vrams.size() << " VRAMs" << "\n";
+    }
 
     state.sdk.loaded = !state.sdk.roms.empty() || !state.sdk.midis.empty() || !state.sdk.vrams.empty();
 }
