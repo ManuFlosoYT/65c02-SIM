@@ -34,7 +34,7 @@ for f in output/rom/*.bin; do
     if [ "$name" == "microDOS" ]; then
         continue
     fi
-    ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" $(get_rom_flags "$name")
+    ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" --type rom $(get_rom_flags "$name")
   fi
 done
 
@@ -46,7 +46,9 @@ echo "Packaging MIDIs into cartridges..."
 for f in output/midi/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
-    ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true
+    ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true --type midi
+    mkdir -p output/midi
+    mv "output/cartridge/$name.65c" "output/midi/"
   fi
 done
 
@@ -55,7 +57,9 @@ echo "Packaging VRAM images into cartridges..."
 for f in output/vram/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
-    ./create-cartridge.sh --vram "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true
+    ./create-cartridge.sh --vram "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true --type vram
+    mkdir -p output/vram
+    mv "output/cartridge/$name.65c" "output/vram/"
   fi
 done
 
