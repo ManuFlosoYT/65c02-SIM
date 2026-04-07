@@ -5,6 +5,8 @@
 
 #include <string>
 #include <vector>
+#include <fstream>
+#include <span>
 
 #include "Frontend/Control/Console.h"
 
@@ -14,16 +16,78 @@ using namespace Hardware;
 
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
-#include <fstream>
 #include <nlohmann/json.hpp>
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
+#include "Frontend/Control/CartridgeUtils.h"
+#else
+#include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #endif
 
 namespace GUI {
 
+static void HandleSDKFileLoading(AppState& state, const std::string& filename, const uint8_t* data, int size) {
+    if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".65c") {
+        state.emulator.Pause();
+        std::string errorMsg;
+        Core::Cartridge cart;
+        if (Core::CartridgeLoader::LoadFromMemory(data, size, cart, errorMsg)) {
+            Control::ApplyCartridgeConfig(state, cart);
+            if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName,
+                                              errorMsg)) {
+                state.rom.bin = filename;
+                state.rom.loaded = true;
+                state.rom.symbols.Clear();
+                state.emulator.ClearProfiler();
+            }
+        } else {
+            std::cerr << "Failed to load cartridge: " << errorMsg << "\n";
+        }
+    } else {
+        std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
+        state.rom.data.assign(dataSpan.begin(), dataSpan.end());
+        state.emulator.Pause();
+        std::string errorMsg;
+        if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename,
+                                          errorMsg)) {
+            Console::Clear();
+            state.rom.bin = filename;
+            state.rom.loaded = true;
+            state.rom.symbols.Clear();
+            state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+            state.emulator.ClearProfiler();
+        }
+    }
+}
+
+static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files, const std::string& subfolder) {
+    for (const auto& file : files) {
+        if (ImGui::Selectable(file.c_str())) {
 #ifdef TARGET_WASM
+            std::string url = "roms/";
+            url += file;
+            WebFileUtils::onFilePickedCallback = [&state, file](const char* filename, const uint8_t* data, int size) {
+                HandleSDKFileLoading(state, filename, data, size);
+            };
+            WebFileUtils::fetch_file(url.c_str(), file.c_str());
+#else
+            std::string path = "output/";
+            path += subfolder;
+            path += "/";
+            path += file;
+            std::ifstream inputStream(path, std::ios::binary);
+            if (inputStream) {
+                std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(inputStream)),
+                                            std::istreambuf_iterator<char>());
+                HandleSDKFileLoading(state, file, buffer.data(), static_cast<int>(buffer.size()));
+            }
+#endif
+            ImGui::CloseCurrentPopup();
+        }
+    }
+}
+
 static void DrawSDKPopup(AppState& state) {
     if (state.sdk.showPopup) {
         ImGui::OpenPopup("SDK ROMs");
@@ -45,53 +109,11 @@ static void DrawSDKPopup(AppState& state) {
             ImGui::NextColumn();
             ImGui::Separator();
 
-            auto draw_column = [&](const std::vector<std::string>& files) {
-                for (const auto& file : files) {
-                    if (ImGui::Selectable(file.c_str())) {
-                        std::string url = "roms/" + file;
-                        WebFileUtils::onFilePickedCallback = [&state, file](const char* filename, const uint8_t* data,
-                                                                      int size) {
-                            if (file.size() > 4 && file.substr(file.size() - 4) == ".65c") {
-                                state.emulator.Pause();
-                                std::string errorMsg;
-                                Core::Cartridge cart;
-                                if (Core::CartridgeLoader::LoadFromMemory(data, size, cart, errorMsg)) {
-                                    Control::ApplyCartridgeConfig(state, cart);
-                                    if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
-                                        state.rom.bin = filename;
-                                        state.rom.loaded = true;
-                                        state.rom.symbols.Clear();
-                                        state.emulator.ClearProfiler();
-                                    }
-                                } else {
-                                    printf("Failed to load cartridge: %s\n", errorMsg.c_str());
-                                }
-                            } else {
-                                state.rom.data.assign(data, data + size);
-                                state.emulator.Pause();
-                                std::string errorMsg;
-                                if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename,
-                                                                  errorMsg)) {
-                                    Console::Clear();
-                                    state.rom.bin = filename;
-                                    state.rom.loaded = true;
-                                    state.rom.symbols.Clear();
-                                    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-                                    state.emulator.ClearProfiler();
-                                }
-                            }
-                        };
-                        WebFileUtils::fetch_file(url.c_str(), file.c_str());
-                        ImGui::CloseCurrentPopup();
-                    }
-                }
-            };
-
-            draw_column(state.sdk.roms);
+            DrawSDKColumn(state, state.sdk.roms, "cartridge");
             ImGui::NextColumn();
-            draw_column(state.sdk.midis);
+            DrawSDKColumn(state, state.sdk.midis, "midi");
             ImGui::NextColumn();
-            draw_column(state.sdk.vrams);
+            DrawSDKColumn(state, state.sdk.vrams, "vram");
             ImGui::NextColumn();
 
             ImGui::Columns(1);
@@ -103,7 +125,6 @@ static void DrawSDKPopup(AppState& state) {
         ImGui::EndPopup();
     }
 }
-#endif
 
 static void DrawConsoleButtonBar(AppState& state) {
     bool cartLoaded = state.emulator.GetCartridge().loaded;
@@ -111,7 +132,8 @@ static void DrawConsoleButtonBar(AppState& state) {
     if (ImGui::Button("Load ROM")) {
 #ifdef TARGET_WASM
         WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-            state.rom.data.assign(data, data + size);
+            std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
+            state.rom.data.assign(dataSpan.begin(), dataSpan.end());
             state.emulator.Pause();
             std::string errorMsg;
             if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename, errorMsg)) {
@@ -123,7 +145,7 @@ static void DrawConsoleButtonBar(AppState& state) {
                 state.emulator.ClearProfiler();
                 state.emulator.ClearCartridge();
             } else {
-                printf("Failed to load ROM: %s\n", errorMsg.c_str());
+                std::cerr << "Failed to load ROM: " << errorMsg << "\n";
             }
         };
         WebFileUtils::open_browser_file_picker(".bin");
@@ -150,15 +172,13 @@ static void DrawConsoleButtonBar(AppState& state) {
 #ifdef TARGET_WASM
         WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
             // Write to virtual FS
-            std::string virtualPath = "/tmp/" + std::string(filename);
+            std::string virtualPath = "/tmp/";
+            virtualPath += filename;
             FILE* f = fopen(virtualPath.c_str(), "wb");
             if (f) {
-                fwrite(data, 1, size, f);
+                fwrite(data, 1, static_cast<size_t>(size), f);
                 fclose(f);
             }
-            // In WASM, we don't use CustomFileDialog for the actual picking, 
-            // but we might use it to show progress or similar if needed.
-            // For now, let's keep it simple.
         };
         WebFileUtils::open_browser_file_picker(".65c");
 #else
@@ -169,9 +189,9 @@ static void DrawConsoleButtonBar(AppState& state) {
         }
     }
 
-#ifdef TARGET_WASM
     ImGui::SameLine();
     if (ImGui::Button("SDK")) {
+#ifdef TARGET_WASM
         if (!state.sdk.loaded) {
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
                 try {
@@ -182,16 +202,18 @@ static void DrawConsoleButtonBar(AppState& state) {
                     state.sdk.loaded = true;
                     state.sdk.showPopup = true;
                 } catch (...) {
-                    printf("Failed to parse roms.json\n");
+                    std::cerr << "Failed to parse roms.json" << "\n";
                 }
             };
             WebFileUtils::fetch_file("roms/roms.json", "roms.json");
         } else {
             state.sdk.showPopup = true;
         }
+#else
+        state.sdk.showPopup = true;
+#endif
     }
     DrawSDKPopup(state);
-#endif
 
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {
@@ -225,7 +247,7 @@ static void HandleQueueCharacters(AppState& state, const ImGuiIO& imgui_io) {
             if (chr == '\r' || chr == '\n') {
                 continue;
             }
-            state.emulator.InjectKey((char)chr);
+            state.emulator.InjectKey(static_cast<char>(chr));
         }
     }
 }
@@ -286,7 +308,8 @@ static void DrawCopyOutputModal() {
         if (fullText.empty() || fullText.length() < 10) {
             fullText.clear();
             for (const auto& line : Console::GetLines()) {
-                fullText += line + "\n";
+                fullText += line;
+                fullText += "\n";
             }
             fullText += Console::GetCurrentLine();
         }
