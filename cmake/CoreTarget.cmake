@@ -28,6 +28,9 @@ target_link_libraries(65c02_core PUBLIC
 )
 if(NOT EMSCRIPTEN)
     target_link_libraries(65c02_core PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+    if(WIN32)
+        target_link_libraries(65c02_core PUBLIC ws2_32 crypt32 pathcch bcrypt)
+    endif()
 endif()
 
 # Test Variant of Core Library
@@ -50,4 +53,7 @@ target_link_libraries(65c02_core_test PUBLIC
 )
 if(NOT EMSCRIPTEN)
     target_link_libraries(65c02_core_test PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+    if(WIN32)
+        target_link_libraries(65c02_core_test PUBLIC ws2_32 crypt32 pathcch bcrypt)
+    endif()
 endif()
