@@ -6,7 +6,8 @@
 NAME="My Cartridge"
 AUTHOR="Unknown"
 DESCRIPTION=""
-VERSION="1.0"
+VERSION="1.1"
+TYPE="rom"
 ROM_FILE=""
 VRAM_FILE=""
 SD_IMAGE=""
@@ -33,6 +34,7 @@ while [[ "$#" -gt 0 ]]; do
         --sid) SID="$2"; shift 2 ;;
         --esp) ESP="$2"; shift 2 ;;
         --sd) SD_ENABLED="$2"; shift 2 ;;
+        --type) TYPE="$2"; shift 2 ;;
         *) 
             if [ -z "$ROM_FILE" ] && [[ ! "$1" == --* ]]; then 
                 ROM_FILE="$1"
@@ -70,12 +72,13 @@ TEMP_DIR=$(mktemp -d)
 # Build manifest.json manually to handle optional fields
 {
   echo "{"
-  echo "  \"version\": \"2.1\","
+  echo "  \"version\": \"2.2\","
   echo "  \"metadata\": {"
   echo "    \"name\": \"$NAME\","
   echo "    \"author\": \"$AUTHOR\","
   echo "    \"description\": \"$DESCRIPTION\","
-  echo "    \"version\": \"$VERSION\""
+  echo "    \"version\": \"$VERSION\","
+  echo "    \"type\": \"$TYPE\""
   echo "  },"
   [ -n "$ROM_FILE" ] && echo "  \"rom\": \"rom.bin\","
   [ -n "$VRAM_FILE" ] && echo "  \"vram\": \"vram.bin\","
