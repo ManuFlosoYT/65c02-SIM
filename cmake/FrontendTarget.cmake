@@ -24,6 +24,7 @@ if(WIN32)
     add_executable(SIM_65C02 WIN32
         ${FRONTEND_SOURCES}
         "${ICON_RESOURCE_RC}"
+        "${SDK_ZIP_H}"
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
         ${imguicolortextedit_SOURCE_DIR}/TextEditor.cpp
     )
@@ -71,6 +72,7 @@ if(WIN32)
 else()
     add_executable(SIM_65C02 
         ${FRONTEND_SOURCES}
+        "${SDK_ZIP_H}"
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
         ${imguicolortextedit_SOURCE_DIR}/TextEditor.cpp
     )
