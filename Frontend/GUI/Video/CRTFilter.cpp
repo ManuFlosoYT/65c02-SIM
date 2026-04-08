@@ -1,5 +1,6 @@
 #include "Frontend/GUI/Video/CRTFilter.h"
 
+#include <bit>
 #include <array>
 #include <iostream>
 
@@ -101,7 +102,7 @@ void CRTFilter::Init(int width, int height) {
     glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
     glEnableVertexAttribArray(uvLoc);
     uintptr_t offset = 2 * sizeof(float);
-    glVertexAttribPointer(uvLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<const void*>(offset));
+    glVertexAttribPointer(uvLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), std::bit_cast<const void*>(offset));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
