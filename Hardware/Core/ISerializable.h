@@ -18,7 +18,6 @@ class ISerializable {
     virtual bool SaveState(std::ostream& out) const = 0;
     virtual bool LoadState(std::istream& inStream) = 0;
 
-   protected:
     template <typename T>
     static void Serialize(std::ostream& out, const T& value) {
         static_assert(std::is_trivially_copyable_v<T>, "Only trivially copyable types can be serialized using this helper");
