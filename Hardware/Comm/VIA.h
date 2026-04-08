@@ -147,7 +147,7 @@ inline void VIA::SetPortBCallback(std::function<void(Byte)> callback) { port_b_c
 
 inline bool VIA::isIRQAsserted() const { return (ifr & 0x80) != 0; }
 
-inline void VIA::Clock() {  // NOLINT(readability-function-cognitive-complexity)
+inline void VIA::Clock() {
     if (!anyActive) {
         return;
     }
