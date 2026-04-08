@@ -132,7 +132,7 @@ void ESP8266::ConnectSSL(int linkId, const std::string& host, int port) {
     conn.StopRxThread();
     conn.sslStream = std::make_unique<asio::ssl::stream<asio::ip::tcp::socket>>(ioContext, sslContext);
 
-    if (!SSL_set_tlsext_host_name(conn.sslStream->native_handle(), host.c_str())) {  // NOLINT
+    if (!SSL_set_tlsext_host_name(conn.sslStream->native_handle(), host.c_str())) {
         conn.sslStream.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;
