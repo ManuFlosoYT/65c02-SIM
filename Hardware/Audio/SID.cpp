@@ -1,8 +1,11 @@
 #include "Hardware/Audio/SID.h"
+#include "Hardware/Core/ISerializable.h"
 
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <mutex>
+#include <span>
 #include <cstring>
 #include <iostream>
 #include <vector>
@@ -211,6 +214,7 @@ void SID::GenerateAudio(int16_t* buffer, int length) {
     }  // Unlock mutex
 
     // 2. Generation Phase (No Lock)
+    std::span<int16_t> sampleBuf(buffer, static_cast<size_t>(length));
     for (int i = 0; i < length; ++i) {
         double mix = 0.0;
         for (auto& voice : voices) {
@@ -225,7 +229,7 @@ void SID::GenerateAudio(int16_t* buffer, int length) {
         mix = std::min(mix, 1.0);
         mix = std::max(mix, -1.0);
 
-        buffer[i] = static_cast<int16_t>(mix * 5000.0);
+        sampleBuf[static_cast<size_t>(i)] = static_cast<int16_t>(mix * 5000.0);
     }
 }
 
@@ -317,67 +321,66 @@ double Oscillator::Next(int sampleRate) {
 }
 
 bool ADSREnvelope::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&state), sizeof(state));
-    out.write(reinterpret_cast<const char*>(&level), sizeof(level));
-    out.write(reinterpret_cast<const char*>(&attackRate), sizeof(attackRate));
-    out.write(reinterpret_cast<const char*>(&decayRate), sizeof(decayRate));
-    out.write(reinterpret_cast<const char*>(&sustainLevel), sizeof(sustainLevel));
-    out.write(reinterpret_cast<const char*>(&releaseRate), sizeof(releaseRate));
+    Hardware::ISerializable::Serialize(out, state);
+    Hardware::ISerializable::Serialize(out, level);
+    Hardware::ISerializable::Serialize(out, attackRate);
+    Hardware::ISerializable::Serialize(out, decayRate);
+    Hardware::ISerializable::Serialize(out, sustainLevel);
+    Hardware::ISerializable::Serialize(out, releaseRate);
     return out.good();
 }
 
 bool ADSREnvelope::LoadState(std::istream& inStream) {
-    inStream.read(reinterpret_cast<char*>(&state), sizeof(state));
-    inStream.read(reinterpret_cast<char*>(&level), sizeof(level));
-    inStream.read(reinterpret_cast<char*>(&attackRate), sizeof(attackRate));
-    inStream.read(reinterpret_cast<char*>(&decayRate), sizeof(decayRate));
-    inStream.read(reinterpret_cast<char*>(&sustainLevel), sizeof(sustainLevel));
-    inStream.read(reinterpret_cast<char*>(&releaseRate), sizeof(releaseRate));
+    Hardware::ISerializable::Deserialize(inStream, state);
+    Hardware::ISerializable::Deserialize(inStream, level);
+    Hardware::ISerializable::Deserialize(inStream, attackRate);
+    Hardware::ISerializable::Deserialize(inStream, decayRate);
+    Hardware::ISerializable::Deserialize(inStream, sustainLevel);
+    Hardware::ISerializable::Deserialize(inStream, releaseRate);
     return inStream.good();
 }
 
 bool Oscillator::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&accumulator), sizeof(accumulator));
-    out.write(reinterpret_cast<const char*>(&frequency), sizeof(frequency));
-    out.write(reinterpret_cast<const char*>(&pulseWidth), sizeof(pulseWidth));
-    out.write(reinterpret_cast<const char*>(&control), sizeof(control));
-    out.write(reinterpret_cast<const char*>(&noiseShift), sizeof(noiseShift));
+    Hardware::ISerializable::Serialize(out, accumulator);
+    Hardware::ISerializable::Serialize(out, frequency);
+    Hardware::ISerializable::Serialize(out, pulseWidth);
+    Hardware::ISerializable::Serialize(out, control);
+    Hardware::ISerializable::Serialize(out, noiseShift);
     env.SaveState(out);
     return out.good();
 }
 
 bool Oscillator::LoadState(std::istream& inStream) {
-    inStream.read(reinterpret_cast<char*>(&accumulator), sizeof(accumulator));
-    inStream.read(reinterpret_cast<char*>(&frequency), sizeof(frequency));
-    inStream.read(reinterpret_cast<char*>(&pulseWidth), sizeof(pulseWidth));
-    inStream.read(reinterpret_cast<char*>(&control), sizeof(control));
-    inStream.read(reinterpret_cast<char*>(&noiseShift), sizeof(noiseShift));
+    Hardware::ISerializable::Deserialize(inStream, accumulator);
+    Hardware::ISerializable::Deserialize(inStream, frequency);
+    Hardware::ISerializable::Deserialize(inStream, pulseWidth);
+    Hardware::ISerializable::Deserialize(inStream, control);
+    Hardware::ISerializable::Deserialize(inStream, noiseShift);
     env.LoadState(inStream);
     return inStream.good();
 }
 
 bool SID::SaveState(std::ostream& out) const {
     std::lock_guard<std::mutex> lock(sidMutex);
-    out.write(reinterpret_cast<const char*>(registers.data()),
-              static_cast<std::streamsize>(registers.size()));
+    ISerializable::Serialize(out, registers);
     for (const auto& voice : voices) {
         voice.SaveState(out);
     }
-    out.write(reinterpret_cast<const char*>(&volumeRegister), sizeof(volumeRegister));
-    out.write(reinterpret_cast<const char*>(&soundEnabled), sizeof(soundEnabled));
-    out.write(reinterpret_cast<const char*>(&emulationPaused), sizeof(emulationPaused));
+    ISerializable::Serialize(out, volumeRegister);
+    ISerializable::Serialize(out, soundEnabled);
+    ISerializable::Serialize(out, emulationPaused);
     return out.good();
 }
 
 bool SID::LoadState(std::istream& inStream) {
     std::lock_guard<std::mutex> lock(sidMutex);
-    inStream.read(reinterpret_cast<char*>(registers.data()), static_cast<std::streamsize>(registers.size()));
+    ISerializable::Deserialize(inStream, registers);
     for (auto& voice : voices) {
         voice.LoadState(inStream);
     }
-    inStream.read(reinterpret_cast<char*>(&volumeRegister), sizeof(volumeRegister));
-    inStream.read(reinterpret_cast<char*>(&soundEnabled), sizeof(soundEnabled));
-    inStream.read(reinterpret_cast<char*>(&emulationPaused), sizeof(emulationPaused));
+    ISerializable::Deserialize(inStream, volumeRegister);
+    ISerializable::Deserialize(inStream, soundEnabled);
+    ISerializable::Deserialize(inStream, emulationPaused);
     UpdateAudioState();
     return inStream.good();
 }
