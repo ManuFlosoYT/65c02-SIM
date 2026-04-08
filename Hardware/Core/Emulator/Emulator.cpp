@@ -23,7 +23,7 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
         return true;
     }
 
-    FILE* file = fopen(bin.c_str(), "rb");  // NOLINT
+    FILE* file = fopen(bin.c_str(), "rb");
     if (file == nullptr) {
         errorMsg = "Error opening file " + bin;
         std::cerr << errorMsg << "\n";
@@ -34,7 +34,7 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     long fileSize = ftell(file);
     if (fileSize != ROM_SIZE) {
         errorMsg = "Error: File size mismatch (expected 32KB, got " + std::to_string(fileSize) + ")";
-        (void)fclose(file);  // NOLINT
+        (void)fclose(file);
         std::cerr << errorMsg << "\n";
         return false;
     }
@@ -43,11 +43,11 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::vector<uint8_t> buffer(ROM_SIZE);
     if (fread(buffer.data(), 1, ROM_SIZE, file) != ROM_SIZE) {
         errorMsg = "Error reading file " + bin;
-        (void)fclose(file);  // NOLINT
+        (void)fclose(file);
         std::cerr << errorMsg << "\n";
         return false;
     }
-    (void)fclose(file);  // NOLINT
+    (void)fclose(file);
 
     return InitFromMemory(buffer.data(), buffer.size(), bin, errorMsg);
 }
@@ -63,7 +63,7 @@ bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::strin
 
     if (size == ROM_SIZE) {
         for (size_t i = 0; i < ROM_SIZE; ++i) {
-            rom.WriteDirect(static_cast<Word>(i), data[i]);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            rom.WriteDirect(static_cast<Word>(i), data[i]);
         }
     } else if (size == 0) {
         // VRAM only cartridge or empty ROM. Fill with HLT (0xDB) and set reset vector to self
