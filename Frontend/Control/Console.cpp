@@ -3,9 +3,9 @@
 namespace Console {
 
 namespace {
-std::vector<std::string> consoleLines;  // NOLINT
-std::string currentLine;                // NOLINT
-int cursorX = 0;                        // NOLINT
+std::vector<std::string> consoleLines;
+std::string currentLine;
+int cursorX = 0;
 }  // namespace
 
 const std::vector<std::string>& GetLines() { return consoleLines; }
@@ -48,40 +48,40 @@ void Print(const std::string& message) {
 
 bool SaveState(std::ostream& out) {
     size_t linesCount = consoleLines.size();
-    out.write(reinterpret_cast<const char*>(&linesCount), sizeof(linesCount));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&linesCount), sizeof(linesCount));
     for (const auto& line : consoleLines) {
         size_t len = line.size();
-        out.write(reinterpret_cast<const char*>(&len), sizeof(len));  // NOLINT
+        out.write(reinterpret_cast<const char*>(&len), sizeof(len));
         out.write(line.c_str(), static_cast<std::streamsize>(len));
     }
 
     size_t currentLen = currentLine.size();
-    out.write(reinterpret_cast<const char*>(&currentLen), sizeof(currentLen));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&currentLen), sizeof(currentLen));
     out.write(currentLine.c_str(), static_cast<std::streamsize>(currentLen));
 
-    out.write(reinterpret_cast<const char*>(&cursorX), sizeof(cursorX));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&cursorX), sizeof(cursorX));
 
     return out.good();
 }
 
 bool LoadState(std::istream& inputStream) {
     size_t linesCount = 0;
-    inputStream.read(reinterpret_cast<char*>(&linesCount), sizeof(linesCount));  // NOLINT
+    inputStream.read(reinterpret_cast<char*>(&linesCount), sizeof(linesCount));
     consoleLines.clear();
     for (size_t i = 0; i < linesCount; ++i) {
         size_t len = 0;
-        inputStream.read(reinterpret_cast<char*>(&len), sizeof(len));  // NOLINT
+        inputStream.read(reinterpret_cast<char*>(&len), sizeof(len));
         std::string line(len, '\0');
         inputStream.read(line.data(), static_cast<std::streamsize>(len));
         consoleLines.push_back(line);
     }
 
     size_t currentLen = 0;
-    inputStream.read(reinterpret_cast<char*>(&currentLen), sizeof(currentLen));  // NOLINT
+    inputStream.read(reinterpret_cast<char*>(&currentLen), sizeof(currentLen));
     currentLine.resize(currentLen);
     inputStream.read(currentLine.data(), static_cast<std::streamsize>(currentLen));
 
-    inputStream.read(reinterpret_cast<char*>(&cursorX), sizeof(cursorX));  // NOLINT
+    inputStream.read(reinterpret_cast<char*>(&cursorX), sizeof(cursorX));
 
     return inputStream.good();
 }
