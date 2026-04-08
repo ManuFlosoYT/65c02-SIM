@@ -1,4 +1,5 @@
 #pragma once
+#include <bit>
 #include <cstdint>
 #include <iostream>
 #include <type_traits>
@@ -22,25 +23,25 @@ class ISerializable {
     template <typename T>
     static void Serialize(std::ostream& out, const T& value) {
         static_assert(std::is_trivially_copyable_v<T>, "Only trivially copyable types can be serialized using this helper");
-        out.write(reinterpret_cast<const char*>(&value), sizeof(T));
+        out.write(std::bit_cast<const char*>(&value), sizeof(T));
     }
 
     template <typename T>
     static void Serialize(std::ostream& out, const std::vector<T>& vec) {
         static_assert(std::is_trivially_copyable_v<T>, "Only vectors of trivially copyable types can be serialized using this helper");
-        out.write(reinterpret_cast<const char*>(vec.data()), static_cast<std::streamsize>(vec.size() * sizeof(T)));
+        out.write(std::bit_cast<const char*>(vec.data()), static_cast<std::streamsize>(vec.size() * sizeof(T)));
     }
 
     template <typename T>
     static void Deserialize(std::istream& inputStream, T& value) {
         static_assert(std::is_trivially_copyable_v<T>, "Only trivially copyable types can be deserialized using this helper");
-        inputStream.read(reinterpret_cast<char*>(&value), sizeof(T));
+        inputStream.read(std::bit_cast<char*>(&value), sizeof(T));
     }
 
     template <typename T>
     static void Deserialize(std::istream& inputStream, std::vector<T>& vec) {
         static_assert(std::is_trivially_copyable_v<T>, "Only vectors of trivially copyable types can be deserialized using this helper");
-        inputStream.read(reinterpret_cast<char*>(vec.data()), static_cast<std::streamsize>(vec.size() * sizeof(T)));
+        inputStream.read(std::bit_cast<char*>(vec.data()), static_cast<std::streamsize>(vec.size() * sizeof(T)));
     }
 
     static void Serialize(std::ostream& out, const std::string& str) {
