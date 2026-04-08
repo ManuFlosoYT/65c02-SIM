@@ -26,21 +26,21 @@ void Bus::ClearDevices() {
 
 bool Bus::SaveState(std::ostream& out) const {
     auto deviceCount = static_cast<uint32_t>(registeredDevices.size());
-    out.write(reinterpret_cast<const char*>(&deviceCount), sizeof(deviceCount));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&deviceCount), sizeof(deviceCount));
 
     for (const auto& reg : registeredDevices) {
-        out.write(reinterpret_cast<const char*>(&reg.startAddress),  // NOLINT
+        out.write(reinterpret_cast<const char*>(&reg.startAddress),
                   sizeof(reg.startAddress));
-        out.write(reinterpret_cast<const char*>(&reg.endAddress),  // NOLINT
+        out.write(reinterpret_cast<const char*>(&reg.endAddress),
                   sizeof(reg.endAddress));
-        out.write(reinterpret_cast<const char*>(&reg.enabled),  // NOLINT
+        out.write(reinterpret_cast<const char*>(&reg.enabled),
                   sizeof(reg.enabled));
-        out.write(reinterpret_cast<const char*>(&reg.ignoreCollision),  // NOLINT
+        out.write(reinterpret_cast<const char*>(&reg.ignoreCollision),
                   sizeof(reg.ignoreCollision));
 
         std::string name = reg.device->GetName();
         auto nameLen = static_cast<uint32_t>(name.length());
-        out.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));  // NOLINT
+        out.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
         out.write(name.c_str(), nameLen);
     }
     return out.good();
@@ -48,21 +48,21 @@ bool Bus::SaveState(std::ostream& out) const {
 
 bool Bus::LoadState(std::istream& inStream) {
     uint32_t deviceCount = 0;
-    inStream.read(reinterpret_cast<char*>(&deviceCount), sizeof(deviceCount));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(&deviceCount), sizeof(deviceCount));
 
     for (uint32_t i = 0; i < deviceCount; ++i) {
         Word startAddress = 0;
         Word endAddress = 0;
         bool enabled = false;
         bool ignoreCollision = false;
-        inStream.read(reinterpret_cast<char*>(&startAddress), sizeof(startAddress));  // NOLINT
-        inStream.read(reinterpret_cast<char*>(&endAddress), sizeof(endAddress));      // NOLINT
-        inStream.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));            // NOLINT
-        inStream.read(reinterpret_cast<char*>(&ignoreCollision),                      // NOLINT
+        inStream.read(reinterpret_cast<char*>(&startAddress), sizeof(startAddress));
+        inStream.read(reinterpret_cast<char*>(&endAddress), sizeof(endAddress));
+        inStream.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));
+        inStream.read(reinterpret_cast<char*>(&ignoreCollision),
                       sizeof(ignoreCollision));
 
         uint32_t nameLen = 0;
-        inStream.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));  // NOLINT
+        inStream.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
         if (nameLen > 256) { return false; }
         std::string name(nameLen, '\0');
         inStream.read(name.data(), nameLen);
@@ -96,7 +96,7 @@ void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
         for (int i = startAddress; i <= (int)endAddress; ++i) {
             if (deviceMap.at(i).device != nullptr) {
                 std::array<char, 10> hexStr{};
-                snprintf(hexStr.data(), hexStr.size(), "%04X", i); // NOLINT
+                snprintf(hexStr.data(), hexStr.size(), "%04X", i);
                 throw std::runtime_error("Memory collision detected while registering device: " + device->GetName() +
                                          " at address 0x" + hexStr.data());
             }
