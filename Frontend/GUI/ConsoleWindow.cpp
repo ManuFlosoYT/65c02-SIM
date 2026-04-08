@@ -5,7 +5,6 @@
 
 #include <string>
 #include <vector>
-#include <span>
 
 #include "Frontend/Control/Console.h"
 
@@ -21,8 +20,9 @@ using namespace Hardware;
 #include "Frontend/Control/CartridgeUtils.h"
 #else
 #include "Hardware/Core/CartridgeLoader.h"
-#include "Frontend/Control/CartridgeUtils.h"
+#include "Frontend/GUI/SDKUpdatePopup.h"
 #include "Frontend/Control/SDKManager.h"
+#include "Frontend/Control/CartridgeUtils.h"
 #endif
 
 namespace GUI {
@@ -269,6 +269,7 @@ static void DrawConsoleButtonBar(AppState& state) {
     ImGui::SameLine();
     DrawSDKButton(state);
     DrawSDKPopup(state);
+    DrawSDKUpdatePopup(state);
 
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {
