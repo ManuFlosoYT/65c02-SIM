@@ -102,7 +102,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
             std::string errorMsg;
             bool initSuccess = false;
             if (!state.rom.data.empty()) {
-                initSuccess = state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg);
+                initSuccess = state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg);
             } else {
                 initSuccess = state.emulator.Init(state.rom.bin, errorMsg);
             }

@@ -34,7 +34,7 @@ static void HandleSDKFileLoading(AppState& state, const std::string& filename, c
         Core::Cartridge cart;
         if (Core::CartridgeLoader::LoadFromMemory(data, size, cart, errorMsg)) {
             Control::ApplyCartridgeConfig(state, cart);
-            if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName,
+            if (state.emulator.InitFromMemory(cart.romData, cart.romFileName,
                                               errorMsg)) {
                 state.rom.bin = filename;
                 state.rom.loaded = true;
@@ -49,7 +49,7 @@ static void HandleSDKFileLoading(AppState& state, const std::string& filename, c
         state.rom.data.assign(dataSpan.begin(), dataSpan.end());
         state.emulator.Pause();
         std::string errorMsg;
-        if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename,
+        if (state.emulator.InitFromMemory(state.rom.data, filename,
                                           errorMsg)) {
             Console::Clear();
             state.rom.bin = filename;
@@ -86,7 +86,7 @@ static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files
             state.emulator.Pause();
             if (Core::CartridgeLoader::Load(path, cart, errorMsg)) {
                 Control::ApplyCartridgeConfig(state, cart);
-                if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
+                if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
                     Console::Clear();
                     state.rom.bin = path;
                     state.rom.loaded = true;
@@ -159,7 +159,7 @@ static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
             state.rom.data.assign(dataSpan.begin(), dataSpan.end());
             state.emulator.Pause();
             std::string errorMsg;
-            if (state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), filename, errorMsg)) {
+            if (state.emulator.InitFromMemory(state.rom.data, filename, errorMsg)) {
                 Console::Clear();
                 state.rom.bin = filename;
                 state.rom.loaded = true;

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 
 
@@ -23,49 +24,44 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
         return true;
     }
 
-    FILE* file = fopen(bin.c_str(), "rb");
-    if (file == nullptr) {
+    std::ifstream file(bin, std::ios::binary);
+    if (!file.is_open()) {
         errorMsg = "Error opening file " + bin;
         std::cerr << errorMsg << "\n";
         return false;
     }
 
-    (void)fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
+    std::uintmax_t fileSize = std::filesystem::file_size(bin);
     if (fileSize != ROM_SIZE) {
         errorMsg = "Error: File size mismatch (expected 32KB, got " + std::to_string(fileSize) + ")";
-        (void)fclose(file);
         std::cerr << errorMsg << "\n";
         return false;
     }
-    (void)fseek(file, 0, SEEK_SET);
 
     std::vector<uint8_t> buffer(ROM_SIZE);
-    if (fread(buffer.data(), 1, ROM_SIZE, file) != ROM_SIZE) {
+    if (!file.read(reinterpret_cast<char*>(buffer.data()), ROM_SIZE)) {
         errorMsg = "Error reading file " + bin;
-        (void)fclose(file);
         std::cerr << errorMsg << "\n";
         return false;
     }
-    (void)fclose(file);
 
-    return InitFromMemory(buffer.data(), buffer.size(), bin, errorMsg);
+    return InitFromMemory(buffer, bin, errorMsg);
 }
 
-bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::string& name, std::string& errorMsg) {
+bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& name, std::string& errorMsg) {
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
 
-    if (size != ROM_SIZE && size != 0) {
-        errorMsg = "Error: ROM data size mismatch (expected 32KB or 0, got " + std::to_string(size) + ")";
+    if (data.size() != ROM_SIZE && !data.empty()) {
+        errorMsg = "Error: ROM data size mismatch (expected 32KB or 0, got " + std::to_string(data.size()) + ")";
         std::cerr << errorMsg << "\n";
         return false;
     }
 
-    if (size == ROM_SIZE) {
+    if (data.size() == ROM_SIZE) {
         for (size_t i = 0; i < ROM_SIZE; ++i) {
             rom.WriteDirect(static_cast<Word>(i), data[i]);
         }
-    } else if (size == 0) {
+    } else if (data.empty()) {
         // VRAM only cartridge or empty ROM. Fill with HLT (0xDB) and set reset vector to self
         for (size_t i = 0; i < ROM_SIZE; ++i) {
             rom.WriteDirect(static_cast<Word>(i), 0xDB); 
@@ -76,7 +72,7 @@ bool Emulator::InitFromMemory(const uint8_t* data, size_t size, const std::strin
 
     currentBinPath = name;
     SetupHardware();
-    std::cout << "Loaded ROM from memory: " << name << " (" << size << " bytes)\n";
+    std::cout << "Loaded ROM from memory: " << name << " (" << data.size() << " bytes)\n";
 
     try {
 #ifndef TARGET_WASM

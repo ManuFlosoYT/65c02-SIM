@@ -10,7 +10,7 @@ public:
 
     void SetUp() override {
         std::string errorMsg;
-        emulator.InitFromMemory(nullptr, 0, "", errorMsg);
+        emulator.InitFromMemory({}, "", errorMsg);
         
         // Let's set up memory to test WAI
         // 0x8000: WAI (0xCB)

@@ -42,7 +42,7 @@ static void HandleCartridgeFilePicker(AppState& state) {
             if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
                 Control::ApplyCartridgeConfig(state, cart);
                 ImGui::OpenPopup("Cartridge Loaded");
-                if (state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg)) {
+                if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
                     state.rom.bin = filePathName;
                     state.rom.loaded = true;
                     state.rom.symbols.Clear();

@@ -19,7 +19,7 @@ public:
     void SetUp() override {
         std::string errorMsg;
         // Init with empty ROM
-        emulator.InitFromMemory(nullptr, 0, "", errorMsg);
+        emulator.InitFromMemory({}, "", errorMsg);
     }
 
     void TearDown() override {

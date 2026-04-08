@@ -39,7 +39,7 @@ static void HandleReset(AppState& state) {
             Core::Cartridge cart;
             if (Core::CartridgeLoader::Load(path, cart, errorMsg)) {
                 Control::ApplyCartridgeConfig(state, cart);
-                state.emulator.InitFromMemory(cart.romData.data(), cart.romData.size(), cart.romFileName, errorMsg);
+                state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg);
             } else {
                 std::cerr << "Failed to reload cartridge from " << path << ": " << errorMsg << "\n";
                 state.emulator.SetupHardware();
@@ -53,11 +53,11 @@ static void HandleReset(AppState& state) {
     } else if (state.rom.loaded) {
         std::string errorMsg;
 #ifdef TARGET_WASM
-        if (!state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg)) {
+        if (!state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg)) {
 #else
         bool initSuccess = false;
         if (!state.rom.data.empty()) {
-            initSuccess = state.emulator.InitFromMemory(state.rom.data.data(), state.rom.data.size(), state.rom.bin, errorMsg);
+            initSuccess = state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg);
         } else {
             initSuccess = state.emulator.Init(state.rom.bin, errorMsg);
         }

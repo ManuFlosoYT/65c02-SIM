@@ -128,7 +128,7 @@ static void HandleCompileAndRun(Control::AppState& state) {
     if (result.success && !result.binary.empty()) {
         state.emulator.Pause();
         std::string errorMsg;
-        if (state.emulator.InitFromMemory(result.binary.data(), result.binary.size(), "compiled.bin", errorMsg)) {
+        if (state.emulator.InitFromMemory(result.binary, "compiled.bin", errorMsg)) {
             state.rom.bin = "compiled.bin";
             state.rom.data = result.binary;
             state.rom.loaded = true;
