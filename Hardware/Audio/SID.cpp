@@ -127,7 +127,7 @@ Byte SID::Read(Word addr) {
     return registers.at(addr & 0x1F);
 }
 
-void SID::Write(Word addr, Byte data) {  // NOLINT(bugprone-easily-swappable-parameters)
+void SID::Write(Word addr, Byte data) {
     std::lock_guard<std::mutex> lock(sidMutex);
     uint8_t reg = addr & 0x1F;
     registers.at(reg) = data;
@@ -137,7 +137,7 @@ void SID::Write(Word addr, Byte data) {  // NOLINT(bugprone-easily-swappable-par
 }
 
 void SID::AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
-                        int total_amount) {  // NOLINT(bugprone-easily-swappable-parameters)
+                        int total_amount) {
     if (additional_amount > 0) {
         SID* sid = static_cast<SID*>(userdata);
         int samples = static_cast<int>(additional_amount / sizeof(int16_t));
@@ -225,7 +225,7 @@ void SID::GenerateAudio(int16_t* buffer, int length) {
         mix = std::min(mix, 1.0);
         mix = std::max(mix, -1.0);
 
-        buffer[i] = static_cast<int16_t>(mix * 5000.0);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        buffer[i] = static_cast<int16_t>(mix * 5000.0);
     }
 }
 
@@ -317,67 +317,67 @@ double Oscillator::Next(int sampleRate) {
 }
 
 bool ADSREnvelope::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&state), sizeof(state));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&level), sizeof(level));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&attackRate), sizeof(attackRate));      // NOLINT
-    out.write(reinterpret_cast<const char*>(&decayRate), sizeof(decayRate));        // NOLINT
-    out.write(reinterpret_cast<const char*>(&sustainLevel), sizeof(sustainLevel));  // NOLINT
-    out.write(reinterpret_cast<const char*>(&releaseRate), sizeof(releaseRate));    // NOLINT
+    out.write(reinterpret_cast<const char*>(&state), sizeof(state));
+    out.write(reinterpret_cast<const char*>(&level), sizeof(level));
+    out.write(reinterpret_cast<const char*>(&attackRate), sizeof(attackRate));
+    out.write(reinterpret_cast<const char*>(&decayRate), sizeof(decayRate));
+    out.write(reinterpret_cast<const char*>(&sustainLevel), sizeof(sustainLevel));
+    out.write(reinterpret_cast<const char*>(&releaseRate), sizeof(releaseRate));
     return out.good();
 }
 
 bool ADSREnvelope::LoadState(std::istream& inStream) {
-    inStream.read(reinterpret_cast<char*>(&state), sizeof(state));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&level), sizeof(level));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&attackRate), sizeof(attackRate));      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&decayRate), sizeof(decayRate));        // NOLINT
-    inStream.read(reinterpret_cast<char*>(&sustainLevel), sizeof(sustainLevel));  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&releaseRate), sizeof(releaseRate));    // NOLINT
+    inStream.read(reinterpret_cast<char*>(&state), sizeof(state));
+    inStream.read(reinterpret_cast<char*>(&level), sizeof(level));
+    inStream.read(reinterpret_cast<char*>(&attackRate), sizeof(attackRate));
+    inStream.read(reinterpret_cast<char*>(&decayRate), sizeof(decayRate));
+    inStream.read(reinterpret_cast<char*>(&sustainLevel), sizeof(sustainLevel));
+    inStream.read(reinterpret_cast<char*>(&releaseRate), sizeof(releaseRate));
     return inStream.good();
 }
 
 bool Oscillator::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&accumulator), sizeof(accumulator));  // NOLINT
-    out.write(reinterpret_cast<const char*>(&frequency), sizeof(frequency));      // NOLINT
-    out.write(reinterpret_cast<const char*>(&pulseWidth), sizeof(pulseWidth));    // NOLINT
-    out.write(reinterpret_cast<const char*>(&control), sizeof(control));          // NOLINT
-    out.write(reinterpret_cast<const char*>(&noiseShift), sizeof(noiseShift));    // NOLINT
+    out.write(reinterpret_cast<const char*>(&accumulator), sizeof(accumulator));
+    out.write(reinterpret_cast<const char*>(&frequency), sizeof(frequency));
+    out.write(reinterpret_cast<const char*>(&pulseWidth), sizeof(pulseWidth));
+    out.write(reinterpret_cast<const char*>(&control), sizeof(control));
+    out.write(reinterpret_cast<const char*>(&noiseShift), sizeof(noiseShift));
     env.SaveState(out);
     return out.good();
 }
 
 bool Oscillator::LoadState(std::istream& inStream) {
-    inStream.read(reinterpret_cast<char*>(&accumulator), sizeof(accumulator));  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&frequency), sizeof(frequency));      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&pulseWidth), sizeof(pulseWidth));    // NOLINT
-    inStream.read(reinterpret_cast<char*>(&control), sizeof(control));          // NOLINT
-    inStream.read(reinterpret_cast<char*>(&noiseShift), sizeof(noiseShift));    // NOLINT
+    inStream.read(reinterpret_cast<char*>(&accumulator), sizeof(accumulator));
+    inStream.read(reinterpret_cast<char*>(&frequency), sizeof(frequency));
+    inStream.read(reinterpret_cast<char*>(&pulseWidth), sizeof(pulseWidth));
+    inStream.read(reinterpret_cast<char*>(&control), sizeof(control));
+    inStream.read(reinterpret_cast<char*>(&noiseShift), sizeof(noiseShift));
     env.LoadState(inStream);
     return inStream.good();
 }
 
 bool SID::SaveState(std::ostream& out) const {
     std::lock_guard<std::mutex> lock(sidMutex);
-    out.write(reinterpret_cast<const char*>(registers.data()),  // NOLINT
+    out.write(reinterpret_cast<const char*>(registers.data()),
               static_cast<std::streamsize>(registers.size()));
     for (const auto& voice : voices) {
         voice.SaveState(out);
     }
-    out.write(reinterpret_cast<const char*>(&volumeRegister), sizeof(volumeRegister));    // NOLINT
-    out.write(reinterpret_cast<const char*>(&soundEnabled), sizeof(soundEnabled));        // NOLINT
-    out.write(reinterpret_cast<const char*>(&emulationPaused), sizeof(emulationPaused));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&volumeRegister), sizeof(volumeRegister));
+    out.write(reinterpret_cast<const char*>(&soundEnabled), sizeof(soundEnabled));
+    out.write(reinterpret_cast<const char*>(&emulationPaused), sizeof(emulationPaused));
     return out.good();
 }
 
 bool SID::LoadState(std::istream& inStream) {
     std::lock_guard<std::mutex> lock(sidMutex);
-    inStream.read(reinterpret_cast<char*>(registers.data()), static_cast<std::streamsize>(registers.size()));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(registers.data()), static_cast<std::streamsize>(registers.size()));
     for (auto& voice : voices) {
         voice.LoadState(inStream);
     }
-    inStream.read(reinterpret_cast<char*>(&volumeRegister), sizeof(volumeRegister));    // NOLINT
-    inStream.read(reinterpret_cast<char*>(&soundEnabled), sizeof(soundEnabled));        // NOLINT
-    inStream.read(reinterpret_cast<char*>(&emulationPaused), sizeof(emulationPaused));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(&volumeRegister), sizeof(volumeRegister));
+    inStream.read(reinterpret_cast<char*>(&soundEnabled), sizeof(soundEnabled));
+    inStream.read(reinterpret_cast<char*>(&emulationPaused), sizeof(emulationPaused));
     UpdateAudioState();
     return inStream.good();
 }
