@@ -23,13 +23,13 @@ void RAM::Write(Word address, Byte data) {
 void RAM::Reset() { std::ranges::fill(data, 0); }
 
 bool RAM::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(data.data()),  // NOLINT
+    out.write(reinterpret_cast<const char*>(data.data()),
               static_cast<std::streamsize>(data.size()));
     return out.good();
 }
 
 bool RAM::LoadState(std::istream& inputStream) {
-    inputStream.read(reinterpret_cast<char*>(data.data()),  // NOLINT
+    inputStream.read(reinterpret_cast<char*>(data.data()),
                      static_cast<std::streamsize>(data.size()));
     return inputStream.good();
 }
