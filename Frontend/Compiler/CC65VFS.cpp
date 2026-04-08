@@ -1,5 +1,6 @@
 #ifndef TARGET_WASM
-#include "CC65VFS.h"
+#include "Frontend/Compiler/CC65VFS.h"
+#include <bit>
 #include "embedded_cc65.h"
 #include "cc65_exe.h"
 #include "ca65_exe.h"
@@ -23,7 +24,7 @@ static std::string g_TempDir;
 static void WriteExecutable(const std::string& path, const std::vector<uint8_t>& data) {
     std::ofstream out(path, std::ios::binary);
     if (out) {
-        out.write(reinterpret_cast<const char*>(data.data()), data.size());
+        out.write(std::bit_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
         out.close();
         
 #ifndef _WIN32
@@ -37,7 +38,7 @@ static void WriteFile(const std::string& path, const std::vector<uint8_t>& data)
     fs::create_directories(p.parent_path());
     std::ofstream out(path, std::ios::binary);
     if (out) {
-        out.write(reinterpret_cast<const char*>(data.data()), data.size());
+        out.write(std::bit_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
     }
 }
 
