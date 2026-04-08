@@ -9,7 +9,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <cstdlib>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -18,8 +17,8 @@
 #endif
 
 namespace fs = std::filesystem;
-
-static std::string g_TempDir;
+    
+std::string CC65VFS::tempDir;
 
 static void WriteExecutable(const std::string& path, const std::vector<uint8_t>& data) {
     std::ofstream out(path, std::ios::binary);
@@ -34,8 +33,8 @@ static void WriteExecutable(const std::string& path, const std::vector<uint8_t>&
 }
 
 static void WriteFile(const std::string& path, const std::vector<uint8_t>& data) {
-    fs::path p(path);
-    fs::create_directories(p.parent_path());
+    fs::path tempPath(path);
+    fs::create_directories(tempPath.parent_path());
     std::ofstream out(path, std::ios::binary);
     if (out) {
         out.write(std::bit_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
@@ -45,9 +44,9 @@ static void WriteFile(const std::string& path, const std::vector<uint8_t>& data)
 void CC65VFS::Initialize() {
     fs::path tempRoot = fs::temp_directory_path() / "65c02_sim_cc65";
     fs::create_directories(tempRoot);
-    g_TempDir = tempRoot.string();
-
-    std::cout << "[CC65VFS] Initializing at " << g_TempDir << std::endl;
+    tempDir = tempRoot.string();
+    
+    std::cout << "[CC65VFS] Initializing at " << tempDir << "\n";
 
     // Write internal compilers
 #ifdef _WIN32
@@ -84,14 +83,14 @@ void CC65VFS::Initialize() {
 }
 
 void CC65VFS::Cleanup() {
-    if (!g_TempDir.empty()) {
-        std::error_code ec;
-        fs::remove_all(g_TempDir, ec);
+    if (!tempDir.empty()) {
+        std::error_code errorCode;
+        fs::remove_all(tempDir, errorCode);
     }
 }
 
 std::string CC65VFS::GetTempDir() {
-    return g_TempDir;
+    return tempDir;
 }
 
 #endif
