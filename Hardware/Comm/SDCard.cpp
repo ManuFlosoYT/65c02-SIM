@@ -1,7 +1,6 @@
 #include "Hardware/Comm/SDCard.h"
+#include "Hardware/Core/ISerializable.h"
 
-#include <array>
-#include <cstring>
 #include <iostream>
 
 namespace Hardware {
@@ -385,28 +384,6 @@ void SDCard::QueueResponse7(uint8_t response1, uint32_t response7) {
     QueueResponse3(response1, response7);
 }
 
-namespace {
-
-template <typename T>
-void PodWrite(std::ostream& outStream, const T& val) {
-    outStream.write(reinterpret_cast<const char*>(&val), static_cast<std::streamsize>(sizeof(T)));
-}
-
-template <typename T>
-void PodRead(std::istream& inStream, T& val) {
-    inStream.read(reinterpret_cast<char*>(&val), static_cast<std::streamsize>(sizeof(T)));
-}
-
-void BufferWrite(std::ostream& outStream, const void* bufferData, size_t bufferSize) {
-    outStream.write(reinterpret_cast<const char*>(bufferData), static_cast<std::streamsize>(bufferSize));
-}
-
-void BufferRead(std::istream& inStream, void* bufferData, size_t bufferSize) {
-    inStream.read(reinterpret_cast<char*>(bufferData), static_cast<std::streamsize>(bufferSize));
-}
-
-}  // namespace
-
 void SDCard::ReadBlockFromImage() {
     if (!mounted || !imageFile.is_open()) {
         data_buffer.fill(0xFFU);
@@ -414,7 +391,7 @@ void SDCard::ReadBlockFromImage() {
     }
     imageFile.clear();  // Clear any EOF flags
     imageFile.seekg(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
-    BufferRead(imageFile, data_buffer.data(), 512);
+    ISerializable::Deserialize(imageFile, data_buffer);
 }
 
 void SDCard::WriteBlockToImage() {
@@ -423,66 +400,50 @@ void SDCard::WriteBlockToImage() {
     }
     imageFile.clear();
     imageFile.seekp(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
-    BufferWrite(imageFile, data_buffer.data(), 512);
+    ISerializable::Serialize(imageFile, data_buffer);
     imageFile.flush();
 }
 
 bool SDCard::SaveState(std::ostream& out) const {
-    auto pathLen = static_cast<uint32_t>(currentPath.length());
-    PodWrite(out, pathLen);
-    out.write(currentPath.c_str(), static_cast<std::streamsize>(pathLen));
+    ISerializable::Serialize(out, currentPath);
 
-    PodWrite(out, mounted);
-    PodWrite(out, cs_active);
-    PodWrite(out, state);
-    BufferWrite(out, cmd_buffer.data(), sizeof(cmd_buffer));
-    PodWrite(out, cmd_bytes_received);
+    ISerializable::Serialize(out, mounted);
+    ISerializable::Serialize(out, cs_active);
+    ISerializable::Serialize(out, state);
+    ISerializable::Serialize(out, cmd_buffer);
+    ISerializable::Serialize(out, cmd_bytes_received);
 
-    auto respSize = static_cast<uint32_t>(response_buffer.size());
-    PodWrite(out, respSize);
-    if (respSize > 0) {
-        BufferWrite(out, response_buffer.data(), respSize);
-    }
+    ISerializable::Serialize(out, response_buffer);
 
-    PodWrite(out, response_index);
-    BufferWrite(out, data_buffer.data(), sizeof(data_buffer));
-    PodWrite(out, data_index);
-    PodWrite(out, current_lba);
-    PodWrite(out, is_acmd);
-    PodWrite(out, is_initialized);
-    PodWrite(out, is_sdhc);
+    ISerializable::Serialize(out, response_index);
+    ISerializable::Serialize(out, data_buffer);
+    ISerializable::Serialize(out, data_index);
+    ISerializable::Serialize(out, current_lba);
+    ISerializable::Serialize(out, is_acmd);
+    ISerializable::Serialize(out, is_initialized);
+    ISerializable::Serialize(out, is_sdhc);
 
     return out.good();
 }
 
 bool SDCard::LoadState(std::istream& inStream) {
-    uint32_t pathLen = 0;
-    PodRead(inStream, pathLen);
-    if (pathLen > 4096) { return false; }
-    currentPath.resize(pathLen);
-    inStream.read(currentPath.data(), static_cast<std::streamsize>(pathLen));
+    ISerializable::Deserialize(inStream, currentPath);
 
-    PodRead(inStream, mounted);
-    PodRead(inStream, cs_active);
-    PodRead(inStream, state);
-    BufferRead(inStream, cmd_buffer.data(), sizeof(cmd_buffer));
-    PodRead(inStream, cmd_bytes_received);
+    ISerializable::Deserialize(inStream, mounted);
+    ISerializable::Deserialize(inStream, cs_active);
+    ISerializable::Deserialize(inStream, state);
+    ISerializable::Deserialize(inStream, cmd_buffer);
+    ISerializable::Deserialize(inStream, cmd_bytes_received);
 
-    uint32_t respSize = 0;
-    PodRead(inStream, respSize);
-    if (respSize > 16384) { return false; }
-    response_buffer.resize(respSize);
-    if (respSize > 0) {
-        BufferRead(inStream, response_buffer.data(), respSize);
-    }
+    ISerializable::Deserialize(inStream, response_buffer);
 
-    PodRead(inStream, response_index);
-    BufferRead(inStream, data_buffer.data(), sizeof(data_buffer));
-    PodRead(inStream, data_index);
-    PodRead(inStream, current_lba);
-    PodRead(inStream, is_acmd);
-    PodRead(inStream, is_initialized);
-    PodRead(inStream, is_sdhc);
+    ISerializable::Deserialize(inStream, response_index);
+    ISerializable::Deserialize(inStream, data_buffer);
+    ISerializable::Deserialize(inStream, data_index);
+    ISerializable::Deserialize(inStream, current_lba);
+    ISerializable::Deserialize(inStream, is_acmd);
+    ISerializable::Deserialize(inStream, is_initialized);
+    ISerializable::Deserialize(inStream, is_sdhc);
 
     if (mounted) {
         Mount(currentPath);
