@@ -112,21 +112,21 @@ void ESP8266::Clock() {}
 
 bool ESP8266::SaveState(std::ostream& out) const {
     Byte sReg = statusReg.load();
-    out.write(reinterpret_cast<const char*>(&sReg), sizeof(sReg));  // NOLINT
-    out.write(reinterpret_cast<const char*>(&cmdReg), sizeof(cmdReg));        // NOLINT
-    out.write(reinterpret_cast<const char*>(&ctrlReg), sizeof(ctrlReg));      // NOLINT
+    out.write(reinterpret_cast<const char*>(&sReg), sizeof(sReg));
+    out.write(reinterpret_cast<const char*>(&cmdReg), sizeof(cmdReg));
+    out.write(reinterpret_cast<const char*>(&ctrlReg), sizeof(ctrlReg));
 
     auto cmdLen = static_cast<uint32_t>(commandBuffer.length());
-    out.write(reinterpret_cast<const char*>(&cmdLen), sizeof(cmdLen));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&cmdLen), sizeof(cmdLen));
     out.write(commandBuffer.c_str(), static_cast<std::streamsize>(cmdLen));
 
-    out.write(reinterpret_cast<const char*>(&echoEnabled), sizeof(echoEnabled));      // NOLINT
-    out.write(reinterpret_cast<const char*>(&muxEnabled), sizeof(muxEnabled));        // NOLINT
-    out.write(reinterpret_cast<const char*>(&wifiConnected), sizeof(wifiConnected));  // NOLINT
-    out.write(reinterpret_cast<const char*>(&cwMode), sizeof(cwMode));                // NOLINT
+    out.write(reinterpret_cast<const char*>(&echoEnabled), sizeof(echoEnabled));
+    out.write(reinterpret_cast<const char*>(&muxEnabled), sizeof(muxEnabled));
+    out.write(reinterpret_cast<const char*>(&wifiConnected), sizeof(wifiConnected));
+    out.write(reinterpret_cast<const char*>(&cwMode), sizeof(cwMode));
 
     auto ssidLen = static_cast<uint32_t>(connectedSSID.length());
-    out.write(reinterpret_cast<const char*>(&ssidLen), sizeof(ssidLen));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&ssidLen), sizeof(ssidLen));
     out.write(connectedSSID.c_str(), static_cast<std::streamsize>(ssidLen));
 
     return out.good();
@@ -137,24 +137,24 @@ bool ESP8266::LoadState(std::istream& inStream) {
     StopServer();
 
     Byte sReg = 0;
-    inStream.read(reinterpret_cast<char*>(&sReg), sizeof(sReg));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(&sReg), sizeof(sReg));
     statusReg.store(sReg);
-    inStream.read(reinterpret_cast<char*>(&cmdReg), sizeof(cmdReg));        // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ctrlReg), sizeof(ctrlReg));      // NOLINT
+    inStream.read(reinterpret_cast<char*>(&cmdReg), sizeof(cmdReg));
+    inStream.read(reinterpret_cast<char*>(&ctrlReg), sizeof(ctrlReg));
 
     uint32_t cmdLen = 0;
-    inStream.read(reinterpret_cast<char*>(&cmdLen), sizeof(cmdLen));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(&cmdLen), sizeof(cmdLen));
     if (cmdLen > 8192) { return false; }
     commandBuffer.assign(cmdLen, '\0');
     inStream.read(commandBuffer.data(), static_cast<std::streamsize>(cmdLen));
 
-    inStream.read(reinterpret_cast<char*>(&echoEnabled), sizeof(echoEnabled));      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&muxEnabled), sizeof(muxEnabled));        // NOLINT
-    inStream.read(reinterpret_cast<char*>(&wifiConnected), sizeof(wifiConnected));  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&cwMode), sizeof(cwMode));                // NOLINT
+    inStream.read(reinterpret_cast<char*>(&echoEnabled), sizeof(echoEnabled));
+    inStream.read(reinterpret_cast<char*>(&muxEnabled), sizeof(muxEnabled));
+    inStream.read(reinterpret_cast<char*>(&wifiConnected), sizeof(wifiConnected));
+    inStream.read(reinterpret_cast<char*>(&cwMode), sizeof(cwMode));
 
     uint32_t ssidLen = 0;
-    inStream.read(reinterpret_cast<char*>(&ssidLen), sizeof(ssidLen));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(&ssidLen), sizeof(ssidLen));
     if (ssidLen > 33) { return false; }
     connectedSSID.assign(ssidLen, '\0');
     inStream.read(connectedSSID.data(), static_cast<std::streamsize>(ssidLen));
