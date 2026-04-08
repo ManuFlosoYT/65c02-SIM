@@ -423,84 +423,84 @@ Byte VIA::GetORA_NH() const { return ora_nh; }
 void VIA::SetORA_NH(Byte val) { ora_nh = val; }
 
 bool VIA::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&orb), sizeof(orb));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&ora), sizeof(ora));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&ddrb), sizeof(ddrb));                    // NOLINT
-    out.write(reinterpret_cast<const char*>(&ddra), sizeof(ddra));                    // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1c_l), sizeof(t1c_l));                  // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1c_h), sizeof(t1c_h));                  // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1l_l), sizeof(t1l_l));                  // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1l_h), sizeof(t1l_h));                  // NOLINT
-    out.write(reinterpret_cast<const char*>(&t2c_l), sizeof(t2c_l));                  // NOLINT
-    out.write(reinterpret_cast<const char*>(&t2c_h), sizeof(t2c_h));                  // NOLINT
-    out.write(reinterpret_cast<const char*>(&sr), sizeof(sr));                        // NOLINT
-    out.write(reinterpret_cast<const char*>(&acr), sizeof(acr));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&pcr), sizeof(pcr));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&ifr), sizeof(ifr));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&ier), sizeof(ier));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&ora_nh), sizeof(ora_nh));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1c), sizeof(t1c));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1l), sizeof(t1l));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&t2c), sizeof(t2c));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&t2l), sizeof(t2l));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1_active), sizeof(t1_active));          // NOLINT
-    out.write(reinterpret_cast<const char*>(&t2_active), sizeof(t2_active));          // NOLINT
-    out.write(reinterpret_cast<const char*>(&t1_pb7_output), sizeof(t1_pb7_output));  // NOLINT
-    out.write(reinterpret_cast<const char*>(&ira), sizeof(ira));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&irb), sizeof(irb));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&last_irb), sizeof(last_irb));            // NOLINT
-    out.write(reinterpret_cast<const char*>(&ca1_in), sizeof(ca1_in));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&ca2_in), sizeof(ca2_in));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&cb1_in), sizeof(cb1_in));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&cb2_in), sizeof(cb2_in));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&last_ca1), sizeof(last_ca1));            // NOLINT
-    out.write(reinterpret_cast<const char*>(&last_ca2), sizeof(last_ca2));            // NOLINT
-    out.write(reinterpret_cast<const char*>(&last_cb1), sizeof(last_cb1));            // NOLINT
-    out.write(reinterpret_cast<const char*>(&last_cb2), sizeof(last_cb2));            // NOLINT
-    out.write(reinterpret_cast<const char*>(&sr_cnt), sizeof(sr_cnt));                // NOLINT
-    out.write(reinterpret_cast<const char*>(&sr_active), sizeof(sr_active));          // NOLINT
-    out.write(reinterpret_cast<const char*>(&sr_out_cb2), sizeof(sr_out_cb2));        // NOLINT
+    out.write(reinterpret_cast<const char*>(&orb), sizeof(orb));
+    out.write(reinterpret_cast<const char*>(&ora), sizeof(ora));
+    out.write(reinterpret_cast<const char*>(&ddrb), sizeof(ddrb));
+    out.write(reinterpret_cast<const char*>(&ddra), sizeof(ddra));
+    out.write(reinterpret_cast<const char*>(&t1c_l), sizeof(t1c_l));
+    out.write(reinterpret_cast<const char*>(&t1c_h), sizeof(t1c_h));
+    out.write(reinterpret_cast<const char*>(&t1l_l), sizeof(t1l_l));
+    out.write(reinterpret_cast<const char*>(&t1l_h), sizeof(t1l_h));
+    out.write(reinterpret_cast<const char*>(&t2c_l), sizeof(t2c_l));
+    out.write(reinterpret_cast<const char*>(&t2c_h), sizeof(t2c_h));
+    out.write(reinterpret_cast<const char*>(&sr), sizeof(sr));
+    out.write(reinterpret_cast<const char*>(&acr), sizeof(acr));
+    out.write(reinterpret_cast<const char*>(&pcr), sizeof(pcr));
+    out.write(reinterpret_cast<const char*>(&ifr), sizeof(ifr));
+    out.write(reinterpret_cast<const char*>(&ier), sizeof(ier));
+    out.write(reinterpret_cast<const char*>(&ora_nh), sizeof(ora_nh));
+    out.write(reinterpret_cast<const char*>(&t1c), sizeof(t1c));
+    out.write(reinterpret_cast<const char*>(&t1l), sizeof(t1l));
+    out.write(reinterpret_cast<const char*>(&t2c), sizeof(t2c));
+    out.write(reinterpret_cast<const char*>(&t2l), sizeof(t2l));
+    out.write(reinterpret_cast<const char*>(&t1_active), sizeof(t1_active));
+    out.write(reinterpret_cast<const char*>(&t2_active), sizeof(t2_active));
+    out.write(reinterpret_cast<const char*>(&t1_pb7_output), sizeof(t1_pb7_output));
+    out.write(reinterpret_cast<const char*>(&ira), sizeof(ira));
+    out.write(reinterpret_cast<const char*>(&irb), sizeof(irb));
+    out.write(reinterpret_cast<const char*>(&last_irb), sizeof(last_irb));
+    out.write(reinterpret_cast<const char*>(&ca1_in), sizeof(ca1_in));
+    out.write(reinterpret_cast<const char*>(&ca2_in), sizeof(ca2_in));
+    out.write(reinterpret_cast<const char*>(&cb1_in), sizeof(cb1_in));
+    out.write(reinterpret_cast<const char*>(&cb2_in), sizeof(cb2_in));
+    out.write(reinterpret_cast<const char*>(&last_ca1), sizeof(last_ca1));
+    out.write(reinterpret_cast<const char*>(&last_ca2), sizeof(last_ca2));
+    out.write(reinterpret_cast<const char*>(&last_cb1), sizeof(last_cb1));
+    out.write(reinterpret_cast<const char*>(&last_cb2), sizeof(last_cb2));
+    out.write(reinterpret_cast<const char*>(&sr_cnt), sizeof(sr_cnt));
+    out.write(reinterpret_cast<const char*>(&sr_active), sizeof(sr_active));
+    out.write(reinterpret_cast<const char*>(&sr_out_cb2), sizeof(sr_out_cb2));
     return out.good();
 }
 
 bool VIA::LoadState(std::istream& inStream) {
-    inStream.read(reinterpret_cast<char*>(&orb), sizeof(orb));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ora), sizeof(ora));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ddrb), sizeof(ddrb));                    // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ddra), sizeof(ddra));                    // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1c_l), sizeof(t1c_l));                  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1c_h), sizeof(t1c_h));                  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1l_l), sizeof(t1l_l));                  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1l_h), sizeof(t1l_h));                  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t2c_l), sizeof(t2c_l));                  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t2c_h), sizeof(t2c_h));                  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&sr), sizeof(sr));                        // NOLINT
-    inStream.read(reinterpret_cast<char*>(&acr), sizeof(acr));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&pcr), sizeof(pcr));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ifr), sizeof(ifr));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ier), sizeof(ier));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ora_nh), sizeof(ora_nh));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1c), sizeof(t1c));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1l), sizeof(t1l));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t2c), sizeof(t2c));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t2l), sizeof(t2l));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1_active), sizeof(t1_active));          // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t2_active), sizeof(t2_active));          // NOLINT
-    inStream.read(reinterpret_cast<char*>(&t1_pb7_output), sizeof(t1_pb7_output));  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ira), sizeof(ira));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&irb), sizeof(irb));                      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&last_irb), sizeof(last_irb));            // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ca1_in), sizeof(ca1_in));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&ca2_in), sizeof(ca2_in));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&cb1_in), sizeof(cb1_in));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&cb2_in), sizeof(cb2_in));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&last_ca1), sizeof(last_ca1));            // NOLINT
-    inStream.read(reinterpret_cast<char*>(&last_ca2), sizeof(last_ca2));            // NOLINT
-    inStream.read(reinterpret_cast<char*>(&last_cb1), sizeof(last_cb1));            // NOLINT
-    inStream.read(reinterpret_cast<char*>(&last_cb2), sizeof(last_cb2));            // NOLINT
-    inStream.read(reinterpret_cast<char*>(&sr_cnt), sizeof(sr_cnt));                // NOLINT
-    inStream.read(reinterpret_cast<char*>(&sr_active), sizeof(sr_active));          // NOLINT
-    inStream.read(reinterpret_cast<char*>(&sr_out_cb2), sizeof(sr_out_cb2));        // NOLINT
+    inStream.read(reinterpret_cast<char*>(&orb), sizeof(orb));
+    inStream.read(reinterpret_cast<char*>(&ora), sizeof(ora));
+    inStream.read(reinterpret_cast<char*>(&ddrb), sizeof(ddrb));
+    inStream.read(reinterpret_cast<char*>(&ddra), sizeof(ddra));
+    inStream.read(reinterpret_cast<char*>(&t1c_l), sizeof(t1c_l));
+    inStream.read(reinterpret_cast<char*>(&t1c_h), sizeof(t1c_h));
+    inStream.read(reinterpret_cast<char*>(&t1l_l), sizeof(t1l_l));
+    inStream.read(reinterpret_cast<char*>(&t1l_h), sizeof(t1l_h));
+    inStream.read(reinterpret_cast<char*>(&t2c_l), sizeof(t2c_l));
+    inStream.read(reinterpret_cast<char*>(&t2c_h), sizeof(t2c_h));
+    inStream.read(reinterpret_cast<char*>(&sr), sizeof(sr));
+    inStream.read(reinterpret_cast<char*>(&acr), sizeof(acr));
+    inStream.read(reinterpret_cast<char*>(&pcr), sizeof(pcr));
+    inStream.read(reinterpret_cast<char*>(&ifr), sizeof(ifr));
+    inStream.read(reinterpret_cast<char*>(&ier), sizeof(ier));
+    inStream.read(reinterpret_cast<char*>(&ora_nh), sizeof(ora_nh));
+    inStream.read(reinterpret_cast<char*>(&t1c), sizeof(t1c));
+    inStream.read(reinterpret_cast<char*>(&t1l), sizeof(t1l));
+    inStream.read(reinterpret_cast<char*>(&t2c), sizeof(t2c));
+    inStream.read(reinterpret_cast<char*>(&t2l), sizeof(t2l));
+    inStream.read(reinterpret_cast<char*>(&t1_active), sizeof(t1_active));
+    inStream.read(reinterpret_cast<char*>(&t2_active), sizeof(t2_active));
+    inStream.read(reinterpret_cast<char*>(&t1_pb7_output), sizeof(t1_pb7_output));
+    inStream.read(reinterpret_cast<char*>(&ira), sizeof(ira));
+    inStream.read(reinterpret_cast<char*>(&irb), sizeof(irb));
+    inStream.read(reinterpret_cast<char*>(&last_irb), sizeof(last_irb));
+    inStream.read(reinterpret_cast<char*>(&ca1_in), sizeof(ca1_in));
+    inStream.read(reinterpret_cast<char*>(&ca2_in), sizeof(ca2_in));
+    inStream.read(reinterpret_cast<char*>(&cb1_in), sizeof(cb1_in));
+    inStream.read(reinterpret_cast<char*>(&cb2_in), sizeof(cb2_in));
+    inStream.read(reinterpret_cast<char*>(&last_ca1), sizeof(last_ca1));
+    inStream.read(reinterpret_cast<char*>(&last_ca2), sizeof(last_ca2));
+    inStream.read(reinterpret_cast<char*>(&last_cb1), sizeof(last_cb1));
+    inStream.read(reinterpret_cast<char*>(&last_cb2), sizeof(last_cb2));
+    inStream.read(reinterpret_cast<char*>(&sr_cnt), sizeof(sr_cnt));
+    inStream.read(reinterpret_cast<char*>(&sr_active), sizeof(sr_active));
+    inStream.read(reinterpret_cast<char*>(&sr_out_cb2), sizeof(sr_out_cb2));
     UpdateAnyActive();
     UpdateIRQ();
     return inStream.good();
