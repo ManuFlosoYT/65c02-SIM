@@ -32,7 +32,7 @@ constexpr Word T1L_L = 0x6006;
 constexpr Word T1L_H = 0x6007;
 constexpr Word T2C_L = 0x6008;
 constexpr Word T2C_H = 0x6009;
-constexpr Word SR = 0x600A;  // NOLINT
+constexpr Word SR = 0x600A;
 constexpr Word ACR = 0x600B;
 constexpr Word PCR = 0x600C;
 constexpr Word IFR = 0x600D;
@@ -133,15 +133,15 @@ template <bool Debug>
 inline Byte Bus::Read(Word address) {
     if constexpr (Debug) {
         if (profilingEnabled) {
-            profilerCounts[address]++;  // NOLINT
+            profilerCounts[address]++;
         }
     }
     Byte data = 0;
 
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {  // NOLINT
-        data = memoryBase[address & 0xFF];                      // NOLINT
+    if (Byte* memoryBase = pageReadMap[address >> 8]) {
+        data = memoryBase[address & 0xFF];
     } else {
-        const auto& slot = deviceMap[address];  // NOLINT
+        const auto& slot = deviceMap[address];
         if (slot.device != nullptr) {
             data = slot.device->Read(slot.offset);
         }
@@ -158,10 +158,10 @@ inline Byte Bus::Read(Word address) {
 }
 
 inline Byte Bus::ReadDirect(Word address) const {
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {  // NOLINT
-        return memoryBase[address & 0xFF];                      // NOLINT
+    if (Byte* memoryBase = pageReadMap[address >> 8]) {
+        return memoryBase[address & 0xFF];
     }
-    const auto& slot = deviceMap[address];  // NOLINT
+    const auto& slot = deviceMap[address];
     if (slot.device != nullptr) {
         return slot.device->Read(slot.offset);
     }
@@ -172,14 +172,14 @@ template <bool Debug>
 inline void Bus::Write(Word address, Byte data) {
     if constexpr (Debug) {
         if (profilingEnabled) {
-            profilerCounts[address]++;  // NOLINT
+            profilerCounts[address]++;
         }
     }
 
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {  // NOLINT
-        memoryBase[address & 0xFF] = data;                       // NOLINT
+    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
+        memoryBase[address & 0xFF] = data;
     } else {
-        const auto& slot = deviceMap[address];  // NOLINT
+        const auto& slot = deviceMap[address];
         if (slot.device != nullptr) {
             slot.device->Write(slot.offset, data);
         }
@@ -195,17 +195,17 @@ inline void Bus::Write(Word address, Byte data) {
 }
 
 inline void Bus::WriteDirect(Word address, Byte data) {
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {  // NOLINT
-        memoryBase[address & 0xFF] = data;                       // NOLINT
+    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
+        memoryBase[address & 0xFF] = data;
     } else {
-        const auto& slot = deviceMap[address];  // NOLINT
+        const auto& slot = deviceMap[address];
         if (slot.device != nullptr) {
             slot.device->WriteDirect(slot.offset, data);
         }
     }
 }
 
-inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap[page]; }  // NOLINT
+inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap[page]; }
 
 inline Byte Bus::Read(Word address) {
     if (HasActiveHooks()) {
