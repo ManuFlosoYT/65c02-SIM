@@ -1,6 +1,5 @@
 // File: 'CascadiaMono.ttf' (714804 bytes)
 // Exported using binary_to_compressed_c.exe -base85 "CascadiaMono.ttf" CascadiaMono
-//NOLINTNEXTLINE
 static const char CascadiaMono_compressed_data_base85[486520+1] =
     "7])#######J:@#4'/###I),##iK$iL,6VC$;/fd=3@Wh3/395&V,*##C(=t8+V>>/6&$s$it*##3K.h<IwZCN?nwr$6l%##t5,e=9EAZ?eQxr$A8+##'t3b>s`IJ($Q98%*0(L>w're="
     "I=$WM6d'##j([w'S2^+>4dVs5HRg--uGdw'aE&'IM*xuF'n<8%OJ`w'Ge?0F]1Q_X`E$##e/###WA&qLjrpwSLUe--8Hj--/Y(nBAFXJD@Cc4#Q=/7#xNSmCK?cel5v[,#^e3(#-i>vC"
