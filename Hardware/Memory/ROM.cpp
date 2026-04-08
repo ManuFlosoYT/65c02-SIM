@@ -30,14 +30,12 @@ void ROM::WriteDirect(Word address, Byte data) {
 }
 
 bool ROM::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(data.data()),
-              static_cast<std::streamsize>(data.size()));
+    ISerializable::Serialize(out, data);
     return out.good();
 }
 
 bool ROM::LoadState(std::istream& inputStream) {
-    inputStream.read(reinterpret_cast<char*>(data.data()),
-                     static_cast<std::streamsize>(data.size()));
+    ISerializable::Deserialize(inputStream, data);
     return inputStream.good();
 }
 
