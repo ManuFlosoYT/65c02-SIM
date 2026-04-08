@@ -1,6 +1,8 @@
+#include <array>
+
 // File: 'CascadiaMono.ttf' (714804 bytes)
 // Exported using binary_to_compressed_c.exe -base85 "CascadiaMono.ttf" CascadiaMono
-static const char CascadiaMono_compressed_data_base85[486520+1] =
+static const std::array<char, 486520+1> CascadiaMono_compressed_data_base85 = {
     "7])#######J:@#4'/###I),##iK$iL,6VC$;/fd=3@Wh3/395&V,*##C(=t8+V>>/6&$s$it*##3K.h<IwZCN?nwr$6l%##t5,e=9EAZ?eQxr$A8+##'t3b>s`IJ($Q98%*0(L>w're="
     "I=$WM6d'##j([w'S2^+>4dVs5HRg--uGdw'aE&'IM*xuF'n<8%OJ`w'Ge?0F]1Q_X`E$##e/###WA&qLjrpwSLUe--8Hj--/Y(nBAFXJD@Cc4#Q=/7#xNSmCK?cel5v[,#^e3(#-i>vC"
     ".p)aO<l)vLuq*'M6;j4Di##/#]KNjLVZ[&M0gS-Dw:C$]d62:#ZH[0#V(5,Dq>bh`5e]1#jY:'#-<=XD+jZ33,/vvLXjEuLh$tLDC;Hg):1&nLlPu56<_[FH&ZaUge7YY#q0MY5T3JuB"
@@ -3476,5 +3478,6 @@ static const char CascadiaMono_compressed_data_base85[486520+1] =
     "qLV;Mx0VO7aqanAq)D>Z-JMNO4F;AEgofvW=%q-VTX?S5?Y]c9HPJi;Ik%Y2f%gjLC1Cx3_33F'UBF-?k#%5MK(nA^;gt*gwPC+#CWtxd9=LB@+/8sr/H.V4o]8Q0xdwcWgf`2]Uc$N3"
     "9CmPjCnaWq+6$`e'q7n9JN8,5u/:s[UToGev(vF)cSIs;RGU]Kg.Sr^Y-hJRA<Ow35$Bc*AlnW0>3ggiIMp)ocf<.;KetQNLm-]/`^dZ(pL7;6kw_q3B8dW'w9mbDWF;>RdNMrdf1Y2R"
     "je29Qw6D_<ohd^_7=&ptQ`%Tpsc$ji(aa3LsY;G`/HZc7K__#qK+V7@[Zc,sD#<vLEt;O66<o,f/FdRX5a&`LB1A[KP@'3JT?g'?DWN38G9n[sRg77$qGp>U@7LOroC,9khUQ^9R'M`s"
-    "dG@NAX+B6##m8AtZX=]F";
+    "dG@NAX+B6##m8AtZX=]F"
+};
 
