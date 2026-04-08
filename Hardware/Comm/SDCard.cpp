@@ -389,20 +389,20 @@ namespace {
 
 template <typename T>
 void PodWrite(std::ostream& outStream, const T& val) {
-    outStream.write(reinterpret_cast<const char*>(&val), static_cast<std::streamsize>(sizeof(T)));  // NOLINT
+    outStream.write(reinterpret_cast<const char*>(&val), static_cast<std::streamsize>(sizeof(T)));
 }
 
 template <typename T>
 void PodRead(std::istream& inStream, T& val) {
-    inStream.read(reinterpret_cast<char*>(&val), static_cast<std::streamsize>(sizeof(T)));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(&val), static_cast<std::streamsize>(sizeof(T)));
 }
 
 void BufferWrite(std::ostream& outStream, const void* bufferData, size_t bufferSize) {
-    outStream.write(reinterpret_cast<const char*>(bufferData), static_cast<std::streamsize>(bufferSize));  // NOLINT
+    outStream.write(reinterpret_cast<const char*>(bufferData), static_cast<std::streamsize>(bufferSize));
 }
 
 void BufferRead(std::istream& inStream, void* bufferData, size_t bufferSize) {
-    inStream.read(reinterpret_cast<char*>(bufferData), static_cast<std::streamsize>(bufferSize));  // NOLINT
+    inStream.read(reinterpret_cast<char*>(bufferData), static_cast<std::streamsize>(bufferSize));
 }
 
 }  // namespace
