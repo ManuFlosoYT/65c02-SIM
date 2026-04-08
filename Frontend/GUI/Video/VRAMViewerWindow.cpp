@@ -27,7 +27,6 @@ static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
     if (fileSize > 0) {
         file.seekg(0, std::ios::beg);
         std::vector<unsigned char> buf(static_cast<size_t>(fileSize));
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         if (file.read(reinterpret_cast<char*>(buf.data()), fileSize)) {
             GPU& gpu = state.emulator.GetGPU();
             gpu.LoadVRAM(buf);
@@ -279,7 +278,6 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             state.render.lastDisplayH = GPU::VRAM_HEIGHT;
         }
 
-        // NOLINTNEXTLINE(performance-no-int-to-ptr, cppcoreguidelines-pro-type-cstyle-cast)
         ImGui::Image((ImTextureID)(intptr_t)(displayTex), ImVec2(imgW, imgH));
 
         ImGui::End();
