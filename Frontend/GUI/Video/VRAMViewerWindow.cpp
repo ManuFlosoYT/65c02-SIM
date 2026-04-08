@@ -279,7 +279,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             state.render.lastDisplayH = GPU::VRAM_HEIGHT;
         }
 
-        ImGui::Image(std::bit_cast<ImTextureID>(static_cast<intptr_t>(displayTex)), ImVec2(imgW, imgH));
+        ImGui::Image((ImTextureID)(intptr_t)displayTex, ImVec2(imgW, imgH));
 
         ImGui::End();
     }
