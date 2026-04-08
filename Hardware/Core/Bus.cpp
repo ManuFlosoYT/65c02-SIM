@@ -26,46 +26,35 @@ void Bus::ClearDevices() {
 
 bool Bus::SaveState(std::ostream& out) const {
     auto deviceCount = static_cast<uint32_t>(registeredDevices.size());
-    out.write(reinterpret_cast<const char*>(&deviceCount), sizeof(deviceCount));
+    ISerializable::Serialize(out, deviceCount);
 
     for (const auto& reg : registeredDevices) {
-        out.write(reinterpret_cast<const char*>(&reg.startAddress),
-                  sizeof(reg.startAddress));
-        out.write(reinterpret_cast<const char*>(&reg.endAddress),
-                  sizeof(reg.endAddress));
-        out.write(reinterpret_cast<const char*>(&reg.enabled),
-                  sizeof(reg.enabled));
-        out.write(reinterpret_cast<const char*>(&reg.ignoreCollision),
-                  sizeof(reg.ignoreCollision));
+        ISerializable::Serialize(out, reg.startAddress);
+        ISerializable::Serialize(out, reg.endAddress);
+        ISerializable::Serialize(out, reg.enabled);
+        ISerializable::Serialize(out, reg.ignoreCollision);
 
-        std::string name = reg.device->GetName();
-        auto nameLen = static_cast<uint32_t>(name.length());
-        out.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
-        out.write(name.c_str(), nameLen);
+        ISerializable::Serialize(out, reg.device->GetName());
     }
     return out.good();
 }
 
 bool Bus::LoadState(std::istream& inStream) {
     uint32_t deviceCount = 0;
-    inStream.read(reinterpret_cast<char*>(&deviceCount), sizeof(deviceCount));
+    ISerializable::Deserialize(inStream, deviceCount);
 
     for (uint32_t i = 0; i < deviceCount; ++i) {
         Word startAddress = 0;
         Word endAddress = 0;
         bool enabled = false;
         bool ignoreCollision = false;
-        inStream.read(reinterpret_cast<char*>(&startAddress), sizeof(startAddress));
-        inStream.read(reinterpret_cast<char*>(&endAddress), sizeof(endAddress));
-        inStream.read(reinterpret_cast<char*>(&enabled), sizeof(enabled));
-        inStream.read(reinterpret_cast<char*>(&ignoreCollision),
-                      sizeof(ignoreCollision));
+        ISerializable::Deserialize(inStream, startAddress);
+        ISerializable::Deserialize(inStream, endAddress);
+        ISerializable::Deserialize(inStream, enabled);
+        ISerializable::Deserialize(inStream, ignoreCollision);
 
-        uint32_t nameLen = 0;
-        inStream.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
-        if (nameLen > 256) { return false; }
-        std::string name(nameLen, '\0');
-        inStream.read(name.data(), nameLen);
+        std::string name;
+        ISerializable::Deserialize(inStream, name);
 
         if (i < registeredDevices.size()) {
             const auto& reg = registeredDevices.at(i);
@@ -93,7 +82,7 @@ bool Bus::LoadState(std::istream& inStream) {
 
 void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device, bool enabled, bool ignoreCollision) {
     if (enabled && !ignoreCollision) {
-        for (int i = startAddress; i <= (int)endAddress; ++i) {
+        for (int i = static_cast<int>(startAddress); i <= static_cast<int>(endAddress); ++i) {
             if (deviceMap.at(i).device != nullptr) {
                 std::array<char, 10> hexStr{};
                 snprintf(hexStr.data(), hexStr.size(), "%04X", i);
