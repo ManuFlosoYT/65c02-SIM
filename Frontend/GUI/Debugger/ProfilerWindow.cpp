@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
+#include <bit>
 
 #include "Frontend/UI/CustomFileDialog.h"
 #ifdef TARGET_WASM
@@ -89,7 +90,7 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
             oss << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << i << ": " << std::dec << counts[i];
         }
         std::string raw = oss.str();
-        WebFileUtils::download_file("profiler_raw.txt", reinterpret_cast<const uint8_t*>(raw.data()), raw.size());
+        WebFileUtils::download_file("profiler_raw.txt", std::bit_cast<const uint8_t*>(raw.data()), raw.size());
     }
     ImGui::SameLine();
     if (ImGui::Button("Export as BMP")) {
