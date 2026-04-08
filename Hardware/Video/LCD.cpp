@@ -186,36 +186,36 @@ void LCD::HandleCommand(Byte cmd) {
 }
 
 bool LCD::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&PORTB_DATA), sizeof(PORTB_DATA));
-    out.write(reinterpret_cast<const char*>(&DDRB_DATA), sizeof(DDRB_DATA));
-    out.write(reinterpret_cast<const char*>(&four_bit_mode), sizeof(four_bit_mode));
-    out.write(reinterpret_cast<const char*>(&waiting_low_nibble), sizeof(waiting_low_nibble));
-    out.write(reinterpret_cast<const char*>(&current_high_nibble), sizeof(current_high_nibble));
-    out.write(reinterpret_cast<const char*>(&last_portb), sizeof(last_portb));
-    out.write(reinterpret_cast<const char*>(&is_init), sizeof(is_init));
-    out.write(reinterpret_cast<const char*>(&screen), sizeof(screen));
-    out.write(reinterpret_cast<const char*>(&cursorX), sizeof(cursorX));
-    out.write(reinterpret_cast<const char*>(&cursorY), sizeof(cursorY));
-    out.write(reinterpret_cast<const char*>(&display_on), sizeof(display_on));
-    out.write(reinterpret_cast<const char*>(&cursor_on), sizeof(cursor_on));
-    out.write(reinterpret_cast<const char*>(&cursor_increment), sizeof(cursor_increment));
+    ISerializable::Serialize(out, PORTB_DATA);
+    ISerializable::Serialize(out, DDRB_DATA);
+    ISerializable::Serialize(out, four_bit_mode);
+    ISerializable::Serialize(out, waiting_low_nibble);
+    ISerializable::Serialize(out, current_high_nibble);
+    ISerializable::Serialize(out, last_portb);
+    ISerializable::Serialize(out, is_init);
+    ISerializable::Serialize(out, screen);
+    ISerializable::Serialize(out, cursorX);
+    ISerializable::Serialize(out, cursorY);
+    ISerializable::Serialize(out, display_on);
+    ISerializable::Serialize(out, cursor_on);
+    ISerializable::Serialize(out, cursor_increment);
     return out.good();
 }
 
 bool LCD::LoadState(std::istream& inputStream) {
-    inputStream.read(reinterpret_cast<char*>(&PORTB_DATA), sizeof(PORTB_DATA));
-    inputStream.read(reinterpret_cast<char*>(&DDRB_DATA), sizeof(DDRB_DATA));
-    inputStream.read(reinterpret_cast<char*>(&four_bit_mode), sizeof(four_bit_mode));
-    inputStream.read(reinterpret_cast<char*>(&waiting_low_nibble), sizeof(waiting_low_nibble));
-    inputStream.read(reinterpret_cast<char*>(&current_high_nibble), sizeof(current_high_nibble));
-    inputStream.read(reinterpret_cast<char*>(&last_portb), sizeof(last_portb));
-    inputStream.read(reinterpret_cast<char*>(&is_init), sizeof(is_init));
-    inputStream.read(reinterpret_cast<char*>(&screen), sizeof(screen));
-    inputStream.read(reinterpret_cast<char*>(&cursorX), sizeof(cursorX));
-    inputStream.read(reinterpret_cast<char*>(&cursorY), sizeof(cursorY));
-    inputStream.read(reinterpret_cast<char*>(&display_on), sizeof(display_on));
-    inputStream.read(reinterpret_cast<char*>(&cursor_on), sizeof(cursor_on));
-    inputStream.read(reinterpret_cast<char*>(&cursor_increment), sizeof(cursor_increment));
+    ISerializable::Deserialize(inputStream, PORTB_DATA);
+    ISerializable::Deserialize(inputStream, DDRB_DATA);
+    ISerializable::Deserialize(inputStream, four_bit_mode);
+    ISerializable::Deserialize(inputStream, waiting_low_nibble);
+    ISerializable::Deserialize(inputStream, current_high_nibble);
+    ISerializable::Deserialize(inputStream, last_portb);
+    ISerializable::Deserialize(inputStream, is_init);
+    ISerializable::Deserialize(inputStream, screen);
+    ISerializable::Deserialize(inputStream, cursorX);
+    ISerializable::Deserialize(inputStream, cursorY);
+    ISerializable::Deserialize(inputStream, display_on);
+    ISerializable::Deserialize(inputStream, cursor_on);
+    ISerializable::Deserialize(inputStream, cursor_increment);
     return inputStream.good();
 }
 
