@@ -40,7 +40,7 @@ void SetupImGuiStyle() {
     style.SelectableTextAlign = ImVec2(0.0F, 0.0F);
 
     style.Colors[ImGuiCol_Text] = ImVec4(1.0F, 1.0F, 1.0F, 1.0F);
-    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.2745098173618317F, 0.3176470696926117F, 0.4509803950786591F, 1.0F); //NOLINT
+    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.2745098173618317F, 0.3176470696926117F, 0.4509803950786591F, 1.0F);
     style.Colors[ImGuiCol_WindowBg] = ImVec4(0.0784313753247261F, 0.08627451211214066F, 0.1019607856869698F, 1.0F);
     style.Colors[ImGuiCol_ChildBg] = ImVec4(0.09250493347644806F, 0.100297249853611F, 0.1158798336982727F, 1.0F);
     style.Colors[ImGuiCol_PopupBg] = ImVec4(0.0784313753247261F, 0.08627451211214066F, 0.1019607856869698F, 1.0F);
