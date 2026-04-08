@@ -38,8 +38,8 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
         return false;
     }
 
-    std::vector<uint8_t> buffer(ROM_SIZE);
-    if (!file.read(reinterpret_cast<char*>(buffer.data()), ROM_SIZE)) {
+    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (buffer.size() != ROM_SIZE) {
         errorMsg = "Error reading file " + bin;
         std::cerr << errorMsg << "\n";
         return false;
