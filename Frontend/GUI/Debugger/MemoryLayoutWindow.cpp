@@ -215,7 +215,6 @@ void DrawMemoryLayoutWindow(AppState& state) {
     auto& bus = state.emulator.GetMem();
     const auto& devicesConst = bus.GetRegisteredDevices();
 
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
     auto& devices = const_cast<std::vector<DeviceRegistration>&>(devicesConst);
 
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
@@ -229,7 +228,6 @@ void DrawMemoryLayoutWindow(AppState& state) {
     float mapSize = ImGui::GetContentRegionAvail().x;
     mapSize = std::min(mapSize, ImGui::GetContentRegionAvail().y - 40.0F);
 
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<unsigned long long>(state.render.layoutTexture)),
                  ImVec2(mapSize, mapSize));
 
