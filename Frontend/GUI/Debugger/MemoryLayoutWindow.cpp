@@ -1,5 +1,4 @@
 #include "Frontend/GUI/Debugger/MemoryLayoutWindow.h"
-#include <bit>
 
 #include <glad/gl.h>
 #include <imgui.h>
@@ -227,7 +226,7 @@ void DrawMemoryLayoutWindow(AppState& state) {
     float mapSize = ImGui::GetContentRegionAvail().x;
     mapSize = std::min(mapSize, ImGui::GetContentRegionAvail().y - 40.0F);
 
-    ImGui::Image(std::bit_cast<ImTextureID>(static_cast<intptr_t>(state.render.layoutTexture)),
+    ImGui::Image((ImTextureID)(intptr_t)state.render.layoutTexture,
                  ImVec2(mapSize, mapSize));
 
     if (ImGui::IsItemHovered()) {
