@@ -1,4 +1,5 @@
 #include "IDEWindow.h"
+#include <bit>
 #include "Frontend/UI/CustomFileDialog.h"
 #include <fstream>
 #include <sstream>
@@ -260,7 +261,7 @@ static void HandleExportFile(Control::AppState& state) {
             std::string exportPath = CustomFileDialog::GetFilePathName();
             std::ofstream fileOut(exportPath, std::ios::binary);
             if (fileOut && !state.ide.exportBinary.empty()) {
-                fileOut.write(reinterpret_cast<const char*>(state.ide.exportBinary.data()),
+                fileOut.write(std::bit_cast<const char*>(state.ide.exportBinary.data()),
                             static_cast<std::streamsize>(state.ide.exportBinary.size()));
                 state.ide.outputLog += "\nExported binary to " + exportPath;
                 
