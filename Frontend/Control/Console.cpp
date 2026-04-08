@@ -1,4 +1,6 @@
 #include "Frontend/Control/Console.h"
+#include "Hardware/Core/ISerializable.h"
+#include <cstdint>
 
 namespace Console {
 
@@ -32,7 +34,7 @@ void OutputCallback(char character) {
             cursorX--;
         }
     } else if (character >= 32) {
-        if (cursorX >= (int)currentLine.size()) {
+        if (cursorX >= static_cast<int>(currentLine.size())) {
             currentLine.resize(cursorX + 1, ' ');
         }
         currentLine[cursorX] = character;
@@ -47,41 +49,41 @@ void Print(const std::string& message) {
 }
 
 bool SaveState(std::ostream& out) {
-    size_t linesCount = consoleLines.size();
-    out.write(reinterpret_cast<const char*>(&linesCount), sizeof(linesCount));
+    auto linesCount = static_cast<uint32_t>(consoleLines.size());
+    Hardware::ISerializable::Serialize(out, linesCount);
     for (const auto& line : consoleLines) {
-        size_t len = line.size();
-        out.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        auto len = static_cast<uint32_t>(line.size());
+        Hardware::ISerializable::Serialize(out, len);
         out.write(line.c_str(), static_cast<std::streamsize>(len));
     }
 
-    size_t currentLen = currentLine.size();
-    out.write(reinterpret_cast<const char*>(&currentLen), sizeof(currentLen));
+    auto currentLen = static_cast<uint32_t>(currentLine.size());
+    Hardware::ISerializable::Serialize(out, currentLen);
     out.write(currentLine.c_str(), static_cast<std::streamsize>(currentLen));
 
-    out.write(reinterpret_cast<const char*>(&cursorX), sizeof(cursorX));
+    Hardware::ISerializable::Serialize(out, cursorX);
 
     return out.good();
 }
 
 bool LoadState(std::istream& inputStream) {
-    size_t linesCount = 0;
-    inputStream.read(reinterpret_cast<char*>(&linesCount), sizeof(linesCount));
+    uint32_t linesCount = 0;
+    Hardware::ISerializable::Deserialize(inputStream, linesCount);
     consoleLines.clear();
-    for (size_t i = 0; i < linesCount; ++i) {
-        size_t len = 0;
-        inputStream.read(reinterpret_cast<char*>(&len), sizeof(len));
+    for (uint32_t i = 0; i < linesCount; ++i) {
+        uint32_t len = 0;
+        Hardware::ISerializable::Deserialize(inputStream, len);
         std::string line(len, '\0');
         inputStream.read(line.data(), static_cast<std::streamsize>(len));
         consoleLines.push_back(line);
     }
 
-    size_t currentLen = 0;
-    inputStream.read(reinterpret_cast<char*>(&currentLen), sizeof(currentLen));
+    uint32_t currentLen = 0;
+    Hardware::ISerializable::Deserialize(inputStream, currentLen);
     currentLine.resize(currentLen);
     inputStream.read(currentLine.data(), static_cast<std::streamsize>(currentLen));
 
-    inputStream.read(reinterpret_cast<char*>(&cursorX), sizeof(cursorX));
+    Hardware::ISerializable::Deserialize(inputStream, cursorX);
 
     return inputStream.good();
 }
