@@ -1,4 +1,5 @@
 #include "Frontend/GUI/ConsoleWindow.h"
+#include <bit>
 
 #include "Frontend/UI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
@@ -220,7 +221,7 @@ static void DrawSDKButton(AppState& state) {
         if (!state.sdk.loaded) {
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
                 try {
-                    auto j = nlohmann::json::parse(std::string(reinterpret_cast<const char*>(data), size));
+                    auto j = nlohmann::json::parse(std::string(std::bit_cast<const char*>(data), size));
                     state.sdk.roms = j.at("roms").get<std::vector<std::string>>();
                     state.sdk.midis = j.at("midis").get<std::vector<std::string>>();
                     state.sdk.vrams = j.at("vrams").get<std::vector<std::string>>();
