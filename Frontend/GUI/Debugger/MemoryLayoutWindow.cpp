@@ -212,10 +212,8 @@ void DrawHardwareComponentsTable(AppState& state, std::vector<DeviceRegistration
 }  // namespace
 
 void DrawMemoryLayoutWindow(AppState& state) {
-    auto& bus = state.emulator.GetMem();
-    const auto& devicesConst = bus.GetRegisteredDevices();
-
-    auto& devices = const_cast<std::vector<DeviceRegistration>&>(devicesConst);
+    Bus& bus = state.emulator.GetMem();
+    std::vector<DeviceRegistration>& devices = bus.GetRegisteredDevices();
 
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
     UpdateMemoryLayoutTexture(state, devices, pixels);
@@ -228,7 +226,7 @@ void DrawMemoryLayoutWindow(AppState& state) {
     float mapSize = ImGui::GetContentRegionAvail().x;
     mapSize = std::min(mapSize, ImGui::GetContentRegionAvail().y - 40.0F);
 
-    ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<unsigned long long>(state.render.layoutTexture)),
+    ImGui::Image((ImTextureID)(intptr_t)state.render.layoutTexture,
                  ImVec2(mapSize, mapSize));
 
     if (ImGui::IsItemHovered()) {

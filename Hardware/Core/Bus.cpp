@@ -139,6 +139,7 @@ void Bus::AddGlobalReadHook(const BusReadHook& hook) {
 void Bus::ClearProfiler() { profilerCounts.fill(0); }
 
 const std::vector<DeviceRegistration>& Bus::GetRegisteredDevices() const { return registeredDevices; }
+std::vector<DeviceRegistration>& Bus::GetRegisteredDevices() { return registeredDevices; }
 
 void Bus::RebuildDeviceMap() {
     deviceMap.fill({nullptr, 0});

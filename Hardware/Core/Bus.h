@@ -98,6 +98,7 @@ class Bus : public ISerializable {
     inline uint32_t* GetProfilerCounts();
 
     [[nodiscard]] const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
+    [[nodiscard]] std::vector<DeviceRegistration>& GetRegisteredDevices();
     void RebuildDeviceMap();
 
     [[nodiscard]] inline Byte* GetPageReadPtr(Word page) const;
