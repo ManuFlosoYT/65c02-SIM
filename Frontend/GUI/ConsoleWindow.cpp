@@ -273,7 +273,9 @@ static void DrawConsoleButtonBar(AppState& state) {
     ImGui::SameLine();
     DrawSDKButton(state);
     DrawSDKPopup(state);
+#ifndef TARGET_WASM
     DrawSDKUpdatePopup(state);
+#endif
 
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {
