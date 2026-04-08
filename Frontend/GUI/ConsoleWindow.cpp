@@ -1,5 +1,4 @@
 #include "Frontend/GUI/ConsoleWindow.h"
-#include <bit>
 
 #include "Frontend/UI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
