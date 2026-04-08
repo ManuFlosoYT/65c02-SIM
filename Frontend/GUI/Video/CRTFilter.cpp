@@ -101,7 +101,6 @@ void CRTFilter::Init(int width, int height) {
     glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
     glEnableVertexAttribArray(uvLoc);
     uintptr_t offset = 2 * sizeof(float);
-    // NOLINTNEXTLINE(performance-no-int-to-ptr, cppcoreguidelines-pro-type-reinterpret-cast)
     glVertexAttribPointer(uvLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<const void*>(offset));
 
     glBindVertexArray(0);
