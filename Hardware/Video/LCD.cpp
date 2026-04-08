@@ -186,36 +186,36 @@ void LCD::HandleCommand(Byte cmd) {
 }
 
 bool LCD::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&PORTB_DATA), sizeof(PORTB_DATA));                    // NOLINT
-    out.write(reinterpret_cast<const char*>(&DDRB_DATA), sizeof(DDRB_DATA));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&four_bit_mode), sizeof(four_bit_mode));              // NOLINT
-    out.write(reinterpret_cast<const char*>(&waiting_low_nibble), sizeof(waiting_low_nibble));    // NOLINT
-    out.write(reinterpret_cast<const char*>(&current_high_nibble), sizeof(current_high_nibble));  // NOLINT
-    out.write(reinterpret_cast<const char*>(&last_portb), sizeof(last_portb));                    // NOLINT
-    out.write(reinterpret_cast<const char*>(&is_init), sizeof(is_init));                          // NOLINT
-    out.write(reinterpret_cast<const char*>(&screen), sizeof(screen));                            // NOLINT
-    out.write(reinterpret_cast<const char*>(&cursorX), sizeof(cursorX));                          // NOLINT
-    out.write(reinterpret_cast<const char*>(&cursorY), sizeof(cursorY));                          // NOLINT
-    out.write(reinterpret_cast<const char*>(&display_on), sizeof(display_on));                    // NOLINT
-    out.write(reinterpret_cast<const char*>(&cursor_on), sizeof(cursor_on));                      // NOLINT
-    out.write(reinterpret_cast<const char*>(&cursor_increment), sizeof(cursor_increment));        // NOLINT
+    out.write(reinterpret_cast<const char*>(&PORTB_DATA), sizeof(PORTB_DATA));
+    out.write(reinterpret_cast<const char*>(&DDRB_DATA), sizeof(DDRB_DATA));
+    out.write(reinterpret_cast<const char*>(&four_bit_mode), sizeof(four_bit_mode));
+    out.write(reinterpret_cast<const char*>(&waiting_low_nibble), sizeof(waiting_low_nibble));
+    out.write(reinterpret_cast<const char*>(&current_high_nibble), sizeof(current_high_nibble));
+    out.write(reinterpret_cast<const char*>(&last_portb), sizeof(last_portb));
+    out.write(reinterpret_cast<const char*>(&is_init), sizeof(is_init));
+    out.write(reinterpret_cast<const char*>(&screen), sizeof(screen));
+    out.write(reinterpret_cast<const char*>(&cursorX), sizeof(cursorX));
+    out.write(reinterpret_cast<const char*>(&cursorY), sizeof(cursorY));
+    out.write(reinterpret_cast<const char*>(&display_on), sizeof(display_on));
+    out.write(reinterpret_cast<const char*>(&cursor_on), sizeof(cursor_on));
+    out.write(reinterpret_cast<const char*>(&cursor_increment), sizeof(cursor_increment));
     return out.good();
 }
 
 bool LCD::LoadState(std::istream& inputStream) {
-    inputStream.read(reinterpret_cast<char*>(&PORTB_DATA), sizeof(PORTB_DATA));                    // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&DDRB_DATA), sizeof(DDRB_DATA));                      // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&four_bit_mode), sizeof(four_bit_mode));              // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&waiting_low_nibble), sizeof(waiting_low_nibble));    // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&current_high_nibble), sizeof(current_high_nibble));  // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&last_portb), sizeof(last_portb));                    // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&is_init), sizeof(is_init));                          // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&screen), sizeof(screen));                            // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&cursorX), sizeof(cursorX));                          // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&cursorY), sizeof(cursorY));                          // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&display_on), sizeof(display_on));                    // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&cursor_on), sizeof(cursor_on));                      // NOLINT
-    inputStream.read(reinterpret_cast<char*>(&cursor_increment), sizeof(cursor_increment));        // NOLINT
+    inputStream.read(reinterpret_cast<char*>(&PORTB_DATA), sizeof(PORTB_DATA));
+    inputStream.read(reinterpret_cast<char*>(&DDRB_DATA), sizeof(DDRB_DATA));
+    inputStream.read(reinterpret_cast<char*>(&four_bit_mode), sizeof(four_bit_mode));
+    inputStream.read(reinterpret_cast<char*>(&waiting_low_nibble), sizeof(waiting_low_nibble));
+    inputStream.read(reinterpret_cast<char*>(&current_high_nibble), sizeof(current_high_nibble));
+    inputStream.read(reinterpret_cast<char*>(&last_portb), sizeof(last_portb));
+    inputStream.read(reinterpret_cast<char*>(&is_init), sizeof(is_init));
+    inputStream.read(reinterpret_cast<char*>(&screen), sizeof(screen));
+    inputStream.read(reinterpret_cast<char*>(&cursorX), sizeof(cursorX));
+    inputStream.read(reinterpret_cast<char*>(&cursorY), sizeof(cursorY));
+    inputStream.read(reinterpret_cast<char*>(&display_on), sizeof(display_on));
+    inputStream.read(reinterpret_cast<char*>(&cursor_on), sizeof(cursor_on));
+    inputStream.read(reinterpret_cast<char*>(&cursor_increment), sizeof(cursor_increment));
     return inputStream.good();
 }
 
