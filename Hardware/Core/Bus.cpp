@@ -1,5 +1,6 @@
 #include "Hardware/Core/Bus.h"
 
+#include <format>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -84,10 +85,8 @@ void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
     if (enabled && !ignoreCollision) {
         for (int i = static_cast<int>(startAddress); i <= static_cast<int>(endAddress); ++i) {
             if (deviceMap.at(i).device != nullptr) {
-                std::array<char, 10> hexStr{};
-                snprintf(hexStr.data(), hexStr.size(), "%04X", i);
-                throw std::runtime_error("Memory collision detected while registering device: " + device->GetName() +
-                                         " at address 0x" + hexStr.data());
+                throw std::runtime_error(std::format("Memory collision detected while registering device: {} at address 0x{:04X}",
+                                                     device->GetName(), i));
             }
         }
     }
