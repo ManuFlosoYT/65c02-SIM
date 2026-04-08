@@ -41,18 +41,18 @@ void ACIA::ReceiveData(Byte data) {
 }
 
 bool ACIA::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(&DATA), sizeof(DATA));      // NOLINT
-    out.write(reinterpret_cast<const char*>(&STATUS), sizeof(STATUS));  // NOLINT
-    out.write(reinterpret_cast<const char*>(&CMD), sizeof(CMD));        // NOLINT
-    out.write(reinterpret_cast<const char*>(&CTRL), sizeof(CTRL));      // NOLINT
+    out.write(reinterpret_cast<const char*>(&DATA), sizeof(DATA));
+    out.write(reinterpret_cast<const char*>(&STATUS), sizeof(STATUS));
+    out.write(reinterpret_cast<const char*>(&CMD), sizeof(CMD));
+    out.write(reinterpret_cast<const char*>(&CTRL), sizeof(CTRL));
     return out.good();
 }
 
 bool ACIA::LoadState(std::istream& inStream) {
-    inStream.read(reinterpret_cast<char*>(&DATA), sizeof(DATA));      // NOLINT
-    inStream.read(reinterpret_cast<char*>(&STATUS), sizeof(STATUS));  // NOLINT
-    inStream.read(reinterpret_cast<char*>(&CMD), sizeof(CMD));        // NOLINT
-    inStream.read(reinterpret_cast<char*>(&CTRL), sizeof(CTRL));      // NOLINT
+    inStream.read(reinterpret_cast<char*>(&DATA), sizeof(DATA));
+    inStream.read(reinterpret_cast<char*>(&STATUS), sizeof(STATUS));
+    inStream.read(reinterpret_cast<char*>(&CMD), sizeof(CMD));
+    inStream.read(reinterpret_cast<char*>(&CTRL), sizeof(CTRL));
     return inStream.good();
 }
 
