@@ -66,6 +66,10 @@ static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files
         if (ImGui::Selectable(file.c_str())) {
 #ifdef TARGET_WASM
             std::string url = "roms/";
+            if (subfolder != "cartridge") {
+                url += subfolder;
+                url += "/";
+            }
             url += file;
             WebFileUtils::onFilePickedCallback = [&state, file](const char* filename, const uint8_t* data, int size) {
                 HandleSDKFileLoading(state, filename, data, size);
