@@ -260,7 +260,7 @@ static void HandleExportFile(Control::AppState& state) {
             std::string exportPath = CustomFileDialog::GetFilePathName();
             std::ofstream fileOut(exportPath, std::ios::binary);
             if (fileOut && !state.ide.exportBinary.empty()) {
-                fileOut.write(reinterpret_cast<const char*>(state.ide.exportBinary.data()), // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+                fileOut.write(reinterpret_cast<const char*>(state.ide.exportBinary.data()),
                             static_cast<std::streamsize>(state.ide.exportBinary.size()));
                 state.ide.outputLog += "\nExported binary to " + exportPath;
                 
