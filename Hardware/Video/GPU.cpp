@@ -25,23 +25,16 @@ void GPU::LoadVRAM(std::span<const uint8_t> data) {
 }
 
 bool GPU::SaveState(std::ostream& out) const {
-    out.write(reinterpret_cast<const char*>(vram.data()), sizeof(vram));
-    Word currPixelX = pixelX;
-    Word currPixelY = pixelY;
-    out.write(reinterpret_cast<const char*>(&currPixelX), sizeof(currPixelX));
-    out.write(reinterpret_cast<const char*>(&currPixelY), sizeof(currPixelY));
+    ISerializable::Serialize(out, vram);
+    ISerializable::Serialize(out, pixelX);
+    ISerializable::Serialize(out, pixelY);
     return out.good();
 }
 
 bool GPU::LoadState(std::istream& inputStream) {
-    inputStream.read(reinterpret_cast<char*>(vram.data()), sizeof(vram));
-
-    Word currPixelX = 0;
-    Word currPixelY = 0;
-    inputStream.read(reinterpret_cast<char*>(&currPixelX), sizeof(currPixelX));
-    inputStream.read(reinterpret_cast<char*>(&currPixelY), sizeof(currPixelY));
-    pixelX = currPixelX;
-    pixelY = currPixelY;
+    ISerializable::Deserialize(inputStream, vram);
+    ISerializable::Deserialize(inputStream, pixelX);
+    ISerializable::Deserialize(inputStream, pixelY);
 
     isYDrawing = (pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU);
 
