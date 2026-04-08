@@ -112,22 +112,16 @@ void ESP8266::Clock() {}
 
 bool ESP8266::SaveState(std::ostream& out) const {
     Byte sReg = statusReg.load();
-    out.write(reinterpret_cast<const char*>(&sReg), sizeof(sReg));
-    out.write(reinterpret_cast<const char*>(&cmdReg), sizeof(cmdReg));
-    out.write(reinterpret_cast<const char*>(&ctrlReg), sizeof(ctrlReg));
-
-    auto cmdLen = static_cast<uint32_t>(commandBuffer.length());
-    out.write(reinterpret_cast<const char*>(&cmdLen), sizeof(cmdLen));
-    out.write(commandBuffer.c_str(), static_cast<std::streamsize>(cmdLen));
-
-    out.write(reinterpret_cast<const char*>(&echoEnabled), sizeof(echoEnabled));
-    out.write(reinterpret_cast<const char*>(&muxEnabled), sizeof(muxEnabled));
-    out.write(reinterpret_cast<const char*>(&wifiConnected), sizeof(wifiConnected));
-    out.write(reinterpret_cast<const char*>(&cwMode), sizeof(cwMode));
-
-    auto ssidLen = static_cast<uint32_t>(connectedSSID.length());
-    out.write(reinterpret_cast<const char*>(&ssidLen), sizeof(ssidLen));
-    out.write(connectedSSID.c_str(), static_cast<std::streamsize>(ssidLen));
+    ISerializable::Serialize(out, sReg);
+    ISerializable::Serialize(out, cmdReg);
+    ISerializable::Serialize(out, ctrlReg);
+    ISerializable::Serialize(out, commandBuffer);
+    
+    ISerializable::Serialize(out, echoEnabled);
+    ISerializable::Serialize(out, muxEnabled);
+    ISerializable::Serialize(out, wifiConnected);
+    ISerializable::Serialize(out, cwMode);
+    ISerializable::Serialize(out, connectedSSID);
 
     return out.good();
 }
@@ -137,27 +131,17 @@ bool ESP8266::LoadState(std::istream& inStream) {
     StopServer();
 
     Byte sReg = 0;
-    inStream.read(reinterpret_cast<char*>(&sReg), sizeof(sReg));
+    ISerializable::Deserialize(inStream, sReg);
     statusReg.store(sReg);
-    inStream.read(reinterpret_cast<char*>(&cmdReg), sizeof(cmdReg));
-    inStream.read(reinterpret_cast<char*>(&ctrlReg), sizeof(ctrlReg));
+    ISerializable::Deserialize(inStream, cmdReg);
+    ISerializable::Deserialize(inStream, ctrlReg);
+    ISerializable::Deserialize(inStream, commandBuffer);
 
-    uint32_t cmdLen = 0;
-    inStream.read(reinterpret_cast<char*>(&cmdLen), sizeof(cmdLen));
-    if (cmdLen > 8192) { return false; }
-    commandBuffer.assign(cmdLen, '\0');
-    inStream.read(commandBuffer.data(), static_cast<std::streamsize>(cmdLen));
-
-    inStream.read(reinterpret_cast<char*>(&echoEnabled), sizeof(echoEnabled));
-    inStream.read(reinterpret_cast<char*>(&muxEnabled), sizeof(muxEnabled));
-    inStream.read(reinterpret_cast<char*>(&wifiConnected), sizeof(wifiConnected));
-    inStream.read(reinterpret_cast<char*>(&cwMode), sizeof(cwMode));
-
-    uint32_t ssidLen = 0;
-    inStream.read(reinterpret_cast<char*>(&ssidLen), sizeof(ssidLen));
-    if (ssidLen > 33) { return false; }
-    connectedSSID.assign(ssidLen, '\0');
-    inStream.read(connectedSSID.data(), static_cast<std::streamsize>(ssidLen));
+    ISerializable::Deserialize(inStream, echoEnabled);
+    ISerializable::Deserialize(inStream, muxEnabled);
+    ISerializable::Deserialize(inStream, wifiConnected);
+    ISerializable::Deserialize(inStream, cwMode);
+    ISerializable::Deserialize(inStream, connectedSSID);
 
     currentState = ATState::Idle;
     return inStream.good();
