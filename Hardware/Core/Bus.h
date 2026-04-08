@@ -134,15 +134,15 @@ template <bool Debug>
 inline Byte Bus::Read(Word address) {
     if constexpr (Debug) {
         if (profilingEnabled) {
-            profilerCounts[address]++;
+            profilerCounts.at(address)++;
         }
     }
     Byte data = 0;
 
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {
-        data = memoryBase[address & 0xFF];
+    if (Byte* memoryBase = pageReadMap.at(address >> 8)) {
+        data = std::span<Byte>(memoryBase, 256)[address & 0xFFU];
     } else {
-        const auto& slot = deviceMap[address];
+        const auto& slot = deviceMap.at(address);
         if (slot.device != nullptr) {
             data = slot.device->Read(slot.offset);
         }
@@ -159,10 +159,10 @@ inline Byte Bus::Read(Word address) {
 }
 
 inline Byte Bus::ReadDirect(Word address) const {
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {
-        return memoryBase[address & 0xFF];
+    if (Byte* memoryBase = pageReadMap.at(address >> 8)) {
+        return std::span<Byte>(memoryBase, 256)[address & 0xFFU];
     }
-    const auto& slot = deviceMap[address];
+    const auto& slot = deviceMap.at(address);
     if (slot.device != nullptr) {
         return slot.device->Read(slot.offset);
     }
@@ -173,7 +173,7 @@ template <bool Debug>
 inline void Bus::Write(Word address, Byte data) {
     if constexpr (Debug) {
         if (profilingEnabled) {
-            profilerCounts[address]++;
+            profilerCounts.at(address)++;
         }
     }
 
@@ -196,17 +196,17 @@ inline void Bus::Write(Word address, Byte data) {
 }
 
 inline void Bus::WriteDirect(Word address, Byte data) {
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
-        memoryBase[address & 0xFF] = data;
+    if (Byte* memoryBase = pageWriteMap.at(address >> 8)) {
+        std::span<Byte>(memoryBase, 256)[address & 0xFFU] = data;
     } else {
-        const auto& slot = deviceMap[address];
+        const auto& slot = deviceMap.at(address);
         if (slot.device != nullptr) {
             slot.device->WriteDirect(slot.offset, data);
         }
     }
 }
 
-inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap[page]; }
+inline Byte* Bus::GetPageReadPtr(Word page) const { return pageReadMap.at(page); }
 
 inline Byte Bus::Read(Word address) {
     if (HasActiveHooks()) {
