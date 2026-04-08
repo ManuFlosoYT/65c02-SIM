@@ -66,7 +66,7 @@ class SID : public IBusDevice {
     void Close();
     void Reset() override;
     Byte Read(Word addr) override;
-    void Write(Word addr, Byte data) override;  // NOLINT(bugprone-easily-swappable-parameters)
+    void Write(Word addr, Byte data) override;
     std::string GetName() const override;
 
     void EnableSound(bool enable);
@@ -104,7 +104,7 @@ class SID : public IBusDevice {
     std::function<void(const int16_t*, int)> audioCallback;
 
     static void AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
-                              int total_amount);  // NOLINT(bugprone-easily-swappable-parameters)
+                               int total_amount);
     void GenerateAudio(int16_t* buffer, int length);
     void UpdateAudioState();
 };
