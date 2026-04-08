@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
+#include <bit>
 
 #include "Frontend/UI/CustomFileDialog.h"
 #ifdef TARGET_WASM
@@ -27,7 +28,7 @@ static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
     if (fileSize > 0) {
         file.seekg(0, std::ios::beg);
         std::vector<unsigned char> buf(static_cast<size_t>(fileSize));
-        if (file.read(reinterpret_cast<char*>(buf.data()), fileSize)) {
+        if (file.read(std::bit_cast<char*>(buf.data()), fileSize)) {
             GPU& gpu = state.emulator.GetGPU();
             gpu.LoadVRAM(buf);
         }
@@ -278,7 +279,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             state.render.lastDisplayH = GPU::VRAM_HEIGHT;
         }
 
-        ImGui::Image((ImTextureID)(intptr_t)(displayTex), ImVec2(imgW, imgH));
+        ImGui::Image(std::bit_cast<ImTextureID>(static_cast<intptr_t>(displayTex)), ImVec2(imgW, imgH));
 
         ImGui::End();
     }
