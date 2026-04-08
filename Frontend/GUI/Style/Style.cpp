@@ -126,7 +126,7 @@ void SetupFont(){
     ImGuiIO& imguiio = ImGui::GetIO();
     
     ImFont* mainFont = imguiio.Fonts->AddFontFromMemoryCompressedBase85TTF(
-        CascadiaMono_compressed_data_base85,
+        CascadiaMono_compressed_data_base85.data(),
         14.0F
     );
     
