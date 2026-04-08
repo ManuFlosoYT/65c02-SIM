@@ -1,6 +1,4 @@
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
-#include <bit>
-
 #include "Frontend/UI/CustomFileDialog.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
