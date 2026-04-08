@@ -18,36 +18,36 @@ bool Emulator::SaveState(const std::string& filename) {
         }
     }
 
-    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));
 
     bool gpuE = gpuEnabled;
-    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));
 
     int tIPS = targetIPS.load();
-    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));
 
     {
         std::lock_guard<std::mutex> bufferLock(bufferMutex);
         auto qSize = static_cast<uint32_t>(inputBuffer.size());
-        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
+        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));
         for (char chr : inputBuffer) {
             stateStream.write(&chr, 1);
         }
     }
 
     auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
-    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));
     stateStream.write(currentBinPath.c_str(), static_cast<std::streamsize>(binPathLen));
 
     bool autoReload = autoReloadRequested.load();
-    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));
 
     std::string payload = stateStream.str();
     std::string payloadHash = picosha2::hash256_hex_string(payload);
 
     std::string version = PROJECT_VERSION;
     auto versionLen = static_cast<uint32_t>(version.length());
-    std::array<char, 12> magic{"SIM65C02SST"};  // NOLINT
+    std::array<char, 12> magic{"SIM65C02SST"};
 
     // Metadata hash (Magic + Version)
     std::string metadata = std::string(magic.data()) + version;
@@ -59,7 +59,7 @@ bool Emulator::SaveState(const std::string& filename) {
     }
 
     out.write(magic.data(), magic.size() - 1);
-    out.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));  // NOLINT
+    out.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));
     out.write(version.c_str(), static_cast<std::streamsize>(versionLen));
     out.write(payload.c_str(), static_cast<std::streamsize>(payload.size()));
     out.write(payloadHash.c_str(), static_cast<std::streamsize>(payloadHash.size()));
@@ -81,7 +81,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     std::streamsize size = inFile.tellg();
     inFile.seekg(0, std::ios::beg);
 
-    std::array<char, 12> magic{"SIM65C02SST"};  // NOLINT
+    std::array<char, 12> magic{"SIM65C02SST"};
     size_t magicLen = magic.size() - 1;
     size_t hashLen = 64;
 
@@ -96,7 +96,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     }
 
     uint32_t versionLen = 0;
-    inFile.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));  // NOLINT
+    inFile.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));
     if (versionLen > 64) {
         return false;
     }
@@ -193,18 +193,18 @@ bool Emulator::LoadComponentsState(std::istream& stateStream) {
 }
 
 bool Emulator::LoadInternalState(std::istream& stateStream) {
-    stateStream.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
+    stateStream.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));
 
     bool gpuE = false;
-    stateStream.read(reinterpret_cast<char*>(&gpuE), sizeof(gpuE));  // NOLINT
+    stateStream.read(reinterpret_cast<char*>(&gpuE), sizeof(gpuE));
     gpuEnabled = gpuE;
 
     int tIPS = 0;
-    stateStream.read(reinterpret_cast<char*>(&tIPS), sizeof(tIPS));  // NOLINT
+    stateStream.read(reinterpret_cast<char*>(&tIPS), sizeof(tIPS));
     targetIPS.store(tIPS);
 
     uint32_t qSize = 0;
-    stateStream.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));  // NOLINT
+    stateStream.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));
     if (qSize > 10ULL * 1024 * 1024) { return false; }
     std::lock_guard<std::mutex> lock(bufferMutex);
     inputBuffer.clear();
@@ -216,13 +216,13 @@ bool Emulator::LoadInternalState(std::istream& stateStream) {
     hasInput.store(!inputBuffer.empty());
 
     uint32_t binPathLen = 0;
-    stateStream.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
+    stateStream.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));
     if (binPathLen > 4096) { return false; }
     currentBinPath.assign(binPathLen, '\0');
     stateStream.read(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
 
     bool autoReload = false;
-    stateStream.read(reinterpret_cast<char*>(&autoReload), sizeof(autoReload));  // NOLINT
+    stateStream.read(reinterpret_cast<char*>(&autoReload), sizeof(autoReload));
     autoReloadRequested.store(autoReload);
     return true;
 }
@@ -236,26 +236,26 @@ void Emulator::SaveStateToBuffer() {
         }
     }
 
-    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));
     bool gpuE = gpuEnabled;
-    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));
     int tIPS = targetIPS.load();
-    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));
 
     {
         std::lock_guard<std::mutex> bufferLock(bufferMutex);
         auto qSize = static_cast<uint32_t>(inputBuffer.size());
-        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));  // NOLINT
+        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));
         for (char chr : inputBuffer) {
             stateStream.write(&chr, 1);
         }
     }
 
     auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
-    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));
     stateStream.write(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
     bool autoReload = autoReloadRequested.load();
-    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));  // NOLINT
+    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));
 
     rewindBuffer.push_back(stateStream.str());
     if (rewindBuffer.size() > MAX_REWIND_STATES) {
