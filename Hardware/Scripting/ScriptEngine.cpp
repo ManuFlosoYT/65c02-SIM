@@ -6,6 +6,8 @@
 #include <iostream>
 #include <deque>
 #include <mutex>
+#include <span>
+#include <string>
 
 #include "Hardware/Core/Emulator.h"
 #include "Hardware/Core/CartridgeLoader.h"
@@ -95,11 +97,30 @@ static void py_custom_print(const char* text) {
     }
 }
 
+// Local helpers to avoid lint issues with pocketpy C macros
+static bool NativeTypeError(const char* message) {
+    // Centralized vararg call to the external library
+    return py_exception(tp_TypeError, "%s", message); // NOLINT(cppcoreguidelines-pro-type-vararg)
+}
+
+static bool NativeCheckArgc(int argc, int expected) {
+    if (argc != expected) {
+        std::string msg = "expected " + std::to_string(expected) + " arguments, got " + std::to_string(argc);
+        return NativeTypeError(msg.c_str());
+    }
+    return true;
+}
+
+static bool NativeCheckArgType(const std::span<py_TValue>& args, size_t index, py_Type type) {
+    return py_checktype(&args[index], type);
+}
+
 static bool py_emu_read_mem(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));
+    auto addr = static_cast<uint16_t>(py_toint(args.data()));
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     uint8_t val = engine->GetEmulator().GetMem().Read(addr);
     py_newint(py_retval(), val);
@@ -107,12 +128,13 @@ static bool py_emu_read_mem(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_write_mem(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(2);
-    PY_CHECK_ARG_TYPE(0, tp_int);
-    PY_CHECK_ARG_TYPE(1, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 2)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
+    if (!NativeCheckArgType(args, 1, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));
-    auto val = static_cast<uint8_t>(py_toint(py_arg(1)));
+    auto addr = static_cast<uint16_t>(py_toint(args.data()));
+    auto val = static_cast<uint8_t>(py_toint(args.subspan(1).data()));
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetMem().Write(addr, val);
     py_newnone(py_retval());
@@ -120,28 +142,30 @@ static bool py_emu_write_mem(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_read_mem_block(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(2);
-    PY_CHECK_ARG_TYPE(0, tp_int);
-    PY_CHECK_ARG_TYPE(1, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 2)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
+    if (!NativeCheckArgType(args, 1, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));
-    auto len = static_cast<size_t>(py_toint(py_arg(1)));
+    auto addr = static_cast<uint16_t>(py_toint(args.data()));
+    auto len = static_cast<size_t>(py_toint(args.subspan(1).data()));
 
-    unsigned char* buffer = py_newbytes(py_retval(), (int)len);
+    unsigned char* buffer = py_newbytes(py_retval(), static_cast<int>(len));
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetMem().ReadBlock(addr, std::span<uint8_t>(buffer, len));
     return true;
 }
 
 static bool py_emu_write_mem_block(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(2);
-    PY_CHECK_ARG_TYPE(0, tp_int);
-    PY_CHECK_ARG_TYPE(1, tp_bytes);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 2)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
+    if (!NativeCheckArgType(args, 1, tp_bytes)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));
+    auto addr = static_cast<uint16_t>(py_toint(args.data()));
 
     int size = 0;
-    unsigned char* buffer = py_tobytes(py_arg(1), &size);
+    unsigned char* buffer = py_tobytes(args.subspan(1).data(), &size);
     if (buffer == nullptr) {
         return false;
     }
@@ -153,12 +177,13 @@ static bool py_emu_write_mem_block(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_write_mem_direct(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(2);
-    PY_CHECK_ARG_TYPE(0, tp_int);
-    PY_CHECK_ARG_TYPE(1, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 2)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
+    if (!NativeCheckArgType(args, 1, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));
-    auto val = static_cast<uint8_t>(py_toint(py_arg(1)));
+    auto addr = static_cast<uint16_t>(py_toint(args.data()));
+    auto val = static_cast<uint8_t>(py_toint(&args[1]));
 
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     engine->GetEmulator().GetMem().WriteDirect(addr, val);
@@ -167,19 +192,21 @@ static bool py_emu_write_mem_direct(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_write_mem_block_direct(int argc, py_StackRef argv) {
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
     if (argc < 2) {
         return false;
     }
-    PY_CHECK_ARG_TYPE(0, tp_int);
-    PY_CHECK_ARG_TYPE(1, tp_bytes);
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
+    if (!NativeCheckArgType(args, 1, tp_bytes)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto addr = static_cast<uint16_t>(py_toint(py_arg(0)));
+    auto addr = static_cast<uint16_t>(py_toint(args.data()));
 
     int size = 0;
-    const uint8_t* buffer = py_tobytes(py_arg(1), &size);
-    if (buffer == nullptr) {
+    const uint8_t* raw_buffer = py_tobytes(args.subspan(1).data(), &size);
+    if (raw_buffer == nullptr) {
         return false;
     }
+    std::span<const uint8_t> buffer(raw_buffer, static_cast<size_t>(size));
 
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
     for (int i = 0; i < size; ++i) {
@@ -190,12 +217,13 @@ static bool py_emu_write_mem_block_direct(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_load_bin(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(2);
-    PY_CHECK_ARG_TYPE(0, tp_str);
-    PY_CHECK_ARG_TYPE(1, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 2)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_str)) { return false; }
+    if (!NativeCheckArgType(args, 1, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    const char* path = py_tostr(py_arg(0));
-    auto addr = static_cast<uint16_t>(py_toint(py_arg(1)));
+    const char* path = py_tostr(args.data());
+    auto addr = static_cast<uint16_t>(py_toint(args.subspan(1).data()));
 
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open()) {
@@ -229,10 +257,11 @@ static bool py_emu_trigger_nmi(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_wait_cycles(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto cycles = static_cast<int64_t>(py_toint(py_arg(0)));
+    auto cycles = static_cast<int64_t>(py_toint(args.data()));
     if (cycles <= 0) {
         py_newnone(py_retval());
         return true;
@@ -294,10 +323,11 @@ static bool py_emu_step_instruction(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    auto count = static_cast<int>(py_toint(py_arg(0)));
+    auto count = static_cast<int>(py_toint(args.data()));
     if (count <= 0) {
         py_newnone(py_retval());
         return true;
@@ -354,11 +384,12 @@ static bool py_emu_get_pc(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_pc(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().GetCPU().PC = static_cast<uint16_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().PC = static_cast<uint16_t>(py_toint(args.data()));
     engine->GetEmulator().GetCPU().UpdatePagePtr(engine->GetEmulator().GetMem());
     py_newnone(py_retval());
     return true;
@@ -372,11 +403,12 @@ static bool py_emu_get_sp(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_sp(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().GetCPU().SP = static_cast<uint16_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().SP = static_cast<uint16_t>(py_toint(args.data()));
     py_newnone(py_retval());
     return true;
 }
@@ -389,11 +421,12 @@ static bool py_emu_get_a(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_a(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().GetCPU().A = static_cast<uint8_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().A = static_cast<uint8_t>(py_toint(args.data()));
     py_newnone(py_retval());
     return true;
 }
@@ -406,11 +439,12 @@ static bool py_emu_get_x(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_x(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().GetCPU().X = static_cast<uint8_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().X = static_cast<uint8_t>(py_toint(args.data()));
     py_newnone(py_retval());
     return true;
 }
@@ -423,11 +457,12 @@ static bool py_emu_get_y(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_y(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().GetCPU().Y = static_cast<uint8_t>(py_toint(py_arg(0)));
+    engine->GetEmulator().GetCPU().Y = static_cast<uint8_t>(py_toint(args.data()));
     py_newnone(py_retval());
     return true;
 }
@@ -440,47 +475,52 @@ static bool py_emu_get_status(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_status(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().GetCPU().SetStatus(static_cast<uint8_t>(py_toint(py_arg(0))));
+    engine->GetEmulator().GetCPU().SetStatus(static_cast<uint8_t>(py_toint(args.data())));
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_gpu_enabled(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_bool)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetGPUEnabled(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetGPUEnabled(py_tobool(args.data()));
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_sd_enabled(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_bool)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetSDEnabled(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetSDEnabled(py_tobool(args.data()));
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_esp_enabled(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_bool)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetESPEnabled(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetESPEnabled(py_tobool(args.data()));
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_set_cycle_accurate(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_bool);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_bool)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetCycleAccurate(py_tobool(py_arg(0)));
+    engine->GetEmulator().SetCycleAccurate(py_tobool(args.data()));
     py_newnone(py_retval());
     return true;
 }
@@ -498,19 +538,21 @@ static bool py_emu_get_ips(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_set_target_ips(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().SetTargetIPS(static_cast<int>(py_toint(py_arg(0))));
+    engine->GetEmulator().SetTargetIPS(static_cast<int>(py_toint(args.data())));
     py_newnone(py_retval());
     return true;
 }
 
 static bool py_emu_inject_key(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_str);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_str)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    const char* str = py_tostr(py_arg(0));
+    const char* str = py_tostr(args.data());
     if (str != nullptr && *str != '\0') {
         engine->GetEmulator().InjectKey(*str);
     }
@@ -519,10 +561,11 @@ static bool py_emu_inject_key(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_start_audio_recording(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_str);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_str)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetSID().StartRecording(py_tostr(py_arg(0)));
+    engine->GetEmulator().GetSID().StartRecording(py_tostr(args.data()));
     py_newnone(py_retval());
     return true;
 }
@@ -535,10 +578,11 @@ static bool py_emu_stop_audio_recording(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_load_cartridge(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_str);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_str)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    std::string path = py_tostr(py_arg(0));
+    std::string path = py_tostr(args.data());
     std::string error;
     Core::Cartridge cart;
     if (Core::CartridgeLoader::Load(path, cart, error)) {
@@ -574,10 +618,11 @@ static void ParseBreakCondition(py_Ref cond_dict, Hardware::BreakCondition& cond
 }
 
 static bool py_emu_add_breakpoint(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_dict);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_dict)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    py_Ref dict = py_arg(0);
+    py_Ref dict = args.data();
 
     Hardware::Breakpoint breakpoint;
     if (py_dict_getitem_by_str(dict, "label") == 1) {
@@ -609,10 +654,11 @@ static bool py_emu_add_breakpoint(int argc, py_StackRef argv) {
 }
 
 static bool py_emu_remove_breakpoint(int argc, py_StackRef argv) {
-    PY_CHECK_ARGC(1);
-    PY_CHECK_ARG_TYPE(0, tp_int);
+    std::span<py_TValue> args(argv, static_cast<size_t>(argc));
+    if (!NativeCheckArgc(argc, 1)) { return false; }
+    if (!NativeCheckArgType(args, 0, tp_int)) { return false; }
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    engine->GetEmulator().GetBreakpointManager().RemoveBreakpoint(static_cast<uint32_t>(py_toint(py_arg(0))));
+    engine->GetEmulator().GetBreakpointManager().RemoveBreakpoint(static_cast<uint32_t>(py_toint(args.data())));
     py_newnone(py_retval());
     return true;
 }
