@@ -1,5 +1,6 @@
 #include "Frontend/UI/UIModules.h"
 #include <SDL3/SDL.h>
+#include <format>
 #include <imgui.h>
 #include "Frontend/Control/AppState.h"
 #include "Frontend/GUI/ConsoleWindow.h"
@@ -42,11 +43,15 @@ static void DrawROMAndStatePopups(AppState& state) {
     if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         auto result = state.emulator.GetLastLoadResult();
         if (result == SavestateLoadResult::VersionMismatch || result == SavestateLoadResult::HashMismatch) {
-            ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.0F, 1.0F), "Warning: Savestate compatibility issue");
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 0.0F, 1.0F));
+            ImGui::TextUnformatted("Warning: Savestate compatibility issue");
+            ImGui::PopStyleColor();
             if (result == SavestateLoadResult::VersionMismatch) {
                 ImGui::TextUnformatted("Version mismatch detected:");
-                ImGui::BulletText("Saved: %s", state.emulator.GetLastLoadVersion().c_str());
-                ImGui::BulletText("Current: %s", PROJECT_VERSION);
+                ImGui::Bullet();
+                ImGui::TextUnformatted(std::format("Saved: {}", state.emulator.GetLastLoadVersion()).c_str());
+                ImGui::Bullet();
+                ImGui::TextUnformatted(std::format("Current: {}", PROJECT_VERSION).c_str());
             } else {
                 ImGui::TextUnformatted(
                     "Hash mismatch. The data might be modified or "
@@ -56,7 +61,9 @@ static void DrawROMAndStatePopups(AppState& state) {
                 "The state was loaded, but some things might not work "
                 "correctly.");
         } else if (result == SavestateLoadResult::StructuralError) {
-            ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "Error: Failed to load state");
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
+            ImGui::TextUnformatted("Error: Failed to load state");
+            ImGui::PopStyleColor();
             ImGui::TextUnformatted("The data is structurally incompatible or corrupted.");
         } else {
             ImGui::TextUnformatted("An unknown error occurred while loading the state.");
