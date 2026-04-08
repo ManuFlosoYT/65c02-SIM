@@ -127,6 +127,8 @@ struct SDKState {
     std::vector<std::string> vrams;
     bool loaded = false;
     bool showPopup = false;
+    bool showUpdatePopup = false;
+    std::string extractedVersion;
 };
 
 struct IDEState {
