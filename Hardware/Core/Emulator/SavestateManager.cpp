@@ -1,5 +1,5 @@
 #include "Hardware/Core/Emulator.h"
-
+#include "Hardware/Core/ISerializable.h"
 #include <picosha2.h>
 
 #include <fstream>
@@ -18,29 +18,30 @@ bool Emulator::SaveState(const std::string& filename) {
         }
     }
 
-    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));
+    Hardware::ISerializable::Serialize(stateStream, baudDelay);
 
     bool gpuE = gpuEnabled;
-    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));
+    Hardware::ISerializable::Serialize(stateStream, gpuE);
 
     int tIPS = targetIPS.load();
-    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));
+    Hardware::ISerializable::Serialize(stateStream, tIPS);
 
     {
         std::lock_guard<std::mutex> bufferLock(bufferMutex);
         auto qSize = static_cast<uint32_t>(inputBuffer.size());
-        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));
+        Hardware::ISerializable::Serialize(stateStream, qSize);
         for (char chr : inputBuffer) {
             stateStream.write(&chr, 1);
         }
     }
 
+
     auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
-    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));
+    Hardware::ISerializable::Serialize(stateStream, binPathLen);
     stateStream.write(currentBinPath.c_str(), static_cast<std::streamsize>(binPathLen));
 
     bool autoReload = autoReloadRequested.load();
-    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));
+    Hardware::ISerializable::Serialize(stateStream, autoReload);
 
     std::string payload = stateStream.str();
     std::string payloadHash = picosha2::hash256_hex_string(payload);
@@ -59,7 +60,7 @@ bool Emulator::SaveState(const std::string& filename) {
     }
 
     out.write(magic.data(), magic.size() - 1);
-    out.write(reinterpret_cast<const char*>(&versionLen), sizeof(versionLen));
+    Hardware::ISerializable::Serialize(out, versionLen);
     out.write(version.c_str(), static_cast<std::streamsize>(versionLen));
     out.write(payload.c_str(), static_cast<std::streamsize>(payload.size()));
     out.write(payloadHash.c_str(), static_cast<std::streamsize>(payloadHash.size()));
@@ -96,7 +97,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     }
 
     uint32_t versionLen = 0;
-    inFile.read(reinterpret_cast<char*>(&versionLen), sizeof(versionLen));
+    Hardware::ISerializable::Deserialize(inFile, versionLen);
     if (versionLen > 64) {
         return false;
     }
@@ -193,18 +194,18 @@ bool Emulator::LoadComponentsState(std::istream& stateStream) {
 }
 
 bool Emulator::LoadInternalState(std::istream& stateStream) {
-    stateStream.read(reinterpret_cast<char*>(&baudDelay), sizeof(baudDelay));
+    Hardware::ISerializable::Deserialize(stateStream, baudDelay);
 
     bool gpuE = false;
-    stateStream.read(reinterpret_cast<char*>(&gpuE), sizeof(gpuE));
+    Hardware::ISerializable::Deserialize(stateStream, gpuE);
     gpuEnabled = gpuE;
 
     int tIPS = 0;
-    stateStream.read(reinterpret_cast<char*>(&tIPS), sizeof(tIPS));
+    Hardware::ISerializable::Deserialize(stateStream, tIPS);
     targetIPS.store(tIPS);
 
     uint32_t qSize = 0;
-    stateStream.read(reinterpret_cast<char*>(&qSize), sizeof(qSize));
+    Hardware::ISerializable::Deserialize(stateStream, qSize);
     if (qSize > 10ULL * 1024 * 1024) { return false; }
     std::lock_guard<std::mutex> lock(bufferMutex);
     inputBuffer.clear();
@@ -215,14 +216,15 @@ bool Emulator::LoadInternalState(std::istream& stateStream) {
     }
     hasInput.store(!inputBuffer.empty());
 
+
     uint32_t binPathLen = 0;
-    stateStream.read(reinterpret_cast<char*>(&binPathLen), sizeof(binPathLen));
+    Hardware::ISerializable::Deserialize(stateStream, binPathLen);
     if (binPathLen > 4096) { return false; }
     currentBinPath.assign(binPathLen, '\0');
     stateStream.read(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
 
     bool autoReload = false;
-    stateStream.read(reinterpret_cast<char*>(&autoReload), sizeof(autoReload));
+    Hardware::ISerializable::Deserialize(stateStream, autoReload);
     autoReloadRequested.store(autoReload);
     return true;
 }
@@ -236,26 +238,26 @@ void Emulator::SaveStateToBuffer() {
         }
     }
 
-    stateStream.write(reinterpret_cast<const char*>(&baudDelay), sizeof(baudDelay));
+    Hardware::ISerializable::Serialize(stateStream, baudDelay);
     bool gpuE = gpuEnabled;
-    stateStream.write(reinterpret_cast<const char*>(&gpuE), sizeof(gpuE));
+    Hardware::ISerializable::Serialize(stateStream, gpuE);
     int tIPS = targetIPS.load();
-    stateStream.write(reinterpret_cast<const char*>(&tIPS), sizeof(tIPS));
+    Hardware::ISerializable::Serialize(stateStream, tIPS);
 
     {
         std::lock_guard<std::mutex> bufferLock(bufferMutex);
         auto qSize = static_cast<uint32_t>(inputBuffer.size());
-        stateStream.write(reinterpret_cast<const char*>(&qSize), sizeof(qSize));
+        Hardware::ISerializable::Serialize(stateStream, qSize);
         for (char chr : inputBuffer) {
             stateStream.write(&chr, 1);
         }
     }
 
     auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
-    stateStream.write(reinterpret_cast<const char*>(&binPathLen), sizeof(binPathLen));
+    Hardware::ISerializable::Serialize(stateStream, binPathLen);
     stateStream.write(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
     bool autoReload = autoReloadRequested.load();
-    stateStream.write(reinterpret_cast<const char*>(&autoReload), sizeof(autoReload));
+    Hardware::ISerializable::Serialize(stateStream, autoReload);
 
     rewindBuffer.push_back(stateStream.str());
     if (rewindBuffer.size() > MAX_REWIND_STATES) {
