@@ -42,11 +42,11 @@ static void DrawROMAndStatePopups(AppState& state) {
     if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         auto result = state.emulator.GetLastLoadResult();
         if (result == SavestateLoadResult::VersionMismatch || result == SavestateLoadResult::HashMismatch) {
-            ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.0F, 1.0F), "Warning: Savestate compatibility issue");  // NOLINT
+            ImGui::TextColored(ImVec4(1.0F, 1.0F, 0.0F, 1.0F), "Warning: Savestate compatibility issue");
             if (result == SavestateLoadResult::VersionMismatch) {
                 ImGui::TextUnformatted("Version mismatch detected:");
-                ImGui::BulletText("Saved: %s", state.emulator.GetLastLoadVersion().c_str());  // NOLINT
-                ImGui::BulletText("Current: %s", PROJECT_VERSION);                            // NOLINT
+                ImGui::BulletText("Saved: %s", state.emulator.GetLastLoadVersion().c_str());
+                ImGui::BulletText("Current: %s", PROJECT_VERSION);
             } else {
                 ImGui::TextUnformatted(
                     "Hash mismatch. The data might be modified or "
@@ -56,7 +56,7 @@ static void DrawROMAndStatePopups(AppState& state) {
                 "The state was loaded, but some things might not work "
                 "correctly.");
         } else if (result == SavestateLoadResult::StructuralError) {
-            ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "Error: Failed to load state");  // NOLINT
+            ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "Error: Failed to load state");
             ImGui::TextUnformatted("The data is structurally incompatible or corrupted.");
         } else {
             ImGui::TextUnformatted("An unknown error occurred while loading the state.");
