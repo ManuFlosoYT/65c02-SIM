@@ -65,7 +65,7 @@ TEST_F(VIA_Test, ShiftRegister_ShiftIn_Phi2) {
     // Trigger SR by reading/writing it?
     // Spec: "Writing or reading the Shift Register starts the shifting
     // process."
-    bus.Read(SR);  // Start shifting
+    bus.Read(VIA_SR);  // Start shifting
 
     // Clock 8 times. Each clock should shift in '1'.
     for (int i = 0; i < 8; i++) via.Clock();
@@ -73,7 +73,7 @@ TEST_F(VIA_Test, ShiftRegister_ShiftIn_Phi2) {
     // Interrupt should be set
     EXPECT_TRUE(bus.Read(IFR) & 0x04);
     // SR should be 0xFF (shifted in 8 ones) if started from 0
-    EXPECT_EQ(bus.Read(SR), 0xFF);
+    EXPECT_EQ(bus.Read(VIA_SR), 0xFF);
 }
 
 TEST_F(VIA_Test, PulseCounting_T2) {

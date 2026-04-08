@@ -118,7 +118,7 @@ Byte VIA::Read(Word address) {
             return (Byte)(t2c & 0xFF);
         case T2C_H & 0x0F:
             return (Byte)(t2c >> 8);
-        case SR & 0x0F:
+        case VIA_SR & 0x0F:
             ifr &= ~0x04;  // Clear SR interrupt bit on read
             sr_active = true;
             sr_cnt = 0;
@@ -225,7 +225,7 @@ void VIA::Write(Word address, Byte data) {
             UpdateAnyActive();
             UpdateIRQ();
             break;
-        case SR & 0x0F:
+        case VIA_SR & 0x0F:
             sr = data;
             ifr &= ~0x04;
             sr_active = true;

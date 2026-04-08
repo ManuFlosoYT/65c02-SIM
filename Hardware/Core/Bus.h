@@ -32,7 +32,7 @@ constexpr Word T1L_L = 0x6006;
 constexpr Word T1L_H = 0x6007;
 constexpr Word T2C_L = 0x6008;
 constexpr Word T2C_H = 0x6009;
-constexpr Word SR = 0x600A;
+constexpr Word VIA_SR = 0x600A;
 constexpr Word ACR = 0x600B;
 constexpr Word PCR = 0x600C;
 constexpr Word IFR = 0x600D;
@@ -177,10 +177,10 @@ inline void Bus::Write(Word address, Byte data) {
         }
     }
 
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
-        memoryBase[address & 0xFF] = data;
+    if (Byte* memoryBase = pageWriteMap.at(address >> 8)) {
+        std::span<Byte>(memoryBase, 256)[address & 0xFFU] = data;
     } else {
-        const auto& slot = deviceMap[address];
+        const auto& slot = deviceMap.at(address);
         if (slot.device != nullptr) {
             slot.device->Write(slot.offset, data);
         }
