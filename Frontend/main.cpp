@@ -371,8 +371,7 @@ int main(int argc, char* argv[]) {
     state.emulator.GetSID().Init(sidSampleRate);
 
 #ifndef TARGET_WASM
-    SDKManager::ExtractBundledSDK();
-    SDKManager::ScanExtractedSDK(state);
+    SDKManager::CheckSDKStatus(state);
 #endif
 
 #ifndef TARGET_WASM

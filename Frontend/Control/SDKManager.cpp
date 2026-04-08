@@ -4,6 +4,8 @@
 #include <miniz.h>
 #include <filesystem>
 #include <iostream>
+#include <nlohmann/json.hpp>
+#include <fstream>
 
 #if !defined(TARGET_WASM)
 #include "sdk_zip.h"
@@ -12,6 +14,32 @@
 namespace fs = std::filesystem;
 
 namespace Control {
+
+void SDKManager::CheckSDKStatus(AppState& state) {
+#if defined(TARGET_WASM)
+    return;
+#else
+    if (!fs::exists("SDK")) {
+        std::cout << "SDKManager: SDK folder missing. Performing initial extraction..." << "\n";
+        ExtractBundledSDK();
+        ScanExtractedSDK(state);
+        return;
+    }
+
+    std::string extractedVersion = GetExtractedVersion();
+    std::string currentVersion = std::string(PROJECT_VERSION);
+
+    if (extractedVersion.empty() || extractedVersion != currentVersion) {
+        std::cout << "SDKManager: SDK version mismatch (Extracted: " << (extractedVersion.empty() ? "None" : extractedVersion)
+                  << ", Current: " << currentVersion << "). Queuing update popup..." << "\n";
+        state.sdk.showUpdatePopup = true;
+        state.sdk.extractedVersion = extractedVersion;
+    } else {
+        std::cout << "SDKManager: SDK is up to date (Version: " << currentVersion << ")" << "\n";
+        ScanExtractedSDK(state);
+    }
+#endif
+}
 
 void SDKManager::ExtractBundledSDK() {
 #if defined(TARGET_WASM)
@@ -71,6 +99,56 @@ void SDKManager::ExtractBundledSDK() {
 
     std::cout << "SDKManager: Extracted " << extracted_count << " files to SDK/ directory" << "\n";
     mz_zip_reader_end(&zip_archive);
+
+    WriteManifest();
+#endif
+}
+
+void SDKManager::DeleteSDK() {
+#if !defined(TARGET_WASM)
+    if (fs::exists("SDK")) {
+        try {
+            fs::remove_all("SDK");
+            std::cout << "SDKManager: SDK folder deleted." << "\n";
+        } catch (const std::exception& e) {
+            std::cerr << "SDKManager: Error deleting SDK folder: " << e.what() << "\n";
+        }
+    }
+#endif
+}
+
+void SDKManager::WriteManifest() {
+#if !defined(TARGET_WASM)
+    try {
+        nlohmann::json manifest;
+        manifest["program_version"] = std::string(PROJECT_VERSION);
+        std::ofstream ofs("SDK/manifest.json");
+        if (ofs.is_open()) {
+            ofs << manifest.dump(4);
+        }
+    } catch (...) {
+        std::cerr << "SDKManager: Failed to write manifest.json" << "\n";
+    }
+#endif
+}
+
+std::string SDKManager::GetExtractedVersion() {
+#if defined(TARGET_WASM)
+    return "";
+#else
+    try {
+        if (!fs::exists("SDK/manifest.json")) {
+            return "";
+        }
+        std::ifstream ifs("SDK/manifest.json");
+        if (!ifs.is_open()) {
+            return "";
+        }
+        nlohmann::json manifest = nlohmann::json::parse(ifs);
+        return manifest.value("program_version", "");
+    } catch (...) {
+        return "";
+    }
 #endif
 }
 
