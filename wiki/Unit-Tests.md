@@ -138,7 +138,7 @@ Tests use the `JAM` instruction (also known as `STP` or `KIL`) as a **terminator
 Tests are compiled and run automatically at the end of `build-linux.sh`:
 
 ```bash
-./build-linux.sh
+./scripts/build-linux.sh
 ```
 
 To run the tests manually after building:

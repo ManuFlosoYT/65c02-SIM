@@ -56,10 +56,10 @@ In practice, the simulator assumes the CPU can always access the first 64 rows w
 
 ## Image conversion tool
 
-The `GPU/generator/` directory contains a Python script that converts PNG, JPG, or BMP images to the VRAM binary format.
+The `tools/gpu/` directory contains a Python script that converts PNG, JPG, or BMP images to the VRAM binary format.
 
 ```bash
-./image-to-bin.sh <image_name>
+./scripts/image-to-bin.sh <image_name>
 # Output: output/vram/<image_name>.bin
 ```
 
@@ -67,7 +67,7 @@ The resulting binary can be loaded directly into VRAM through the graphical inte
 
 ## Sample images
 
-Several demonstration images are included in `GPU/`
+Several demonstration images are included in `assets/vram/`
 
 ## Double Buffering
 

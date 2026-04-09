@@ -1,12 +1,12 @@
-# Binaries — Example Programs
+# SDK Programs — Example Programs
 
-**Directory:** `Binaries/`
+**Directory:** `sdk/src/`
 
 ## Overview
 
-The `Binaries/` directory contains example programs written in **C** and **65c02 assembly** that demonstrate the emulator's capabilities. They are the ideal starting point for developing new programs.
+The `sdk/src/` directory contains example programs written in **C** and **65c02 assembly** that demonstrate the emulator's capabilities. They are the ideal starting point for developing new programs.
 
-All programs are compiled with `./compile-bin.sh <name>` and the resulting binary is saved to `output/rom/<name>.bin`.
+All programs are compiled with `./scripts/compile-bin.sh <name>` and the resulting binary is saved to `output/rom/<name>.bin`.
 
 ---
 
@@ -60,14 +60,14 @@ Low-level GPU driver written directly in 65c02 assembly. Shows how to access VRA
 ## Special target: `eater`
 
 ```bash
-./compile-bin.sh eater
+./scripts/compile-bin.sh eater
 ```
 
 Compiles the historic **WozMon + Microsoft BASIC** ROM as used by Ben Eater in his 65c02 project. The resulting binary (`output/rom/eater.bin`) boots directly into the interactive BASIC interpreter.
 
 ---
 
-## Support libraries (`Binaries/Libs/`)
+## Support libraries (`sdk/src/Libs/`)
 
 | File | Description |
 |------|-------------|
@@ -85,7 +85,7 @@ Compiles the historic **WozMon + Microsoft BASIC** ROM as used by Ben Eater in h
 ### Minimal C program
 
 ```c
-// Binaries/hello.c
+// sdk/src/hello.c
 #include "Libs/BIOS.h"
 
 int main() {
@@ -95,6 +95,6 @@ int main() {
 ```
 
 ```bash
-./compile-bin.sh hello
+./scripts/compile-bin.sh hello
 # Output: output/rom/hello.bin
 ```

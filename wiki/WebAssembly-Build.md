@@ -16,7 +16,7 @@ The build script automatically detects or downloads the **Emscripten SDK (emsdk)
 Run the provided script:
 
 ```bash
-./build-web.sh
+./scripts/build-web.sh
 ```
 
 This will:
@@ -38,7 +38,7 @@ Due to security restrictions (Cross-Origin Isolation for `SharedArrayBuffer`), y
 You can use the built-in run command:
 
 ```bash
-./build-web.sh --run
+./scripts/build-web.sh --run
 ```
 
 This script will start a local server (prioritizing `npx serve` or falling back to `python3 -m http.server`) and automatically open your browser at the correct URL.

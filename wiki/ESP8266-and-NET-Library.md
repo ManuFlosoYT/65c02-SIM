@@ -1,6 +1,6 @@
 # ESP8266 and NET.h Library
 
-**Directory:** `Hardware/Comm/` and `Binaries/Libs/`
+**Directory:** `src/Hardware/Comm/` and `sdk/src/Libs/`
 
 ## Overview
 
@@ -12,7 +12,7 @@ The ESP8266 is dynamically mapped into the system's memory when the `NET.h` libr
 
 - **Address Range:** `0x5004` – `0x5007`
 
-When you compile a program that includes `#include "Libs/NET.h"`, the compilation script `compile-bin.sh` notices this and flags the `generate_cfg.py` script to reserve this memory space in the dynamic linker configuration (`C-Runtime-dynamic.cfg`).
+When you compile a program that includes `#include "Libs/NET.h"`, the compilation script `scripts/compile-bin.sh` notices this and flags the `generate_cfg.py` script to reserve this memory space in the dynamic linker configuration (`sdk/src/build/C-Runtime-dynamic.cfg`).
 
 ### Registers
 

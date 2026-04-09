@@ -103,10 +103,10 @@ The **SID Viewer** window in the GUI shows in real time:
 
 ## MIDI-to-SID tool
 
-The `SID/generator/` directory includes a Python script that converts MIDI files to 65c02 assembly code playable on the emulator.
+The `tools/sid/` directory includes a Python script that converts MIDI files to 65c02 assembly code playable on the emulator.
 
 ```bash
-./midi-to-bin.sh <midi_file>
+./scripts/midi-to-bin.sh <midi_file>
 # Output: output/midi/<song>.bin
 ```
 
@@ -114,4 +114,4 @@ The script has 8 compression optimisation modes (granularities from 1 ms to 100+
 
 ### Included sample songs
 
-Several demonstration MIDI files are provided in `SID/`
+Several demonstration MIDI files are provided in `assets/midi/`

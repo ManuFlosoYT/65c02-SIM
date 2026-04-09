@@ -41,11 +41,11 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 │  └───────────┴────────────┴──────────────────────┘   │
 ├──────────────────────────────────────────────────────┤
 │               SDK / Tools                            │
-│   compile-bin.sh · image-to-bin.sh · midi-to-bin.sh  │
-│     Linker configs · BIOS · Microsoft BASIC          │
+│  scripts/compile-bin.sh · image-to-bin.sh · midi-to-bin.sh  │
+│     sdk/linker/ · sdk/msbasic/ · BIOS · Microsoft BASIC     │
 ├──────────────────────────────────────────────────────┤
 │            Example Programs & Tests                  │
-│    Binaries/ (C + ASM)  ·  UnitTests/ (Google Test)  │
+│    sdk/src/ (C + ASM)  ·  src/UnitTests/ (Google Test)  │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -71,7 +71,7 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
   - [Linker and Memory Layout](Linker-and-Memory-Layout) — Linker configs, BIOS, memory map
   - [SDK](SDK) — Compilation and conversion tools
   - [Cartridge System](Cartridge-System) — Packaging and hardware configuration system
-  - [Binaries](Binaries) — Included example programs
+  - [SDK Programs](SDK-Programs) — Included example programs
 - **Building & testing**
   - [Building](Building) — Compile the project from source
   - [Unit Tests](Unit-Tests) — Unit test infrastructure
@@ -88,13 +88,13 @@ This project is a full emulator of the **WDC 65C02** microprocessor (the CMOS va
 
 ```bash
 # Compile a C or assembly program
-./compile-bin.sh <program_name>
+./scripts/compile-bin.sh <program_name>
 
 # Convert an image to VRAM format
-./image-to-bin.sh <image>
+./scripts/image-to-bin.sh <image>
 
 # Convert a MIDI file to SID assembly code
-./midi-to-bin.sh <midi_file>
+./scripts/midi-to-bin.sh <midi_file>
 ```
 
 See the [SDK](SDK) page for more details.

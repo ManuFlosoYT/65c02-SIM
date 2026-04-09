@@ -1,10 +1,10 @@
 # Linker and Memory Layout
 
-**Directory:** `Linker/`
+**Directory:** `sdk/linker/`
 
 ## Overview
 
-The `Linker/` directory contains the linker configuration files (`ld65` from the **cc65** suite), the system BIOS, and the Microsoft BASIC interpreter. These files define how code and data are laid out within the 65c02's 64 KB address space.
+The `sdk/linker/` directory contains the linker configuration files (`ld65` from the **cc65** suite), the system BIOS, and the Microsoft BASIC interpreter. These files define how code and data are laid out within the 65c02's 64 KB address space.
 
 ## Full memory map
 
@@ -33,13 +33,13 @@ The `Linker/` directory contains the linker configuration files (`ld65` from the
 
 Previously, the project used multiple static `.cfg` files (`C-Runtime.cfg`, `C-Runtime-GPU.cfg`, `C-Runtime-GPUDoubleBuffer.cfg`) to manage different memory layouts based on the hardware requirements of each program. This became difficult to maintain as the number of hardware components grew.
 
-Now, the memory layout is generated **dynamically** at compile time using a Python script (`Linker/generate_cfg.py`).
+Now, the memory layout is generated **dynamically** at compile time using a Python script (`tools/linker/generate_cfg.py`).
 
 **How it works:**
-1. During compilation, `compile-bin.sh` inspects the C code (`.c` file) for specific library `#include` directives.
+1. During compilation, `scripts/compile-bin.sh` inspects the C code (`.c` file) for specific library `#include` directives.
 2. If it detects libraries that require specific memory mapping (like `GPU.h`, `GPUDoubleBuffer.h`, or `NET.h`), it adds the corresponding flags (`--gpu`, `--double-buffer`, `--net`) to the generation step.
 3. `generate_cfg.py` calculates the memory map, reserving space for the requested hardware and dynamically allocating the remaining RAM (from `0x0400` to `0x8000`) into contiguous blocks (`RAM_1`, `RAM_2`, etc.).
-4. The generated configuration is saved to `Binaries/build/C-Runtime-dynamic.cfg` and used by `ld65`.
+4. The generated configuration is saved to `sdk/src/build/C-Runtime-dynamic.cfg` and used by `ld65`.
 
 By default, the script reserves memory for standard components to avoid collisions with C variables:
 - **SID:** `0x4800`–`0x481F`
@@ -106,7 +106,7 @@ Apple 1 system monitor originally written by **Steve Wozniak** (© 1976 Apple Co
 
 Directory containing the **Microsoft BASIC for 6502** port (© 1977 Microsoft), based on restorations by [mist64](https://github.com/mist64/msbasic) and [Ben Eater](https://github.com/beneater/msbasic).
 
-- Build with `./msbasic/make.sh`
+- Build with `./sdk/msbasic/make.sh`
 - The resulting binary is loaded into ROM as a sample program
 - Allows writing BASIC programs directly in the emulator console
 
@@ -119,7 +119,7 @@ The cc65 suite is used to compile and link programs:
 ca65 program.s -o program.o
 
 # Link with the C runtime
-ld65 -C Linker/C-Runtime.cfg program.o Linker/C-Runtime.o -o output/rom/program.bin
+ld65 -C sdk/linker/C-Runtime.s program.o sdk/linker/C-Runtime.o -o output/rom/program.bin
 ```
 
-The `compile-bin.sh` script automates the entire process. See the [SDK](SDK) page for more details.
+The `scripts/compile-bin.sh` script automates the entire process. See the [SDK](SDK) page for more details.

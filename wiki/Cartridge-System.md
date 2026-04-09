@@ -4,13 +4,7 @@ The **65c02-SIM** cartridge system allows packaging ROMs, assets, and hardware c
 
 ## Packaging Tool: `create-cartridge.sh`
 
-The `create-cartridge.sh` script is the primary tool for creating cartridges. It automates the creation of the `manifest.json`, inclusion of binaries, and zipping.
-
-### Usage
-
-```bash
-./create-cartridge.sh [ROM_FILE] [flags]
-```
+./scripts/create-cartridge.sh [ROM_FILE] [flags]
 
 ### Parameters
 
@@ -39,15 +33,15 @@ Version 3.0 introduces support for integrated SD card images. When a cartridge c
 
 ### Usage with SD Image
 ```bash
-./create-cartridge.sh output/rom/microDOS.bin --sd-image output/img/microDOS.img --sd true
+./scripts/create-cartridge.sh output/rom/microDOS.bin --sd-image output/img/microDOS.img --sd true
 ```
 ```bash
-./create-cartridge.sh --vram output/vram/logo.bin --name "LogoDemo" --gpu true
+./scripts/create-cartridge.sh --vram output/vram/logo.bin --name "LogoDemo" --gpu true
 ```
 
 ### Example: Full Hardware Configuration (microDOS)
 ```bash
-./create-cartridge.sh output/rom/microDOS.bin --name "microDOS" --esp true --sd true --gpu true
+./scripts/create-cartridge.sh output/rom/microDOS.bin --name "microDOS" --esp true --sd true --gpu true
 ```
 
 ---
@@ -97,12 +91,12 @@ Hardware devices are registered on the bus dynamically based on the `config` sec
 - **Conflict Resolution**: If the **SD Card** is enabled, the virtual **LCD** is automatically deactivated to prevent hardware resource/pin conflicts.
 
 ### Building via SDK
-The `create-sdk.sh` script automatically packages all binaries in the project using these flags, ensuring that system tools like `testNET` and `microDOS` have their respective hardware (WiFi/SD) enabled by default.
+The `scripts/create-sdk.sh` script automatically packages all binaries in the project using these flags, ensuring that system tools like `testNET` and `microDOS` have their respective hardware (WiFi/SD) enabled by default.
 
 ## microDOS Special Automation: `create-microdos-cartridge.sh`
 
 For microDOS, a specialized script `create-microdos-cartridge.sh` is provided. This script:
-1. Compiles the microDOS kernel and all applications in `Binaries/Apps/`.
+1. Compiles the microDOS kernel and all applications in `sdk/microdosapps/Apps/`.
 2. Creates a fresh 32MB FAT16 SD image.
 3. Pre-populates the SD image with the compiled `.app` binaries in a `/bin` directory.
 4. Packages everything into a legal v3.0 `microDOS.65c` cartridge.

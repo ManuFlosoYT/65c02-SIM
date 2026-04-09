@@ -38,7 +38,7 @@ cd 65c02-SIM
 ## Build for Linux
 
 ```bash
-./build-linux.sh
+./scripts/build-linux.sh
 ```
 
 The resulting executable is saved to `output/linux/SIM_65C02`.
@@ -52,10 +52,10 @@ The resulting executable is saved to `output/linux/SIM_65C02`.
 | `--clean --debug` | Forces a clean build and builds with debug symbols |
 
 ```bash
-./build-linux.sh                     # Build (default)
-./build-linux.sh --clean             # Clean build
-./build-linux.sh --debug             # Debug build
-./build-linux.sh --clean --debug     # Clean build and debug build
+./scripts/build-linux.sh                     # Build (default)
+./scripts/build-linux.sh --clean             # Clean build
+./scripts/build-linux.sh --debug             # Debug build
+./scripts/build-linux.sh --clean --debug     # Clean build and debug build
 ```
 
 The script:
@@ -64,12 +64,12 @@ The script:
 3. Runs the **unit tests** at the end of the build
 4. Reports errors if any test fails
 
-> ⚠️ **Warning:** The entire `UnitTests/` folder has been AI generated. Contributors should be aware of this regarding the quality or status of the tests.
+> ⚠️ **Warning:** The entire `src/UnitTests/` folder has been AI generated. Contributors should be aware of this regarding the quality or status of the tests.
 
 ## Build for Windows (MinGW cross-compilation)
 
 ```bash
-./build-win.sh
+./scripts/build-win.sh
 ```
 
 > **Note:** The MinGW root path is hardcoded in `CMakeLists.txt` (`/usr/x86_64-w64-mingw32ucrt/...`). If you are not using Fedora, you must pass the `-DMINGW_ROOT=<your_path>` flag to CMake.
@@ -79,10 +79,10 @@ The script:
 The resulting executable is saved to `output/windows/SIM_65C02.exe`.
 
 ```bash
-./build-win.sh                     # Build (default)
-./build-win.sh --clean             # Clean build
-./build-win.sh --debug             # Debug build
-./build-win.sh --clean --debug     # Clean build and debug build
+./scripts/build-win.sh                     # Build (default)
+./scripts/build-win.sh --clean             # Clean build
+./scripts/build-win.sh --debug             # Debug build
+./scripts/build-win.sh --clean --debug     # Clean build and debug build
 ```
 
 If **Wine** is installed, the script automatically runs the unit tests.
@@ -92,7 +92,7 @@ If **Wine** is installed, the script automatically runs the unit tests.
 The simulator can be compiled to run in the browser using Emscripten.
 
 ```bash
-./build-web.sh
+./scripts/build-web.sh
 ```
 
 For detailed information on prerequisites, local testing, and browser features, see the **[WebAssembly Build](WebAssembly-Build.md)** wiki page.
@@ -105,8 +105,8 @@ For detailed information on prerequisites, local testing, and browser features, 
 | `--clean` | Forces a clean build |
 
 ```bash
-./build-web.sh --run       # Build and run locally
-./build-web.sh --clean     # Clean build
+./scripts/build-web.sh --run       # Build and run locally
+./scripts/build-web.sh --clean     # Clean build
 ```
 
 ## Build system (CMake)
@@ -164,7 +164,7 @@ output/
 │   ├── index.html
 │   ├── SIM_65C02.wasm
 │   └── ...
-└── rom/                   ← Programs compiled with compile-bin.sh
+└── rom/                   ← Programs compiled with scripts/compile-bin.sh
     ├── echo.bin
     ├── tetris.bin
     └── ...

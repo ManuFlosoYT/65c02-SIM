@@ -6,16 +6,16 @@ The SDK includes three automation scripts for compiling programs and converting 
 
 ---
 
-## `compile-bin.sh` — Compile programs
+## `scripts/compile-bin.sh` — Compile programs
 
 Compiles **C** or **65c02 assembly** programs and generates a `.bin` binary ready to load into the simulator.
 
 ### Usage
 
 ```bash
-./compile-bin.sh <program_name>
-./compile-bin.sh all          # Compile all programs
-./compile-bin.sh eater        # Compile the WOZMON + Microsoft BASIC ROM
+./scripts/compile-bin.sh <program_name>
+./scripts/compile-bin.sh all          # Compile all programs
+./scripts/compile-bin.sh eater        # Compile the WOZMON + Microsoft BASIC ROM
 ```
 
 Output is saved to `output/rom/<name>.bin`.
@@ -30,21 +30,21 @@ Output is saved to `output/rom/<name>.bin`.
 #### Assembly programs (`.s`)
 
 ```
-Binaries/<name>.s
+sdk/src/<name>.s
        ↓ ca65 --cpu 65C02
-Binaries/build/<name>.o
-       ↓ ld65 -C Linker/raw.cfg
+sdk/src/build/<name>.o
+       ↓ ld65 -C sdk/linker/raw.cfg
 output/rom/<name>.bin
 ```
 
 #### C programs (`.c`)
 
 ```
-Binaries/<name>.c
+sdk/src/<name>.c
        ↓ cl65 -O --cpu 65C02 -S     (compile to assembly)
-Binaries/build/<name>.s
+sdk/src/build/<name>.s
        ↓ cl65 --cpu 65C02 -C <cfg>  (assemble + link + BIOS)
-       │  Includes: Linker/bios.s + Linker/C-Runtime.s
+       │  Includes: sdk/linker/bios.s + sdk/linker/C-Runtime.s
 output/rom/<name>.bin
 ```
 
@@ -60,20 +60,20 @@ The script detects which linker configuration to use based on the headers includ
 
 #### Special target `eater`
 
-Compiles the **WozMon + Microsoft BASIC** ROM using the Makefile in `Linker/msbasic/`.
+Compiles the **WozMon + Microsoft BASIC** ROM using the Makefile in `sdk/msbasic/`.
 
 ---
 
-## `image-to-bin.sh` — Convert images to VRAM
+## `scripts/image-to-bin.sh` — Convert images to VRAM
 
 Converts an image (PNG, JPG, or BMP) to the emulator's VRAM binary format (100×75 pixels, 1 byte per pixel in RGB 222).
 
 ### Usage
 
 ```bash
-./image-to-bin.sh <image_name>
-./image-to-bin.sh all         # Convert all images in GPU/
-# Example: ./image-to-bin.sh GPU/bocchi.png
+./scripts/image-to-bin.sh <image_name>
+./scripts/image-to-bin.sh all         # Convert all images in assets/vram/
+# Example: ./scripts/image-to-bin.sh assets/vram/bocchi.png
 ```
 
 Output is saved to `output/vram/<image_name>.bin`.
@@ -93,16 +93,16 @@ The resulting binary can be loaded directly into VRAM through the graphical inte
 
 ---
 
-## `midi-to-bin.sh` — Convert MIDI to SID code
+## `scripts/midi-to-bin.sh` — Convert MIDI to SID code
 
 Converts a MIDI file to 65c02 assembly code for the emulator's SID chip. The result can be compiled and run directly.
 
 ### Usage
 
 ```bash
-./midi-to-bin.sh <midi_file>
-./midi-to-bin.sh all          # Convert all MIDI files in SID/
-# Example: ./midi-to-bin.sh SID/overworld.mid
+./scripts/midi-to-bin.sh <midi_file>
+./scripts/midi-to-bin.sh all          # Convert all MIDI files in assets/midi/
+# Example: ./scripts/midi-to-bin.sh assets/midi/overworld.mid
 ```
 
 Output is saved to `output/midi/<song>.bin`.
@@ -133,14 +133,14 @@ If no mode fits within 32 KB, the script reports an error.
 
 1. Parse the MIDI file with `mido`
 2. Generate 65c02 assembly code that writes to SID registers to play the song
-3. Compile with `ca65` + `ld65` using `Linker/raw.cfg`
+3. Compile with `ca65` + `ld65` using `sdk/linker/raw.cfg`
 4. The final binary is loaded into ROM and the CPU executes the instructions to produce sound
 
 ---
 
 ## C libraries for programs
 
-`Binaries/Libs/` contains C header files that make it easy to use the hardware from C code:
+`sdk/src/Libs/` contains C header files that make it easy to use the hardware from C code:
 
 | File                | Description                                   |
 | ------------------- | --------------------------------------------- |
