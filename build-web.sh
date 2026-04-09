@@ -64,11 +64,12 @@ cp "Frontend/Assets/65c02-sim.svg" output/web/favicon.svg 2>/dev/null || true
 echo "Web build completed in output/web (index.html)"
 
 # Copy Cartridges, MIDIs, and VRAMs if they exist
-mkdir -p output/web/roms
+mkdir -p output/web/roms/midi
+mkdir -p output/web/roms/vram
 [ -d "output/cartridge" ] && cp output/cartridge/*.65c output/web/roms/ 2>/dev/null || true
 [ -d "output/rom" ] && cp output/rom/*.bin output/web/roms/ 2>/dev/null || true
-[ -d "output/midi" ] && cp output/midi/*.bin output/web/roms/ 2>/dev/null || true
-[ -d "output/vram" ] && cp output/vram/*.bin output/web/roms/ 2>/dev/null || true
+[ -d "output/midi" ] && cp output/midi/*.65c output/web/roms/midi/ 2>/dev/null || true
+[ -d "output/vram" ] && cp output/vram/*.65c output/web/roms/vram/ 2>/dev/null || true
 
 if command -v jq >/dev/null 2>&1; then
     echo "Generating structured roms.json..."
@@ -76,8 +77,8 @@ if command -v jq >/dev/null 2>&1; then
     ROMS_JSON=$(ls output/cartridge/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
     
     # Keep others for compatibility or direct loading if needed
-    MIDIS_JSON=$(ls output/midi/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
-    VRAMS_JSON=$(ls output/vram/*.bin 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+    MIDIS_JSON=$(ls output/midi/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+    VRAMS_JSON=$(ls output/vram/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
     
     jq -n --argjson r "$ROMS_JSON" --argjson m "$MIDIS_JSON" --argjson v "$VRAMS_JSON" \
         '{roms: $r, midis: $m, vrams: $v}' > output/web/roms/roms.json
