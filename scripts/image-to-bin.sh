@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # --- CONFIGURACIÓN ---
-GPU_DIR="GPU"
-PYTHON_SCRIPT="$GPU_DIR/generator/image-to-bin.py"
+GPU_DIR="assets/vram"
+PYTHON_SCRIPT="tools/gpu/image-to-bin.py"
 
 # --- FUNCIONES ---
 listar_imagenes() {

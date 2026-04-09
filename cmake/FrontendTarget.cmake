@@ -16,8 +16,8 @@ target_link_libraries(imgui_lib PUBLIC SDL3::SDL3 OpenGL::GL glad_gl)
 
 # Main Frontend Executable
 file(GLOB_RECURSE FRONTEND_SOURCES CONFIGURE_DEPENDS
-    "Frontend/*.cpp"
-    "Frontend/*.h"
+    "src/Frontend/*.cpp"
+    "src/Frontend/*.h"
 )
 
 if(WIN32)
@@ -116,7 +116,7 @@ if(EMSCRIPTEN)
         "-sPTHREAD_POOL_SIZE=8"
         "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main','_Wasm_OnFilePicked']"
         "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString','stringToUTF8','lengthBytesUTF8','HEAPU8','ccall','cwrap']"
-        "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/web/shell.html"
+        "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/web/shell.html"
     )
     set_target_properties(SIM_65C02 PROPERTIES SUFFIX ".html")
 endif()

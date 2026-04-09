@@ -1,5 +1,5 @@
 enable_testing()
-file(GLOB_RECURSE TEST_SOURCES "UnitTests/*.cpp")
+file(GLOB_RECURSE TEST_SOURCES "src/UnitTests/*.cpp")
 
 if(TEST_SOURCES AND NOT EMSCRIPTEN)
     add_executable(unit_tests ${TEST_SOURCES})

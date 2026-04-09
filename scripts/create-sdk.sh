@@ -1,11 +1,12 @@
 #!/bin/bash
 set -e
 
-# Core compilation
-chmod +x compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh create-microdos-cartridge.sh
-./compile-bin.sh all
-./image-to-bin.sh all
-./midi-to-bin.sh all
+SCRIPT_DIR="$(dirname "$0")"
+
+chmod +x "$SCRIPT_DIR/compile-bin.sh" "$SCRIPT_DIR/image-to-bin.sh" "$SCRIPT_DIR/midi-to-bin.sh" "$SCRIPT_DIR/create-cartridge.sh" "$SCRIPT_DIR/create-microdos-cartridge.sh"
+"$SCRIPT_DIR/compile-bin.sh" all
+"$SCRIPT_DIR/image-to-bin.sh" all
+"$SCRIPT_DIR/midi-to-bin.sh" all
 
 # Function to handle ROM flags
 get_rom_flags() {
@@ -34,19 +35,19 @@ for f in output/rom/*.bin; do
     if [ "$name" == "microDOS" ]; then
         continue
     fi
-    ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" --type rom $(get_rom_flags "$name")
+    "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" --type rom $(get_rom_flags "$name")
   fi
 done
 
 echo "Generating specialized microDOS cartridge..."
-./create-microdos-cartridge.sh
+"$SCRIPT_DIR/create-microdos-cartridge.sh"
 
 # Package MIDIs
 echo "Packaging MIDIs into cartridges..."
 for f in output/midi/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
-    ./create-cartridge.sh "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true --type midi
+    "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true --type midi
     mkdir -p output/midi
     mv "output/cartridge/$name.65c" "output/midi/"
   fi
@@ -57,7 +58,7 @@ echo "Packaging VRAM images into cartridges..."
 for f in output/vram/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
-    ./create-cartridge.sh --vram "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true --type vram
+    "$SCRIPT_DIR/create-cartridge.sh" --vram "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true --type vram
     mkdir -p output/vram
     mv "output/cartridge/$name.65c" "output/vram/"
   fi
@@ -72,14 +73,14 @@ fi
 # Create SDK.zip
 echo "Creating SDK.zip..."
 rm -f SDK.zip 2> /dev/null
-zip -r SDK.zip Binaries/ Linker/ GPU/ SID/ output/ \
-    compile-bin.sh image-to-bin.sh midi-to-bin.sh create-cartridge.sh create-microdos-cartridge.sh \
-    -x "Binaries/build/*" \
+zip -r SDK.zip sdk/ tools/ assets/ output/ \
+    scripts/compile-bin.sh scripts/image-to-bin.sh scripts/midi-to-bin.sh scripts/create-cartridge.sh scripts/create-microdos-cartridge.sh \
+    -x "sdk/src/build/*" \
     -x "create-sdk.sh" \
-    -x "SID/generator/__pycache__/*" \
-    -x "SID/generator/build/*" \
-    -x "Linker/*.o" \
-    -x "Linker/msbasic/tmp/*" \
+    -x "tools/sid/__pycache__/*" \
+    -x "tools/sid/build/*" \
+    -x "sdk/linker/*.o" \
+    -x "sdk/msbasic/tmp/*" \
     -x "output/SIM_65C02*" \
     -x "output/web/*" \
     -x "output/video/*" \

@@ -2,8 +2,8 @@
 set -e
 
 # Usage check
-if [ ! -d "SID" ]; then
-    echo "Error: SID directory not found."
+if [ ! -d "assets/midi" ]; then
+    echo "Error: assets/midi directory not found."
     exit 1
 fi
 
@@ -22,22 +22,22 @@ done
 # Input Handling (filter out --microDOS flag)
 if [ "$1" == "all" ] || [ "$2" == "all" ]; then
     shopt -s nullglob
-    files=(SID/*.mid SID/*.midi)
+    files=(assets/midi/*.mid assets/midi/*.midi)
     shopt -u nullglob
     
     if [ ${#files[@]} -eq 0 ]; then
-        echo "Error: No MIDI files found in SID/"
+        echo "Error: No MIDI files found in assets/midi/"
         exit 1
     fi
 elif [ "$#" -eq 0 ]; then
     echo "Available MIDI files:"
     echo "  - all (Compile all MIDI files)"
     shopt -s nullglob
-    files=(SID/*.mid SID/*.midi)
+    files=(assets/midi/*.mid assets/midi/*.midi)
     shopt -u nullglob
     
     if [ ${#files[@]} -eq 0 ]; then
-        echo "  (No MIDI files found in SID/)"
+        echo "  (No MIDI files found in assets/midi/)"
     else
         for f in "${files[@]}"; do
             echo "  - $(basename "$f")"
@@ -52,8 +52,8 @@ else
     # Check if exact path or just filename
     if [ -f "$input_arg" ]; then
         target_file="$input_arg"
-    elif [ -f "SID/$input_arg" ]; then
-        target_file="SID/$input_arg"
+    elif [ -f "assets/midi/$input_arg" ]; then
+        target_file="assets/midi/$input_arg"
     else
         echo "Error: File '$input_arg' not found."
         exit 1
@@ -75,7 +75,7 @@ for midi_file in "${files[@]}"; do
     
     if [ "$MICRO_DOS" = true ]; then
         echo ">> Generating Raw SID Bytes Mode: L1"
-        if ! python3 SID/generator/midi_to_sid.py "$midi_file" --mode "l1" --microDOS; then
+        if ! python3 tools/sid/midi_to_sid.py "$midi_file" --mode "l1" --microDOS; then
             echo "   [!] Conversion script failed. Skipping."
             exit -1
         fi
@@ -88,7 +88,7 @@ for midi_file in "${files[@]}"; do
         echo ">> Attempting Mode: $mode"
         
         # 1. Convert MIDI to ASM
-        if ! python3 SID/generator/midi_to_sid.py "$midi_file" --mode "$mode"; then
+        if ! python3 tools/sid/midi_to_sid.py "$midi_file" --mode "$mode"; then
             echo "   [!] Conversion script failed. Skipping."
             break 
         fi
@@ -97,9 +97,9 @@ for midi_file in "${files[@]}"; do
         echo "   Compiling..."
         
         # Ensure build directory exists
-        mkdir -p SID/generator/build
+        mkdir -p tools/sid/build
         
-        if ./compile-bin.sh "$clean_name" > /dev/null 2>&1; then
+        if ./scripts/compile-bin.sh "$clean_name" > /dev/null 2>&1; then
             mkdir -p output/midi
             if [ -f "output/rom/$clean_name.bin" ]; then
                 mv "output/rom/$clean_name.bin" "output/midi/$clean_name.bin"

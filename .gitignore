@@ -3,16 +3,21 @@ compile_commands.json
 /.cache
 /build
 /build_win
-/output
-/Binaries/build
 /emsdk_local
 
-SID/generator/__pycache__
-SID/generator/build
+/sdk/src/build/
+/sdk/msbasic/tmp/
+/tools/sid/build/
+/tools/sid/__pycache__/
 
-*.o
-*.bin
-*.map
-*.lst
+/sdk/src/build/*.o
+/sdk/src/build/*.bin
+/sdk/src/build/*.map
+/sdk/src/build/*.lst
+/sdk/src/build/*.s
+/sdk/src/build/*.lbl
+/sdk/src/build/*.dbg
+/sdk/src/build/*.cfg
 
 SDK.zip
+/output

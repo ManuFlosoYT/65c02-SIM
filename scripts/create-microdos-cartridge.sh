@@ -6,17 +6,18 @@ set -e
 
 echo "--- Building microDOS Cartridge v3.0 ---"
 
-# 1. Compile microDOS core
-./compile-bin.sh microDOS
+SCRIPT_DIR="$(dirname "$0")"
+
+"$SCRIPT_DIR/compile-bin.sh" microDOS
 
 # 2. Compile all available microDOS apps
 echo "  Compiling microDOS apps..."
 mkdir -p output/apps
-for app_src in Binaries/Apps/*.c; do
+for app_src in sdk/microdosapps/Apps/*.c; do
     if [ -f "$app_src" ]; then
         app_name=$(basename "${app_src%.c}")
         echo "    Building $app_name.app..."
-        ./compile-bin.sh "$app_name" --microDOS > /dev/null 2>&1
+        "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > /dev/null 2>&1
     fi
 done
 
@@ -37,7 +38,7 @@ mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
 
 # 4. Compile MIDs to .sid for microDOS
 echo "  Compiling raw SID files..."
-./midi-to-bin.sh all --microDOS
+"$SCRIPT_DIR/midi-to-bin.sh" all --microDOS
 
 # 5. Populate SD Card with /bin, /sid, and apps
 echo "  Populating SD Card..."
@@ -59,7 +60,7 @@ done
 
 # 5. Create the Cartridge (.65c)
 echo "  Packaging Cartridge..."
-./create-cartridge.sh output/rom/microDOS.bin \
+"$SCRIPT_DIR/create-cartridge.sh" output/rom/microDOS.bin \
     --sd-image "$SD_PATH" \
     --name "microDOS" \
     --author "ManuFloso" \

@@ -1,6 +1,6 @@
 file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
-    "Hardware/*.cpp"
-    "Hardware/*.h"
+    "src/Hardware/*.cpp"
+    "src/Hardware/*.h"
 )
 
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
@@ -13,6 +13,7 @@ if(EMSCRIPTEN)
 endif()
 target_include_directories(65c02_core PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR} 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src 
     ${picosha2_SOURCE_DIR} 
     ${asio_SOURCE_DIR}/asio/include 
     ${pocketpy_SOURCE_DIR}/include 
@@ -38,6 +39,7 @@ add_library(65c02_core_test STATIC ${CORE_SOURCES})
 target_compile_definitions(65c02_core_test PUBLIC TESTING_ENV ASIO_STANDALONE)
 target_include_directories(65c02_core_test PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR} 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src 
     ${picosha2_SOURCE_DIR} 
     ${asio_SOURCE_DIR}/asio/include 
     ${pocketpy_SOURCE_DIR}/include 

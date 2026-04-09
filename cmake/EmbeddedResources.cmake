@@ -48,7 +48,7 @@ if(NOT EMSCRIPTEN)
 
         add_custom_command(
             OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
-            COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCC65.py" "${cc65_snapshot_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/Linker" "${CMAKE_CURRENT_SOURCE_DIR}/Binaries/Libs" "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
+            COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCC65.py" "${cc65_snapshot_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker" "${CMAKE_CURRENT_SOURCE_DIR}/sdk/src/Libs" "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
             DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCC65.py"
             COMMENT "Embedding CC65 VFS contents (headers and none.lib)"
             VERBATIM
@@ -64,8 +64,8 @@ if(NOT EMSCRIPTEN)
 endif()
 
 # CRT Shaders
-set(CRT_VERT "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.vert")
-set(CRT_FRAG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/GUI/Video/crt.frag")
+set(CRT_VERT "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/GUI/Video/crt.vert")
+set(CRT_FRAG "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/GUI/Video/crt.frag")
 set(CRT_SHADERS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/CRTShaders.h")
 
 add_custom_command(
@@ -87,7 +87,7 @@ add_custom_target(crt_shaders DEPENDS "${CRT_SHADERS_H}")
 find_program(RSVG_CONVERT_EXECUTABLE NAMES rsvg-convert)
 find_program(MAGICK_EXECUTABLE NAMES magick convert REQUIRED)
 
-set(ICON_SVG "${CMAKE_CURRENT_SOURCE_DIR}/Frontend/Assets/65c02-sim.svg")
+set(ICON_SVG "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Assets/65c02-sim.svg")
 set(ICON_PNG "${CMAKE_CURRENT_BINARY_DIR}/generated/65c02-sim.png")
 set(ICON_ICO "${CMAKE_CURRENT_BINARY_DIR}/generated/65c02-sim.ico")
 set(ICON_PIXELS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/IconPixels.h")

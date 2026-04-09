@@ -58,8 +58,8 @@ cp "$BUILD_DIR/SIM_65C02.html" output/web/index.html 2>/dev/null || true
 cp "$BUILD_DIR/SIM_65C02.js" output/web/ 2>/dev/null || true
 cp "$BUILD_DIR/SIM_65C02.wasm" output/web/ 2>/dev/null || true
 cp "$BUILD_DIR/SIM_65C02.worker.js" output/web/ 2>/dev/null || true
-cp "Frontend/web/coi-serviceworker.js" output/web/ 2>/dev/null || true
-cp "Frontend/Assets/65c02-sim.svg" output/web/favicon.svg 2>/dev/null || true
+cp "src/Frontend/web/coi-serviceworker.js" output/web/ 2>/dev/null || true
+cp "src/Frontend/Assets/65c02-sim.svg" output/web/favicon.svg 2>/dev/null || true
 
 echo "Web build completed in output/web (index.html)"
 
