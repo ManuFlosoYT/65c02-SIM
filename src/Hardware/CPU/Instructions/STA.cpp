@@ -43,7 +43,7 @@ template <bool Debug>
 void STA::ExecuteINDX(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
-    Word Dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
+    Word Dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
     bus.Write<Debug>(Dir, cpu.A);
 }
 
