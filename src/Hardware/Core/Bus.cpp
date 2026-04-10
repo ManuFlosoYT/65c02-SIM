@@ -187,10 +187,12 @@ void Bus::UpdateCache() {
 
         if (pageIsUniform) {
             Byte* rawPtr = firstDevice->GetRawMemory();
-            std::span<Byte> rawSpan(rawPtr, 65536);
+            size_t devSize = firstDevice->GetRawMemorySize();
+            std::span<Byte> rawSpan(rawPtr, devSize);
             Byte* memoryBase = &rawSpan[deviceMap.at(page << 8).offset];
 
             pageReadMap.at(page) = memoryBase;
+
             if (!firstDevice->IsReadOnly()) {
                 pageWriteMap.at(page) = memoryBase;
             }
