@@ -12,6 +12,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <charconv>
 #include <span>
 #include <string>
 
@@ -213,25 +214,92 @@ struct Args {
     int runCycles = 0;
 };
 
-static Args ParseArgs(std::span<const char* const> argv) {
+struct ParseArgsResult {
     Args args;
+    bool ok = true;
+    bool showUsage = false;
+    std::string error;
+};
+
+static bool ParseStrictInt(std::string_view text, int& outValue) {
+    if (text.empty()) {
+        return false;
+    }
+    const char* begin = text.data();
+    const char* end = text.data() + text.size();
+    auto [ptr, ec] = std::from_chars(begin, end, outValue);
+    return ec == std::errc() && ptr == end;
+}
+
+static void PrintHeadlessUsage(const char* exeName) {
+    std::cerr << "Usage: " << exeName << " [OPTIONS] [ROM_PATH]\n"
+              << "Options:\n"
+              << "  --headless              Run without GUI\n"
+              << "  --rom <path>            Load ROM from path\n"
+              << "  --script <path>         Load and run Python script\n"
+              << "  --run-cycles <N>        Run N cycles (N >= 0)\n"
+              << "  --dump-mem <file>       Dump 64KB memory to file\n"
+              << "  --help                  Show this help\n";
+}
+
+static ParseArgsResult ParseArgs(std::span<const char* const> argv) {
+    ParseArgsResult result;
+    Args& args = result.args;
     for (std::size_t i = 1; i < argv.size(); ++i) {
         std::string_view arg = argv[i];
+        if (arg == "--help") {
+            result.showUsage = true;
+            return result;
+        }
         if (arg == "--headless") {
             args.headless = true;
-        } else if (arg == "--script" && i + 1 < argv.size()) {
+        } else if (arg == "--script") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --script";
+                return result;
+            }
             args.scriptPath = argv[++i];
-        } else if (arg == "--run-cycles" && i + 1 < argv.size()) {
-            args.runCycles = std::stoi(argv[++i]);
-        } else if (arg == "--dump-mem" && i + 1 < argv.size()) {
+        } else if (arg == "--run-cycles") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --run-cycles";
+                return result;
+            }
+            int parsedCycles = 0;
+            if (!ParseStrictInt(argv[++i], parsedCycles) || parsedCycles < 0) {
+                result.ok = false;
+                result.error = "Invalid value for --run-cycles: " + std::string(argv[i]);
+                return result;
+            }
+            args.runCycles = parsedCycles;
+        } else if (arg == "--dump-mem") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --dump-mem";
+                return result;
+            }
             args.dumpMemPath = argv[++i];
-        } else if (arg == "--rom" && i + 1 < argv.size()) {
+        } else if (arg == "--rom") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --rom";
+                return result;
+            }
             args.romPath = argv[++i];
-        } else if (args.romPath.empty() && arg[0] != '-') {
+        } else if (!arg.empty() && arg[0] == '-') {
+            result.ok = false;
+            result.error = "Unknown option: " + std::string(arg);
+            return result;
+        } else if (args.romPath.empty()) {
             args.romPath = std::string(arg);
+        } else {
+            result.ok = false;
+            result.error = "Unexpected positional argument: " + std::string(arg);
+            return result;
         }
     }
-    return args;
+    return result;
 }
 
 static int RunHeadless(const Args& args) {
@@ -347,7 +415,17 @@ int main(int argc, char* argv[]) {
     setenv("__NV_PRIME_RENDER_OFFLOAD", "1", 0);        // NVIDIA Propietary
     setenv("__GLX_VENDOR_LIBRARY_NAME", "nvidia", 0);   // NVIDIA Propietary
 #endif
-    const Args args = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
+    const ParseArgsResult parseResult = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
+    if (parseResult.showUsage) {
+        PrintHeadlessUsage(argv[0]);
+        return 0;
+    }
+    if (!parseResult.ok) {
+        std::cerr << "Argument error: " << parseResult.error << "\n";
+        PrintHeadlessUsage(argv[0]);
+        return -1;
+    }
+    const Args args = parseResult.args;
 
 #ifndef TARGET_WASM
     CC65VFS::Initialize();
