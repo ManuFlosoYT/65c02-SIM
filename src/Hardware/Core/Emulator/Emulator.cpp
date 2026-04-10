@@ -154,15 +154,19 @@ int Emulator::Step() {
 
     bool irq = acia.HasIRQ() || via.isIRQAsserted() || this->pendingIRQ.load(std::memory_order_relaxed);
     if (this->pendingNMI.load(std::memory_order_relaxed)) {
-        this->pendingNMI.store(false, std::memory_order_relaxed);
-        cpu.NMI<Debug>(bus);
         cpu.waiting = false;
-    } else if (irq) {
-        if (cpu.I == 0) {
-            cpu.IRQ<Debug>(bus);
-            this->pendingIRQ.store(false, std::memory_order_relaxed);
+        if (cpu.remainingCycles == 0) {
+            this->pendingNMI.store(false, std::memory_order_relaxed);
+            cpu.NMI<Debug>(bus);
         }
+    } else if (irq) {
         cpu.waiting = false;
+        if (cpu.remainingCycles == 0) {
+            if (cpu.I == 0) {
+                cpu.IRQ<Debug>(bus);
+                this->pendingIRQ.store(false, std::memory_order_relaxed);
+            }
+        }
     } else if (cpu.waiting) {
         return 0;
     }
