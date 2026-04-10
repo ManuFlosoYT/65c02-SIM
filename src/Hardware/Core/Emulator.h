@@ -139,6 +139,15 @@ class Emulator {
     std::atomic<bool> pendingNMI{false};
 
     void HandleVIAPortB(Byte val);
+    
+    template <bool Debug>
+    void RunCPUTick(int& res, bool& cpuStepped);
+    void SyncHardwareCycles(bool cpuStepped, bool isNewInstruction);
+    template <bool Debug>
+    void HandleInterrupts();
+    template <bool Debug>
+    void HandleSerialInput();
+
 
     bool LoadComponentsState(std::istream& stateStream);
     bool LoadInternalState(std::istream& stateStream);

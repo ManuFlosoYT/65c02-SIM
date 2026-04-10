@@ -122,11 +122,7 @@ int Emulator::Step() {
 }
 
 template <bool Debug>
-int Emulator::Step() {
-    int res = 0;
-    bool cpuStepped = false;
-
-    bool isNewInstruction = (cpu.remainingCycles == 0);
+void Emulator::RunCPUTick(int& res, bool& cpuStepped) {
     if (gpuEnabled) {
         gpu.Clock();
         if (gpu.IsInBlankingInterval()) {
@@ -137,7 +133,9 @@ int Emulator::Step() {
         res = cpu.Step<Debug>(bus);
         cpuStepped = true;
     }
-    
+}
+
+void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
     if (baudDelay > 0) {
         baudDelay--;
     }
@@ -151,7 +149,10 @@ int Emulator::Step() {
         }
         cpu.remainingCycles = 0;
     }
+}
 
+template <bool Debug>
+void Emulator::HandleInterrupts() {
     bool irq = acia.HasIRQ() || via.isIRQAsserted() || this->pendingIRQ.load(std::memory_order_relaxed);
     if (this->pendingNMI.load(std::memory_order_relaxed)) {
         cpu.waiting = false;
@@ -167,13 +168,11 @@ int Emulator::Step() {
                 this->pendingIRQ.store(false, std::memory_order_relaxed);
             }
         }
-    } else if (cpu.waiting) {
-        return 0;
     }
+}
 
-    // Check input atomically. 
-    // To ensure determinism for TAS/Scripts, we process input as soon as it's available 
-    // instead of waiting for a 10,000 cycle threshold.
+template <bool Debug>
+void Emulator::HandleSerialInput() {
     if (hasInput.load(std::memory_order_relaxed)) {
         std::lock_guard<std::mutex> lock(bufferMutex);
         if (!inputBuffer.empty() && !acia.HasIRQ() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
@@ -189,6 +188,24 @@ int Emulator::Step() {
             hasInput.store(false, std::memory_order_relaxed);
         }
     }
+}
+
+template <bool Debug>
+int Emulator::Step() {
+    int res = 0;
+    bool cpuStepped = false;
+    bool isNewInstruction = (cpu.remainingCycles == 0);
+
+    RunCPUTick<Debug>(res, cpuStepped);
+    SyncHardwareCycles(cpuStepped, isNewInstruction);
+    HandleInterrupts<Debug>();
+
+    if (cpu.waiting && cpu.remainingCycles == 0) {
+        return 0;
+    }
+
+    HandleSerialInput<Debug>();
+
     return res;
 }
 template int Emulator::Step<true>();
