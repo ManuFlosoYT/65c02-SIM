@@ -22,6 +22,7 @@ class RAM : public IBusDevice {
     bool LoadState(std::istream& inputStream) override;
 
     Byte* GetRawMemory() override { return data.data(); }
+    [[nodiscard]] size_t GetRawMemorySize() const override { return data.size(); }
 
    private:
     std::vector<Byte> data;
