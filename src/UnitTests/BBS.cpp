@@ -96,3 +96,51 @@ TEST_F(BBS_Test, BBS7_BranchNotTaken) {
 
     EXPECT_EQ(cpu.PC, 0x4004); 
 }
+
+TEST_F(BBS_Test, BBS0_Cycles_NotTaken) {
+    cpu.SetCycleAccurate(true);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+
+    bus.Write(0x4000, INS_BBS0);
+    bus.Write(0x4001, 0x10);
+    bus.Write(0x4002, 0x05);
+    bus.Write(0x0010, 0xFE);  // bit0 clear -> not taken
+
+    cpu.Step<false>(bus);
+
+    EXPECT_EQ(cpu.PC, 0x4003);
+    EXPECT_EQ(cpu.GetRemainingCycles(), 4);  // base 5 -> one cycle already consumed
+}
+
+TEST_F(BBS_Test, BBS0_Cycles_Taken_NoPageCross) {
+    cpu.SetCycleAccurate(true);
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+
+    bus.Write(0x4000, INS_BBS0);
+    bus.Write(0x4001, 0x10);
+    bus.Write(0x4002, 0x05);
+    bus.Write(0x0010, 0x01);  // bit0 set -> taken
+
+    cpu.Step<false>(bus);
+
+    EXPECT_EQ(cpu.PC, 0x4008);
+    EXPECT_EQ(cpu.GetRemainingCycles(), 5);  // base 5 + taken 1
+}
+
+TEST_F(BBS_Test, BBS0_Cycles_Taken_PageCross) {
+    cpu.SetCycleAccurate(true);
+    bus.WriteDirect(0xFFFC, 0xFD);
+    bus.WriteDirect(0xFFFD, 0x40);
+
+    bus.Write(0x40FD, INS_BBS0);
+    bus.Write(0x40FE, 0x10);
+    bus.Write(0x40FF, 0xFE);  // -2, target 0x40FE from base 0x4100
+    bus.Write(0x0010, 0x01);  // bit0 set -> taken
+
+    cpu.Step<false>(bus);
+
+    EXPECT_EQ(cpu.PC, 0x40FE);
+    EXPECT_EQ(cpu.GetRemainingCycles(), 6);  // base 5 + taken 1 + page-cross 1
+}
