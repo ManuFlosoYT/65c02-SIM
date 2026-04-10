@@ -105,7 +105,9 @@ void DrawDisassemblerContent(Control::AppState& state) {
         ImGui::SetTooltip("Debug symbols (.dbg) are not supported in the web build.");
     }
 #else
+    if (ImGui::Button("Load Symbols (.dbg)")) {
         Frontend::CustomFileDialog::OpenDialog("LoadDbgDlgKey", "Load Debug Symbols", ".dbg", ".");
+    }
 #endif
     
     if (state.rom.symbols.IsLoaded()) {
