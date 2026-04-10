@@ -197,7 +197,7 @@ void SBC::ExecuteINDX(CPU& cpu, Bus& bus) {
     ZP_Dir += cpu.X;
     Byte oldA = cpu.A;
 
-    Word Dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
+    Word Dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
 
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
     Word res = 0;
