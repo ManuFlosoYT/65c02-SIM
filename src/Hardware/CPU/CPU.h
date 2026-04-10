@@ -90,6 +90,9 @@ class CPU : public ISerializable {
     template <bool Debug>
     Word ReadWord(Word addr, Bus& bus);
     Word ReadWord(Word addr, Bus& bus);
+    template <bool Debug>
+    Word ReadWordZP(Byte zpAddr, Bus& bus);
+    Word ReadWordZP(Byte zpAddr, Bus& bus);
 
     template <bool Debug>
     void PushByte(Byte val, Bus& bus);
@@ -279,6 +282,13 @@ inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
 }
 
 template <bool Debug>
+inline Hardware::Word Hardware::CPU::ReadWordZP(Byte zpAddr, Bus& bus) {
+    Word low = bus.Read<Debug>(zpAddr);
+    Word high = bus.Read<Debug>(static_cast<Byte>(zpAddr + 1));
+    return low | (high << 8);
+}
+
+template <bool Debug>
 inline void Hardware::CPU::PushByte(Byte val, Bus& bus) {
     bus.Write<Debug>(SP, val);
     SP--;
@@ -332,6 +342,12 @@ inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
         return ReadWord<true>(addr, bus);
     }
     return ReadWord<false>(addr, bus);
+}
+inline Hardware::Word Hardware::CPU::ReadWordZP(Byte zpAddr, Bus& bus) {
+    if (bus.HasActiveHooks()) {
+        return ReadWordZP<true>(zpAddr, bus);
+    }
+    return ReadWordZP<false>(zpAddr, bus);
 }
 inline void Hardware::CPU::PushByte(Byte val, Bus& bus) {
     if (bus.HasActiveHooks()) {
