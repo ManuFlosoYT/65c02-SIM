@@ -31,6 +31,7 @@ class IBusDevice : public ISerializable {
 
     // Optional direct memory access for cache optimization (returns nullptr if not supported)
     [[nodiscard]] virtual Byte* GetRawMemory() { return nullptr; }
+    [[nodiscard]] virtual size_t GetRawMemorySize() const { return 0; }
     [[nodiscard]] virtual bool IsReadOnly() const { return false; }
 };
 
