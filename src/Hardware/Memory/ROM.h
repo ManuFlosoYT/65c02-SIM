@@ -22,9 +22,11 @@ class ROM : public IBusDevice {
     bool LoadState(std::istream& inputStream) override;
 
     Byte* GetRawMemory() override { return data.data(); }
+    [[nodiscard]] size_t GetRawMemorySize() const override { return data.size(); }
     [[nodiscard]] bool IsReadOnly() const override { return true; }
 
     void Load(const std::vector<Byte>& buffer, Word offset = 0);
+
     void WriteDirect(Word address, Byte data) override;
 
    private:
