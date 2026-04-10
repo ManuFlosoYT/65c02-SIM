@@ -75,7 +75,7 @@ void ORA::ExecuteINDX(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
 
-    Word Dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
+    Word Dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
 
     cpu.A = cpu.ReadByte<Debug>(Dir, bus) | cpu.A;
     SetFlags(cpu);
