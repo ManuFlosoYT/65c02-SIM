@@ -207,12 +207,20 @@ DeviceConfig CartridgeLoader::ParseDeviceConfig(const nlohmann::json& devJson) {
 void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& busDevices) {
     bool hasRAM = false;
     bool hasROM = false;
+    static constexpr uint32_t kMemoryDeviceMaxSize = 0x8000;
 
     for (const auto& dev : busDevices) {
+        uint32_t rangeSize = static_cast<uint32_t>(dev.end) - static_cast<uint32_t>(dev.start) + 1;
         if (dev.name == "RAM") {
             hasRAM = true;
+            if (rangeSize > kMemoryDeviceMaxSize) {
+                throw std::runtime_error("Manifest RAM range exceeds 32KB raw RAM size");
+            }
         } else if (dev.name == "ROM") {
             hasROM = true;
+            if (rangeSize > kMemoryDeviceMaxSize) {
+                throw std::runtime_error("Manifest ROM range exceeds 32KB raw ROM size");
+            }
         }
     }
 
