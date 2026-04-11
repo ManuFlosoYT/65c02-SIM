@@ -588,6 +588,11 @@ static bool py_emu_load_cartridge(int argc, py_StackRef argv) {
         std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
         auto& emulator = engine->GetEmulator();
 
+        const auto& previousCartridge = emulator.GetCartridge();
+        if (previousCartridge.loaded && !previousCartridge.sdCardPath.empty()) {
+            Core::CartridgeLoader::SaveSDToZip(previousCartridge);
+        }
+
         emulator.SetCartridge(cart);
 
         if (cart.config.targetIPS.has_value()) {
