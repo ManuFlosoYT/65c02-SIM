@@ -112,7 +112,7 @@ constexpr std::array<OpcodeEntry<Debug>, 256> BuildDispatchTable() {
 
     table[INS_WAI] = {[](CPU& cpu, Bus&) { cpu.waiting = true; }, 0, 0};
     table[INS_STP] = {nullptr, 0, 1};
-    table[INS_JAM] = {nullptr, 0, 1};
+    table[INS_NOP_IM_02] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
     table[INS_BRA] = {&BRA::Execute<Debug>, CYC_INS_BRA, 0};
     table[INS_NOP] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
     table[INS_LDA_IM] = {&LDA::ExecuteImmediate<Debug>, CYC_INS_LDA_IM, 0};
@@ -323,6 +323,50 @@ constexpr std::array<OpcodeEntry<Debug>, 256> BuildDispatchTable() {
     table[INS_TRB_ABS] = {&TRB::ExecuteABS<Debug>, CYC_INS_TRB_ABS, 0};
     table[INS_TSB_ZP] = {&TSB::ExecuteZP<Debug>, CYC_INS_TSB_ZP, 0};
     table[INS_TSB_ABS] = {&TSB::ExecuteABS<Debug>, CYC_INS_TSB_ABS, 0};
+
+    table[0x03] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x0B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x13] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x1B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x22] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
+    table[0x23] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x2B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x33] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x3B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x42] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
+    table[0x43] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x44] = {&NOP::ExecuteZP<Debug>, CYC_INS_NOP_ZP, 0};
+    table[0x4B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x53] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x54] = {&NOP::ExecuteZPX<Debug>, CYC_INS_NOP_ZPX, 0};
+    table[0x5B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x5C] = {&NOP::ExecuteABS<Debug>, CYC_INS_NOP_ABS, 0};
+    table[0x62] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
+    table[0x63] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x6B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x73] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x7B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x82] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
+    table[0x83] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x8B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x93] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0x9B] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xA3] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xAB] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xB3] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xBB] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xC2] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
+    table[0xC3] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xD3] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xD4] = {&NOP::ExecuteZPX<Debug>, CYC_INS_NOP_ZPX, 0};
+    table[0xDC] = {&NOP::ExecuteABSX<Debug>, CYC_INS_NOP_ABSX, 0};
+    table[0xE2] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
+    table[0xE3] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xEB] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xF3] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xF4] = {&NOP::ExecuteZPX<Debug>, CYC_INS_NOP_ZPX, 0};
+    table[0xFB] = {&NOP::Execute<Debug>, CYC_INS_NOP, 0};
+    table[0xFC] = {&NOP::ExecuteABSX<Debug>, CYC_INS_NOP_ABSX, 0};
 
     return table;
 }

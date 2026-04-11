@@ -16,7 +16,8 @@ constexpr static Byte INS_STP = 0xDB;  // STP
 constexpr static Byte INS_NOP = 0xEA;  // NOP
 constexpr static Byte INS_BRK = 0x00;  // BRK
 constexpr static Byte INS_RTI = 0x40;  // RTI
-constexpr static Byte INS_JAM = 0x02;  // JAM
+constexpr static Byte INS_NOP_IM_02 = 0x02;  // NOP Immediate (65C02)
+constexpr static Byte INS_JAM = INS_NOP_IM_02;  // Legacy alias
 
 constexpr static Byte INS_LDA_IM = 0xA9;      // LDA Immediate
 constexpr static Byte INS_LDA_ZP = 0xA5;      // LDA ZP
@@ -271,9 +272,14 @@ constexpr static Byte INS_TSB_ZP = 0x04;   // TSB ZP
 constexpr static Byte CYC_INS_WAI = 3;
 constexpr static Byte CYC_INS_STP = 3;
 constexpr static Byte CYC_INS_NOP = 2;
+constexpr static Byte CYC_INS_NOP_IM = 2;
+constexpr static Byte CYC_INS_NOP_ZP = 3;
+constexpr static Byte CYC_INS_NOP_ZPX = 4;
+constexpr static Byte CYC_INS_NOP_ABS = 4;
+constexpr static Byte CYC_INS_NOP_ABSX = 4;
 constexpr static Byte CYC_INS_BRK = 7;
 constexpr static Byte CYC_INS_RTI = 6;
-constexpr static Byte CYC_INS_JAM = 2;
+constexpr static Byte CYC_INS_JAM = CYC_INS_NOP_IM;
 
 constexpr static Byte CYC_INS_LDA_IM = 2;
 constexpr static Byte CYC_INS_LDA_ZP = 3;
@@ -546,8 +552,8 @@ struct InstructionInfo {
 constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BRK", .mode = AddressingMode::Implied},                  // 0x00
     {.mnemonic = "ORA", .mode = AddressingMode::IndirectX},                // 0x01
-    {.mnemonic = "JAM", .mode = AddressingMode::Implied},                  // 0x02
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x03
+    {.mnemonic = "NOP", .mode = AddressingMode::Immediate},                // 0x02
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x03
     {.mnemonic = "TSB", .mode = AddressingMode::ZeroPage},                 // 0x04
     {.mnemonic = "ORA", .mode = AddressingMode::ZeroPage},                 // 0x05
     {.mnemonic = "ASL", .mode = AddressingMode::ZeroPage},                 // 0x06
@@ -555,7 +561,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "PHP", .mode = AddressingMode::Implied},                  // 0x08
     {.mnemonic = "ORA", .mode = AddressingMode::Immediate},                // 0x09
     {.mnemonic = "ASL", .mode = AddressingMode::Accumulator},              // 0x0a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x0b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x0b
     {.mnemonic = "TSB", .mode = AddressingMode::Absolute},                 // 0x0c
     {.mnemonic = "ORA", .mode = AddressingMode::Absolute},                 // 0x0d
     {.mnemonic = "ASL", .mode = AddressingMode::Absolute},                 // 0x0e
@@ -563,7 +569,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BPL", .mode = AddressingMode::Relative},                 // 0x10
     {.mnemonic = "ORA", .mode = AddressingMode::IndirectY},                // 0x11
     {.mnemonic = "ORA", .mode = AddressingMode::ZeroPageIndirect},         // 0x12
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x13
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x13
     {.mnemonic = "TRB", .mode = AddressingMode::ZeroPage},                 // 0x14
     {.mnemonic = "ORA", .mode = AddressingMode::ZeroPageX},                // 0x15
     {.mnemonic = "ASL", .mode = AddressingMode::ZeroPageX},                // 0x16
@@ -571,15 +577,15 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "CLC", .mode = AddressingMode::Implied},                  // 0x18
     {.mnemonic = "ORA", .mode = AddressingMode::AbsoluteY},                // 0x19
     {.mnemonic = "INC", .mode = AddressingMode::Accumulator},              // 0x1a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x1b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x1b
     {.mnemonic = "TRB", .mode = AddressingMode::Absolute},                 // 0x1c
     {.mnemonic = "ORA", .mode = AddressingMode::AbsoluteX},                // 0x1d
     {.mnemonic = "ASL", .mode = AddressingMode::AbsoluteX},                // 0x1e
     {.mnemonic = "BBR1", .mode = AddressingMode::ZeroPageRelative},        // 0x1f
     {.mnemonic = "JSR", .mode = AddressingMode::Absolute},                 // 0x20
     {.mnemonic = "AND", .mode = AddressingMode::IndirectX},                // 0x21
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x22
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x23
+    {.mnemonic = "NOP", .mode = AddressingMode::Immediate},                // 0x22
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x23
     {.mnemonic = "BIT", .mode = AddressingMode::ZeroPage},                 // 0x24
     {.mnemonic = "AND", .mode = AddressingMode::ZeroPage},                 // 0x25
     {.mnemonic = "ROL", .mode = AddressingMode::ZeroPage},                 // 0x26
@@ -587,7 +593,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "PLP", .mode = AddressingMode::Implied},                  // 0x28
     {.mnemonic = "AND", .mode = AddressingMode::Immediate},                // 0x29
     {.mnemonic = "ROL", .mode = AddressingMode::Accumulator},              // 0x2a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x2b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x2b
     {.mnemonic = "BIT", .mode = AddressingMode::Absolute},                 // 0x2c
     {.mnemonic = "AND", .mode = AddressingMode::Absolute},                 // 0x2d
     {.mnemonic = "ROL", .mode = AddressingMode::Absolute},                 // 0x2e
@@ -595,7 +601,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BMI", .mode = AddressingMode::Relative},                 // 0x30
     {.mnemonic = "AND", .mode = AddressingMode::IndirectY},                // 0x31
     {.mnemonic = "AND", .mode = AddressingMode::ZeroPageIndirect},         // 0x32
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x33
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x33
     {.mnemonic = "BIT", .mode = AddressingMode::ZeroPageX},                // 0x34
     {.mnemonic = "AND", .mode = AddressingMode::ZeroPageX},                // 0x35
     {.mnemonic = "ROL", .mode = AddressingMode::ZeroPageX},                // 0x36
@@ -603,23 +609,23 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "SEC", .mode = AddressingMode::Implied},                  // 0x38
     {.mnemonic = "AND", .mode = AddressingMode::AbsoluteY},                // 0x39
     {.mnemonic = "DEC", .mode = AddressingMode::Accumulator},              // 0x3a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x3b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x3b
     {.mnemonic = "BIT", .mode = AddressingMode::AbsoluteX},                // 0x3c
     {.mnemonic = "AND", .mode = AddressingMode::AbsoluteX},                // 0x3d
     {.mnemonic = "ROL", .mode = AddressingMode::AbsoluteX},                // 0x3e
     {.mnemonic = "BBR3", .mode = AddressingMode::ZeroPageRelative},        // 0x3f
     {.mnemonic = "RTI", .mode = AddressingMode::Implied},                  // 0x40
     {.mnemonic = "EOR", .mode = AddressingMode::IndirectX},                // 0x41
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x42
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x43
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x44
+    {.mnemonic = "NOP", .mode = AddressingMode::Immediate},                // 0x42
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x43
+    {.mnemonic = "NOP", .mode = AddressingMode::ZeroPage},                 // 0x44
     {.mnemonic = "EOR", .mode = AddressingMode::ZeroPage},                 // 0x45
     {.mnemonic = "LSR", .mode = AddressingMode::ZeroPage},                 // 0x46
     {.mnemonic = "RMB4", .mode = AddressingMode::ZeroPage},                // 0x47
     {.mnemonic = "PHA", .mode = AddressingMode::Implied},                  // 0x48
     {.mnemonic = "EOR", .mode = AddressingMode::Immediate},                // 0x49
     {.mnemonic = "LSR", .mode = AddressingMode::Accumulator},              // 0x4a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x4b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x4b
     {.mnemonic = "JMP", .mode = AddressingMode::Absolute},                 // 0x4c
     {.mnemonic = "EOR", .mode = AddressingMode::Absolute},                 // 0x4d
     {.mnemonic = "LSR", .mode = AddressingMode::Absolute},                 // 0x4e
@@ -627,23 +633,23 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BVC", .mode = AddressingMode::Relative},                 // 0x50
     {.mnemonic = "EOR", .mode = AddressingMode::IndirectY},                // 0x51
     {.mnemonic = "EOR", .mode = AddressingMode::ZeroPageIndirect},         // 0x52
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x53
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x54
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x53
+    {.mnemonic = "NOP", .mode = AddressingMode::ZeroPageX},                // 0x54
     {.mnemonic = "EOR", .mode = AddressingMode::ZeroPageX},                // 0x55
     {.mnemonic = "LSR", .mode = AddressingMode::ZeroPageX},                // 0x56
     {.mnemonic = "RMB5", .mode = AddressingMode::ZeroPage},                // 0x57
     {.mnemonic = "CLI", .mode = AddressingMode::Implied},                  // 0x58
     {.mnemonic = "EOR", .mode = AddressingMode::AbsoluteY},                // 0x59
     {.mnemonic = "PHY", .mode = AddressingMode::Implied},                  // 0x5a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x5b
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x5c
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x5b
+    {.mnemonic = "NOP", .mode = AddressingMode::Absolute},                 // 0x5c
     {.mnemonic = "EOR", .mode = AddressingMode::AbsoluteX},                // 0x5d
     {.mnemonic = "LSR", .mode = AddressingMode::AbsoluteX},                // 0x5e
     {.mnemonic = "BBR5", .mode = AddressingMode::ZeroPageRelative},        // 0x5f
     {.mnemonic = "RTS", .mode = AddressingMode::Implied},                  // 0x60
     {.mnemonic = "ADC", .mode = AddressingMode::IndirectX},                // 0x61
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x62
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x63
+    {.mnemonic = "NOP", .mode = AddressingMode::Immediate},                // 0x62
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x63
     {.mnemonic = "STZ", .mode = AddressingMode::ZeroPage},                 // 0x64
     {.mnemonic = "ADC", .mode = AddressingMode::ZeroPage},                 // 0x65
     {.mnemonic = "ROR", .mode = AddressingMode::ZeroPage},                 // 0x66
@@ -651,7 +657,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "PLA", .mode = AddressingMode::Implied},                  // 0x68
     {.mnemonic = "ADC", .mode = AddressingMode::Immediate},                // 0x69
     {.mnemonic = "ROR", .mode = AddressingMode::Accumulator},              // 0x6a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x6b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x6b
     {.mnemonic = "JMP", .mode = AddressingMode::Indirect},                 // 0x6c
     {.mnemonic = "ADC", .mode = AddressingMode::Absolute},                 // 0x6d
     {.mnemonic = "ROR", .mode = AddressingMode::Absolute},                 // 0x6e
@@ -659,7 +665,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BVS", .mode = AddressingMode::Relative},                 // 0x70
     {.mnemonic = "ADC", .mode = AddressingMode::IndirectY},                // 0x71
     {.mnemonic = "ADC", .mode = AddressingMode::ZeroPageIndirect},         // 0x72
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x73
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x73
     {.mnemonic = "STZ", .mode = AddressingMode::ZeroPageX},                // 0x74
     {.mnemonic = "ADC", .mode = AddressingMode::ZeroPageX},                // 0x75
     {.mnemonic = "ROR", .mode = AddressingMode::ZeroPageX},                // 0x76
@@ -667,15 +673,15 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "SEI", .mode = AddressingMode::Implied},                  // 0x78
     {.mnemonic = "ADC", .mode = AddressingMode::AbsoluteY},                // 0x79
     {.mnemonic = "PLY", .mode = AddressingMode::Implied},                  // 0x7a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x7b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x7b
     {.mnemonic = "JMP", .mode = AddressingMode::AbsoluteIndexedIndirect},  // 0x7c
     {.mnemonic = "ADC", .mode = AddressingMode::AbsoluteX},                // 0x7d
     {.mnemonic = "ROR", .mode = AddressingMode::AbsoluteX},                // 0x7e
     {.mnemonic = "BBR7", .mode = AddressingMode::ZeroPageRelative},        // 0x7f
     {.mnemonic = "BRA", .mode = AddressingMode::Relative},                 // 0x80
     {.mnemonic = "STA", .mode = AddressingMode::IndirectX},                // 0x81
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x82
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x83
+    {.mnemonic = "NOP", .mode = AddressingMode::Immediate},                // 0x82
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x83
     {.mnemonic = "STY", .mode = AddressingMode::ZeroPage},                 // 0x84
     {.mnemonic = "STA", .mode = AddressingMode::ZeroPage},                 // 0x85
     {.mnemonic = "STX", .mode = AddressingMode::ZeroPage},                 // 0x86
@@ -683,7 +689,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "DEY", .mode = AddressingMode::Implied},                  // 0x88
     {.mnemonic = "BIT", .mode = AddressingMode::Immediate},                // 0x89
     {.mnemonic = "TXA", .mode = AddressingMode::Implied},                  // 0x8a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x8b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x8b
     {.mnemonic = "STY", .mode = AddressingMode::Absolute},                 // 0x8c
     {.mnemonic = "STA", .mode = AddressingMode::Absolute},                 // 0x8d
     {.mnemonic = "STX", .mode = AddressingMode::Absolute},                 // 0x8e
@@ -691,7 +697,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BCC", .mode = AddressingMode::Relative},                 // 0x90
     {.mnemonic = "STA", .mode = AddressingMode::IndirectY},                // 0x91
     {.mnemonic = "STA", .mode = AddressingMode::ZeroPageIndirect},         // 0x92
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x93
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x93
     {.mnemonic = "STY", .mode = AddressingMode::ZeroPageX},                // 0x94
     {.mnemonic = "STA", .mode = AddressingMode::ZeroPageX},                // 0x95
     {.mnemonic = "STX", .mode = AddressingMode::ZeroPageY},                // 0x96
@@ -699,7 +705,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "TYA", .mode = AddressingMode::Implied},                  // 0x98
     {.mnemonic = "STA", .mode = AddressingMode::AbsoluteY},                // 0x99
     {.mnemonic = "TXS", .mode = AddressingMode::Implied},                  // 0x9a
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0x9b
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0x9b
     {.mnemonic = "STZ", .mode = AddressingMode::Absolute},                 // 0x9c
     {.mnemonic = "STA", .mode = AddressingMode::AbsoluteX},                // 0x9d
     {.mnemonic = "STZ", .mode = AddressingMode::AbsoluteX},                // 0x9e
@@ -707,7 +713,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "LDY", .mode = AddressingMode::Immediate},                // 0xa0
     {.mnemonic = "LDA", .mode = AddressingMode::IndirectX},                // 0xa1
     {.mnemonic = "LDX", .mode = AddressingMode::Immediate},                // 0xa2
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xa3
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xa3
     {.mnemonic = "LDY", .mode = AddressingMode::ZeroPage},                 // 0xa4
     {.mnemonic = "LDA", .mode = AddressingMode::ZeroPage},                 // 0xa5
     {.mnemonic = "LDX", .mode = AddressingMode::ZeroPage},                 // 0xa6
@@ -715,7 +721,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "TAY", .mode = AddressingMode::Implied},                  // 0xa8
     {.mnemonic = "LDA", .mode = AddressingMode::Immediate},                // 0xa9
     {.mnemonic = "TAX", .mode = AddressingMode::Implied},                  // 0xaa
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xab
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xab
     {.mnemonic = "LDY", .mode = AddressingMode::Absolute},                 // 0xac
     {.mnemonic = "LDA", .mode = AddressingMode::Absolute},                 // 0xad
     {.mnemonic = "LDX", .mode = AddressingMode::Absolute},                 // 0xae
@@ -723,7 +729,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BCS", .mode = AddressingMode::Relative},                 // 0xb0
     {.mnemonic = "LDA", .mode = AddressingMode::IndirectY},                // 0xb1
     {.mnemonic = "LDA", .mode = AddressingMode::ZeroPageIndirect},         // 0xb2
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xb3
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xb3
     {.mnemonic = "LDY", .mode = AddressingMode::ZeroPageX},                // 0xb4
     {.mnemonic = "LDA", .mode = AddressingMode::ZeroPageX},                // 0xb5
     {.mnemonic = "LDX", .mode = AddressingMode::ZeroPageY},                // 0xb6
@@ -731,15 +737,15 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "CLV", .mode = AddressingMode::Implied},                  // 0xb8
     {.mnemonic = "LDA", .mode = AddressingMode::AbsoluteY},                // 0xb9
     {.mnemonic = "TSX", .mode = AddressingMode::Implied},                  // 0xba
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xbb
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xbb
     {.mnemonic = "LDY", .mode = AddressingMode::AbsoluteX},                // 0xbc
     {.mnemonic = "LDA", .mode = AddressingMode::AbsoluteX},                // 0xbd
     {.mnemonic = "LDX", .mode = AddressingMode::AbsoluteY},                // 0xbe
     {.mnemonic = "BBS3", .mode = AddressingMode::ZeroPageRelative},        // 0xbf
     {.mnemonic = "CPY", .mode = AddressingMode::Immediate},                // 0xc0
     {.mnemonic = "CMP", .mode = AddressingMode::IndirectX},                // 0xc1
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xc2
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xc3
+    {.mnemonic = "NOP", .mode = AddressingMode::Immediate},                // 0xc2
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xc3
     {.mnemonic = "CPY", .mode = AddressingMode::ZeroPage},                 // 0xc4
     {.mnemonic = "CMP", .mode = AddressingMode::ZeroPage},                 // 0xc5
     {.mnemonic = "DEC", .mode = AddressingMode::ZeroPage},                 // 0xc6
@@ -755,8 +761,8 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BNE", .mode = AddressingMode::Relative},                 // 0xd0
     {.mnemonic = "CMP", .mode = AddressingMode::IndirectY},                // 0xd1
     {.mnemonic = "CMP", .mode = AddressingMode::ZeroPageIndirect},         // 0xd2
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xd3
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xd4
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xd3
+    {.mnemonic = "NOP", .mode = AddressingMode::ZeroPageX},                // 0xd4
     {.mnemonic = "CMP", .mode = AddressingMode::ZeroPageX},                // 0xd5
     {.mnemonic = "DEC", .mode = AddressingMode::ZeroPageX},                // 0xd6
     {.mnemonic = "SMB5", .mode = AddressingMode::ZeroPage},                // 0xd7
@@ -764,14 +770,14 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "CMP", .mode = AddressingMode::AbsoluteY},                // 0xd9
     {.mnemonic = "PHX", .mode = AddressingMode::Implied},                  // 0xda
     {.mnemonic = "STP", .mode = AddressingMode::Implied},                  // 0xdb
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xdc
+    {.mnemonic = "NOP", .mode = AddressingMode::AbsoluteX},                // 0xdc
     {.mnemonic = "CMP", .mode = AddressingMode::AbsoluteX},                // 0xdd
     {.mnemonic = "DEC", .mode = AddressingMode::AbsoluteX},                // 0xde
     {.mnemonic = "BBS5", .mode = AddressingMode::ZeroPageRelative},        // 0xdf
     {.mnemonic = "CPX", .mode = AddressingMode::Immediate},                // 0xe0
     {.mnemonic = "SBC", .mode = AddressingMode::IndirectX},                // 0xe1
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xe2
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xe3
+    {.mnemonic = "NOP", .mode = AddressingMode::Immediate},                // 0xe2
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xe3
     {.mnemonic = "CPX", .mode = AddressingMode::ZeroPage},                 // 0xe4
     {.mnemonic = "SBC", .mode = AddressingMode::ZeroPage},                 // 0xe5
     {.mnemonic = "INC", .mode = AddressingMode::ZeroPage},                 // 0xe6
@@ -779,7 +785,7 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "INX", .mode = AddressingMode::Implied},                  // 0xe8
     {.mnemonic = "SBC", .mode = AddressingMode::Immediate},                // 0xe9
     {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xea
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xeb
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xeb
     {.mnemonic = "CPX", .mode = AddressingMode::Absolute},                 // 0xec
     {.mnemonic = "SBC", .mode = AddressingMode::Absolute},                 // 0xed
     {.mnemonic = "INC", .mode = AddressingMode::Absolute},                 // 0xee
@@ -787,16 +793,16 @@ constexpr static std::array<InstructionInfo, 256> OpcodeTable = {{
     {.mnemonic = "BEQ", .mode = AddressingMode::Relative},                 // 0xf0
     {.mnemonic = "SBC", .mode = AddressingMode::IndirectY},                // 0xf1
     {.mnemonic = "SBC", .mode = AddressingMode::ZeroPageIndirect},         // 0xf2
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xf3
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xf4
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xf3
+    {.mnemonic = "NOP", .mode = AddressingMode::ZeroPageX},                // 0xf4
     {.mnemonic = "SBC", .mode = AddressingMode::ZeroPageX},                // 0xf5
     {.mnemonic = "INC", .mode = AddressingMode::ZeroPageX},                // 0xf6
     {.mnemonic = "SMB7", .mode = AddressingMode::ZeroPage},                // 0xf7
     {.mnemonic = "SED", .mode = AddressingMode::Implied},                  // 0xf8
     {.mnemonic = "SBC", .mode = AddressingMode::AbsoluteY},                // 0xf9
     {.mnemonic = "PLX", .mode = AddressingMode::Implied},                  // 0xfa
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xfb
-    {.mnemonic = "???", .mode = AddressingMode::Implied},                  // 0xfc
+    {.mnemonic = "NOP", .mode = AddressingMode::Implied},                  // 0xfb
+    {.mnemonic = "NOP", .mode = AddressingMode::AbsoluteX},                // 0xfc
     {.mnemonic = "SBC", .mode = AddressingMode::AbsoluteX},                // 0xfd
     {.mnemonic = "INC", .mode = AddressingMode::AbsoluteX},                // 0xfe
     {.mnemonic = "BBS7", .mode = AddressingMode::ZeroPageRelative}         // 0xff
