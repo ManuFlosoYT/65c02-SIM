@@ -157,6 +157,8 @@ inline int Hardware::CPU::Step(Bus& bus) {
         PC = ReadWord<Debug>(0xFFFC, bus);
         UpdatePagePtr(bus);
         isInit = true;
+    } else if (current_page_ptr == nullptr) {
+        UpdatePagePtr(bus);
     }
 
     if (waiting) {

@@ -32,6 +32,8 @@ bool CPU::LoadState(std::istream& inputStream) {
     Deserialize(inputStream, remainingCycles);
     Deserialize(inputStream, cycleAccurate);
 
+    current_page_ptr = nullptr;
+
     return inputStream.good();
 }
 
