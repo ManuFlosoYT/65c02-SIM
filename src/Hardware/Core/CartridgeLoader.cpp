@@ -15,6 +15,25 @@ using owner = T;
 
 namespace {
 
+bool IsMemoryDeviceName(const std::string& deviceName) {
+    return deviceName == "RAM" || deviceName == "ROM";
+}
+
+template <typename RangeCollection>
+void ValidateNoInvalidOverlaps(const RangeCollection& ranges) {
+    for (size_t i = 1; i < ranges.size(); ++i) {
+        if (ranges[i].start <= ranges[i - 1].end) {
+            bool prevIsMemory = IsMemoryDeviceName(ranges[i - 1].name);
+            bool currIsMemory = IsMemoryDeviceName(ranges[i].name);
+            // Allow MMIO overlays on top of RAM/ROM, but reject memory-memory or MMIO-MMIO overlaps.
+            if (prevIsMemory == currIsMemory) {
+                throw std::runtime_error("Manifest bus configuration contains overlapping devices: " +
+                                         ranges[i - 1].name + " and " + ranges[i].name);
+            }
+        }
+    }
+}
+
 bool ReplaceFileWithBackup(const std::filesystem::path& sourceZipPath, const std::filesystem::path& tempZipPath) {
     std::filesystem::path backupZipPath = sourceZipPath;
     backupZipPath += ".bak";
@@ -304,13 +323,7 @@ void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& b
     }
 
     std::ranges::sort(ranges, [](const RangeEntry& lhs, const RangeEntry& rhs) { return lhs.start < rhs.start; });
-
-    for (size_t i = 1; i < ranges.size(); ++i) {
-        if (ranges[i].start <= ranges[i - 1].end) {
-            throw std::runtime_error("Manifest bus configuration contains overlapping devices: " + ranges[i - 1].name +
-                                     " and " + ranges[i].name);
-        }
-    }
+    ValidateNoInvalidOverlaps(ranges);
 
     if (!hasRAM) {
         throw std::runtime_error("Manifest bus configuration is missing RAM device");
