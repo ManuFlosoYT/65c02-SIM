@@ -2,8 +2,10 @@
 
 #include <miniz.h>
 
+#include <algorithm>
 #include <cstring>
 #include <nlohmann/json.hpp>
+#include <unordered_map>
 #include <vector>
 
 namespace gsl {
@@ -202,11 +204,19 @@ void CartridgeLoader::ParseBus(const nlohmann::json& manifestJson, Cartridge& ou
 uint16_t CartridgeLoader::ParseAddress(const nlohmann::json& jsonObj, const std::string& key) {
     if (jsonObj.contains(key)) {
         if (jsonObj[key].is_number()) {
-            return jsonObj[key].get<uint16_t>();
+            uint32_t parsed = jsonObj[key].get<uint32_t>();
+            if (parsed > 0xFFFFU) {
+                throw std::runtime_error("Address out of range for " + key + ": " + std::to_string(parsed));
+            }
+            return static_cast<uint16_t>(parsed);
         }
         if (jsonObj[key].is_string()) {
             try {
-                return static_cast<uint16_t>(std::stoul(jsonObj[key].get<std::string>(), nullptr, 0));
+                unsigned long parsed = std::stoul(jsonObj[key].get<std::string>(), nullptr, 0);
+                if (parsed > 0xFFFFUL) {
+                    throw std::runtime_error("Address out of range for " + key + ": " + std::to_string(parsed));
+                }
+                return static_cast<uint16_t>(parsed);
             } catch (...) {
                 throw std::runtime_error("Invalid address format for " + key);
             }
@@ -244,8 +254,40 @@ void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& b
     bool hasROM = false;
     static constexpr uint32_t kMemoryDeviceMaxSize = 0x8000;
 
+    static const std::unordered_map<std::string, uint32_t> kDeviceMaxRange = {
+        {"RAM", 0x8000},
+        {"ROM", 0x8000},
+        {"ACIA", 0x0004},
+        {"VIA", 0x0010},
+        {"ESP32", 0x0004},
+        {"ESP8266", 0x0004},
+        {"SD Card", 0x0004},
+        {"SID", 0x0020},
+        {"GPU", 0x2000}
+    };
+
+    struct RangeEntry {
+        uint16_t start;
+        uint16_t end;
+        std::string name;
+    };
+
+    std::vector<RangeEntry> ranges;
+    ranges.reserve(busDevices.size());
+
     for (const auto& dev : busDevices) {
         uint32_t rangeSize = static_cast<uint32_t>(dev.end) - static_cast<uint32_t>(dev.start) + 1;
+
+        if (rangeSize == 0) {
+            throw std::runtime_error("Manifest device " + dev.name + " has empty address range");
+        }
+
+        if (const auto rangeIt = kDeviceMaxRange.find(dev.name); rangeIt != kDeviceMaxRange.end()) {
+            if (rangeSize > rangeIt->second) {
+                throw std::runtime_error("Manifest " + dev.name + " range exceeds raw memory/MMIO capacity");
+            }
+        }
+
         if (dev.name == "RAM") {
             hasRAM = true;
             if (rangeSize > kMemoryDeviceMaxSize) {
@@ -256,6 +298,17 @@ void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& b
             if (rangeSize > kMemoryDeviceMaxSize) {
                 throw std::runtime_error("Manifest ROM range exceeds 32KB raw ROM size");
             }
+        }
+
+        ranges.push_back({dev.start, dev.end, dev.name});
+    }
+
+    std::ranges::sort(ranges, [](const RangeEntry& lhs, const RangeEntry& rhs) { return lhs.start < rhs.start; });
+
+    for (size_t i = 1; i < ranges.size(); ++i) {
+        if (ranges[i].start <= ranges[i - 1].end) {
+            throw std::runtime_error("Manifest bus configuration contains overlapping devices: " + ranges[i - 1].name +
+                                     " and " + ranges[i].name);
         }
     }
 
