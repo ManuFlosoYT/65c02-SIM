@@ -5,6 +5,7 @@ BUILD_TYPE="Release"
 CMAKE_OPTS=""
 DO_CLEAN=false
 DO_RUN=false
+FORCE_CONFIGURE=false
 
 for arg in "$@"; do
     if [[ "$arg" == "--clean" ]]; then
@@ -13,6 +14,8 @@ for arg in "$@"; do
         BUILD_TYPE="Debug"
     elif [[ "$arg" == "--run" ]]; then
         DO_RUN=true
+    elif [[ "$arg" == "--reconfigure" || "$arg" == "--configure" ]]; then
+        FORCE_CONFIGURE=true
     fi
 done
 
@@ -45,12 +48,22 @@ if ! command -v emcmake >/dev/null 2>&1; then
     exit 1
 fi
 
+if command -v ccache >/dev/null 2>&1; then
+    echo "ccache found, enabling..."
+    CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    ccache -M 15G
+    ccache -z
+fi
 
 
 echo "Compiling for WebAssembly in $BUILD_TYPE mode..."
 mkdir -p "$BUILD_DIR"
 
-emcmake cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
+if [ ! -f "$BUILD_DIR/CMakeCache.txt" ] || [ "$FORCE_CONFIGURE" = true ]; then
+    emcmake cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
+else
+    echo "Skipping CMake configure (cache found). Use --reconfigure to force it."
+fi
 cmake --build "$BUILD_DIR" -j$(nproc)
 
 mkdir -p output/web
