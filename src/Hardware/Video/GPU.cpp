@@ -36,6 +36,13 @@ bool GPU::LoadState(std::istream& inputStream) {
     ISerializable::Deserialize(inputStream, pixelX);
     ISerializable::Deserialize(inputStream, pixelY);
 
+    if (pixelX >= DISPLAY_WIDTH) {
+        pixelX %= DISPLAY_WIDTH;
+    }
+    if (pixelY >= DISPLAY_HEIGHT) {
+        pixelY %= DISPLAY_HEIGHT;
+    }
+
     isYDrawing = (pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU);
 
     if (!isYDrawing) {
