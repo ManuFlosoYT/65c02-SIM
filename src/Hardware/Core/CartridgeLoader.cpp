@@ -11,6 +11,41 @@ template <typename T>
 using owner = T;
 }
 
+namespace {
+
+bool ReplaceFileWithBackup(const std::filesystem::path& sourceZipPath, const std::filesystem::path& tempZipPath) {
+    std::filesystem::path backupZipPath = sourceZipPath;
+    backupZipPath += ".bak";
+
+    std::error_code errorCode;
+    std::filesystem::remove(backupZipPath, errorCode);
+
+    errorCode.clear();
+    if (std::filesystem::exists(sourceZipPath)) {
+        std::filesystem::rename(sourceZipPath, backupZipPath, errorCode);
+        if (errorCode) {
+            std::filesystem::remove(tempZipPath);
+            return false;
+        }
+    }
+
+    errorCode.clear();
+    std::filesystem::rename(tempZipPath, sourceZipPath, errorCode);
+    if (errorCode) {
+        if (std::filesystem::exists(backupZipPath)) {
+            std::error_code restoreErrorCode;
+            std::filesystem::rename(backupZipPath, sourceZipPath, restoreErrorCode);
+        }
+        std::filesystem::remove(tempZipPath);
+        return false;
+    }
+
+    std::filesystem::remove(backupZipPath, errorCode);
+    return true;
+}
+
+}  // namespace
+
 namespace Core {
 
 bool CartridgeLoader::Load(const std::string& path, Cartridge& outCartridge, std::string& errorMsg) {
@@ -188,7 +223,7 @@ DeviceConfig CartridgeLoader::ParseDeviceConfig(const nlohmann::json& devJson) {
     }
 
     // Validate against known list
-    if (dev.name != "RAM" && dev.name != "ROM" && dev.name != "VIA" && dev.name != "WAI_DEVICE" && dev.name != "LCD" &&
+    if (dev.name != "RAM" && dev.name != "ROM" && dev.name != "VIA" && dev.name != "LCD" &&
         dev.name != "ESP32" && dev.name != "ESP8266" && dev.name != "ACIA" && dev.name != "GPU" && dev.name != "SID" && 
         dev.name != "SD Card") {
         throw std::runtime_error("Unknown device name: " + dev.name);
@@ -271,7 +306,10 @@ bool CartridgeLoader::SaveSDToZip(const Cartridge& cart) {
 
     // Miniz doesn't support easy in-place updates of a single file in a large ZIP efficiently
     // without rebuilding. We'll use a temporary file.
-    std::string tempZip = cart.sourceZipPath + ".tmp";
+    std::filesystem::path sourceZipPath(cart.sourceZipPath);
+    std::filesystem::path tempZipPath = sourceZipPath;
+    tempZipPath += ".tmp";
+    std::string tempZip = tempZipPath.string();
     mz_zip_archive src_archive;
     mz_zip_archive dst_archive;
     memset(&src_archive, 0, sizeof(src_archive));
@@ -327,15 +365,14 @@ bool CartridgeLoader::SaveSDToZip(const Cartridge& cart) {
     }
 
     mz_zip_reader_end(&src_archive);
-    mz_zip_writer_finalize_archive(&dst_archive);
-    mz_zip_writer_end(&dst_archive);
-
-    try {
-        std::filesystem::rename(tempZip, cart.sourceZipPath);
-        return true;
-    } catch (...) {
+    if (mz_zip_writer_finalize_archive(&dst_archive) == MZ_FALSE) {
+        mz_zip_writer_end(&dst_archive);
+        std::filesystem::remove(tempZipPath);
         return false;
     }
+    mz_zip_writer_end(&dst_archive);
+
+    return ReplaceFileWithBackup(sourceZipPath, tempZipPath);
 }
 
 }  // namespace Core
