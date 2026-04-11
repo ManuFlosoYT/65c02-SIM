@@ -102,7 +102,6 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         return 0;
     }
 
-    bool hooks = bus.HasActiveHooks() || breakpointManager.HasAnyBreakpointsFast();
     const int MAX_BATCH_SIZE = 100000;
     int remaining = instructionsPerSlice;
     int totalExecuted = 0;
@@ -117,10 +116,6 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         sliceCounter = 0;
     }
 
-    bool safetyRequired = scriptEngine.IsScriptRunning() || hooks;
-    bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
-    bool hasComplex = breakpointManager.HasComplexBreakpoints();
-
     while (remaining > 0) {
         int currentBatchSize = std::min(remaining, MAX_BATCH_SIZE);
         int batchInstructions = 0;
@@ -128,6 +123,10 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
 
         {
             std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+            EnsureWatchpointWriteHook();
+            bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
+            bool hasComplex = breakpointManager.HasComplexBreakpoints();
+            bool hooks = bus.HasActiveHooks() || hasBreakpoints;
             stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions);
         }
 
@@ -147,8 +146,6 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
 }
 
 int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions) {
-    EnsureWatchpointWriteHook();
-
     for (int i = 0; i < count; ++i) {
         bool isNew = (cpu.remainingCycles == 0);
         int res = 0;
