@@ -181,7 +181,6 @@ void Emulator::HandleSerialInput() {
             inputBuffer.pop_front();
 
             acia.ReceiveData(chr);
-            cpu.IRQ<Debug>(bus);
 
             baudDelay = 2000;
         }
