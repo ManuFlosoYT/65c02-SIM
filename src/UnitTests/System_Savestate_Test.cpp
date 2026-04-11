@@ -30,19 +30,26 @@ public:
 };
 
 TEST_F(System_Savestate_Test, SaveAndLoadState) {
-    // Write something to RAM
-    emulator.GetMem().Write(0x1000, 0x42);
-    
-    // Set some CPU state
-    emulator.GetCPU().A = 0xAA;
-    emulator.GetCPU().X = 0xBB;
-    emulator.GetCPU().Y = 0xCC;
-    emulator.GetCPU().PC = 0x1234;
+    // Program in ROM: LDA #$10 ; INX ; INX
+    emulator.GetMem().WriteDirect(0x8000, 0xA9);
+    emulator.GetMem().WriteDirect(0x8001, 0x10);
+    emulator.GetMem().WriteDirect(0x8002, 0xE8);
+    emulator.GetMem().WriteDirect(0x8003, 0xE8);
+    emulator.GetMem().WriteDirect(0xFFFC, 0x00);
+    emulator.GetMem().WriteDirect(0xFFFD, 0x80);
+
+    // Initialize CPU fetch state and execute first instruction
+    emulator.Reset();
+    emulator.GetCPU().X = 0x41;
+    emulator.Step();
+
+    EXPECT_EQ(emulator.GetCPU().A, 0x10);
+    EXPECT_EQ(emulator.GetCPU().PC, 0x8002);
 
     EXPECT_TRUE(emulator.SaveState(filename));
 
     // Modify state before loading
-    emulator.GetMem().Write(0x1000, 0x00);
+    emulator.GetMem().WriteDirect(0x8002, 0xEA);
     emulator.GetCPU().A = 0x00;
     emulator.GetCPU().X = 0x00;
     emulator.GetCPU().Y = 0x00;
@@ -51,9 +58,16 @@ TEST_F(System_Savestate_Test, SaveAndLoadState) {
     EXPECT_TRUE(emulator.LoadState(filename));
 
     // Check if state is restored
-    EXPECT_EQ(emulator.GetMem().Read(0x1000), 0x42);
-    EXPECT_EQ(emulator.GetCPU().A, 0xAA);
-    EXPECT_EQ(emulator.GetCPU().X, 0xBB);
-    EXPECT_EQ(emulator.GetCPU().Y, 0xCC);
-    EXPECT_EQ(emulator.GetCPU().PC, 0x1234);
+    EXPECT_EQ(emulator.GetMem().ReadDirect(0x8002), 0xE8);
+    EXPECT_EQ(emulator.GetCPU().A, 0x10);
+    EXPECT_EQ(emulator.GetCPU().X, 0x41);
+    EXPECT_EQ(emulator.GetCPU().PC, 0x8002);
+
+    // Execute next instruction after restore to catch fetch pointer regressions.
+    // In cycle-accurate mode, multiple ticks may be required before commit.
+    for (int ticks = 0; ticks < 16 && emulator.GetCPU().PC == 0x8002; ++ticks) {
+        emulator.Step();
+    }
+    EXPECT_EQ(emulator.GetCPU().X, 0x42);
+    EXPECT_EQ(emulator.GetCPU().PC, 0x8003);
 }
