@@ -213,7 +213,7 @@ void DrawHardwareComponentsTable(AppState& state, std::vector<DeviceRegistration
 
 void DrawMemoryLayoutWindow(AppState& state) {
     Bus& bus = state.emulator.GetMem();
-    std::vector<DeviceRegistration>& devices = bus.GetRegisteredDevices();
+    std::vector<DeviceRegistration> devices = bus.GetRegisteredDevices();
 
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
     UpdateMemoryLayoutTexture(state, devices, pixels);
@@ -244,13 +244,22 @@ void DrawMemoryLayoutWindow(AppState& state) {
     static bool showCollisionError = false;
 
     if (ImGui::Button("Apply & Reset Emulator", ImVec2(-1, 40))) {
+        bool wasRunning = !state.emulator.IsPaused();
+        if (wasRunning) {
+            state.emulator.Pause();
+        }
+
         try {
+            std::lock_guard<std::recursive_mutex> lock(state.emulator.GetMutex());
+            bus.GetRegisteredDevices() = devices;
             bus.RebuildDeviceMap();
 
             std::string error;
             if (!state.emulator.Init(state.rom.bin, error)) {
                 strncpy(collisionError.data(), error.c_str(), 255);
                 showCollisionError = true;
+            } else if (wasRunning) {
+                state.emulator.Resume();
             }
         } catch (const std::runtime_error& e) {
             strncpy(collisionError.data(), e.what(), 255);
