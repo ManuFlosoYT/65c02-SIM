@@ -1,0 +1,5 @@
+If:
+  PathMatch: src/UnitTests/.*
+
+Diagnostics:
+  Suppress: '*'
