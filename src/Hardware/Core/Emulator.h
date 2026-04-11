@@ -139,6 +139,12 @@ class Emulator {
     std::atomic<bool> pendingNMI{false};
 
     void HandleVIAPortB(Byte val);
+    void RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMapped);
+    bool RegisterCartridgeLayout();
+    void RegisterDefaultLayout();
+    void ResetHardwareDevices();
+    void LoadCartridgeVRAMIfPresent();
+    void MountSDCardIfPresent();
     
     template <bool Debug>
     void RunCPUTick(int& res, bool& cpuStepped);

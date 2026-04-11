@@ -231,6 +231,99 @@ void Emulator::Reset() {
     SetupHardware();
 }
 
+void Emulator::RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMapped) {
+    if (dev.name == "RAM") {
+        bus.RegisterDevice(dev.start, dev.end, &ram, true, false);
+    } else if (dev.name == "ROM") {
+        bus.RegisterDevice(dev.start, dev.end, &rom, true, false);
+    } else if (dev.name == "ACIA") {
+        bus.RegisterDevice(dev.start, dev.end, &acia, true, true);
+    } else if (dev.name == "VIA") {
+        bus.RegisterDevice(dev.start, dev.end, &via, true, true);
+    } else if (dev.name == "ESP8266" || dev.name == "ESP32") {
+        bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
+    } else if (dev.name == "SID") {
+        bus.RegisterDevice(dev.start, dev.end, &sid, true, true);
+    } else if (dev.name == "GPU") {
+        bus.RegisterDevice(dev.start, dev.end, &gpu, true, true);
+    } else if (dev.name == "LCD") {
+        bus.RegisterVirtualDevice(&lcd, true);
+    } else if (dev.name == "SD Card") {
+        bus.RegisterDevice(dev.start, dev.end, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
+        sdCustomMapped = true;
+    }
+}
+
+bool Emulator::RegisterCartridgeLayout() {
+    if (!cartridge.loaded || cartridge.busDevices.empty()) {
+        return false;
+    }
+
+    bool sdCustomMapped = false;
+    for (const auto& dev : cartridge.busDevices) {
+        RegisterCartridgeDevice(dev, sdCustomMapped);
+    }
+
+    // MMIO SD device default if not mapped manually
+    if (!sdCustomMapped) {
+        bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
+    }
+
+    return true;
+}
+
+void Emulator::RegisterDefaultLayout() {
+    // Default layout (v1.0)
+    bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
+    bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
+    bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
+    bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
+    bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
+    bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
+    bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
+    bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
+    bus.RegisterVirtualDevice(&lcd, true);
+}
+
+void Emulator::ResetHardwareDevices() {
+    acia.Reset();
+    via.Reset();
+    sid.Reset();
+    gpu.Reset();
+    lcd.Reset();
+    sdcard.Reset();
+    esp8266.Reset();
+}
+
+void Emulator::LoadCartridgeVRAMIfPresent() {
+    if (cartridge.loaded && !cartridge.vramData.empty()) {
+        gpu.LoadVRAM(cartridge.vramData);
+    }
+}
+
+void Emulator::MountSDCardIfPresent() {
+    // Priority: 1. Cartridge internal SD, 2. External .sd file alongside ROM
+    if (cartridge.loaded && !cartridge.sdCardPath.empty()) {
+        // Persistence: Re-mount if lost during reset (though SDCard::Reset doesn't unmount)
+        if (!sdcard.IsMounted() || sdcard.GetMountedPath() != cartridge.sdCardPath) {
+            sdcard.Mount(cartridge.sdCardPath);
+        }
+        return;
+    }
+
+    if (currentBinPath.empty()) {
+        return;
+    }
+
+    std::filesystem::path sdPath = currentBinPath;
+    sdPath.replace_extension(".sd");
+    if (std::filesystem::exists(sdPath)) {
+        if (!sdcard.IsMounted() || sdcard.GetMountedPath() != sdPath.string()) {
+            sdcard.Mount(sdPath.string());
+        }
+    }
+}
+
 void Emulator::SetupHardware() {
     halted = false;
     bus.ClearDevices();
@@ -241,45 +334,8 @@ void Emulator::SetupHardware() {
     lastSaveTime = std::chrono::steady_clock::now();
 
     try {
-        if (cartridge.loaded && !cartridge.busDevices.empty()) {
-            bool sdCustomMapped = false;
-            for (const auto& dev : cartridge.busDevices) {
-                if (dev.name == "RAM") {
-                    bus.RegisterDevice(dev.start, dev.end, &ram, true, false);
-                } else if (dev.name == "ROM") {
-                    bus.RegisterDevice(dev.start, dev.end, &rom, true, false);
-                } else if (dev.name == "ACIA") {
-                    bus.RegisterDevice(dev.start, dev.end, &acia, true, true);
-                } else if (dev.name == "VIA") {
-                    bus.RegisterDevice(dev.start, dev.end, &via, true, true);
-                } else if (dev.name == "ESP8266" || dev.name == "ESP32") {
-                    bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
-                } else if (dev.name == "SID") {
-                    bus.RegisterDevice(dev.start, dev.end, &sid, true, true);
-                } else if (dev.name == "GPU") {
-                    bus.RegisterDevice(dev.start, dev.end, &gpu, true, true);
-                } else if (dev.name == "LCD") {
-                    bus.RegisterVirtualDevice(&lcd, true);
-                } else if (dev.name == "SD Card") {
-                    bus.RegisterDevice(dev.start, dev.end, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-                    sdCustomMapped = true;
-                }
-            }
-            // MMIO SD device default if not mapped manually
-            if (!sdCustomMapped) {
-                bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-            }
-        } else {
-            // Default layout (v1.0)
-            bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
-            bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
-            bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
-            bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
-            bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
-            bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-            bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
-            bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
-            bus.RegisterVirtualDevice(&lcd, true);
+        if (!RegisterCartridgeLayout()) {
+            RegisterDefaultLayout();
         }
     } catch (const std::exception& e) {
         std::cerr << "Exception during SetupHardware: " << e.what() << '\n';
@@ -290,35 +346,10 @@ void Emulator::SetupHardware() {
         }
     }
 
-    acia.Reset();
-    via.Reset();
-    sid.Reset();
-    gpu.Reset();
-    lcd.Reset();
-    sdcard.Reset();
-    esp8266.Reset();
+    ResetHardwareDevices();
 
-    // Load VRAM from cartridge if present
-    if (cartridge.loaded && !cartridge.vramData.empty()) {
-        gpu.LoadVRAM(cartridge.vramData);
-    }
-
-    // Load SD image if present
-    // Priority: 1. Cartridge internal SD, 2. External .sd file alongside ROM
-    if (cartridge.loaded && !cartridge.sdCardPath.empty()) {
-        // Persistence: Re-mount if lost during reset (though SDCard::Reset doesn't unmount)
-        if (!sdcard.IsMounted() || sdcard.GetMountedPath() != cartridge.sdCardPath) {
-            sdcard.Mount(cartridge.sdCardPath);
-        }
-    } else if (!currentBinPath.empty()) {
-        std::filesystem::path sdPath = currentBinPath;
-        sdPath.replace_extension(".sd");
-        if (std::filesystem::exists(sdPath)) {
-            if (!sdcard.IsMounted() || sdcard.GetMountedPath() != sdPath.string()) {
-                sdcard.Mount(sdPath.string());
-            }
-        }
-    }
+    LoadCartridgeVRAMIfPresent();
+    MountSDCardIfPresent();
 
     via.SetPortBCallback([this](Byte val) { HandleVIAPortB(val); });
 
