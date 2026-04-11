@@ -53,9 +53,11 @@ class BreakpointManager {
     uint32_t Evaluate(const CPU& cpu, const Bus& bus);
     [[nodiscard]] bool HasActiveBreakpoints() const;
     [[nodiscard]] bool HasWatchpoints() const;
+    [[nodiscard]] bool HasWatchpointsFast() const { return hasWatchpoints.load(std::memory_order_relaxed); }
 
     std::vector<Breakpoint>& GetBreakpoints();
     [[nodiscard]] const std::vector<Breakpoint>& GetBreakpoints() const;
+    [[nodiscard]] std::vector<Breakpoint> GetBreakpointsSnapshot() const;
 
     void NotifyWrite(uint16_t address, uint8_t value);
     bool ConsumeWatchpointHit(uint16_t& hitAddress);
@@ -73,6 +75,7 @@ class BreakpointManager {
 
     std::atomic<bool> hasAnyBreakpoints{false};
     std::atomic<bool> hasComplexBreakpoints{false};
+    std::atomic<bool> hasWatchpoints{false};
     std::bitset<65536> fastPathBreakpoints;
 
     bool watchpointTriggered = false;

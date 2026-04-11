@@ -89,22 +89,16 @@ bool BreakpointManager::HasActiveBreakpoints() const {
 }
 
 bool BreakpointManager::HasWatchpoints() const {
-    std::lock_guard<std::recursive_mutex> lock(bpMutex);
-    for (const auto& entry : breakpoints) {
-        if (!entry.enabled) {
-            continue;
-        }
-        for (const auto& cond : entry.conditions) {
-            if (cond.type == BreakpointType::MemoryWatchpoint) {
-                return true;
-            }
-        }
-    }
-    return false;
+    return hasWatchpoints.load(std::memory_order_relaxed);
 }
 
 std::vector<Breakpoint>& BreakpointManager::GetBreakpoints() { return breakpoints; }
 const std::vector<Breakpoint>& BreakpointManager::GetBreakpoints() const { return breakpoints; }
+
+std::vector<Breakpoint> BreakpointManager::GetBreakpointsSnapshot() const {
+    std::lock_guard<std::recursive_mutex> lock(bpMutex);
+    return breakpoints;
+}
 
 void BreakpointManager::NotifyWrite(uint16_t address, uint8_t /*value*/) {
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
@@ -221,6 +215,7 @@ void BreakpointManager::UpdateFastPath() {
     fastPathBreakpoints.reset();
     bool any = false;
     bool complex = false;
+    bool watchpoints = false;
     for (const auto& breakpointEntry : breakpoints) {
         if (!breakpointEntry.enabled) {
             continue;
@@ -232,10 +227,14 @@ void BreakpointManager::UpdateFastPath() {
             } else {
                 complex = true;
             }
+            if (cond.type == BreakpointType::MemoryWatchpoint) {
+                watchpoints = true;
+            }
         }
     }
     hasAnyBreakpoints.store(any, std::memory_order_relaxed);
     hasComplexBreakpoints.store(complex, std::memory_order_relaxed);
+    hasWatchpoints.store(watchpoints, std::memory_order_relaxed);
 }
 
 }  // namespace Hardware

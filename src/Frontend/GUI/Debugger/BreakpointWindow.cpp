@@ -218,7 +218,7 @@ void DrawConditionList(BreakpointFormState& form) {
 }
 
 void DrawBreakpointList(Hardware::BreakpointManager& manager) {
-    auto& bpList = manager.GetBreakpoints();
+    const auto bpList = manager.GetBreakpointsSnapshot();
 
     if (bpList.empty()) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
@@ -239,14 +239,14 @@ void DrawBreakpointList(Hardware::BreakpointManager& manager) {
         ImGui::TableHeadersRow();
 
         uint32_t removeId = 0;
-        for (auto& entry : bpList) {
+        for (const auto& entry : bpList) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
 
             bool enabled = entry.enabled;
             std::string cbLabel = "##en" + std::to_string(entry.id);
             if (ImGui::Checkbox(cbLabel.c_str(), &enabled)) {
-                entry.enabled = enabled;
+                manager.SetEnabled(entry.id, enabled);
             }
 
             ImGui::TableNextColumn();
@@ -292,9 +292,10 @@ void DrawBreakpointList(Hardware::BreakpointManager& manager) {
 void DrawBreakpointWindow(Control::AppState& state) {
     static BreakpointFormState form;
     auto& manager = state.emulator.GetBreakpointManager();
+    const auto bpSnapshot = manager.GetBreakpointsSnapshot();
 
     int activeCount = 0;
-    for (const auto& entry : manager.GetBreakpoints()) {
+    for (const auto& entry : bpSnapshot) {
         if (entry.enabled) {
             activeCount++;
         }
@@ -311,7 +312,7 @@ void DrawBreakpointWindow(Control::AppState& state) {
     float clearBtnWidth = ImGui::CalcTextSize("Clear All").x + (ImGui::GetStyle().FramePadding.x * 2.0F);
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - clearBtnWidth + ImGui::GetCursorPosX() -
                     ImGui::GetStyle().ItemSpacing.x);
-    if (ImGui::Button("Clear All") && !manager.GetBreakpoints().empty()) {
+    if (ImGui::Button("Clear All") && !bpSnapshot.empty()) {
         manager.ClearAll();
     }
 
