@@ -29,7 +29,7 @@ TEST_F(EOR_IndirectY_Test, EOR_IndirectY) {
     bus.Write(0x0002, 0x00);     // Low Byte
     bus.Write(0x0003, 0x80);     // High Byte -> Base: 0x8000
     bus.WriteDirect(0x8004, 0x0F);  // 0x8000 + 0x04. 0xFF ^ 0x0F = 0xF0
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

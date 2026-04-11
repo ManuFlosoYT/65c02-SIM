@@ -25,7 +25,7 @@ TEST_F(STZ_Absolute_Test, STZ_Absolute_ExecutesCorrectly) {
     bus.Write(0x4000, INS_STZ_ABS);
     bus.Write(0x4001, 0x00);     // Low
     bus.Write(0x4002, 0x20);     // High -> 0x2000
-    bus.Write(0x4003, INS_JAM);  // Stop
+    bus.Write(0x4003, INS_STP);  // Stop
 
     bus.Write(0x2000, 0xDD);
 

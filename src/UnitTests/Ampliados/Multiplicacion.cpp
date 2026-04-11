@@ -72,7 +72,7 @@ TEST_F(Ampliados_Multiplicacion, Multiplicacion_Simple) {
     bus.Write(PC++, ADDR_RES);
 
     // Fin (Stop)
-    bus.Write(PC++, INS_JAM);  // Instruccion de parada custom en los tests
+    bus.Write(PC++, INS_STP);  // Instruccion de parada custom en los tests
 
     // Execute
     cpu.PC = CODE_START;

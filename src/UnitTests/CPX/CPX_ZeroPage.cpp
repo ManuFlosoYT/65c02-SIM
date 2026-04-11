@@ -28,7 +28,7 @@ TEST_F(CPX_ZeroPage_Test, CPX_ZeroPage) {
     bus.Write(0x4000, INS_CPX_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0x05);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

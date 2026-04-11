@@ -27,7 +27,7 @@ TEST_F(ASL_Absolute_Test, ASL_Absolute) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4480, 0x01);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

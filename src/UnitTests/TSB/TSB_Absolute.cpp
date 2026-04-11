@@ -31,7 +31,7 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_SetsZeroFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
     bus.WriteDirect(0x2000, 0x55);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -51,7 +51,7 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_ClearsZeroFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
     bus.WriteDirect(0x2000, 0x80);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -71,7 +71,7 @@ TEST_F(TSB_Absolute_Test, TSB_Absolute_SetsBits) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
     bus.WriteDirect(0x2000, 0xF0);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

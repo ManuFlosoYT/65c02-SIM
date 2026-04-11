@@ -31,7 +31,7 @@ TEST_F(BCC_Test, BCC_NoBranch_CarrySet) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BCC);
     bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);  // Stop instruction
+    bus.Write(0x4002, INS_STP);  // Stop instruction
 
     cpu.Execute(bus);
 
@@ -54,7 +54,7 @@ TEST_F(BCC_Test, BCC_Branch_CarryClear) {
 
     bus.Write(0x1000, INS_BCC);
     bus.Write(0x1001, 0x05);
-    bus.Write(0x1007, INS_JAM);
+    bus.Write(0x1007, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);
@@ -70,7 +70,7 @@ TEST_F(BCC_Test, BCC_Branch_Backward) {
 
     bus.Write(0x1010, INS_BCC);
     bus.Write(0x1011, 0xFB);  // -5
-    bus.Write(0x100D, INS_JAM);
+    bus.Write(0x100D, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x10);
     bus.WriteDirect(0xFFFD, 0x10);

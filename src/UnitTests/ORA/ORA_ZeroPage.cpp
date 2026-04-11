@@ -26,7 +26,7 @@ TEST_F(ORA_ZeroPage_Test, ORA_ZeroPage) {
     bus.Write(0x4000, INS_ORA_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0x0F);  // 0x00 | 0x0F = 0x0F
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

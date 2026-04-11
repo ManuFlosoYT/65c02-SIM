@@ -30,7 +30,7 @@ TEST_F(BIT_Immediate_Test, BIT_Immediate_SetsZeroFlag) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BIT_IM);
     bus.Write(0x4001, 0xF0);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -49,7 +49,7 @@ TEST_F(BIT_Immediate_Test, BIT_Immediate_ClearsZeroFlag) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BIT_IM);
     bus.Write(0x4001, 0x0F);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -68,7 +68,7 @@ TEST_F(BIT_Immediate_Test, BIT_Immediate_DoesNotAffectNV) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BIT_IM);
     bus.Write(0x4001, 0xC0);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

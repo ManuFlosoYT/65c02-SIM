@@ -27,7 +27,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Basic) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ADC_IND_ZP);
     bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0005, 0x00);
     bus.Write(0x0006, 0x80);     // Pointer -> 0x8000
     bus.WriteDirect(0x8000, 0x10);  // Value
@@ -49,7 +49,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Carry) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ADC_IND_ZP);
     bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0005, 0x00);
     bus.Write(0x0006, 0x80);     // Pointer -> 0x8000
     bus.WriteDirect(0x8000, 0x10);  // Value
@@ -69,7 +69,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_Overflow) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ADC_IND_ZP);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0010, 0x00);
     bus.Write(0x0011, 0x90);     // Pointer -> 0x9000
     bus.WriteDirect(0x9000, 0x50);  // Positive (+80)
@@ -91,7 +91,7 @@ TEST_F(ADC_IndirectZP_Test, ADC_IndirectZP_PointerWrap) {  // ZP = 0xFF
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ADC_IND_ZP);
     bus.Write(0x4001, 0xFF);     // ZP Boundary
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x00FF, 0x10);     // Low
     bus.Write(0x0000, 0xC0);     // High (wrapped) -> 0xC010
     bus.WriteDirect(0xC010, 0xFE);

@@ -26,7 +26,7 @@ TEST_F(DEX_Test, DEX) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_DEX);
-    bus.Write(0x4001, INS_JAM);
+    bus.Write(0x4001, INS_STP);
 
     cpu.Execute(bus);
 
@@ -42,7 +42,7 @@ TEST_F(DEX_Test, DEX_ZeroFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_DEX);
-    bus.Write(0x4001, INS_JAM);
+    bus.Write(0x4001, INS_STP);
 
     cpu.Execute(bus);
 
@@ -58,7 +58,7 @@ TEST_F(DEX_Test, DEX_NegativeFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_DEX);
-    bus.Write(0x4001, INS_JAM);
+    bus.Write(0x4001, INS_STP);
 
     cpu.Execute(bus);
 

@@ -33,7 +33,7 @@ TEST_F(AND_IndirectX_Test, AND_IndirectX) {
     bus.Write(0x0006, 0x00);  // Low Byte
     bus.Write(0x0007, 0x80);  // High Byte -> Eff Address: 0x8000
     bus.WriteDirect(0x8000, 0x37);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

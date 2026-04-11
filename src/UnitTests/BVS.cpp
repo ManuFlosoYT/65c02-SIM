@@ -27,7 +27,7 @@ TEST_F(BVS_Test, BVS_NoBranch_OverflowClear) {
 
     bus.Write(0x1000, INS_BVS);
     bus.Write(0x1001, 0x05);
-    bus.Write(0x1002, INS_JAM);
+    bus.Write(0x1002, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);
@@ -42,7 +42,7 @@ TEST_F(BVS_Test, BVS_Branch_OverflowSet) {
 
     bus.Write(0x1000, INS_BVS);
     bus.Write(0x1001, 0x05);
-    bus.Write(0x1007, INS_JAM);
+    bus.Write(0x1007, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);

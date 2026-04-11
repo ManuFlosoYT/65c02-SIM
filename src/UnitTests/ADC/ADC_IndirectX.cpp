@@ -34,7 +34,7 @@ TEST_F(ADC_IndirectX_Test, ADC_IndirectX) {
     bus.Write(0x0006, 0x00);
     bus.Write(0x0007, 0x80);
     bus.WriteDirect(0x8000, 0x37);  // 55
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

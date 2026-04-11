@@ -27,7 +27,7 @@ TEST_F(BNE_Test, BNE_NoBranch_ZeroSet) {
 
     bus.Write(0x1000, INS_BNE);
     bus.Write(0x1001, 0x05);
-    bus.Write(0x1002, INS_JAM);
+    bus.Write(0x1002, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);
@@ -42,7 +42,7 @@ TEST_F(BNE_Test, BNE_Branch_ZeroClear) {
 
     bus.Write(0x1000, INS_BNE);
     bus.Write(0x1001, 0x05);
-    bus.Write(0x1007, INS_JAM);
+    bus.Write(0x1007, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);

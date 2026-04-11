@@ -30,7 +30,7 @@ TEST_F(ASL_AbsoluteX_Test, ASL_AbsoluteX) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4481, 0x01);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

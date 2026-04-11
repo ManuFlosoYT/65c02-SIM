@@ -27,7 +27,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Equal) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_CMP_IND_ZP);
     bus.Write(0x4001, 0x05);     // ZP Addr
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0005, 0x00);
     bus.Write(0x0006, 0x80);     // Pointer -> 0x8000
     bus.WriteDirect(0x8000, 0x10);  // Match A
@@ -47,7 +47,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Greater) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_CMP_IND_ZP);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0010, 0x00);
     bus.Write(0x0011, 0x90);     // Pointer -> 0x9000
     bus.WriteDirect(0x9000, 0x10);  // A > M (0x20 > 0x10)
@@ -67,7 +67,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_Less) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_CMP_IND_ZP);
     bus.Write(0x4001, 0x20);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0020, 0x00);
     bus.Write(0x0021, 0xA0);     // Pointer -> 0xA000
     bus.WriteDirect(0xA000, 0x20);  // A < M (0x10 < 0x20)
@@ -87,7 +87,7 @@ TEST_F(CMP_IndirectZP_Test, CMP_IndirectZP_PointerWrap) {  // ZP = 0xFF
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_CMP_IND_ZP);
     bus.Write(0x4001, 0xFF);     // ZP Boundary
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x00FF, 0x10);     // Low
     bus.Write(0x0000, 0xB0);     // High (wrapped) -> 0xB010
     bus.WriteDirect(0xB010, 0x50);

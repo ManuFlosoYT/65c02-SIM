@@ -25,7 +25,7 @@ TEST_F(SEI_Test, SEI_SetsInterruptDisable) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SEI);
-    bus.Write(0x4001, INS_JAM);
+    bus.Write(0x4001, INS_STP);
 
     cpu.Execute(bus);
 

@@ -31,7 +31,7 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_SetsZeroFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
     bus.WriteDirect(0x2000, 0x55);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -51,7 +51,7 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_ClearsZeroFlag_And_ResetsBits) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
     bus.WriteDirect(0x2000, 0xFF);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
     // -> 8000 (Exec?) No.
     // 0xFFFC: Op
     // 0xFFFD: Lo
@@ -76,7 +76,7 @@ TEST_F(TRB_Absolute_Test, TRB_Absolute_PartialReset) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
     bus.WriteDirect(0x2000, 0xAA);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

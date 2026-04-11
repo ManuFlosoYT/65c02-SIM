@@ -26,7 +26,7 @@ TEST_F(SMB_Test, SMB0_SetsBit0) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB0);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0010, 0x00);     // 0000 0000
 
     cpu.Execute(bus);
@@ -39,7 +39,7 @@ TEST_F(SMB_Test, SMB0_AlreadySet) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB0);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0010, 0x01);     // 0000 0001
 
     cpu.Execute(bus);
@@ -53,7 +53,7 @@ TEST_F(SMB_Test, SMB1_SetsBit1) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB1);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);
@@ -66,7 +66,7 @@ TEST_F(SMB_Test, SMB2_SetsBit2) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB2);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);
@@ -79,7 +79,7 @@ TEST_F(SMB_Test, SMB3_SetsBit3) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB3);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);
@@ -92,7 +92,7 @@ TEST_F(SMB_Test, SMB4_SetsBit4) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB4);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);
@@ -105,7 +105,7 @@ TEST_F(SMB_Test, SMB5_SetsBit5) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB5);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);
@@ -118,7 +118,7 @@ TEST_F(SMB_Test, SMB6_SetsBit6) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB6);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);
@@ -131,7 +131,7 @@ TEST_F(SMB_Test, SMB7_SetsBit7) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB7);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);

@@ -38,7 +38,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX) {
     bus.Write(0x0006, 0x00);
     bus.Write(0x0007, 0x80);
     bus.WriteDirect(0x8000, 0x37);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     // Ciclo 1:
     //    Lee LDA (INDX) en 0xFFFC -> PC=FFFD
@@ -77,7 +77,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_ZeroFlag) {
     bus.Write(0x0006, 0x00);
     bus.Write(0x0007, 0x80);
     bus.WriteDirect(0x8000, 0x00);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -97,7 +97,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_NegativeFlag) {
     bus.Write(0x0006, 0x00);
     bus.Write(0x0007, 0x80);
     bus.WriteDirect(0x8000, 0x88);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -117,7 +117,7 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX_Wrapping) {
     bus.Write(0x0002, 0x12);
 
     bus.Write(0x1234, 0x99);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

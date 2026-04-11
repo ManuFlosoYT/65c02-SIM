@@ -25,7 +25,7 @@ TEST_F(SEC_Test, SEC_SetsCarry) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SEC);
-    bus.Write(0x4001, INS_JAM);
+    bus.Write(0x4001, INS_STP);
 
     cpu.Execute(bus);
 

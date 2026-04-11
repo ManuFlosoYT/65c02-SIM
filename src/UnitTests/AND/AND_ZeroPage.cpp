@@ -28,7 +28,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage) {
     bus.Write(0x4000, INS_AND_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0x37);  // Value to AND with
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -46,7 +46,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_ZeroFlag) {
     bus.Write(0x4000, INS_AND_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0x0F);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -64,7 +64,7 @@ TEST_F(AND_ZeroPage_Test, AND_ZeroPage_NegativeFlag) {
     bus.Write(0x4000, INS_AND_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0x80);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

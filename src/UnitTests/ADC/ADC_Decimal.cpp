@@ -29,7 +29,7 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Simple) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ADC_IM);
     bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -48,7 +48,7 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Carry) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ADC_IM);
     bus.Write(0x4001, 0x51);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -67,7 +67,7 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_CarryIn) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ADC_IM);
     bus.Write(0x4001, 0x01);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

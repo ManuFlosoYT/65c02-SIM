@@ -31,7 +31,7 @@ TEST_F(ADC_Absolute_Test, ADC_Absolute) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4480, 0x05);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

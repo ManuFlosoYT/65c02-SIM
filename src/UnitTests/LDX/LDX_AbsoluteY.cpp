@@ -32,7 +32,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8001, 0x37);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -55,7 +55,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_PageCrossing) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x80FF, 0x37);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -75,7 +75,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_ZeroFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8001, 0x00);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -95,7 +95,7 @@ TEST_F(LDX_AbsoluteY_Test, LDX_AbsoluteY_NegativeFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8001, 0x80);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

@@ -35,7 +35,7 @@ TEST_F(LDA_AbsoluteX_Test, LDA_AbsoluteX) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4481, 0x37);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     // Ciclo 1:
     //    Lee LDA (ABSX) en 0xFFFC -> PC=FFFD
@@ -67,7 +67,7 @@ TEST_F(LDA_AbsoluteX_Test, LDA_AbsoluteX_ZeroFlag) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4481, 0x00);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -86,7 +86,7 @@ TEST_F(LDA_AbsoluteX_Test, LDA_AbsoluteX_NegativeFlag) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4481, 0x81);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

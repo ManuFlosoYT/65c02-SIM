@@ -65,7 +65,7 @@ TEST_F(Ampliados_BloqueMemoria, Copia_Bloque) {
     bus.Write(PC++, (Byte)offset);
 
     // Stop
-    bus.Write(PC++, INS_JAM);
+    bus.Write(PC++, INS_STP);
 
     // Execute
     cpu.PC = CODE_START;

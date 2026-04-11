@@ -30,7 +30,7 @@ TEST_F(BIT_ZeroPageX_Test, BIT_ZeroPageX) {
     bus.Write(0x4000, INS_BIT_ZPX);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0047, 0xC0);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

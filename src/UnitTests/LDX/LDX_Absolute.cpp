@@ -35,7 +35,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute) {
     // Next instruction at 0xFFFF (but we are at FFFC+3 = FFFF)
     // The previous tests used 0xFFFE as the stop opcode, but if the instruction
     // is 3 bytes long: FFFC (Op), FFFD (AL), FFFE (AH) Next Opcode at FFFF.
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -67,7 +67,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_ZeroFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8000, 0x00);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -86,7 +86,7 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute_NegativeFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8000, 0x80);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

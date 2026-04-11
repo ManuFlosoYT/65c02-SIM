@@ -24,7 +24,7 @@ TEST_F(TSX_Test, TSX) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TSX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     // Set SP to non-zero, non-negative value
     cpu.SP = 0x0150;
@@ -50,7 +50,7 @@ TEST_F(TSX_Test, TSX_ZeroFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TSX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.SP = 0x0100;  // Low byte is 0x00
     cpu.X = 0xFF;
@@ -68,7 +68,7 @@ TEST_F(TSX_Test, TSX_NegativeFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TSX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.SP = 0x0180;  // Low byte is 0x80 (Negative)
     cpu.X = 0x00;

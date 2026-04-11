@@ -33,8 +33,8 @@ TEST_F(RTI_Test, RTI_Operations) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RTI);
-    bus.Write(0x4001, INS_JAM);
-    bus.Write(0x1002, INS_JAM);  // Return Address
+    bus.Write(0x4001, INS_STP);
+    bus.Write(0x1002, INS_STP);  // Return Address
 
     cpu.Execute(bus);
 

@@ -24,7 +24,7 @@ TEST_F(RMB_Test, RMB0_ClearsBit0) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB0);
     bus.Write(0x4001, 0x10);     // Zero Page Address
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0010, 0xFF);     // Initial value: 1111 1111
 
     cpu.Execute(bus);
@@ -37,7 +37,7 @@ TEST_F(RMB_Test, RMB1_ClearsBit1) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB1);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0xFF);  // 1111 1111
 
     cpu.Execute(bus);
@@ -50,7 +50,7 @@ TEST_F(RMB_Test, RMB2_ClearsBit2) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB2);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0xFF);
 
     cpu.Execute(bus);
@@ -63,7 +63,7 @@ TEST_F(RMB_Test, RMB3_ClearsBit3) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB3);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0xFF);
 
     cpu.Execute(bus);
@@ -76,7 +76,7 @@ TEST_F(RMB_Test, RMB4_ClearsBit4) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB4);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0xFF);
 
     cpu.Execute(bus);
@@ -89,7 +89,7 @@ TEST_F(RMB_Test, RMB5_ClearsBit5) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB5);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0xFF);
 
     cpu.Execute(bus);
@@ -102,7 +102,7 @@ TEST_F(RMB_Test, RMB6_ClearsBit6) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB6);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0xFF);
 
     cpu.Execute(bus);
@@ -115,7 +115,7 @@ TEST_F(RMB_Test, RMB7_ClearsBit7) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RMB7);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
     bus.Write(0x0010, 0xFF);
 
     cpu.Execute(bus);

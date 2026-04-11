@@ -25,7 +25,7 @@ TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
     bus.Write(0x4000, INS_JSR);
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
-    bus.WriteDirect(0x8000, INS_JAM);
+    bus.WriteDirect(0x8000, INS_STP);
 
     Word PC_Inicial = 0x4000;
     Word PC_RetornoEsperado = PC_Inicial + 2;
@@ -54,7 +54,7 @@ TEST_F(PruebaJSR, JSRAnidado) {
     bus.WriteDirect(0x8001, 0x00);
     bus.WriteDirect(0x8002, 0x90);
 
-    bus.WriteDirect(0x9000, INS_JAM);
+    bus.WriteDirect(0x9000, INS_STP);
 
     Word SP_Inicial = cpu.SP;
 

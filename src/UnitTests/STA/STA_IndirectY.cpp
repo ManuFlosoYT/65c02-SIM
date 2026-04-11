@@ -28,7 +28,7 @@ TEST_F(STA_IndirectY_Test, STA_IndirectY) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STA_INDY);
     bus.Write(0x4001, 0x20);     // Zero Page
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
 
     // Pointer at 0x20 (ZP) -> 0x2070
     bus.Write(0x0020, 0x70);  // Low

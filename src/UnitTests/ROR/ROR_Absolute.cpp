@@ -30,7 +30,7 @@ TEST_F(ROR_Absolute_Test, ROR_Absolute) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x20);  // 0x2080
     bus.Write(0x2080, 0x01);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

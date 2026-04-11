@@ -39,7 +39,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY) {
     bus.Write(0x0002, 0x00);
     bus.Write(0x0003, 0x80);
     bus.WriteDirect(0x8001, 0x37);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     // Ciclo 1:
     //    Lee LDA (INDY) en 0xFFFC -> PC=FFFD
@@ -82,7 +82,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_ZeroFlag) {
     bus.Write(0x0002, 0x00);
     bus.Write(0x0003, 0x80);
     bus.WriteDirect(0x8001, 0x00);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -102,7 +102,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_NegativeFlag) {
     bus.Write(0x0002, 0x00);
     bus.Write(0x0003, 0x80);
     bus.WriteDirect(0x8001, 0xAA);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -122,7 +122,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PageCrossing) {
     bus.Write(0x0003, 0x10);
 
     bus.Write(0x1100, 0x55);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -140,7 +140,7 @@ TEST_F(LDA_IndirectY_Test, LDA_IndirectY_PointerWrapping) {
     bus.Write(0x0000, 0x12);
 
     bus.Write(0x1234, 0x88);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

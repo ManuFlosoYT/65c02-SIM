@@ -30,7 +30,7 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_SetsZeroFlag) {
     bus.Write(0x4000, INS_TRB_ZP);
     bus.Write(0x4001, 0x20);
     bus.Write(0x0020, 0x55);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -49,7 +49,7 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_ClearsZeroFlag_And_ResetsBits) {
     bus.Write(0x4000, INS_TRB_ZP);
     bus.Write(0x4001, 0x20);
     bus.Write(0x0020, 0xFF);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -68,7 +68,7 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_PartialReset) {
     bus.Write(0x4000, INS_TRB_ZP);
     bus.Write(0x4001, 0x20);
     bus.Write(0x0020, 0xAA);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

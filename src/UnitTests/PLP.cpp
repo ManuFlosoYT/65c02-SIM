@@ -24,7 +24,7 @@ TEST_F(PLP_Test, PLP) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PLP);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.SP = 0x01FE;
     // Stack contains flags to be set

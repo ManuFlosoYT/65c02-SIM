@@ -28,7 +28,7 @@ TEST_F(AND_AbsoluteY_Test, AND_AbsoluteY) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);  // 0x4480
     bus.Write(0x4481, 0x37);  // 0x4480 + 0x01 = 0x4481
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

@@ -32,7 +32,7 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4480, 0x37);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     // Ciclo 1:
     //    Lee LDA (ABS) en 0xFFFC
@@ -66,7 +66,7 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute_ZeroFlag) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4480, 0x00);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -84,7 +84,7 @@ TEST_F(LDA_Absolute_Test, LDA_Absolute_NegativeFlag) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4480, 0x80);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

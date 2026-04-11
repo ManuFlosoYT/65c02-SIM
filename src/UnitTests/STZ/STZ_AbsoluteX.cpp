@@ -25,7 +25,7 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_ExecutesCorrectly) {
     bus.Write(0x1000, INS_STZ_ABSX);
     bus.Write(0x1001, 0x00);
     bus.Write(0x1002, 0x20);     // 0x2000
-    bus.Write(0x1003, INS_JAM);  // Stop
+    bus.Write(0x1003, INS_STP);  // Stop
 
     // Target: 0x2000 + 0x05 = 0x2005
     bus.Write(0x2005, 0xEE);
@@ -45,7 +45,7 @@ TEST_F(STZ_AbsoluteX_Test, STZ_AbsoluteX_PageCrossing) {
     bus.Write(0x1000, INS_STZ_ABSX);
     bus.Write(0x1001, 0x00);
     bus.Write(0x1002, 0x20);  // 0x2000
-    bus.Write(0x1003, INS_JAM);
+    bus.Write(0x1003, INS_STP);
 
     // Target: 0x2000 + 0xFF = 0x20FF
     bus.Write(0x20FF, 0xEE);

@@ -32,7 +32,7 @@ TEST_F(BRK_Test, BRK_Operations) {
     // Interrupt Vector
     bus.WriteDirect(0xFFFE, 0x00);
     bus.WriteDirect(0xFFFF, 0x20);  // 0x2000
-    bus.Write(0x2000, INS_JAM);  // STOP
+    bus.Write(0x2000, INS_STP);  // STOP
 
     bus.Write(0x1000, INS_BRK);
 

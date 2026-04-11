@@ -36,7 +36,7 @@ TEST_F(JMP_Indirect_Test, JMP_Indirect) {
     bus.WriteDirect(0x8000, 0x00);
     bus.WriteDirect(0x8001, 0x90);
 
-    bus.WriteDirect(0x9000, INS_JAM);
+    bus.WriteDirect(0x9000, INS_STP);
 
     cpu.Execute(bus);
 

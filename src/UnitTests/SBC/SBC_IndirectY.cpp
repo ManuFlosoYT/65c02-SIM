@@ -31,7 +31,7 @@ TEST_F(SBC_IndirectY_Test, SBC_IndirectY) {
     bus.Write(0x0002, 0x00);
     bus.Write(0x0003, 0x80);
     bus.WriteDirect(0x8001, 0x05);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

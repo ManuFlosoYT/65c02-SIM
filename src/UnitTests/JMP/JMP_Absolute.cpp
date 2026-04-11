@@ -30,7 +30,7 @@ TEST_F(JMP_Absolute_Test, JMP_Absolute) {
     bus.Write(0x4000, INS_JMP_ABS);
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
-    bus.WriteDirect(0x8000, INS_JAM);
+    bus.WriteDirect(0x8000, INS_STP);
 
     cpu.Execute(bus);
 

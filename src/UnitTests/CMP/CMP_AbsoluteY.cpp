@@ -29,7 +29,7 @@ TEST_F(CMP_AbsoluteY_Test, CMP_AbsoluteY) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x44);
     bus.Write(0x4481, 0x05);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

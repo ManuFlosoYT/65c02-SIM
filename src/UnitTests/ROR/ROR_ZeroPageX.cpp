@@ -30,7 +30,7 @@ TEST_F(ROR_ZeroPageX_Test, ROR_ZeroPageX) {
     bus.Write(0x4000, INS_ROR_ZPX);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0046, 0x01);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

@@ -31,7 +31,7 @@ TEST_F(ADC_ZeroPageX_Test, ADC_ZeroPageX) {
     bus.Write(0x4000, INS_ADC_ZPX);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0043, 0x05);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

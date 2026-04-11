@@ -25,7 +25,7 @@ TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_ExecutesCorrectly) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STZ_ZPX);
     bus.Write(0x4001, 0x20);  // Base 0x20
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     // Target: 0x20 + 0x04 = 0x24
     bus.Write(0x0024, 0xBB);
@@ -43,7 +43,7 @@ TEST_F(STZ_ZeroPageX_Test, STZ_ZeroPageX_Wrapping) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STZ_ZPX);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     // Target: 0x80 + 0xFF = 0x17F -> 0x7F (Zero page wrap)
     bus.Write(0x007F, 0xCC);

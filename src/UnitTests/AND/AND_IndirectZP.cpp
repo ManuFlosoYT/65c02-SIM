@@ -32,7 +32,7 @@ TEST_F(AND_IndirectZP_Test, AND_IndirectZP) {
     bus.Write(0x0020, 0x00);     // Low Byte
     bus.Write(0x0021, 0x80);     // High Byte -> Target Base: 0x8000
     bus.WriteDirect(0x8000, 0x37);  // Target Value
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

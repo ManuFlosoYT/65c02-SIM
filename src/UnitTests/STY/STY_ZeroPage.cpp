@@ -27,7 +27,7 @@ TEST_F(STY_ZeroPage_Test, STY_ZeroPage) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STY_ZP);
     bus.Write(0x4001, 0x42);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
 
     bus.Write(0x0042, 0x00);
 

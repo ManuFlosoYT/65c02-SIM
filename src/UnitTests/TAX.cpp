@@ -24,7 +24,7 @@ TEST_F(TAX_Test, TAX) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TAX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.A = 0x42;
     cpu.X = 0x00;
@@ -41,7 +41,7 @@ TEST_F(TAX_Test, TAX_ZeroFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TAX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.A = 0x00;
     cpu.X = 0x42;
@@ -58,7 +58,7 @@ TEST_F(TAX_Test, TAX_NegativeFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TAX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.A = 0x80;
     cpu.X = 0x00;

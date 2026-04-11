@@ -27,7 +27,7 @@ TEST_F(EOR_ZeroPageX_Test, EOR_ZeroPageX) {
     bus.Write(0x4000, INS_EOR_ZPX);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0047, 0x0F);  // 0x42 + 0x05 = 0x47. 0xFF ^ 0x0F = 0xF0
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

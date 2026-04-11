@@ -30,7 +30,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8000, 0x37);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -50,7 +50,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute_ZeroFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8000, 0x00);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
@@ -69,7 +69,7 @@ TEST_F(LDY_Absolute_Test, LDY_Absolute_NegativeFlag) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8000, 0x80);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

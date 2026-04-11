@@ -29,14 +29,14 @@ TEST_F(STA_Absolute_Test, STA_Absolute) {
     bus.Write(0x4001, 0x00);  // Low Byte
     bus.Write(0x4002, 0x20);  // High Byte
     bus.Write(0x4003,
-              INS_JAM);  // Stop? No, PC is at 0xFFFF, need to be careful.
+              INS_STP);  // Stop? No, PC is at 0xFFFF, need to be careful.
     // STA ABS is 3 bytes.
     // 0xFFFC: Opcode
     // 0xFFFD: Low
     // 0xFFFE: High
     // 0xFFFF: Next Opcode.
 
-    bus.Write(0x4003, INS_JAM);  // Stop
+    bus.Write(0x4003, INS_STP);  // Stop
 
     bus.WriteDirect(0x2000, 0x00);
 

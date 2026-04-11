@@ -26,7 +26,7 @@ TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage) {
     bus.Write(0x4000, INS_LSR_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0x04);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -43,7 +43,7 @@ TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage_Carry) {
     bus.Write(0x4000, INS_LSR_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0x01);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

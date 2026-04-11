@@ -32,7 +32,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsFlagsFromMemory) {
     bus.Write(0x4000, INS_BIT_ZP);
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0xC0);  // 1100 0000 -> N=1, V=1
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -53,7 +53,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsZeroFlag) {
     bus.Write(0x4001, 0x42);
     bus.Write(0x0042, 0xFE);  // 1111 1110. A & Mem = 0.
     // Mem also has N=1 (bit 7) and V=1 (bit 6)
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

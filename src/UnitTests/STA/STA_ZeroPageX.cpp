@@ -28,7 +28,7 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STA_ZPX);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
 
     // Target Zero Page Address = 0x80 + 0x0F = 0x8F
     bus.Write(0x008F, 0x00);
@@ -51,7 +51,7 @@ TEST_F(STA_ZeroPageX_Test, STA_ZeroPageX_WrapAround) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STA_ZPX);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
 
     // Target Address = (0x80 + 0xFF) & 0xFF = 0x7F
     bus.Write(0x007F, 0x00);

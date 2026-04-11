@@ -35,7 +35,7 @@ TEST_F(JMP_AbsoluteX_Test, JMP_AbsoluteX) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
 
-    bus.WriteDirect(0x8004, INS_JAM);
+    bus.WriteDirect(0x8004, INS_STP);
 
     cpu.Execute(bus);
 

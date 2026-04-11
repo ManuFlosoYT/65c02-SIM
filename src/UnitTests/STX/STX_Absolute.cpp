@@ -28,7 +28,7 @@ TEST_F(STX_Absolute_Test, STX_Absolute) {
     bus.Write(0x4000, INS_STX_ABS);
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
-    bus.Write(0x4003, INS_JAM);  // Stop
+    bus.Write(0x4003, INS_STP);  // Stop
 
     bus.WriteDirect(0x2000, 0x00);
 

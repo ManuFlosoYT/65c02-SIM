@@ -27,7 +27,7 @@ TEST_F(BPL_Test, BPL_NoBranch_NegativeSet) {
 
     bus.Write(0x1000, INS_BPL);
     bus.Write(0x1001, 0x05);
-    bus.Write(0x1002, INS_JAM);
+    bus.Write(0x1002, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);
@@ -42,7 +42,7 @@ TEST_F(BPL_Test, BPL_Branch_NegativeClear) {
 
     bus.Write(0x1000, INS_BPL);
     bus.Write(0x1001, 0x05);
-    bus.Write(0x1007, INS_JAM);
+    bus.Write(0x1007, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);

@@ -24,7 +24,7 @@ TEST_F(RTS_Test, RTS_Implied) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RTS);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     // Simulate Return Address on Stack
     // Want to return to 0x2035
@@ -49,7 +49,7 @@ TEST_F(RTS_Test, RTS_Implied) {
     cpu.SP = 0x01FD;
     bus.Write(0x01FE, 0xFF);
     bus.Write(0x01FF, 0x7F);
-    bus.WriteDirect(0x8000, INS_JAM);  // Stop opcode at return address
+    bus.WriteDirect(0x8000, INS_STP);  // Stop opcode at return address
 
     cpu.Execute(bus);
 

@@ -27,7 +27,7 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_Basic) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SBC_IND_ZP);
     bus.Write(0x4001, 0x02);     // ZP address
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0002, 0x00);     // Pointer low
     bus.Write(0x0003, 0x80);     // Pointer high -> 0x8000
     bus.WriteDirect(0x8000, 0x05);  // Value
@@ -48,7 +48,7 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_Borrow) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SBC_IND_ZP);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x0010, 0x00);
     bus.Write(0x0011, 0x90);     // 0x9000
     bus.WriteDirect(0x9000, 0x0A);  // 5 - 10
@@ -69,7 +69,7 @@ TEST_F(SBC_IndirectZP_Test, SBC_IndirectZP_PointerWrap) {  // ZP = 0xFF
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SBC_IND_ZP);
     bus.Write(0x4001, 0xFF);     // ZP address at boundary
-    bus.Write(0x4002, INS_JAM);  // Stop
+    bus.Write(0x4002, INS_STP);  // Stop
     bus.Write(0x00FF, 0x10);     // Low byte at 0xFF
     bus.Write(0x0000, 0xA0);     // High byte at 0x00 (wrapped) -> 0xA010
     bus.WriteDirect(0xA010, 0x10);

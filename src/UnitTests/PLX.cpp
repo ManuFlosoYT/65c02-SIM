@@ -24,7 +24,7 @@ TEST_F(PLX_Test, PLX) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PLX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.SP = 0x01FE;
     bus.Write(0x01FF, 0x42);
@@ -42,7 +42,7 @@ TEST_F(PLX_Test, PLX_ZeroFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PLX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.SP = 0x01FE;
     bus.Write(0x01FF, 0x00);
@@ -59,7 +59,7 @@ TEST_F(PLX_Test, PLX_NegativeFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PLX);
-    bus.Write(0x4001, INS_JAM);  // Stop
+    bus.Write(0x4001, INS_STP);  // Stop
 
     cpu.SP = 0x01FE;
     bus.Write(0x01FF, 0x80);

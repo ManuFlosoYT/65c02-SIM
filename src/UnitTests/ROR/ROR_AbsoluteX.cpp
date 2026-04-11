@@ -31,7 +31,7 @@ TEST_F(ROR_AbsoluteX_Test, ROR_AbsoluteX) {
     bus.Write(0x4001, 0x80);
     bus.Write(0x4002, 0x20);  // 0x2080 + X(4) = 0x2084
     bus.Write(0x2084, 0x01);
-    bus.Write(0x4003, INS_JAM);
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

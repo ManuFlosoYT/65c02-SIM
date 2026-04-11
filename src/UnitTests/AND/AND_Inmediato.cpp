@@ -29,7 +29,7 @@ TEST_F(AND_Immediate_Test, AND_Immediate) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_IM);
     bus.Write(0x4001, 0x0F);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     // Ciclo 1: Lee AND #0x0F
     // Ciclo 2: Lee 0x0F, ejecuta AND
@@ -48,7 +48,7 @@ TEST_F(AND_Immediate_Test, AND_Immediate_ZeroFlag) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_IM);
     bus.Write(0x4001, 0x0F);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -65,7 +65,7 @@ TEST_F(AND_Immediate_Test, AND_Immediate_NegativeFlag) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_IM);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

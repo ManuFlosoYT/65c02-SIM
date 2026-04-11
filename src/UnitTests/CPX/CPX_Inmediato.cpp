@@ -27,7 +27,7 @@ TEST_F(CPX_Immediate_Test, CPX_Immediate) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_CPX_IM);
     bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -45,7 +45,7 @@ TEST_F(CPX_Immediate_Test, CPX_Immediate_Less) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_CPX_IM);
     bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -63,7 +63,7 @@ TEST_F(CPX_Immediate_Test, CPX_Immediate_Greater) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_CPX_IM);
     bus.Write(0x4001, 0x05);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

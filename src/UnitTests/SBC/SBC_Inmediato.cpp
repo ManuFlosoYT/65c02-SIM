@@ -32,7 +32,7 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SBC_IM);
     bus.Write(0x4001, 0x03);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -52,7 +52,7 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate_Borrow) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SBC_IM);
     bus.Write(0x4001, 0x06);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
@@ -72,7 +72,7 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate_BorrowIn) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SBC_IM);
     bus.Write(0x4001, 0x03);
-    bus.Write(0x4002, INS_JAM);
+    bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 

@@ -30,13 +30,13 @@ TEST_F(BBR_Test, BBR0_BranchTaken) {
     bus.Write(0x4000, INS_BBR0);
     bus.Write(0x4001, 0x10);     // ZP Address
     bus.Write(0x4002, 0x05);     // Offset +5
-    bus.Write(0x4003, INS_JAM);  // Stop if not taken (or part of skip)
+    bus.Write(0x4003, INS_STP);  // Stop if not taken (or part of skip)
 
     // Memory Value: Bit 0 is 0
     bus.WriteDirect(0x0010, 0xFE);  // 1111 1110
 
     // Target: PC = 0x4003. 0x4003 + 5 = 0x4008
-    bus.Write(0x4008, INS_JAM);
+    bus.Write(0x4008, INS_STP);
 
     cpu.Execute(bus);
 
@@ -50,7 +50,7 @@ TEST_F(BBR_Test, BBR0_BranchNotTaken) {
     bus.Write(0x4000, INS_BBR0);
     bus.Write(0x4001, 0x10);     // ZP Address
     bus.Write(0x4002, 0x05);     // Offset
-    bus.Write(0x4003, INS_JAM);  // Stop if not taken
+    bus.Write(0x4003, INS_STP);  // Stop if not taken
 
     // Memory Value: Bit 0 is 1
     bus.WriteDirect(0x0010, 0x01);  // 0000 0001 (Bit 0 set)
@@ -67,13 +67,13 @@ TEST_F(BBR_Test, BBR7_BranchTaken) {
     bus.Write(0x4000, INS_BBR7);
     bus.Write(0x4001, 0x20);     // ZP Address
     bus.Write(0x4002, 0x04);     // Offset +4
-    bus.Write(0x4003, INS_JAM);  // Stop if not taken
+    bus.Write(0x4003, INS_STP);  // Stop if not taken
 
     // Memory Value: Bit 7 is 0
     bus.WriteDirect(0x0020, 0x7F);  // 0111 1111
 
     // Target: PC (0x4003) + 4 = 0x4007
-    bus.Write(0x4007, INS_JAM);
+    bus.Write(0x4007, INS_STP);
 
     cpu.Execute(bus);
 
@@ -87,7 +87,7 @@ TEST_F(BBR_Test, BBR7_BranchNotTaken) {
     bus.Write(0x4000, INS_BBR7);
     bus.Write(0x4001, 0x20);
     bus.Write(0x4002, 0x04);
-    bus.Write(0x4003, INS_JAM);  // Stop
+    bus.Write(0x4003, INS_STP);  // Stop
 
     // Memory Value: Bit 7 is 1
     bus.WriteDirect(0x0020, 0x80);  // 1000 0000
