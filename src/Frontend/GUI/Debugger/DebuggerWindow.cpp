@@ -72,11 +72,7 @@ void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row) {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0F, ImGui::GetStyle().FramePadding.y));
         if (ImGui::InputScalar(labelStr.c_str(), ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
                                ImGuiInputTextFlags_CharsHexadecimal)) {
-            if (addr >= 0x8000) {
-                emulator.GetROM().WriteDirect(addr - 0x8000, val);
-            } else {
-                bus.WriteDirect(addr, val);
-            }
+            bus.WriteDirect(addr, val);
         }
         ImGui::PopStyleVar();
         ImGui::PopItemWidth();
@@ -137,11 +133,7 @@ void DrawTools(Core::Emulator& emulator) {
         for (int i = startAddr; i <= static_cast<int>(endAddr); i++) {
             Byte val = static_cast<Byte>(dist(rng));
             Word addr = static_cast<Word>(i);
-            if (addr >= 0x8000) {
-                emulator.GetROM().WriteDirect(addr - 0x8000, val);
-            } else {
-                bus.WriteDirect(addr, val);
-            }
+            bus.WriteDirect(addr, val);
         }
     }
 
@@ -153,11 +145,7 @@ void DrawTools(Core::Emulator& emulator) {
         Word addr = static_cast<Word>(addrDist(rng));
         Byte val = static_cast<Byte>(valDist(rng));
 
-        if (addr >= 0x8000) {
-            emulator.GetROM().WriteDirect(addr - 0x8000, val);
-        } else {
-            bus.WriteDirect(addr, val);
-        }
+        bus.WriteDirect(addr, val);
     }
 }
 
