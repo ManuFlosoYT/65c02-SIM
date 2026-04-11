@@ -119,6 +119,11 @@ void Bus::AddGlobalWriteHook(const BusWriteHook& hook) {
     hasWriteHooks = !globalWriteHooks.empty();
 }
 
+void Bus::ClearGlobalWriteHooks() {
+    globalWriteHooks.clear();
+    hasWriteHooks = false;
+}
+
 void Bus::AddGlobalReadHook(const BusReadHook& hook) {
     globalReadHooks.push_back(hook);
     hasReadHooks = !globalReadHooks.empty();

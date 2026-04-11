@@ -91,6 +91,7 @@ class Bus : public ISerializable {
     inline void WriteBlock(Word address, std::span<const Byte> buffer);
 
     void AddGlobalWriteHook(const BusWriteHook& hook);
+    void ClearGlobalWriteHooks();
     void AddGlobalReadHook(const BusReadHook& hook);
 
     inline void SetProfilingEnabled(bool enabled);
