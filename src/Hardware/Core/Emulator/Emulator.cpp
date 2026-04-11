@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 
 using namespace Hardware;
@@ -32,14 +33,14 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     }
 
     std::uintmax_t fileSize = std::filesystem::file_size(bin);
-    if (fileSize != ROM_SIZE) {
-        errorMsg = "Error: File size mismatch (expected 32KB, got " + std::to_string(fileSize) + ")";
+    if (fileSize > ROM_SIZE) {
+        errorMsg = "Error: File size too large (max 32KB, got " + std::to_string(fileSize) + ")";
         std::cerr << errorMsg << "\n";
         return false;
     }
 
     std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    if (buffer.size() != ROM_SIZE) {
+    if (buffer.size() != fileSize) {
         errorMsg = "Error reading file " + bin;
         std::cerr << errorMsg << "\n";
         return false;
@@ -51,23 +52,24 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& name, std::string& errorMsg) {
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
 
-    if (data.size() != ROM_SIZE && !data.empty()) {
-        errorMsg = "Error: ROM data size mismatch (expected 32KB or 0, got " + std::to_string(data.size()) + ")";
+    if (data.size() > ROM_SIZE) {
+        errorMsg = "Error: ROM data too large (max 32KB, got " + std::to_string(data.size()) + ")";
         std::cerr << errorMsg << "\n";
         return false;
     }
 
-    if (data.size() == ROM_SIZE) {
-        for (size_t i = 0; i < ROM_SIZE; ++i) {
-            rom.WriteDirect(static_cast<Word>(i), data[i]);
-        }
-    } else if (data.empty()) {
-        // VRAM only cartridge or empty ROM. Fill with HLT (0xDB) and set reset vector to self
-        for (size_t i = 0; i < ROM_SIZE; ++i) {
-            rom.WriteDirect(static_cast<Word>(i), 0xDB); 
-        }
+    for (size_t i = 0; i < ROM_SIZE; ++i) {
+        rom.WriteDirect(static_cast<Word>(i), 0xDB);
+    }
+
+    for (size_t i = 0; i < data.size(); ++i) {
+        rom.WriteDirect(static_cast<Word>(i), data[i]);
+    }
+
+    if (data.empty()) {
+        // VRAM only cartridge or empty ROM. Set reset vector to standard ROM start.
         rom.WriteDirect(0xFFFC, 0x00);
-        rom.WriteDirect(0xFFFD, 0x80); // Reset to 0x8000 (standard ROM start)
+        rom.WriteDirect(0xFFFD, 0x80);
     }
 
     currentBinPath = name;
@@ -251,6 +253,8 @@ void Emulator::RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMa
     } else if (dev.name == "SD Card") {
         bus.RegisterDevice(dev.start, dev.end, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
         sdCustomMapped = true;
+    } else {
+        throw std::runtime_error("Unsupported cartridge device: " + dev.name);
     }
 }
 
@@ -357,11 +361,18 @@ void Emulator::SetupHardware() {
 }
 
 void Emulator::EnsureWatchpointWriteHook() {
-    if (watchpointWriteHookInstalled || !breakpointManager.HasWatchpointsFast()) {
+    bool hasWatchpoints = breakpointManager.HasWatchpointsFast();
+    if (hasWatchpoints && !watchpointWriteHookInstalled) {
+        bus.AddGlobalWriteHook([this](Word addr, Byte data) { breakpointManager.NotifyWrite(addr, data); });
+        watchpointWriteHookInstalled = true;
         return;
     }
-    bus.AddGlobalWriteHook([this](Word addr, Byte data) { breakpointManager.NotifyWrite(addr, data); });
-    watchpointWriteHookInstalled = true;
+
+    if (!hasWatchpoints && watchpointWriteHookInstalled) {
+        bus.ClearGlobalWriteHooks();
+        watchpointWriteHookInstalled = false;
+        return;
+    }
 }
 
 void Emulator::HandleVIAPortB(Byte val) {
