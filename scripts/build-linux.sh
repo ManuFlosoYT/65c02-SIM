@@ -4,12 +4,15 @@ set -e
 BUILD_TYPE="Release"
 CMAKE_OPTS=""
 DO_CLEAN=false
+FORCE_CONFIGURE=false
 
 for arg in "$@"; do
     if [[ "$arg" == "--clean" ]]; then
         DO_CLEAN=true
     elif [[ "$arg" == "--debug" ]]; then
         BUILD_TYPE="Debug"
+    elif [[ "$arg" == "--reconfigure" || "$arg" == "--configure" ]]; then
+        FORCE_CONFIGURE=true
     fi
 done
 
@@ -27,6 +30,7 @@ fi
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache found, enabling..."
     CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    ccache -M 15G
     ccache -z
 fi
 
@@ -43,7 +47,11 @@ if command -v ninja >/dev/null 2>&1; then
 fi
 
 echo "Compiling for Linux in $BUILD_TYPE mode..."
-cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
+if [ ! -f "$BUILD_DIR/CMakeCache.txt" ] || [ "$FORCE_CONFIGURE" = true ]; then
+    cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
+else
+    echo "Skipping CMake configure (cache found). Use --reconfigure to force it."
+fi
 cmake --build "$BUILD_DIR" -j$(nproc)
 
 if command -v ccache >/dev/null 2>&1; then
