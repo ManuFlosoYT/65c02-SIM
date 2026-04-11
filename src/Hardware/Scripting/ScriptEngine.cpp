@@ -587,8 +587,33 @@ static bool py_emu_load_cartridge(int argc, py_StackRef argv) {
     Core::Cartridge cart;
     if (Core::CartridgeLoader::Load(path, cart, error)) {
         std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-        engine->GetEmulator().SetCartridge(cart);
-        engine->GetEmulator().SetupHardware();
+        auto& emulator = engine->GetEmulator();
+
+        emulator.SetCartridge(cart);
+
+        if (cart.config.targetIPS.has_value()) {
+            emulator.SetTargetIPS(cart.config.targetIPS.value());
+        }
+        if (cart.config.gpuEnabled.has_value()) {
+            emulator.SetGPUEnabled(cart.config.gpuEnabled.value());
+        }
+        if (cart.config.sdEnabled.has_value()) {
+            emulator.SetSDEnabled(cart.config.sdEnabled.value());
+        }
+        if (cart.config.espEnabled.has_value()) {
+            emulator.SetESPEnabled(cart.config.espEnabled.value());
+        }
+        if (cart.config.cycleAccurate.has_value()) {
+            emulator.SetCycleAccurate(cart.config.cycleAccurate.value());
+        }
+
+        emulator.GetSID().EnableSound(cart.config.sidEnabled.value_or(false));
+
+        if (!emulator.InitFromMemory(cart.romData, cart.romFileName, error)) {
+            std::cerr << "Scripting API: Failed to initialize cartridge ROM: " << error << "\n";
+        } else {
+            emulator.ClearProfiler();
+        }
     } else {
         std::cerr << "Scripting API: Failed to load cartridge: " << error << "\n";
     }
