@@ -361,16 +361,15 @@ static bool py_emu_wait_instructions(int argc, py_StackRef argv) {
 static bool py_emu_reset(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
     std::lock_guard<std::recursive_mutex> lock(engine->GetEmulator().GetMutex());
-    engine->GetEmulator().Reset();
+    auto& emulator = engine->GetEmulator();
+    emulator.Reset();
 
-    // Manual pull reset vectors for the Python API to ensure PC is set correctly
-    // because the C++ hardware implementation of CPU::Reset() is hardcoded to 0xFFFC.
-    auto& bus = engine->GetEmulator().GetMem();
-    auto& cpu = engine->GetEmulator().GetCPU();
+    auto& cpu = emulator.GetCPU();
+    auto& bus = emulator.GetMem();
     uint16_t low = bus.Read(0xFFFC);
     uint16_t high = bus.Read(0xFFFD);
     cpu.PC = static_cast<uint16_t>(low | (high << 8));
-    cpu.SP = 0xFD;
+    cpu.UpdatePagePtr(bus);
 
     py_newnone(py_retval());
     return true;
