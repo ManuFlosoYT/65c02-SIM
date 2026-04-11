@@ -90,9 +90,10 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
 
 int Emulator::Step() {
     std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    EnsureWatchpointWriteHook();
 
     int res = 0;
-    bool hooks = bus.HasActiveHooks();
+    bool hooks = bus.HasActiveHooks() || breakpointManager.HasAnyBreakpointsFast();
 
     if (!gpuEnabled) {
         res = hooks ? Step<true>() : Step<false>();
@@ -328,6 +329,7 @@ void Emulator::SetupHardware() {
     halted = false;
     bus.ClearDevices();
     bus.Init();
+    watchpointWriteHookInstalled = false;
     cpu.Reset();
     totalCycles = 0;
     rewindBuffer.clear();
@@ -352,10 +354,15 @@ void Emulator::SetupHardware() {
     MountSDCardIfPresent();
 
     via.SetPortBCallback([this](Byte val) { HandleVIAPortB(val); });
+    EnsureWatchpointWriteHook();
+}
 
-    if (breakpointManager.HasWatchpoints()) {
-        bus.AddGlobalWriteHook([this](Word addr, Byte data) { breakpointManager.NotifyWrite(addr, data); });
+void Emulator::EnsureWatchpointWriteHook() {
+    if (watchpointWriteHookInstalled || !breakpointManager.HasWatchpointsFast()) {
+        return;
     }
+    bus.AddGlobalWriteHook([this](Word addr, Byte data) { breakpointManager.NotifyWrite(addr, data); });
+    watchpointWriteHookInstalled = true;
 }
 
 void Emulator::HandleVIAPortB(Byte val) {

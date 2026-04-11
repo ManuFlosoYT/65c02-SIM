@@ -145,6 +145,7 @@ class Emulator {
     void ResetHardwareDevices();
     void LoadCartridgeVRAMIfPresent();
     void MountSDCardIfPresent();
+    void EnsureWatchpointWriteHook();
     
     template <bool Debug>
     void RunCPUTick(int& res, bool& cpuStepped);
@@ -184,6 +185,7 @@ class Emulator {
     Hardware::ESP8266 esp8266;
     Hardware::ScriptEngine scriptEngine;
     Hardware::BreakpointManager breakpointManager;
+    bool watchpointWriteHookInstalled = false;
 
     ConsoleSerializable consoleSerializable;
     std::vector<ISerializable*> components;

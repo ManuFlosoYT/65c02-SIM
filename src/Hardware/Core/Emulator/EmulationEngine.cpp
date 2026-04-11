@@ -147,6 +147,8 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
 }
 
 int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions) {
+    EnsureWatchpointWriteHook();
+
     for (int i = 0; i < count; ++i) {
         bool isNew = (cpu.remainingCycles == 0);
         int res = 0;
