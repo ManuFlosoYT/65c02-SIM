@@ -92,9 +92,6 @@ bool BreakpointManager::HasWatchpoints() const {
     return hasWatchpoints.load(std::memory_order_relaxed);
 }
 
-std::vector<Breakpoint>& BreakpointManager::GetBreakpoints() { return breakpoints; }
-const std::vector<Breakpoint>& BreakpointManager::GetBreakpoints() const { return breakpoints; }
-
 std::vector<Breakpoint> BreakpointManager::GetBreakpointsSnapshot() const {
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
     return breakpoints;

@@ -55,8 +55,6 @@ class BreakpointManager {
     [[nodiscard]] bool HasWatchpoints() const;
     [[nodiscard]] bool HasWatchpointsFast() const { return hasWatchpoints.load(std::memory_order_relaxed); }
 
-    std::vector<Breakpoint>& GetBreakpoints();
-    [[nodiscard]] const std::vector<Breakpoint>& GetBreakpoints() const;
     [[nodiscard]] std::vector<Breakpoint> GetBreakpointsSnapshot() const;
 
     void NotifyWrite(uint16_t address, uint8_t value);

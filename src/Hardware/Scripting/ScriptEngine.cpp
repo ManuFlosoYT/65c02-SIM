@@ -716,7 +716,7 @@ static void SerializeBreakCondition(py_Ref out_dict, const Hardware::BreakCondit
 
 static bool py_emu_list_breakpoints(int argc, py_StackRef argv) {
     auto* engine = static_cast<ScriptEngine*>(py_getvmctx());
-    const auto& breakpoints = engine->GetEmulator().GetBreakpointManager().GetBreakpoints();
+    const auto breakpoints = engine->GetEmulator().GetBreakpointManager().GetBreakpointsSnapshot();
     
     py_newlist(py_retval());
     py_assign(py_r2(), py_retval()); // Keep the outer list in r2
