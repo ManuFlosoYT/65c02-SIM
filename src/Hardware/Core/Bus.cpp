@@ -188,8 +188,16 @@ void Bus::UpdateCache() {
         if (pageIsUniform) {
             Byte* rawPtr = firstDevice->GetRawMemory();
             size_t devSize = firstDevice->GetRawMemorySize();
+            auto baseOffset = static_cast<size_t>(deviceMap.at(page << 8).offset);
+
+            if (baseOffset >= devSize || (devSize - baseOffset) < 256) {
+                throw std::runtime_error(std::format(
+                    "Invalid memory mapping for device {}: page 0x{:02X} exceeds raw memory size (offset=0x{:04X}, size=0x{:04X})",
+                    firstDevice->GetName(), page, baseOffset, devSize));
+            }
+
             std::span<Byte> rawSpan(rawPtr, devSize);
-            Byte* memoryBase = &rawSpan[deviceMap.at(page << 8).offset];
+            Byte* memoryBase = &rawSpan[baseOffset];
 
             pageReadMap.at(page) = memoryBase;
 
