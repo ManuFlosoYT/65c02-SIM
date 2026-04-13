@@ -242,7 +242,7 @@ inline void Hardware::CPU::AddPageCrossPenalty(Word baseAddr, Word effectiveAddr
 inline void Hardware::CPU::UpdatePagePtr(Bus& bus) {
     Byte* memoryBase = bus.GetPageReadPtr(PC >> 8);
     if (memoryBase != nullptr) {
-        current_page_ptr = std::next(memoryBase, PC & 0xFF);
+        current_page_ptr = memoryBase + (PC & 0xFF);
     } else {
         current_page_ptr = nullptr;
     }
@@ -253,7 +253,7 @@ inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
     Byte dato = 0;
     if (current_page_ptr != nullptr) {
         dato = *current_page_ptr;
-        current_page_ptr = std::next(current_page_ptr);
+        current_page_ptr++;
     } else {
         dato = bus.Read<Debug>(PC);
     }
