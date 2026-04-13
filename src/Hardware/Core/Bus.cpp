@@ -3,7 +3,6 @@
 #include <format>
 #include <iostream>
 #include <stdexcept>
-#include <string>
 
 namespace Hardware {
 
@@ -84,7 +83,7 @@ bool Bus::LoadState(std::istream& inStream) {
 void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device, bool enabled, bool ignoreCollision) {
     if (enabled && !ignoreCollision) {
         for (int i = static_cast<int>(startAddress); i <= static_cast<int>(endAddress); ++i) {
-            if (deviceMap.at(i).device != nullptr) {
+            if (deviceMap[i].device != nullptr) {
                 throw std::runtime_error(std::format("Memory collision detected while registering device: {} at address 0x{:04X}",
                                                      device->GetName(), i));
             }
@@ -141,14 +140,14 @@ void Bus::RebuildDeviceMap() {
         if (reg.isVirtual) { continue; }
         if (reg.enabled && !reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
-                if (deviceMap.at(i).device != nullptr) {
+                if (deviceMap[i].device != nullptr) {
                     throw std::runtime_error(
                         "Memory collision detected during "
                         "RebuildDeviceMap for: " +
                         reg.device->GetName());
                 }
-                deviceMap.at(i).device = reg.device;
-                deviceMap.at(i).offset = i - reg.startAddress;
+                deviceMap[i].device = reg.device;
+                deviceMap[i].offset = i - reg.startAddress;
             }
         }
     }
@@ -157,8 +156,8 @@ void Bus::RebuildDeviceMap() {
         if (reg.isVirtual) { continue; }
         if (reg.enabled && reg.ignoreCollision) {
             for (int i = reg.startAddress; i <= (int)reg.endAddress; ++i) {
-                deviceMap.at(i).device = reg.device;
-                deviceMap.at(i).offset = i - reg.startAddress;
+                deviceMap[i].device = reg.device;
+                deviceMap[i].offset = i - reg.startAddress;
             }
         }
     }
@@ -168,22 +167,22 @@ void Bus::RebuildDeviceMap() {
 
 void Bus::UpdateCache() {
     for (int page = 0; page < 256; ++page) {
-        pageReadMap.at(page) = nullptr;
-        pageWriteMap.at(page) = nullptr;
+        pageReadMap[page] = nullptr;
+        pageWriteMap[page] = nullptr;
 
         bool pageIsUniform = true;
-        IBusDevice* firstDevice = deviceMap.at(page << 8).device;
+        IBusDevice* firstDevice = deviceMap[page << 8].device;
         if (firstDevice == nullptr || firstDevice->GetRawMemory() == nullptr) {
             pageIsUniform = false;
         } else {
-            Word expectedOffset = deviceMap.at(page << 8).offset;
+            Word expectedOffset = deviceMap[page << 8].offset;
             for (int i = 0; i < 256; ++i) {
                 Word addr = (page << 8) | i;
-                if (deviceMap.at(addr).device != firstDevice) {
+                if (deviceMap[addr].device != firstDevice) {
                     pageIsUniform = false;
                     break;
                 }
-                if (deviceMap.at(addr).offset != expectedOffset + i) {
+                if (deviceMap[addr].offset != expectedOffset + i) {
                     pageIsUniform = false;
                     break;
                 }
@@ -193,7 +192,7 @@ void Bus::UpdateCache() {
         if (pageIsUniform) {
             Byte* rawPtr = firstDevice->GetRawMemory();
             size_t devSize = firstDevice->GetRawMemorySize();
-            auto baseOffset = static_cast<size_t>(deviceMap.at(page << 8).offset);
+            auto baseOffset = static_cast<size_t>(deviceMap[page << 8].offset);
 
             if (baseOffset >= devSize || (devSize - baseOffset) < 256) {
                 throw std::runtime_error(std::format(
@@ -201,13 +200,12 @@ void Bus::UpdateCache() {
                     firstDevice->GetName(), page, baseOffset, devSize));
             }
 
-            std::span<Byte> rawSpan(rawPtr, devSize);
-            Byte* memoryBase = &rawSpan[baseOffset];
+            Byte* memoryBase = rawPtr + baseOffset;
 
-            pageReadMap.at(page) = memoryBase;
+            pageReadMap[page] = memoryBase;
 
             if (!firstDevice->IsReadOnly()) {
-                pageWriteMap.at(page) = memoryBase;
+                pageWriteMap[page] = memoryBase;
             }
         }
     }
