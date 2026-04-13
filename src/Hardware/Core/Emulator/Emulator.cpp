@@ -58,12 +58,16 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
         return false;
     }
 
-    for (size_t i = 0; i < ROM_SIZE; ++i) {
-        rom.WriteDirect(static_cast<Word>(i), 0xDB);
+    Byte* romRaw = rom.GetRawMemory();
+    if (romRaw == nullptr || rom.GetRawMemorySize() < ROM_SIZE) {
+        errorMsg = "Error: ROM raw memory is not available or too small";
+        std::cerr << errorMsg << "\n";
+        return false;
     }
 
-    for (size_t i = 0; i < data.size(); ++i) {
-        rom.WriteDirect(static_cast<Word>(i), data[i]);
+    std::memset(romRaw, 0xDB, ROM_SIZE);
+    if (!data.empty()) {
+        std::memcpy(romRaw, data.data(), data.size());
     }
 
     if (data.empty()) {
