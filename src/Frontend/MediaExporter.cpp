@@ -291,9 +291,10 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
         }
 
         if (hasData) {
-            std::lock_guard<std::mutex> lock(queueMutex);
-            videoQueue.push(std::move(frameData));
-            queueCondVar.notify_one();
+            if (videoQueue.push(std::move(frameData))) {
+                wakeUpCount.fetch_add(1, std::memory_order_release);
+                wakeUpCount.notify_one();
+            }
         }
     } else {
         ++pboWarmupFrames;
@@ -319,9 +320,10 @@ void MediaExporter::PushAudio(const float* samples, int count) {
     }
     std::span<const float> audioSpan(samples, static_cast<size_t>(count));
     std::vector<float> audioData(audioSpan.begin(), audioSpan.end());
-    std::lock_guard<std::mutex> lock(queueMutex);
-    audioQueue.push(std::move(audioData));
-    queueCondVar.notify_one();
+    if (audioQueue.push(std::move(audioData))) {
+        wakeUpCount.fetch_add(1, std::memory_order_release);
+        wakeUpCount.notify_one();
+    }
 }
 
 void MediaExporter::ProcessVideoFrame(const VideoFrameData& vData, AVFrame* frameRaw, AVFrame* frameProcessed) {
@@ -440,23 +442,15 @@ void MediaExporter::WorkerLoop() {
     while (isRunning || !videoQueue.empty() || !audioQueue.empty()) {
         VideoFrameData vData;
         std::vector<float> aData;
-        bool hasVideo = false;
-        bool hasAudio = false;
 
-        {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            queueCondVar.wait(lock, [this]() { return !isRunning || !videoQueue.empty() || !audioQueue.empty(); });
+        bool hasVideo = videoQueue.pop(vData);
+        bool hasAudio = audioQueue.pop(aData);
 
-            if (!videoQueue.empty()) {
-                vData = std::move(videoQueue.front());
-                videoQueue.pop();
-                hasVideo = true;
-            }
-            if (!audioQueue.empty()) {
-                aData = std::move(audioQueue.front());
-                audioQueue.pop();
-                hasAudio = true;
-            }
+        if (!hasVideo && !hasAudio) {
+            if (!isRunning) break;
+            int val = wakeUpCount.load(std::memory_order_acquire);
+            wakeUpCount.wait(val, std::memory_order_acquire);
+            continue;
         }
 
         if (hasVideo) {
@@ -502,7 +496,8 @@ void MediaExporter::EncodeAudioFrame(AVFrame* frame) {
 void MediaExporter::Finalize() {
     if (isRunning) {
         isRunning = false;
-        queueCondVar.notify_all();
+        wakeUpCount.fetch_add(1, std::memory_order_release);
+        wakeUpCount.notify_all();
         if (workerThread.joinable()) {
             workerThread.join();
         }

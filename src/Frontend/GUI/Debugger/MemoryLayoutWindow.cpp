@@ -250,7 +250,7 @@ void DrawMemoryLayoutWindow(AppState& state) {
         }
 
         try {
-            std::lock_guard<std::recursive_mutex> lock(state.emulator.GetMutex());
+            state.emulator.WaitUntilSafeToMutate();
             bus.GetRegisteredDevices() = devices;
             bus.RebuildDeviceMap();
 

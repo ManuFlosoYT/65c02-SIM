@@ -1,0 +1,129 @@
+print("========================================");
+print("   65c02-SIM Expanded API Test Suite    ");
+print("========================================");
+
+let success = 1;
+
+print("[Test] Registers Getters/Setters...");
+emu.set_a(66); // 0x42
+if (emu.get_a() != 66) {
+    print(" -> A register error!");
+    success = 0;
+}
+
+emu.set_x(19); // 0x13
+if (emu.get_x() != 19) {
+    print(" -> X register error!");
+    success = 0;
+}
+
+emu.set_y(55); // 0x37
+if (emu.get_y() != 55) {
+    print(" -> Y register error!");
+    success = 0;
+}
+
+emu.set_pc(49152); // 0xC000
+if (emu.get_pc() != 49152) {
+    print(" -> PC error!");
+    success = 0;
+}
+
+emu.set_sp(509); // 0x01FD
+if (emu.get_sp() != 509) {
+    print(" -> SP error!");
+    success = 0;
+}
+
+if (success) {
+    print(" -> Registers OK");
+}
+
+let exec_success = 1;
+print("[Test] Execution Control...");
+
+emu.write_mem_direct(65532, 0);   // 0xFFFC
+emu.write_mem_direct(65533, 128); // 0xFFFD
+
+// Block manually
+// NOP = 0xEA (234), JMP 0x8000 = 0x4C (76) 0x00 0x80
+emu.write_mem_direct(32768, 234); // 0x8000
+emu.write_mem_direct(32769, 234); // 0x8001
+emu.write_mem_direct(32770, 76);  // 0x8002
+emu.write_mem_direct(32771, 0);   // 0x8003
+emu.write_mem_direct(32772, 128); // 0x8004
+
+emu.reset();
+if (emu.get_pc() != 32768) {
+    print(" -> Reset PC incorrect!");
+    exec_success = 0;
+}
+
+emu.step();
+if (emu.get_pc() != 32769) {
+    print(" -> Step PC incorrect!");
+    exec_success = 0;
+}
+
+emu.wait_instructions(2);
+if (emu.get_pc() != 32768) {
+    print(" -> Wait instructions PC incorrect!");
+    exec_success = 0;
+}
+
+if (exec_success) {
+    print(" -> Execution OK");
+}
+if (!exec_success) {
+    success = 0;
+}
+
+print("[Test] Breakpoints...");
+emu.clear_breakpoints();
+emu.add_breakpoint();
+emu.set_pc(32768);
+emu.wait_cycles(20);
+emu.clear_breakpoints();
+print(" -> Breakpoints OK");
+
+print("[Test] Interrupt Triggering...");
+emu.set_cycle_accurate(false);
+
+// NMI Test
+emu.write_mem_direct(65530, 0);  // 0xFFFA
+emu.write_mem_direct(65531, 112);// 0xFFFB
+emu.write_mem_direct(28672, 234);// 0x7000 (NOP)
+emu.write_mem_direct(28673, 64); // 0x7001 (RTI)
+
+emu.trigger_nmi();
+emu.step();
+if (emu.get_pc() < 28672) {
+    print(" -> NMI Jump failed!");
+}
+if (emu.get_pc() > 28673) {
+    print(" -> NMI Jump failed!");
+}
+
+// IRQ Test
+emu.write_mem_direct(65534, 0);  // 0xFFFE
+emu.write_mem_direct(65535, 96); // 0xFFFF
+emu.write_mem_direct(24576, 234);// 0x6000 (NOP)
+emu.write_mem_direct(24577, 64); // 0x6001 (RTI)
+
+emu.set_status(emu.get_status() & 251); // Enable IRQs (~0x04)
+emu.trigger_irq();
+emu.step();
+
+print(" -> Interrupts check complete");
+
+print("========================================");
+if (success) {
+    print("          All Tests Passed!             ");
+}
+if (!success) {
+    print("         Some Tests FAILED!             ");
+}
+print("========================================");
+
+// Final safety to avoid loops
+emu.pause();

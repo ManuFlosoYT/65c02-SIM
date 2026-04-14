@@ -1,10 +1,9 @@
 #pragma once
 
 #include <atomic>
+#include <deque>
 #include <memory>
 #include <string>
-#include <thread>
-#include <deque>
 
 namespace Core {
 class Emulator;
@@ -34,13 +33,14 @@ class ScriptEngine {
 
     Core::Emulator& GetEmulator() { return emulatorRef; }
 
-   private:
-    void ScriptThread(const std::string& filepath);
+    bool HasPendingScript() const;
+    void ExecutePendingScript();
 
+   private:
     Core::Emulator& emulatorRef;
     struct Impl;
     std::unique_ptr<Impl> pImpl;
-    std::thread workerThread;
+    
     std::atomic<bool> isRunning{false};
     std::atomic<bool> mirrorToStdout{false};
 };

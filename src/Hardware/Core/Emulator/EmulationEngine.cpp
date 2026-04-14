@@ -43,6 +43,15 @@ void Emulator::Resume() {
     pauseCV.notify_all();
 }
 
+void Emulator::WaitUntilSafeToMutate() {
+    if (!running) return;
+    if (!paused) Pause();
+    while (!isActuallyPaused.load(std::memory_order_acquire)) {
+        if (!running) return;
+        std::this_thread::yield();
+    }
+}
+
 void Emulator::ThreadLoop() {
     using namespace std::chrono;
     auto nextSliceTime = high_resolution_clock::now();
@@ -54,11 +63,18 @@ void Emulator::ThreadLoop() {
 
     while (running.load(std::memory_order_relaxed)) {
         if (paused.load(std::memory_order_relaxed)) {
+            isActuallyPaused.store(true, std::memory_order_release);
             std::unique_lock<std::mutex> lock(threadMutex);
             pauseCV.wait(lock, [this] { return !paused || !running; });
+            isActuallyPaused.store(false, std::memory_order_release);
         }
         if (!running.load(std::memory_order_relaxed)) {
             break;
+        }
+
+        if (scriptEngine.HasPendingScript()) {
+            scriptEngine.ExecutePendingScript();
+            continue; // Script has taken over until it paused or finished
         }
 
         int currentTarget = targetIPS.load();
@@ -111,7 +127,7 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     static int sliceCounter = 0;
     sliceCounter++;
     if (sliceCounter >= (1000 / 10)) {
-        std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+        // Lock removed
         SaveStateToBuffer();
         sliceCounter = 0;
     }
@@ -122,7 +138,7 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         int stepsInBatch = 0;
 
         {
-            std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+            // Lock removed
             EnsureWatchpointWriteHook();
             bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
             bool hasComplex = breakpointManager.HasComplexBreakpoints();

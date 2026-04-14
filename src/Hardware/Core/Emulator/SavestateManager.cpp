@@ -9,7 +9,7 @@
 namespace Core {
 
 bool Emulator::SaveState(const std::string& filename) {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    WaitUntilSafeToMutate();
 
     std::stringstream stateStream;
     for (auto* component : components) {
@@ -70,7 +70,7 @@ bool Emulator::SaveState(const std::string& filename) {
 }
 
 bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    WaitUntilSafeToMutate();
     SetupHardware();
 
     std::ifstream inFile(filename, std::ios::binary | std::ios::ate);
@@ -165,7 +165,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
 }
 
 void Emulator::Rewind() {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    WaitUntilSafeToMutate();
     if (rewindBuffer.empty()) {
         return;
     }
@@ -180,7 +180,6 @@ void Emulator::Rewind() {
 }
 
 bool Emulator::CanRewind() const { 
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     return !rewindBuffer.empty(); 
 }
 
@@ -230,7 +229,6 @@ bool Emulator::LoadInternalState(std::istream& stateStream) {
 }
 
 void Emulator::SaveStateToBuffer() {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     std::stringstream stateStream;
     for (auto* component : components) {
         if (!component->SaveState(stateStream)) {

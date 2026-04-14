@@ -19,7 +19,7 @@ Emulator::Emulator() : cpu(), scriptEngine(*this) {
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     if (bin.empty()) {
-        std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+        // Lock removed
         SetupHardware();
         currentBinPath = "";
         return true;
@@ -50,7 +50,7 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 }
 
 bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& name, std::string& errorMsg) {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    // Lock removed
 
     if (data.size() > ROM_SIZE) {
         errorMsg = "Error: ROM data too large (max 32KB, got " + std::to_string(data.size()) + ")";
@@ -95,7 +95,7 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
 }
 
 int Emulator::Step() {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    // Lock removed
     EnsureWatchpointWriteHook();
 
     int res = 0;
@@ -233,7 +233,7 @@ void Emulator::TriggerIRQ() { this->pendingIRQ.store(true); }
 void Emulator::TriggerNMI() { this->pendingNMI.store(true); }
 
 void Emulator::Reset() {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
+    // Lock removed
     SetupHardware();
 }
 

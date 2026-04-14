@@ -74,7 +74,7 @@ static void DrawScriptingSettings(AppState& state) {
         ImGui::PopStyleColor();
 #ifdef TARGET_WASM
         ImGui::BeginDisabled();
-        if (ImGui::Button("Load & Run Script (.py)", ImVec2(-FLT_MIN, 0))) {
+        if (ImGui::Button("Load & Run Script (.s65)", ImVec2(-FLT_MIN, 0))) {
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
                 std::string virtualPath = "/tmp/" + std::string(filename);
                 FILE* f = fopen(virtualPath.c_str(), "wb");
@@ -89,18 +89,18 @@ static void DrawScriptingSettings(AppState& state) {
                 state.emulator.Pause();
                 state.emulator.GetScriptEngine().LoadAndRun(virtualPath);
             };
-            WebFileUtils::open_browser_file_picker(".py");
+            WebFileUtils::open_browser_file_picker(".s65");
         }
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             if (ImGui::BeginItemTooltip()) {
-                ImGui::TextUnformatted("Python scripting is not supported in the web build.");
+                ImGui::TextUnformatted("S65 scripting is not supported in the web build yet.");
                 ImGui::EndTooltip();
             }
         }
 #else
-        if (ImGui::Button("Load & Run Script (.py)", ImVec2(-FLT_MIN, 0))) {
-            Frontend::CustomFileDialog::OpenDialog("LoadScriptDlgKey", "Load Python Script", ".py", ".", "", 1, nullptr,
+        if (ImGui::Button("Load & Run Script (.s65)", ImVec2(-FLT_MIN, 0))) {
+            Frontend::CustomFileDialog::OpenDialog("LoadScriptDlgKey", "Load S65 Script", ".s65", ".", "", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
         }
 #endif

@@ -90,7 +90,7 @@ class Emulator {
     Hardware::ESP8266& GetESP8266();
     Hardware::ScriptEngine& GetScriptEngine();
     Hardware::BreakpointManager& GetBreakpointManager();
-    std::recursive_mutex& GetMutex() { return emulationMutex; }
+    // std::recursive_mutex& GetMutex() { return emulationMutex; }
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
@@ -102,6 +102,7 @@ class Emulator {
     void Stop();
     void Pause();
     void Resume();
+    void WaitUntilSafeToMutate();
     bool IsRunning() const;
     bool IsPaused() const;
     bool IsHalted() const;
@@ -209,7 +210,8 @@ class Emulator {
     std::thread emulatorThread;
     std::mutex threadMutex;
     std::condition_variable pauseCV;
-    mutable std::recursive_mutex emulationMutex;  // mutex for thread safety during reset/step (recursive to support re-entrancy from script hooks)
+    std::atomic<bool> isActuallyPaused{true};
+    // No emulationMutex
     std::atomic<uint64_t> totalCycles{0};
     std::atomic<uint64_t> totalInstructions{0};
     uint64_t totalCyclesAtLastResume{0};
@@ -244,21 +246,18 @@ inline const Hardware::Bus& Core::Emulator::GetMem() const { return bus; }
 inline Hardware::Bus& Core::Emulator::GetMem() { return bus; }
 inline Hardware::GPU& Core::Emulator::GetGPU() { return gpu; }
 inline void Core::Emulator::SetGPUEnabled(bool enabled) { 
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     gpuEnabled = enabled; 
     SetupHardware();
 }
 inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
 
 inline void Core::Emulator::SetESPEnabled(bool enabled) {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     espEnabled = enabled;
     SetupHardware();
 }
 inline bool Core::Emulator::IsESPEnabled() const { return espEnabled; }
 
 inline void Core::Emulator::SetSDEnabled(bool enabled) {
-    std::lock_guard<std::recursive_mutex> lock(emulationMutex);
     sdEnabled = enabled;
     SetupHardware();
 }

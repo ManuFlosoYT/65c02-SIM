@@ -16,13 +16,11 @@ target_include_directories(65c02_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src 
     ${picosha2_SOURCE_DIR} 
     ${asio_SOURCE_DIR}/asio/include 
-    ${pocketpy_SOURCE_DIR}/include 
     ${miniz_SOURCE_DIR}
 )
 target_link_libraries(65c02_core PUBLIC 
     SDL3::SDL3 
     httplib::httplib 
-    pocketpy 
     SndFile::sndfile 
     miniz 
     nlohmann_json::nlohmann_json
@@ -42,13 +40,11 @@ target_include_directories(65c02_core_test PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src 
     ${picosha2_SOURCE_DIR} 
     ${asio_SOURCE_DIR}/asio/include 
-    ${pocketpy_SOURCE_DIR}/include 
     ${miniz_SOURCE_DIR}
 )
 target_link_libraries(65c02_core_test PUBLIC 
     SDL3::SDL3 
     httplib::httplib 
-    pocketpy 
     SndFile::sndfile 
     miniz 
     nlohmann_json::nlohmann_json

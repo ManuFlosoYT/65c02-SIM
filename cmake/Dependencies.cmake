@@ -58,9 +58,6 @@ set(ASIO_URL "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-38-
 set(HTTPLIB_REPO "https://github.com/yhirose/cpp-httplib.git")
 set(HTTPLIB_TAG "v0.41.0")
 
-# PocketPy
-set(POCKETPY_REPO "https://github.com/pocketpy/pocketpy.git")
-set(POCKETPY_TAG "v2.1.8")
 
 # cc65
 set(CC65_REPO "https://github.com/cc65/cc65.git")
@@ -299,21 +296,6 @@ if(TARGET httplib AND NOT EMSCRIPTEN)
     target_link_libraries(httplib INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
-# PocketPy
-FetchContent_Declare(
-    pocketpy
-    GIT_REPOSITORY ${POCKETPY_REPO}
-    GIT_TAG ${POCKETPY_TAG}
-    PATCH_COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_pocketpy.cmake"
-)
-set(PKPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(pocketpy)
-
-if(TARGET pocketpy AND WIN32)
-    # Ensure pocketpy knows it's targeting Windows and links correctly
-    target_compile_definitions(pocketpy PUBLIC PK_ENABLE_OS=1)
-    target_link_libraries(pocketpy ws2_32)
-endif()
 
 # cc65
 if(NOT EMSCRIPTEN)
