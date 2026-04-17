@@ -381,6 +381,216 @@ namespace Hardware::CPUDispatch {
 template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus) {
     Byte opcode = cpu.FetchByte<Debug>(bus);
+
+    // Fast lanes for common opcodes: direct decode+execute to avoid indirect function-call overhead.
+    switch (opcode) {
+        // Loads
+        case INS_LDA_IM:
+            LDA::ExecuteImmediate<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_IM - 1;
+            return 0;
+        case INS_LDA_ZP:
+            LDA::ExecuteZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_ZP - 1;
+            return 0;
+        case INS_LDA_ZPX:
+            LDA::ExecuteZPX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_ZPX - 1;
+            return 0;
+        case INS_LDA_ABS:
+            LDA::ExecuteABS<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_ABS - 1;
+            return 0;
+        case INS_LDA_ABSX:
+            LDA::ExecuteABSX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_ABSX - 1;
+            return 0;
+        case INS_LDA_ABSY:
+            LDA::ExecuteABSY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_ABSY - 1;
+            return 0;
+        case INS_LDA_INDX:
+            LDA::ExecuteINDX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_INDX - 1;
+            return 0;
+        case INS_LDA_INDY:
+            LDA::ExecuteINDY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_INDY - 1;
+            return 0;
+        case INS_LDA_IND_ZP:
+            LDA::ExecuteIND_ZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_LDA_IND_ZP - 1;
+            return 0;
+
+        // Stores
+        case INS_STA_ZP:
+            STA::ExecuteZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_ZP - 1;
+            return 0;
+        case INS_STA_ZPX:
+            STA::ExecuteZPX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_ZPX - 1;
+            return 0;
+        case INS_STA_ABS:
+            STA::ExecuteABS<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_ABS - 1;
+            return 0;
+        case INS_STA_ABSX:
+            STA::ExecuteABSX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_ABSX - 1;
+            return 0;
+        case INS_STA_ABSY:
+            STA::ExecuteABSY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_ABSY - 1;
+            return 0;
+        case INS_STA_INDX:
+            STA::ExecuteINDX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_INDX - 1;
+            return 0;
+        case INS_STA_INDY:
+            STA::ExecuteINDY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_INDY - 1;
+            return 0;
+        case INS_STA_IND_ZP:
+            STA::ExecuteINDZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_STA_IND_ZP - 1;
+            return 0;
+
+        // ADC
+        case INS_ADC_IM:
+            ADC::ExecuteImmediate<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_IM - 1;
+            return 0;
+        case INS_ADC_ZP:
+            ADC::ExecuteZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_ZP - 1;
+            return 0;
+        case INS_ADC_ZPX:
+            ADC::ExecuteZPX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_ZPX - 1;
+            return 0;
+        case INS_ADC_ABS:
+            ADC::ExecuteABS<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_ABS - 1;
+            return 0;
+        case INS_ADC_ABSX:
+            ADC::ExecuteABSX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_ABSX - 1;
+            return 0;
+        case INS_ADC_ABSY:
+            ADC::ExecuteABSY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_ABSY - 1;
+            return 0;
+        case INS_ADC_INDX:
+            ADC::ExecuteINDX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_INDX - 1;
+            return 0;
+        case INS_ADC_INDY:
+            ADC::ExecuteINDY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_INDY - 1;
+            return 0;
+        case INS_ADC_IND_ZP:
+            ADC::ExecuteIND_ZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_ADC_IND_ZP - 1;
+            return 0;
+
+        // SBC
+        case INS_SBC_IM:
+            SBC::ExecuteImmediate<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_IM - 1;
+            return 0;
+        case INS_SBC_ZP:
+            SBC::ExecuteZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_ZP - 1;
+            return 0;
+        case INS_SBC_ZPX:
+            SBC::ExecuteZPX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_ZPX - 1;
+            return 0;
+        case INS_SBC_ABS:
+            SBC::ExecuteABS<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_ABS - 1;
+            return 0;
+        case INS_SBC_ABSX:
+            SBC::ExecuteABSX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_ABSX - 1;
+            return 0;
+        case INS_SBC_ABSY:
+            SBC::ExecuteABSY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_ABSY - 1;
+            return 0;
+        case INS_SBC_INDX:
+            SBC::ExecuteINDX<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_INDX - 1;
+            return 0;
+        case INS_SBC_INDY:
+            SBC::ExecuteINDY<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_INDY - 1;
+            return 0;
+        case INS_SBC_IND_ZP:
+            SBC::ExecuteIND_ZP<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_SBC_IND_ZP - 1;
+            return 0;
+
+        // Branches + control flow
+        case INS_BRA:
+            BRA::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BRA - 1;
+            return 0;
+        case INS_BCC:
+            BCC::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BCC - 1;
+            return 0;
+        case INS_BCS:
+            BCS::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BCS - 1;
+            return 0;
+        case INS_BEQ:
+            BEQ::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BEQ - 1;
+            return 0;
+        case INS_BNE:
+            BNE::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BNE - 1;
+            return 0;
+        case INS_BMI:
+            BMI::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BMI - 1;
+            return 0;
+        case INS_BPL:
+            BPL::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BPL - 1;
+            return 0;
+        case INS_BVC:
+            BVC::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BVC - 1;
+            return 0;
+        case INS_BVS:
+            BVS::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_BVS - 1;
+            return 0;
+        case INS_JMP_ABS:
+            JMP::ExecuteABS<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_JMP_ABS - 1;
+            return 0;
+        case INS_JSR:
+            JSR::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_JSR - 1;
+            return 0;
+        case INS_RTS:
+            RTS::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_RTS - 1;
+            return 0;
+
+        // Common no-op
+        case INS_NOP:
+            NOP::Execute<Debug>(cpu, bus);
+            cpu.remainingCycles += CYC_INS_NOP - 1;
+            return 0;
+        default:
+            break;
+    }
+
     const OpcodeEntry<Debug>& entry = dispatchTable<Debug>[opcode];
 
     // Execute instruction
