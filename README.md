@@ -106,6 +106,13 @@ Build for Windows (using MinGW):
 ./build-win.sh --clean
 ```
 
+Benchmark room.bin in headless mode (reproducible cycles/s and MHz):
+
+```bash
+./scripts/compile-bin.sh room
+./scripts/benchmark-room.sh --runs 5 --cycles 200000000
+```
+
 ## :wave: Contributing
 
 Contributions are always welcome!
