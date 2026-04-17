@@ -128,29 +128,26 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     int remaining = instructionsPerSlice;
     int totalExecuted = 0;
 
-    // Save state roughly every 1s
-    // Calculating how many slice loops (10ms each) fit in 1000ms
-    static int sliceCounter = 0;
-    sliceCounter++;
-    if (sliceCounter >= (1000 / 10)) {
-        // Lock removed
-        SaveStateToBuffer();
-        sliceCounter = 0;
+    // Save rewind state roughly every 1s only when rewind snapshots are enabled.
+    if (rewindSnapshotsEnabled) {
+        rewindSliceCounter++;
+        if (rewindSliceCounter >= (1000 / 10)) {
+            SaveStateToBuffer();
+            rewindSliceCounter = 0;
+        }
     }
+
+    EnsureWatchpointWriteHook();
+    bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
+    bool hasComplex = breakpointManager.HasComplexBreakpoints();
+    bool hooks = bus.HasActiveHooks() || hasBreakpoints;
 
     while (remaining > 0) {
         int currentBatchSize = std::min(remaining, MAX_BATCH_SIZE);
         int batchInstructions = 0;
         int stepsInBatch = 0;
 
-        {
-            // Lock removed
-            EnsureWatchpointWriteHook();
-            bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
-            bool hasComplex = breakpointManager.HasComplexBreakpoints();
-            bool hooks = bus.HasActiveHooks() || hasBreakpoints;
-            stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions);
-        }
+        stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions);
 
         totalExecuted += stepsInBatch;
         remaining -= stepsInBatch;
