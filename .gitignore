@@ -10,7 +10,7 @@ compile_commands.json
 /tools/sid/build/
 /tools/sid/__pycache__/
 
-/sdk/src/build/*.o
+*.o
 /sdk/src/build/*.bin
 /sdk/src/build/*.map
 /sdk/src/build/*.lst
