@@ -37,7 +37,7 @@ Headless mode lets you run the emulator **without any graphical interface**, dir
 | Option | Description |
 |---|---|
 | `--headless` | Skip GUI initialization and run in CLI mode. |
-| `--rom <path>` | Load a binary ROM file (also works as positional arg). |
+| `--rom <path>` | Load a binary ROM file (also works as positional arg). If omitted in headless mode, it falls back to `output/rom/room.bin` when available. |
 | `--script <path>` | Load and execute a Python script. |
 | `--run-cycles <N>` | Advance the CPU exactly N cycles after startup. |
 | `--dump-mem <file>` | After execution, dump the full 64KB RAM to a binary file. |
