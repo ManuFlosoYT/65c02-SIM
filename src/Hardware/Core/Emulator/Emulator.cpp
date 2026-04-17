@@ -383,6 +383,7 @@ void Emulator::SetupHardware() {
     pendingInterruptAny.store(false, std::memory_order_relaxed);
     totalCycles = 0;
     rewindBuffer.clear();
+    rewindSliceCounter = 0;
     lastSaveTime = std::chrono::steady_clock::now();
 
     try {

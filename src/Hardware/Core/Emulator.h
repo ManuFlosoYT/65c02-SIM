@@ -132,6 +132,8 @@ class Emulator {
     void SetupHardware();
     void SetHeadless(bool isHeadless) { headless = isHeadless; }
     [[nodiscard]] bool IsHeadless() const { return headless; }
+    void SetRewindSnapshotsEnabled(bool enabled);
+    [[nodiscard]] bool IsRewindSnapshotsEnabled() const { return rewindSnapshotsEnabled; }
 
    private:
     void ThreadLoop();
@@ -201,6 +203,8 @@ class Emulator {
     bool espEnabled = false;
     bool sdEnabled = false;
     bool headless = false;
+    bool rewindSnapshotsEnabled = true;
+    int rewindSliceCounter = 0;
 
     // Threading control
     std::atomic<bool> running{false};
@@ -294,3 +298,11 @@ inline bool Core::Emulator::IsAutoReloadEnabled() const { return autoReloadReque
 inline Core::SavestateLoadResult Core::Emulator::GetLastLoadResult() const { return lastLoadResult; }
 inline std::string Core::Emulator::GetLastLoadVersion() const { return lastLoadVersion; }
 inline std::string Core::Emulator::GetCurrentBinPath() const { return currentBinPath; }
+
+inline void Core::Emulator::SetRewindSnapshotsEnabled(bool enabled) {
+    rewindSnapshotsEnabled = enabled;
+    if (!rewindSnapshotsEnabled) {
+        rewindSliceCounter = 0;
+        rewindBuffer.clear();
+    }
+}
