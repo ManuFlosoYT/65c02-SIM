@@ -235,7 +235,7 @@ static void PrintHeadlessUsage(const char* exeName) {
     std::cerr << "Usage: " << exeName << " [OPTIONS] [ROM_PATH]\n"
               << "Options:\n"
               << "  --headless              Run without GUI\n"
-              << "  --rom <path>            Load ROM from path\n"
+              << "  --rom <path>            Load ROM from path (fallback: output/rom/room.bin)\n"
               << "  --script <path>         Load and run Python script\n"
               << "  --run-cycles <N>        Run N cycles (N >= 0)\n"
               << "  --dump-mem <file>       Dump 64KB memory to file\n"
@@ -302,17 +302,47 @@ static ParseArgsResult ParseArgs(std::span<const char* const> argv) {
     return result;
 }
 
+static std::string ResolveHeadlessRomPath(const Args& args) {
+    if (!args.romPath.empty()) {
+        return args.romPath;
+    }
+
+    static constexpr const char* fallbackCandidates[] = {
+        "output/rom/room.bin",
+        "./output/rom/room.bin",
+        "room.bin"
+    };
+
+    for (const char* candidate : fallbackCandidates) {
+        if (std::filesystem::exists(candidate)) {
+            return candidate;
+        }
+    }
+
+    return {};
+}
+
 static int RunHeadless(const Args& args) {
     Core::Emulator emulator;
+    emulator.SetHeadless(true);
+    emulator.SetRewindSnapshotsEnabled(false);
     emulator.GetSID().Init(sidSampleRate);
     emulator.SetGPUEnabled(false);
 
-    if (!args.romPath.empty()) {
-        std::string errorMsg;
-        if (!emulator.Init(args.romPath, errorMsg)) {
-            std::cerr << "Headless: Failed to load ROM: " << errorMsg << '\n';
-            return -1;
-        }
+    std::string romPath = ResolveHeadlessRomPath(args);
+    if (romPath.empty()) {
+        std::cerr << "Headless: No ROM provided and fallback ROM not found.\n"
+                  << "Tried: output/rom/room.bin, ./output/rom/room.bin, room.bin\n";
+        return -1;
+    }
+    if (args.romPath.empty()) {
+        std::cerr << "Headless: No ROM specified, using fallback ROM: " << romPath << '\n';
+    }
+
+    std::string errorMsg;
+    if (!emulator.Init(romPath, errorMsg)) {
+        std::cerr << "Headless: Failed to load ROM: " << errorMsg << '\n';
+        return -1;
     }
 
     if (!args.scriptPath.empty()) {
@@ -517,4 +547,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
