@@ -382,214 +382,92 @@ template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus) {
     Byte opcode = cpu.FetchByte<Debug>(bus);
 
-    // Fast lanes for common opcodes: direct decode+execute to avoid indirect function-call overhead.
+#define HOT_OPCODE_LIST(X)                                                                                             \
+    X(INS_LDA_IM, hot_lda_im, LDA::ExecuteImmediate, CYC_INS_LDA_IM)                                                  \
+    X(INS_LDA_ZP, hot_lda_zp, LDA::ExecuteZP, CYC_INS_LDA_ZP)                                                         \
+    X(INS_LDA_ZPX, hot_lda_zpx, LDA::ExecuteZPX, CYC_INS_LDA_ZPX)                                                     \
+    X(INS_LDA_ABS, hot_lda_abs, LDA::ExecuteABS, CYC_INS_LDA_ABS)                                                     \
+    X(INS_LDA_ABSX, hot_lda_absx, LDA::ExecuteABSX, CYC_INS_LDA_ABSX)                                                 \
+    X(INS_LDA_ABSY, hot_lda_absy, LDA::ExecuteABSY, CYC_INS_LDA_ABSY)                                                 \
+    X(INS_LDA_INDX, hot_lda_indx, LDA::ExecuteINDX, CYC_INS_LDA_INDX)                                                 \
+    X(INS_LDA_INDY, hot_lda_indy, LDA::ExecuteINDY, CYC_INS_LDA_INDY)                                                 \
+    X(INS_LDA_IND_ZP, hot_lda_ind_zp, LDA::ExecuteIND_ZP, CYC_INS_LDA_IND_ZP)                                        \
+    X(INS_STA_ZP, hot_sta_zp, STA::ExecuteZP, CYC_INS_STA_ZP)                                                         \
+    X(INS_STA_ZPX, hot_sta_zpx, STA::ExecuteZPX, CYC_INS_STA_ZPX)                                                     \
+    X(INS_STA_ABS, hot_sta_abs, STA::ExecuteABS, CYC_INS_STA_ABS)                                                     \
+    X(INS_STA_ABSX, hot_sta_absx, STA::ExecuteABSX, CYC_INS_STA_ABSX)                                                 \
+    X(INS_STA_ABSY, hot_sta_absy, STA::ExecuteABSY, CYC_INS_STA_ABSY)                                                 \
+    X(INS_STA_INDX, hot_sta_indx, STA::ExecuteINDX, CYC_INS_STA_INDX)                                                 \
+    X(INS_STA_INDY, hot_sta_indy, STA::ExecuteINDY, CYC_INS_STA_INDY)                                                 \
+    X(INS_STA_IND_ZP, hot_sta_ind_zp, STA::ExecuteINDZP, CYC_INS_STA_IND_ZP)                                         \
+    X(INS_ADC_IM, hot_adc_im, ADC::ExecuteImmediate, CYC_INS_ADC_IM)                                                  \
+    X(INS_ADC_ZP, hot_adc_zp, ADC::ExecuteZP, CYC_INS_ADC_ZP)                                                         \
+    X(INS_ADC_ZPX, hot_adc_zpx, ADC::ExecuteZPX, CYC_INS_ADC_ZPX)                                                     \
+    X(INS_ADC_ABS, hot_adc_abs, ADC::ExecuteABS, CYC_INS_ADC_ABS)                                                     \
+    X(INS_ADC_ABSX, hot_adc_absx, ADC::ExecuteABSX, CYC_INS_ADC_ABSX)                                                 \
+    X(INS_ADC_ABSY, hot_adc_absy, ADC::ExecuteABSY, CYC_INS_ADC_ABSY)                                                 \
+    X(INS_ADC_INDX, hot_adc_indx, ADC::ExecuteINDX, CYC_INS_ADC_INDX)                                                 \
+    X(INS_ADC_INDY, hot_adc_indy, ADC::ExecuteINDY, CYC_INS_ADC_INDY)                                                 \
+    X(INS_ADC_IND_ZP, hot_adc_ind_zp, ADC::ExecuteIND_ZP, CYC_INS_ADC_IND_ZP)                                        \
+    X(INS_SBC_IM, hot_sbc_im, SBC::ExecuteImmediate, CYC_INS_SBC_IM)                                                  \
+    X(INS_SBC_ZP, hot_sbc_zp, SBC::ExecuteZP, CYC_INS_SBC_ZP)                                                         \
+    X(INS_SBC_ZPX, hot_sbc_zpx, SBC::ExecuteZPX, CYC_INS_SBC_ZPX)                                                     \
+    X(INS_SBC_ABS, hot_sbc_abs, SBC::ExecuteABS, CYC_INS_SBC_ABS)                                                     \
+    X(INS_SBC_ABSX, hot_sbc_absx, SBC::ExecuteABSX, CYC_INS_SBC_ABSX)                                                 \
+    X(INS_SBC_ABSY, hot_sbc_absy, SBC::ExecuteABSY, CYC_INS_SBC_ABSY)                                                 \
+    X(INS_SBC_INDX, hot_sbc_indx, SBC::ExecuteINDX, CYC_INS_SBC_INDX)                                                 \
+    X(INS_SBC_INDY, hot_sbc_indy, SBC::ExecuteINDY, CYC_INS_SBC_INDY)                                                 \
+    X(INS_SBC_IND_ZP, hot_sbc_ind_zp, SBC::ExecuteIND_ZP, CYC_INS_SBC_IND_ZP)                                        \
+    X(INS_BRA, hot_bra, BRA::Execute, CYC_INS_BRA)                                                                    \
+    X(INS_BCC, hot_bcc, BCC::Execute, CYC_INS_BCC)                                                                    \
+    X(INS_BCS, hot_bcs, BCS::Execute, CYC_INS_BCS)                                                                    \
+    X(INS_BEQ, hot_beq, BEQ::Execute, CYC_INS_BEQ)                                                                    \
+    X(INS_BNE, hot_bne, BNE::Execute, CYC_INS_BNE)                                                                    \
+    X(INS_BMI, hot_bmi, BMI::Execute, CYC_INS_BMI)                                                                    \
+    X(INS_BPL, hot_bpl, BPL::Execute, CYC_INS_BPL)                                                                    \
+    X(INS_BVC, hot_bvc, BVC::Execute, CYC_INS_BVC)                                                                    \
+    X(INS_BVS, hot_bvs, BVS::Execute, CYC_INS_BVS)                                                                    \
+    X(INS_JMP_ABS, hot_jmp_abs, JMP::ExecuteABS, CYC_INS_JMP_ABS)                                                     \
+    X(INS_JSR, hot_jsr, JSR::Execute, CYC_INS_JSR)                                                                    \
+    X(INS_RTS, hot_rts, RTS::Execute, CYC_INS_RTS)                                                                    \
+    X(INS_NOP, hot_nop, NOP::Execute, CYC_INS_NOP)
+
+#if defined(__GNUC__) || defined(__clang__)
+    // GNU/Clang fast path: direct-threaded jump table for common opcodes.
+    static std::array<const void*, 256> hotTargets{};
+    static bool hotTargetsInitialized = false;
+    if (!hotTargetsInitialized) {
+        hotTargets.fill(&&hot_slow_path);
+#define SET_HOT_TARGET(opcodeValue, labelName, executor, cycles) hotTargets[opcodeValue] = &&labelName;
+        HOT_OPCODE_LIST(SET_HOT_TARGET)
+#undef SET_HOT_TARGET
+        hotTargetsInitialized = true;
+    }
+
+    goto *hotTargets[opcode];
+
+#define HOT_LABEL(opcodeValue, labelName, executor, cycles)                                                            \
+    labelName:                                                                                                         \
+        executor<Debug>(cpu, bus);                                                                                     \
+        cpu.remainingCycles += cycles - 1;                                                                             \
+        return 0;
+    HOT_OPCODE_LIST(HOT_LABEL)
+#undef HOT_LABEL
+hot_slow_path:
+#else
+    // Portable fallback: fast switch for the same hot opcodes.
     switch (opcode) {
-        // Loads
-        case INS_LDA_IM:
-            LDA::ExecuteImmediate<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_IM - 1;
-            return 0;
-        case INS_LDA_ZP:
-            LDA::ExecuteZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_ZP - 1;
-            return 0;
-        case INS_LDA_ZPX:
-            LDA::ExecuteZPX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_ZPX - 1;
-            return 0;
-        case INS_LDA_ABS:
-            LDA::ExecuteABS<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_ABS - 1;
-            return 0;
-        case INS_LDA_ABSX:
-            LDA::ExecuteABSX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_ABSX - 1;
-            return 0;
-        case INS_LDA_ABSY:
-            LDA::ExecuteABSY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_ABSY - 1;
-            return 0;
-        case INS_LDA_INDX:
-            LDA::ExecuteINDX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_INDX - 1;
-            return 0;
-        case INS_LDA_INDY:
-            LDA::ExecuteINDY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_INDY - 1;
-            return 0;
-        case INS_LDA_IND_ZP:
-            LDA::ExecuteIND_ZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_LDA_IND_ZP - 1;
-            return 0;
-
-        // Stores
-        case INS_STA_ZP:
-            STA::ExecuteZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_ZP - 1;
-            return 0;
-        case INS_STA_ZPX:
-            STA::ExecuteZPX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_ZPX - 1;
-            return 0;
-        case INS_STA_ABS:
-            STA::ExecuteABS<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_ABS - 1;
-            return 0;
-        case INS_STA_ABSX:
-            STA::ExecuteABSX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_ABSX - 1;
-            return 0;
-        case INS_STA_ABSY:
-            STA::ExecuteABSY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_ABSY - 1;
-            return 0;
-        case INS_STA_INDX:
-            STA::ExecuteINDX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_INDX - 1;
-            return 0;
-        case INS_STA_INDY:
-            STA::ExecuteINDY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_INDY - 1;
-            return 0;
-        case INS_STA_IND_ZP:
-            STA::ExecuteINDZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_STA_IND_ZP - 1;
-            return 0;
-
-        // ADC
-        case INS_ADC_IM:
-            ADC::ExecuteImmediate<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_IM - 1;
-            return 0;
-        case INS_ADC_ZP:
-            ADC::ExecuteZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_ZP - 1;
-            return 0;
-        case INS_ADC_ZPX:
-            ADC::ExecuteZPX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_ZPX - 1;
-            return 0;
-        case INS_ADC_ABS:
-            ADC::ExecuteABS<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_ABS - 1;
-            return 0;
-        case INS_ADC_ABSX:
-            ADC::ExecuteABSX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_ABSX - 1;
-            return 0;
-        case INS_ADC_ABSY:
-            ADC::ExecuteABSY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_ABSY - 1;
-            return 0;
-        case INS_ADC_INDX:
-            ADC::ExecuteINDX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_INDX - 1;
-            return 0;
-        case INS_ADC_INDY:
-            ADC::ExecuteINDY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_INDY - 1;
-            return 0;
-        case INS_ADC_IND_ZP:
-            ADC::ExecuteIND_ZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_ADC_IND_ZP - 1;
-            return 0;
-
-        // SBC
-        case INS_SBC_IM:
-            SBC::ExecuteImmediate<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_IM - 1;
-            return 0;
-        case INS_SBC_ZP:
-            SBC::ExecuteZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_ZP - 1;
-            return 0;
-        case INS_SBC_ZPX:
-            SBC::ExecuteZPX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_ZPX - 1;
-            return 0;
-        case INS_SBC_ABS:
-            SBC::ExecuteABS<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_ABS - 1;
-            return 0;
-        case INS_SBC_ABSX:
-            SBC::ExecuteABSX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_ABSX - 1;
-            return 0;
-        case INS_SBC_ABSY:
-            SBC::ExecuteABSY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_ABSY - 1;
-            return 0;
-        case INS_SBC_INDX:
-            SBC::ExecuteINDX<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_INDX - 1;
-            return 0;
-        case INS_SBC_INDY:
-            SBC::ExecuteINDY<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_INDY - 1;
-            return 0;
-        case INS_SBC_IND_ZP:
-            SBC::ExecuteIND_ZP<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_SBC_IND_ZP - 1;
-            return 0;
-
-        // Branches + control flow
-        case INS_BRA:
-            BRA::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BRA - 1;
-            return 0;
-        case INS_BCC:
-            BCC::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BCC - 1;
-            return 0;
-        case INS_BCS:
-            BCS::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BCS - 1;
-            return 0;
-        case INS_BEQ:
-            BEQ::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BEQ - 1;
-            return 0;
-        case INS_BNE:
-            BNE::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BNE - 1;
-            return 0;
-        case INS_BMI:
-            BMI::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BMI - 1;
-            return 0;
-        case INS_BPL:
-            BPL::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BPL - 1;
-            return 0;
-        case INS_BVC:
-            BVC::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BVC - 1;
-            return 0;
-        case INS_BVS:
-            BVS::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_BVS - 1;
-            return 0;
-        case INS_JMP_ABS:
-            JMP::ExecuteABS<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_JMP_ABS - 1;
-            return 0;
-        case INS_JSR:
-            JSR::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_JSR - 1;
-            return 0;
-        case INS_RTS:
-            RTS::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_RTS - 1;
-            return 0;
-
-        // Common no-op
-        case INS_NOP:
-            NOP::Execute<Debug>(cpu, bus);
-            cpu.remainingCycles += CYC_INS_NOP - 1;
-            return 0;
+#define HOT_CASE(opcodeValue, labelName, executor, cycles)                                                             \
+    case opcodeValue:                                                                                                  \
+        executor<Debug>(cpu, bus);                                                                                     \
+        cpu.remainingCycles += cycles - 1;                                                                             \
+        return 0;
+        HOT_OPCODE_LIST(HOT_CASE)
+#undef HOT_CASE
         default:
             break;
     }
+#endif
 
     const OpcodeEntry<Debug>& entry = dispatchTable<Debug>[opcode];
 
@@ -598,10 +476,8 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
         entry.executor(cpu, bus);
     }
 
-    // Assign cycle accuracy offsets
-    if (entry.baseCycles > 0) {
-        cpu.remainingCycles += entry.baseCycles - 1;
-    }
+    // Assign cycle accuracy offsets (branchless equivalent to: baseCycles > 0 ? baseCycles - 1 : 0)
+    cpu.remainingCycles += static_cast<int>(entry.baseCycles) - static_cast<int>(entry.baseCycles != 0);
 
     // Error handling
     if (entry.exitCode == -1) {
@@ -610,6 +486,8 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     }
 
     return entry.exitCode;
+
+#undef HOT_OPCODE_LIST
 }
 
 }  // namespace Hardware::CPUDispatch

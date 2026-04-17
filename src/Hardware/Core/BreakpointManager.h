@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <bitset>
+#include <cstddef>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -75,6 +76,8 @@ class BreakpointManager {
     std::atomic<bool> hasComplexBreakpoints{false};
     std::atomic<bool> hasWatchpoints{false};
     std::bitset<65536> fastPathBreakpoints;
+    std::vector<std::size_t> simplePCBreakpointIndices;
+    std::vector<std::size_t> complexBreakpointIndices;
 
     bool watchpointTriggered = false;
     uint16_t watchpointAddress = 0;

@@ -43,19 +43,25 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
         return 0;
     }
 
+    const bool pcCandidate = fastPathBreakpoints.test(cpu.PC);
+    const bool hasComplex = hasComplexBreakpoints.load(std::memory_order_relaxed);
+
     // Lock-free check for the most common case: No PC breakpoint at this address
     // and no complex breakpoints (registers, memory, etc.) active.
-    if (!fastPathBreakpoints.test(cpu.PC) && !hasComplexBreakpoints.load(std::memory_order_relaxed)) {
+    if (!pcCandidate && !hasComplex) {
         return 0;
     }
 
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
-    for (auto& entry : breakpoints) {
-        if (!entry.enabled || entry.conditions.empty()) {
-            continue;
-        }
-
-        if (CheckBreakpoint(entry, cpu, bus)) {
+    if (pcCandidate) {
+        for (const std::size_t idx : simplePCBreakpointIndices) {
+            auto& entry = breakpoints[idx];
+            if (!entry.enabled || entry.conditions.empty()) {
+                continue;
+            }
+            if (entry.conditions.front().address != cpu.PC) {
+                continue;
+            }
             entry.hitCount++;
             if (entry.hitOnce) {
                 entry.enabled = false;
@@ -64,6 +70,24 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
             return entry.id;
         }
     }
+
+    if (hasComplex) {
+        for (const std::size_t idx : complexBreakpointIndices) {
+            auto& entry = breakpoints[idx];
+            if (!entry.enabled || entry.conditions.empty()) {
+                continue;
+            }
+            if (CheckBreakpoint(entry, cpu, bus)) {
+                entry.hitCount++;
+                if (entry.hitOnce) {
+                    entry.enabled = false;
+                    UpdateFastPath();
+                }
+                return entry.id;
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -210,19 +234,33 @@ bool BreakpointManager::Compare(CompareOp compareOp, uint16_t lhs, uint16_t rhs)
 
 void BreakpointManager::UpdateFastPath() {
     fastPathBreakpoints.reset();
+    simplePCBreakpointIndices.clear();
+    complexBreakpointIndices.clear();
     bool any = false;
     bool complex = false;
     bool watchpoints = false;
-    for (const auto& breakpointEntry : breakpoints) {
+    for (std::size_t i = 0; i < breakpoints.size(); ++i) {
+        const auto& breakpointEntry = breakpoints[i];
         if (!breakpointEntry.enabled) {
             continue;
         }
         any = true;
+        const bool isSimplePCOnly =
+            breakpointEntry.conditions.size() == 1 &&
+            breakpointEntry.conditions.front().type == BreakpointType::PCAddress &&
+            breakpointEntry.compoundOp == LogicOp::And;
+
+        if (isSimplePCOnly) {
+            fastPathBreakpoints.set(breakpointEntry.conditions.front().address);
+            simplePCBreakpointIndices.push_back(i);
+            continue;
+        }
+
+        complexBreakpointIndices.push_back(i);
+        complex = true;
         for (const auto& cond : breakpointEntry.conditions) {
             if (cond.type == BreakpointType::PCAddress) {
                 fastPathBreakpoints.set(cond.address);
-            } else {
-                complex = true;
             }
             if (cond.type == BreakpointType::MemoryWatchpoint) {
                 watchpoints = true;

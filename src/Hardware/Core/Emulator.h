@@ -138,6 +138,7 @@ class Emulator {
 
     std::atomic<bool> pendingIRQ{false};
     std::atomic<bool> pendingNMI{false};
+    std::atomic<bool> pendingInterruptAny{false};
 
     void HandleVIAPortB(Byte val);
     void RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMapped);
@@ -148,7 +149,7 @@ class Emulator {
     void MountSDCardIfPresent();
     void EnsureWatchpointWriteHook();
     
-    template <bool Debug>
+    template <bool Debug, bool CycleAccurateMode>
     void RunCPUTick(int& res, bool& cpuStepped);
     void SyncHardwareCycles(bool cpuStepped, bool isNewInstruction);
     template <bool Debug>

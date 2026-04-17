@@ -128,16 +128,24 @@ int Emulator::Step() {
     return res;
 }
 
-template <bool Debug>
+template <bool Debug, bool CycleAccurateMode>
 void Emulator::RunCPUTick(int& res, bool& cpuStepped) {
     if (gpuEnabled) {
         gpu.Clock();
         if (gpu.IsInBlankingInterval()) {
-            res = cpu.Step<Debug>(bus);
+            if constexpr (CycleAccurateMode) {
+                res = cpu.StepCycleAccurate<Debug>(bus);
+            } else {
+                res = cpu.StepFast<Debug>(bus);
+            }
             cpuStepped = true;
         }
     } else {
-        res = cpu.Step<Debug>(bus);
+        if constexpr (CycleAccurateMode) {
+            res = cpu.StepCycleAccurate<Debug>(bus);
+        } else {
+            res = cpu.StepFast<Debug>(bus);
+        }
         cpuStepped = true;
     }
 }
@@ -148,11 +156,17 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
     }
 
     via.Clock();
+    if (via.isIRQAsserted()) {
+        pendingInterruptAny.store(true, std::memory_order_relaxed);
+    }
 
     if (cpuStepped && !cpu.cycleAccurate && isNewInstruction) {
         int extraCycles = cpu.remainingCycles;
         for (int i = 0; i < extraCycles; ++i) {
             via.Clock();
+            if (via.isIRQAsserted()) {
+                pendingInterruptAny.store(true, std::memory_order_relaxed);
+            }
         }
         cpu.remainingCycles = 0;
     }
@@ -160,14 +174,25 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
 
 template <bool Debug>
 void Emulator::HandleInterrupts() {
-    bool irq = acia.HasIRQ() || via.isIRQAsserted() || this->pendingIRQ.load(std::memory_order_relaxed);
-    if (this->pendingNMI.load(std::memory_order_relaxed)) {
+    if (!pendingInterruptAny.load(std::memory_order_relaxed)) {
+        return;
+    }
+
+    bool nmiPending = this->pendingNMI.load(std::memory_order_relaxed);
+    bool irqPending = this->pendingIRQ.load(std::memory_order_relaxed) || acia.HasIRQ() || via.isIRQAsserted();
+
+    if (!nmiPending && !irqPending) {
+        pendingInterruptAny.store(false, std::memory_order_relaxed);
+        return;
+    }
+
+    if (nmiPending) {
         cpu.waiting = false;
         if (cpu.remainingCycles == 0) {
             this->pendingNMI.store(false, std::memory_order_relaxed);
             cpu.NMI<Debug>(bus);
         }
-    } else if (irq) {
+    } else if (irqPending) {
         cpu.waiting = false;
         if (cpu.remainingCycles == 0) {
             if (cpu.I == 0) {
@@ -176,6 +201,10 @@ void Emulator::HandleInterrupts() {
             }
         }
     }
+
+    bool stillPending = this->pendingNMI.load(std::memory_order_relaxed) || this->pendingIRQ.load(std::memory_order_relaxed) ||
+                        acia.HasIRQ() || via.isIRQAsserted();
+    pendingInterruptAny.store(stillPending, std::memory_order_relaxed);
 }
 
 template <bool Debug>
@@ -187,6 +216,7 @@ void Emulator::HandleSerialInput() {
             inputBuffer.pop_front();
 
             acia.ReceiveData(chr);
+            pendingInterruptAny.store(true, std::memory_order_relaxed);
 
             baudDelay = 2000;
         }
@@ -200,9 +230,14 @@ template <bool Debug>
 int Emulator::Step() {
     int res = 0;
     bool cpuStepped = false;
-    bool isNewInstruction = (cpu.remainingCycles == 0);
+    bool isNewInstruction = true;
 
-    RunCPUTick<Debug>(res, cpuStepped);
+    if (cpu.cycleAccurate) {
+        isNewInstruction = (cpu.remainingCycles == 0);
+        RunCPUTick<Debug, true>(res, cpuStepped);
+    } else {
+        RunCPUTick<Debug, false>(res, cpuStepped);
+    }
     SyncHardwareCycles(cpuStepped, isNewInstruction);
     HandleInterrupts<Debug>();
 
@@ -229,8 +264,14 @@ void Emulator::InjectKey(char key) {
 
 void Emulator::SetOutputCallback(std::function<void(char)> callback) { acia.SetOutputCallback(std::move(callback)); }
 
-void Emulator::TriggerIRQ() { this->pendingIRQ.store(true); }
-void Emulator::TriggerNMI() { this->pendingNMI.store(true); }
+void Emulator::TriggerIRQ() {
+    this->pendingIRQ.store(true, std::memory_order_relaxed);
+    this->pendingInterruptAny.store(true, std::memory_order_relaxed);
+}
+void Emulator::TriggerNMI() {
+    this->pendingNMI.store(true, std::memory_order_relaxed);
+    this->pendingInterruptAny.store(true, std::memory_order_relaxed);
+}
 
 void Emulator::Reset() {
     // Lock removed
@@ -338,6 +379,9 @@ void Emulator::SetupHardware() {
     bus.Init();
     watchpointWriteHookInstalled = false;
     cpu.Reset();
+    pendingIRQ.store(false, std::memory_order_relaxed);
+    pendingNMI.store(false, std::memory_order_relaxed);
+    pendingInterruptAny.store(false, std::memory_order_relaxed);
     totalCycles = 0;
     rewindBuffer.clear();
     lastSaveTime = std::chrono::steady_clock::now();

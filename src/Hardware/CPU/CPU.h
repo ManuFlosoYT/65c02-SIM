@@ -54,6 +54,10 @@ class CPU : public ISerializable {
 
     template <bool Debug>
     int Step(Bus& bus);
+    template <bool Debug>
+    int StepCycleAccurate(Bus& bus);
+    template <bool Debug>
+    int StepFast(Bus& bus);
     int Step(Bus& bus);
 
     template <bool Debug>
@@ -153,6 +157,14 @@ inline int Hardware::CPU::Execute(Bus& bus) {
 
 template <bool Debug>
 inline int Hardware::CPU::Step(Bus& bus) {
+    if (cycleAccurate) {
+        return StepCycleAccurate<Debug>(bus);
+    }
+    return StepFast<Debug>(bus);
+}
+
+template <bool Debug>
+inline int Hardware::CPU::StepCycleAccurate(Bus& bus) {
     if (!isInit) {
         PC = ReadWord<Debug>(0xFFFC, bus);
         UpdatePagePtr(bus);
@@ -161,12 +173,29 @@ inline int Hardware::CPU::Step(Bus& bus) {
         UpdatePagePtr(bus);
     }
 
-    if (waiting) {
+    if (waiting) [[unlikely]] {
         return 0;
     }
 
-    if (cycleAccurate && remainingCycles > 0) {
+    if (remainingCycles > 0) [[likely]] {
         remainingCycles--;
+        return 0;
+    }
+
+    return Dispatch<Debug>(bus);
+}
+
+template <bool Debug>
+inline int Hardware::CPU::StepFast(Bus& bus) {
+    if (!isInit) {
+        PC = ReadWord<Debug>(0xFFFC, bus);
+        UpdatePagePtr(bus);
+        isInit = true;
+    } else if (current_page_ptr == nullptr) {
+        UpdatePagePtr(bus);
+    }
+
+    if (waiting) [[unlikely]] {
         return 0;
     }
 
@@ -251,7 +280,7 @@ inline void Hardware::CPU::UpdatePagePtr(Bus& bus) {
 template <bool Debug>
 inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
     Byte dato = 0;
-    if (current_page_ptr != nullptr) {
+    if (current_page_ptr != nullptr) [[likely]] {
         dato = *current_page_ptr;
         current_page_ptr++;
     } else {
@@ -292,20 +321,17 @@ inline Hardware::Word Hardware::CPU::ReadWordZP(Byte zpAddr, Bus& bus) {
 
 template <bool Debug>
 inline void Hardware::CPU::PushByte(Byte val, Bus& bus) {
-    bus.Write<Debug>(SP, val);
-    SP--;
-    if (SP < 0x0100) {
-        SP = 0x01FF;
-    }
+    Byte sp = static_cast<Byte>(SP);
+    bus.Write<Debug>(static_cast<Word>(0x0100 | sp), val);
+    SP = static_cast<Word>(0x0100 | static_cast<Byte>(sp - 1));
 }
 
 template <bool Debug>
 inline Hardware::Byte Hardware::CPU::PopByte(Bus& bus) {
-    SP++;
-    if (SP > 0x01FF) {
-        SP = 0x0100;
-    }
-    return bus.Read<Debug>(SP);
+    Byte sp = static_cast<Byte>(SP);
+    sp = static_cast<Byte>(sp + 1);
+    SP = static_cast<Word>(0x0100 | sp);
+    return bus.Read<Debug>(static_cast<Word>(0x0100 | sp));
 }
 
 template <bool Debug>

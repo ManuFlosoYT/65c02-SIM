@@ -168,34 +168,66 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
 }
 
 int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions) {
-    for (int i = 0; i < count; ++i) {
-        bool isNew = (cpu.remainingCycles == 0);
-        int res = 0;
-        
-        if (hooks) [[unlikely]] {
-            res = Step<true>();
-        } else {
-            res = Step<false>();
-        }
-        
-        if (isNew) {
-            batchInstructions++;
-        }
+    if (cpu.cycleAccurate) {
+        for (int i = 0; i < count; ++i) {
+            bool isNew = (cpu.remainingCycles == 0);
+            int res = 0;
 
-        if (res != 0) {
-            totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
-            totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-            handleStop(res);
-            return i + 1;
+            if (hooks) [[unlikely]] {
+                res = Step<true>();
+            } else {
+                res = Step<false>();
+            }
+
+            if (isNew) {
+                batchInstructions++;
+            }
+
+            if (res != 0) {
+                totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
+                totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+                handleStop(res);
+                return i + 1;
+            }
+
+            if (hasBreakpoints) [[unlikely]] {
+                if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
+                    if (breakpointManager.Evaluate(cpu, bus) > 0) {
+                        totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
+                        totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+                        handleStop(0);
+                        return i + 1;
+                    }
+                }
+            }
         }
-        
-        if (hasBreakpoints) [[unlikely]] {
-            if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
-                if (breakpointManager.Evaluate(cpu, bus) > 0) {
-                    totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
-                    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                    handleStop(0);
-                    return i + 1;
+    } else {
+        for (int i = 0; i < count; ++i) {
+            int res = 0;
+
+            if (hooks) [[unlikely]] {
+                res = Step<true>();
+            } else {
+                res = Step<false>();
+            }
+
+            batchInstructions++;
+
+            if (res != 0) {
+                totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
+                totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+                handleStop(res);
+                return i + 1;
+            }
+
+            if (hasBreakpoints) [[unlikely]] {
+                if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
+                    if (breakpointManager.Evaluate(cpu, bus) > 0) {
+                        totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
+                        totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
+                        handleStop(0);
+                        return i + 1;
+                    }
                 }
             }
         }

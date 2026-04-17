@@ -140,7 +140,7 @@ inline Byte Bus::Read(Word address) {
     }
     Byte data = 0;
 
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {
+    if (Byte* memoryBase = pageReadMap[address >> 8]) [[likely]] {
         data = memoryBase[address & 0xFFU];
     } else {
         const auto& slot = deviceMap[address];
@@ -160,7 +160,7 @@ inline Byte Bus::Read(Word address) {
 }
 
 inline Byte Bus::ReadDirect(Word address) const {
-    if (Byte* memoryBase = pageReadMap[address >> 8]) {
+    if (Byte* memoryBase = pageReadMap[address >> 8]) [[likely]] {
         return memoryBase[address & 0xFFU];
     }
     const auto& slot = deviceMap[address];
@@ -178,7 +178,7 @@ inline void Bus::Write(Word address, Byte data) {
         }
     }
 
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
+    if (Byte* memoryBase = pageWriteMap[address >> 8]) [[likely]] {
         memoryBase[address & 0xFFU] = data;
     } else {
         const auto& slot = deviceMap[address];
@@ -197,7 +197,7 @@ inline void Bus::Write(Word address, Byte data) {
 }
 
 inline void Bus::WriteDirect(Word address, Byte data) {
-    if (Byte* memoryBase = pageWriteMap[address >> 8]) {
+    if (Byte* memoryBase = pageWriteMap[address >> 8]) [[likely]] {
         memoryBase[address & 0xFFU] = data;
     } else {
         const auto& slot = deviceMap[address];
