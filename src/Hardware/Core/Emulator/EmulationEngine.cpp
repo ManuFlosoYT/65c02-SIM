@@ -44,10 +44,16 @@ void Emulator::Resume() {
 }
 
 void Emulator::WaitUntilSafeToMutate() {
-    if (!running) return;
-    if (!paused) Pause();
+    if (!running) {
+        return;
+    }
+    if (!paused) {
+        Pause();
+    }
     while (!isActuallyPaused.load(std::memory_order_acquire)) {
-        if (!running) return;
+        if (!running) {
+            return;
+        }
         std::this_thread::yield();
     }
 }

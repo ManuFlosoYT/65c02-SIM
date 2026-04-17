@@ -5,10 +5,10 @@ namespace System::Hardware::Scripting::Lang {
 Environment::Environment() : enclosing(nullptr) {}
 
 Environment::Environment(std::shared_ptr<Environment> enclosing)
-    : enclosing(enclosing) {}
+    : enclosing(std::move(enclosing)) {}
 
 void Environment::define(const std::string& name, Value value) {
-    values[name] = value;
+    values[name] = std::move(value);
 }
 
 Value Environment::get(const Token& name) {
@@ -24,7 +24,7 @@ Value Environment::get(const Token& name) {
     throw RuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
 }
 
-void Environment::assign(const Token& name, Value value) {
+void Environment::assign(const Token& name, const Value& value) {
     auto it = values.find(name.lexeme);
     if (it != values.end()) {
         it->second = value;

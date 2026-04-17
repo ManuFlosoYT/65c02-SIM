@@ -1,21 +1,30 @@
 #include "Lexer.h"
 #include <charconv>
+#include <unordered_map>
 
 namespace System::Hardware::Scripting::Lang {
 
-const std::unordered_map<std::string, TokenType> Lexer::keywords = {
-    {"let", TokenType::Let},
-    {"if", TokenType::If},
-    {"else", TokenType::Else},
-    {"while", TokenType::While},
-    {"break", TokenType::Break},
-    {"continue", TokenType::Continue},
-    {"true", TokenType::True},
-    {"false", TokenType::False},
-    {"print", TokenType::Print}
-};
+TokenType Lexer::getKeywordType(const std::string& text) {
+    static const std::unordered_map<std::string, TokenType> keywords = {
+        {"let", TokenType::Let},
+        {"if", TokenType::If},
+        {"else", TokenType::Else},
+        {"while", TokenType::While},
+        {"break", TokenType::Break},
+        {"continue", TokenType::Continue},
+        {"true", TokenType::True},
+        {"false", TokenType::False},
+        {"print", TokenType::Print}
+    };
 
-Lexer::Lexer(const std::string& source) : source(source) {}
+    auto it = keywords.find(text);
+    if (it != keywords.end()) {
+        return it->second;
+    }
+    return TokenType::Identifier;
+}
+
+Lexer::Lexer(std::string source) : source(std::move(source)) {}
 
 std::vector<Token> Lexer::scanTokens() {
     tokens.clear();
@@ -27,14 +36,16 @@ std::vector<Token> Lexer::scanTokens() {
 
     while (!isAtEnd()) {
         skipWhitespace();
-        if (isAtEnd()) break;
+        if (isAtEnd()) {
+            break;
+        }
 
         start = current;
         columnStart = columnCurrent;
         scanToken();
     }
 
-    tokens.push_back(Token(TokenType::Eof, "", line, columnCurrent));
+    tokens.emplace_back(TokenType::Eof, "", line, columnCurrent);
     return tokens;
 }
 
@@ -68,7 +79,9 @@ void Lexer::scanToken() {
         case '/':
             if (match('/')) {
                 // A comment goes until the end of the line.
-                while (peek() != '\n' && !isAtEnd()) advance();
+                while (peek() != '\n' && !isAtEnd()) {
+                    advance();
+                }
             } else {
                 tokens.push_back(makeToken(TokenType::Slash));
             }
@@ -113,8 +126,12 @@ char Lexer::advance() {
 }
 
 bool Lexer::match(char expected) {
-    if (isAtEnd()) return false;
-    if (source[current] != expected) return false;
+    if (isAtEnd()) {
+        return false;
+    }
+    if (source[current] != expected) {
+        return false;
+    }
 
     current++;
     columnCurrent++;
@@ -122,12 +139,16 @@ bool Lexer::match(char expected) {
 }
 
 char Lexer::peek() const {
-    if (isAtEnd()) return '\0';
+    if (isAtEnd()) {
+        return '\0';
+    }
     return source[current];
 }
 
 char Lexer::peekNext() const {
-    if (current + 1 >= source.length()) return '\0';
+    if (current + 1 >= source.length()) {
+        return '\0';
+    }
     return source[current + 1];
 }
 
@@ -168,7 +189,9 @@ void Lexer::numberToken() {
             advance();
         }
     } else {
-        while (isDigit(peek())) advance();
+        while (isDigit(peek())) {
+            advance();
+        }
     }
 
     std::string numStr = source.substr(start, current - start);
@@ -188,47 +211,42 @@ void Lexer::numberToken() {
         }
     }
 
-    tokens.push_back(Token(TokenType::Number, numStr, line, columnStart, val));
+    tokens.emplace_back(TokenType::Number, numStr, line, columnStart, val);
 }
 
 void Lexer::identifierToken() {
-    while (isAlphaNumeric(peek())) advance();
-
-    std::string text = source.substr(start, current - start);
-    
-    TokenType type = TokenType::Identifier;
-    auto it = keywords.find(text);
-    if (it != keywords.end()) {
-        type = it->second;
+    while (isAlphaNumeric(peek())) {
+        advance();
     }
 
-    tokens.push_back(makeToken(type, text));
+    std::string text = source.substr(start, current - start);
+    tokens.emplace_back(makeToken(getKeywordType(text), text));
 }
 
-bool Lexer::isAlpha(char c) const {
+bool Lexer::isAlpha(char c) {
     return (c >= 'a' && c <= 'z') ||
            (c >= 'A' && c <= 'Z') ||
             c == '_';
 }
 
-bool Lexer::isDigit(char c) const {
+bool Lexer::isDigit(char c) {
     return c >= '0' && c <= '9';
 }
 
-bool Lexer::isAlphaNumeric(char c) const {
+bool Lexer::isAlphaNumeric(char c) {
     return isAlpha(c) || isDigit(c);
 }
 
-Token Lexer::makeToken(TokenType type) {
-    return Token(type, source.substr(start, current - start), line, columnStart);
+Token Lexer::makeToken(TokenType type) const {
+    return {type, source.substr(start, current - start), line, columnStart};
 }
 
-Token Lexer::makeToken(TokenType type, const std::string& text) {
-    return Token(type, text, line, columnStart);
+Token Lexer::makeToken(TokenType type, const std::string& text) const {
+    return {type, text, line, columnStart};
 }
 
-Token Lexer::errorToken(const std::string& message) {
-    return Token(TokenType::Error, message, line, columnStart);
+Token Lexer::errorToken(const std::string& message) const {
+    return {TokenType::Error, message, line, columnStart};
 }
 
 } // namespace System::Hardware::Scripting::Lang

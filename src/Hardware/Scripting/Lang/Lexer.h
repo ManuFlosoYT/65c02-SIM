@@ -3,22 +3,21 @@
 #include "Token.h"
 #include <string>
 #include <vector>
-#include <unordered_map>
 
 namespace System::Hardware::Scripting::Lang {
 
 class Lexer {
 public:
-    Lexer(const std::string& source);
+    explicit Lexer(std::string source);
 
     std::vector<Token> scanTokens();
 
 private:
     void scanToken();
     char advance();
-    char peek() const;
-    char peekNext() const;
-    bool isAtEnd() const;
+    [[nodiscard]] char peek() const;
+    [[nodiscard]] char peekNext() const;
+    [[nodiscard]] bool isAtEnd() const;
     bool match(char expected);
 
     void skipWhitespace();
@@ -27,13 +26,13 @@ private:
     void numberToken();
     void identifierToken();
 
-    bool isAlpha(char c) const;
-    bool isDigit(char c) const;
-    bool isAlphaNumeric(char c) const;
+    static bool isAlpha(char c);
+    static bool isDigit(char c);
+    static bool isAlphaNumeric(char c);
 
-    Token makeToken(TokenType type);
-    Token makeToken(TokenType type, const std::string& text);
-    Token errorToken(const std::string& message);
+    [[nodiscard]] Token makeToken(TokenType type) const;
+    [[nodiscard]] Token makeToken(TokenType type, const std::string& text) const;
+    [[nodiscard]] Token errorToken(const std::string& message) const;
 
     std::string source;
     size_t start = 0;
@@ -44,7 +43,7 @@ private:
 
     std::vector<Token> tokens;
 
-    static const std::unordered_map<std::string, TokenType> keywords;
+    static TokenType getKeywordType(const std::string& text);
 };
 
 } // namespace System::Hardware::Scripting::Lang

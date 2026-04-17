@@ -4,19 +4,20 @@
 #include "AST.h"
 #include <vector>
 #include <stdexcept>
+#include <span>
 
 namespace System::Hardware::Scripting::Lang {
 
 class ParseError : public std::runtime_error {
 public:
-    ParseError(const Token& token, const std::string& message) 
-        : std::runtime_error(message), token(token) {}
+    ParseError(Token token, const std::string& message) 
+        : std::runtime_error(message), token(std::move(token)) {}
     Token token;
 };
 
 class Parser {
 public:
-    explicit Parser(const std::vector<Token>& tokens);
+    explicit Parser(std::span<const Token> tokens);
     std::vector<std::unique_ptr<Stmt>> parse();
 
 private:
@@ -43,16 +44,16 @@ private:
     std::unique_ptr<Expr> primary();
 
     bool match(std::initializer_list<TokenType> types);
-    bool check(TokenType type) const;
+    [[nodiscard]] bool check(TokenType type) const;
     Token advance();
-    bool isAtEnd() const;
-    Token peek() const;
-    Token previous() const;
+    [[nodiscard]] bool isAtEnd() const;
+    [[nodiscard]] Token peek() const;
+    [[nodiscard]] Token previous() const;
     Token consume(TokenType type, const std::string& message);
-    ParseError error(const Token& token, const std::string& message);
+    static ParseError error(const Token& token, const std::string& message);
     void synchronize();
 
-    const std::vector<Token>& tokens;
+    std::span<const Token> tokens;
     size_t current = 0;
 };
 

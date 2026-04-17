@@ -1,9 +1,7 @@
 #pragma once
 
 #include <string>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
+#include <atomic>
 #include <thread>
 #include <array>
 #include <cstdint>
@@ -105,19 +103,23 @@ private:
         bool push(T&& item) {
             auto current_tail = tail.load(std::memory_order_relaxed);
             auto next_tail = (current_tail + 1) % N;
-            if (next_tail == head.load(std::memory_order_acquire)) return false;
+            if (next_tail == head.load(std::memory_order_acquire)) {
+                return false;
+            }
             buffer[current_tail] = std::move(item);
             tail.store(next_tail, std::memory_order_release);
             return true;
         }
         bool pop(T& item) {
             auto current_head = head.load(std::memory_order_relaxed);
-            if (current_head == tail.load(std::memory_order_acquire)) return false;
+            if (current_head == tail.load(std::memory_order_acquire)) {
+                return false;
+            }
             item = std::move(buffer[current_head]);
             head.store((current_head + 1) % N, std::memory_order_release);
             return true;
         }
-        bool empty() const {
+        [[nodiscard]] bool empty() const {
             return head.load(std::memory_order_acquire) == tail.load(std::memory_order_acquire);
         }
     };

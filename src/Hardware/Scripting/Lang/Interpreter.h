@@ -5,6 +5,7 @@
 #include <memory>
 #include <functional>
 #include <vector>
+#include <unordered_map>
 
 namespace System::Hardware::Scripting::Lang {
 
@@ -30,7 +31,7 @@ public:
 
     Value visitBinaryExpr(BinaryExpr* expr);
     Value visitUnaryExpr(UnaryExpr* expr);
-    Value visitLiteralExpr(LiteralExpr* expr);
+    static Value visitLiteralExpr(LiteralExpr* expr);
     Value visitVariableExpr(VariableExpr* expr);
     Value visitAssignExpr(AssignExpr* expr);
     Value visitCallExpr(CallExpr* expr);
@@ -45,10 +46,10 @@ public:
     void visitBreakStmt(BreakStmt* stmt);
     void visitContinueStmt(ContinueStmt* stmt);
 
-    bool isTruthy(const Value& value) const;
-    bool isEqual(const Value& a, const Value& b) const;
-    void checkNumberOperand(const Token& op, const Value& operand) const;
-    void checkNumberOperands(const Token& op, const Value& left, const Value& right) const;
+    static bool isTruthy(const Value& value);
+    static bool isEqual(const Value& a, const Value& b);
+    static void checkNumberOperand(const Token& op, const Value& operand);
+    static void checkNumberOperands(const Token& op, const Value& left, const Value& right);
 
     std::shared_ptr<Environment> globals;
     std::shared_ptr<Environment> environment;

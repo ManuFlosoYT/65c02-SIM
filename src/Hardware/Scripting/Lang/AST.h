@@ -9,10 +9,20 @@ namespace System::Hardware::Scripting::Lang {
 
 struct Expr {
     virtual ~Expr() = default;
+    Expr() = default;
+    Expr(const Expr&) = delete;
+    Expr& operator=(const Expr&) = delete;
+    Expr(Expr&&) = delete;
+    Expr& operator=(Expr&&) = delete;
 };
 
 struct Stmt {
     virtual ~Stmt() = default;
+    Stmt() = default;
+    Stmt(const Stmt&) = delete;
+    Stmt& operator=(const Stmt&) = delete;
+    Stmt(Stmt&&) = delete;
+    Stmt& operator=(Stmt&&) = delete;
 };
 
 // Expressions

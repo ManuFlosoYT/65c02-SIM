@@ -447,7 +447,9 @@ void MediaExporter::WorkerLoop() {
         bool hasAudio = audioQueue.pop(aData);
 
         if (!hasVideo && !hasAudio) {
-            if (!isRunning) break;
+            if (!isRunning) {
+                break;
+            }
             int val = wakeUpCount.load(std::memory_order_acquire);
             wakeUpCount.wait(val, std::memory_order_acquire);
             continue;

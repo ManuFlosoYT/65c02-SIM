@@ -1,8 +1,9 @@
 #include "Parser.h"
+#include <algorithm>
 
 namespace System::Hardware::Scripting::Lang {
 
-Parser::Parser(const std::vector<Token>& tokens) : tokens(tokens) {}
+Parser::Parser(std::span<const Token> tokens) : tokens(tokens) {}
 
 std::vector<std::unique_ptr<Stmt>> Parser::parse() {
     std::vector<std::unique_ptr<Stmt>> statements;
@@ -17,7 +18,9 @@ std::vector<std::unique_ptr<Stmt>> Parser::parse() {
 
 std::unique_ptr<Stmt> Parser::declaration() {
     try {
-        if (match({TokenType::Let})) return varDeclaration();
+        if (match({TokenType::Let})) {
+            return varDeclaration();
+        }
 
         return statement();
     } catch (ParseError& error) {
@@ -39,12 +42,24 @@ std::unique_ptr<Stmt> Parser::varDeclaration() {
 }
 
 std::unique_ptr<Stmt> Parser::statement() {
-    if (match({TokenType::If})) return ifStatement();
-    if (match({TokenType::While})) return whileStatement();
-    if (match({TokenType::Break})) return breakStatement();
-    if (match({TokenType::Continue})) return continueStatement();
-    if (match({TokenType::Print})) return printStatement();
-    if (match({TokenType::LeftBrace})) return std::make_unique<BlockStmt>(block());
+    if (match({TokenType::If})) {
+        return ifStatement();
+    }
+    if (match({TokenType::While})) {
+        return whileStatement();
+    }
+    if (match({TokenType::Break})) {
+        return breakStatement();
+    }
+    if (match({TokenType::Continue})) {
+        return continueStatement();
+    }
+    if (match({TokenType::Print})) {
+        return printStatement();
+    }
+    if (match({TokenType::LeftBrace})) {
+        return std::make_unique<BlockStmt>(block());
+    }
 
     return expressionStatement();
 }
@@ -121,7 +136,7 @@ std::unique_ptr<Expr> Parser::assignment() {
         Token equals = previous();
         std::unique_ptr<Expr> value = assignment();
 
-        if (VariableExpr* varExpr = dynamic_cast<VariableExpr*>(expr.get())) {
+        if (auto* varExpr = dynamic_cast<VariableExpr*>(expr.get())) {
             Token name = varExpr->name;
             return std::make_unique<AssignExpr>(name, std::move(value));
         }
@@ -212,9 +227,10 @@ std::unique_ptr<Expr> Parser::call() {
 std::unique_ptr<Expr> Parser::finishCall(std::unique_ptr<Expr> callee) {
     std::vector<std::unique_ptr<Expr>> arguments;
     if (!check(TokenType::RightParen)) {
-        do {
+        arguments.push_back(expression());
+        while (match({TokenType::Comma})) {
             arguments.push_back(expression());
-        } while (match({TokenType::Comma}));
+        }
     }
 
     Token paren = consume(TokenType::RightParen, "Expect ')' after arguments.");
@@ -223,8 +239,12 @@ std::unique_ptr<Expr> Parser::finishCall(std::unique_ptr<Expr> callee) {
 }
 
 std::unique_ptr<Expr> Parser::primary() {
-    if (match({TokenType::False})) return std::make_unique<LiteralExpr>(false);
-    if (match({TokenType::True})) return std::make_unique<LiteralExpr>(true);
+    if (match({TokenType::False})) {
+        return std::make_unique<LiteralExpr>(false);
+    }
+    if (match({TokenType::True})) {
+        return std::make_unique<LiteralExpr>(true);
+    }
 
     if (match({TokenType::Number})) {
         return std::make_unique<LiteralExpr>(previous().numberValue);
@@ -248,22 +268,24 @@ std::unique_ptr<Expr> Parser::primary() {
 }
 
 bool Parser::match(std::initializer_list<TokenType> types) {
-    for (TokenType type : types) {
-        if (check(type)) {
-            advance();
-            return true;
-        }
+    if (std::ranges::any_of(types, [this](TokenType type) { return check(type); })) {
+        advance();
+        return true;
     }
     return false;
 }
 
 bool Parser::check(TokenType type) const {
-    if (isAtEnd()) return false;
+    if (isAtEnd()) {
+        return false;
+    }
     return peek().type == type;
 }
 
 Token Parser::advance() {
-    if (!isAtEnd()) current++;
+    if (!isAtEnd()) {
+        current++;
+    }
     return previous();
 }
 
@@ -280,21 +302,25 @@ Token Parser::previous() const {
 }
 
 Token Parser::consume(TokenType type, const std::string& message) {
-    if (check(type)) return advance();
+    if (check(type)) {
+        return advance();
+    }
 
     throw error(peek(), message);
 }
 
 ParseError Parser::error(const Token& token, const std::string& message) {
     // Ideally log the error somewhere
-    return ParseError(token, message);
+    return {token, message};
 }
 
 void Parser::synchronize() {
     advance();
 
     while (!isAtEnd()) {
-        if (previous().type == TokenType::Semicolon) return;
+        if (previous().type == TokenType::Semicolon) {
+            return;
+        }
 
         switch (peek().type) {
             case TokenType::Let:

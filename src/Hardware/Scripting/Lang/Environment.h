@@ -17,8 +17,8 @@ using Value = std::variant<std::monostate, int64_t, std::string, bool, Callable>
 
 class RuntimeError : public std::runtime_error {
 public:
-    RuntimeError(const Token& token, const std::string& message)
-        : std::runtime_error(message), token(token) {}
+    RuntimeError(Token token, const std::string& message)
+        : std::runtime_error(message), token(std::move(token)) {}
     Token token;
 };
 
@@ -29,7 +29,7 @@ public:
 
     void define(const std::string& name, Value value);
     Value get(const Token& name);
-    void assign(const Token& name, Value value);
+    void assign(const Token& name, const Value& value);
 
 private:
     std::shared_ptr<Environment> enclosing;
