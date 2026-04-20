@@ -114,6 +114,22 @@ Benchmark room.bin in headless mode (reproducible cycles/s and MHz):
 ./scripts/benchmark-room.sh --runs 5 --cycles 200000000
 ```
 
+Build optimized profiling binary (O3 + symbols + no strip):
+
+```bash
+./scripts/build-linux.sh --perfdebug
+# LTO variant
+./scripts/build-linux.sh --perfdebug-lto
+```
+
+Run automated PGO pipeline with room.bin:
+
+```bash
+./scripts/pgo-room.sh
+# Optional local CPU tuning
+./scripts/pgo-room.sh --native
+```
+
 ## :wave: Contributing
 
 Contributions are always welcome!

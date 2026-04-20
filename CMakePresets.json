@@ -17,6 +17,41 @@
             }
         },
         {
+            "name": "linux-release-native",
+            "displayName": "Linux Release Native",
+            "description": "Release build tuned for local CPU (-march=native)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/release-native",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "PERF_TUNE_NATIVE": "ON"
+            }
+        },
+        {
+            "name": "linux-release-pgo-generate",
+            "displayName": "Linux Release PGO Generate",
+            "description": "Release build with PGO instrumentation enabled",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/release-pgo-generate",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "PGO_GENERATE": "ON",
+                "PGO_USE": "OFF"
+            }
+        },
+        {
+            "name": "linux-release-pgo-use",
+            "displayName": "Linux Release PGO Use",
+            "description": "Release build using generated PGO profiles",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/release-pgo-use",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "PGO_GENERATE": "OFF",
+                "PGO_USE": "ON"
+            }
+        },
+        {
             "name": "linux-debug",
             "displayName": "Linux Debug",
             "description": "Debug build for Linux using Ninja",
@@ -99,6 +134,18 @@
         {
             "name": "linux-release",
             "configurePreset": "linux-release"
+        },
+        {
+            "name": "linux-release-native",
+            "configurePreset": "linux-release-native"
+        },
+        {
+            "name": "linux-release-pgo-generate",
+            "configurePreset": "linux-release-pgo-generate"
+        },
+        {
+            "name": "linux-release-pgo-use",
+            "configurePreset": "linux-release-pgo-use"
         },
         {
             "name": "linux-debug",
