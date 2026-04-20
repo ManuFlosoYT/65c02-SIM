@@ -164,7 +164,7 @@ class Emulator {
     bool LoadInternalState(std::istream& stateStream);
 
     int EmulateSlice(int instructionsPerSlice);
-    int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions);
+    int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions, int& stopCode);
     void handleStop(int code);
     void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
 

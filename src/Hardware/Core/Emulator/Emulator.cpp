@@ -163,9 +163,9 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
         int extraCycles = cpu.remainingCycles;
         for (int i = 0; i < extraCycles; ++i) {
             via.Clock();
-            if (via.isIRQAsserted()) {
-                pendingInterruptAny.store(true, std::memory_order_relaxed);
-            }
+        }
+        if (via.isIRQAsserted()) {
+            pendingInterruptAny.store(true, std::memory_order_relaxed);
         }
         cpu.remainingCycles = 0;
     }
@@ -208,20 +208,26 @@ void Emulator::HandleInterrupts() {
 
 template <bool Debug>
 void Emulator::HandleSerialInput() {
-    if (hasInput.load(std::memory_order_relaxed)) {
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        if (!inputBuffer.empty() && !acia.HasIRQ() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
-            char chr = inputBuffer.front();
-            inputBuffer.pop_front();
+    if (!hasInput.load(std::memory_order_relaxed)) {
+        return;
+    }
 
-            acia.ReceiveData(chr);
-            pendingInterruptAny.store(true, std::memory_order_relaxed);
+    if (baudDelay > 0 || acia.HasIRQ() || (via.GetPortA() & 0x01) != 0) {
+        return;
+    }
 
-            baudDelay = 2000;
-        }
-        if (inputBuffer.empty()) {
-            hasInput.store(false, std::memory_order_relaxed);
-        }
+    std::lock_guard<std::mutex> lock(bufferMutex);
+    if (!inputBuffer.empty() && !acia.HasIRQ() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
+        char chr = inputBuffer.front();
+        inputBuffer.pop_front();
+
+        acia.ReceiveData(chr);
+        pendingInterruptAny.store(true, std::memory_order_relaxed);
+        baudDelay = 2000;
+    }
+
+    if (inputBuffer.empty()) {
+        hasInput.store(false, std::memory_order_relaxed);
     }
 }
 
