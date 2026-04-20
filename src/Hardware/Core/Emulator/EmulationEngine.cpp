@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <thread>
 
 namespace Core {
@@ -124,9 +125,13 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         return 0;
     }
 
-    const int MAX_BATCH_SIZE = 100000;
+    static constexpr int MAX_BATCH_SIZE = 500000;
+    static constexpr int NO_STOP = std::numeric_limits<int>::min();
     int remaining = instructionsPerSlice;
     int totalExecuted = 0;
+    uint64_t localCycleDelta = 0;
+    uint64_t localInstructionDelta = 0;
+    bool totalsCommitted = false;
 
     // Save rewind state roughly every 1s only when rewind snapshots are enabled.
     if (rewindSnapshotsEnabled) {
@@ -145,26 +150,41 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     while (remaining > 0) {
         int currentBatchSize = std::min(remaining, MAX_BATCH_SIZE);
         int batchInstructions = 0;
+        int stopCode = NO_STOP;
         int stepsInBatch = 0;
 
-        stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions);
+        stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions, stopCode);
+        localCycleDelta += static_cast<uint64_t>(stepsInBatch);
+        localInstructionDelta += static_cast<uint64_t>(batchInstructions);
 
         totalExecuted += stepsInBatch;
         remaining -= stepsInBatch;
 
-        if (stepsInBatch < currentBatchSize) {
+        if (stopCode != NO_STOP) {
+            totalCycles.fetch_add(localCycleDelta, std::memory_order_relaxed);
+            totalInstructions.fetch_add(localInstructionDelta, std::memory_order_relaxed);
+            totalsCommitted = true;
+            handleStop(stopCode);
             break;
         }
 
-        if (instructionsPerSlice > MAX_BATCH_SIZE) {
-            std::this_thread::yield();
+        if (stepsInBatch < currentBatchSize) {
+            break;
         }
+    }
+
+    if (!totalsCommitted && localCycleDelta > 0) {
+        totalCycles.fetch_add(localCycleDelta, std::memory_order_relaxed);
+    }
+    if (!totalsCommitted && localInstructionDelta > 0) {
+        totalInstructions.fetch_add(localInstructionDelta, std::memory_order_relaxed);
     }
 
     return totalExecuted;
 }
 
-int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions) {
+int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions, int& stopCode) {
+    stopCode = std::numeric_limits<int>::min();
     if (cpu.cycleAccurate) {
         for (int i = 0; i < count; ++i) {
             bool isNew = (cpu.remainingCycles == 0);
@@ -181,18 +201,14 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             }
 
             if (res != 0) {
-                totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
-                totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                handleStop(res);
+                stopCode = res;
                 return i + 1;
             }
 
             if (hasBreakpoints) [[unlikely]] {
                 if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
                     if (breakpointManager.Evaluate(cpu, bus) > 0) {
-                        totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
-                        totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                        handleStop(0);
+                        stopCode = 0;
                         return i + 1;
                     }
                 }
@@ -211,27 +227,20 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             batchInstructions++;
 
             if (res != 0) {
-                totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
-                totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                handleStop(res);
+                stopCode = res;
                 return i + 1;
             }
 
             if (hasBreakpoints) [[unlikely]] {
                 if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
                     if (breakpointManager.Evaluate(cpu, bus) > 0) {
-                        totalCycles.fetch_add(i + 1, std::memory_order_relaxed);
-                        totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
-                        handleStop(0);
+                        stopCode = 0;
                         return i + 1;
                     }
                 }
             }
         }
     }
-    
-    totalCycles.fetch_add(count, std::memory_order_relaxed);
-    totalInstructions.fetch_add(batchInstructions, std::memory_order_relaxed);
     return count;
 }
 
