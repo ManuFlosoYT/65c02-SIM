@@ -6,7 +6,7 @@ SCRIPT_DIR="$(dirname "$0")"
 chmod +x "$SCRIPT_DIR/compile-bin.sh" "$SCRIPT_DIR/image-to-bin.sh" "$SCRIPT_DIR/midi-to-bin.sh" "$SCRIPT_DIR/create-cartridge.sh" "$SCRIPT_DIR/create-microdos-cartridge.sh"
 "$SCRIPT_DIR/compile-bin.sh" all
 "$SCRIPT_DIR/image-to-bin.sh" all
-"$SCRIPT_DIR/midi-to-bin.sh" all
+"$SCRIPT_DIR/midi-to-bin.sh" all --sdk
 
 # Function to handle ROM flags
 get_rom_flags() {
