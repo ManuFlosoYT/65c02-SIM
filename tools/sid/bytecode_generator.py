@@ -178,6 +178,7 @@ class BytecodeGenerator:
                     v.active = True
                     v.start_time = ev['time']
                     v.priority_score = self._get_priority(note_val, ev['channel'], ev['time'])
+                    v.released = False
                     v.arpeggio_notes = notes
                     v.arp_index = 0
                     v.arp_counter = 0
@@ -308,8 +309,9 @@ class BytecodeGenerator:
                 current_score -= 50000
 
             # --- CHANNEL AFFINITY OPTIMIZATION ---
+            # Affinity MUST outrank Release to ensure instruments stick to their voices!
             if getattr(v, 'channel', None) == channel:
-                current_score -= 20000
+                current_score -= 100000
 
             if current_score < min_score:
                 min_score = current_score

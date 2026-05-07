@@ -44,7 +44,7 @@ def write_asm(bytecode, input_path, mode):
         f.write("    iny\n    bne :+\n    inc $01\n:   jmp play_loop\n")
         f.write("do_note_off:\n    sec\n    sbc #$93\n    sta $02\n    asl a\n    asl a\n    asl a\n    sec\n    sbc $02\n    tax\n")
         f.write("    sty $06\n    ldy $02\n    lda $03, y\n    ldy $06\n")
-        f.write("    and #$FE\n    sta $4804, x\n")
+        f.write("    and #$FE\n    sta $4804, x\n    pha\n    lda #30\n:   sec\n    sbc #1\n    bne :-\n    pla\n")
         f.write("    iny\n    bne :+\n    inc $01\n:   jmp play_loop\n")
         f.write("do_short_delay:\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    tax\n    sty $02\n    ldy #0\n    jmp delay_loop\n")
         f.write("do_delay:\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    tax\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    sty $02\n    tay\n")
