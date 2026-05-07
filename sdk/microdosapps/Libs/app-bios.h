@@ -61,6 +61,13 @@ void net_send_num(uint16_t n);
 void sid_write(uint8_t reg, uint8_t val);
 void sid_reset(void);
 
+static void sid_trigger_note(uint8_t voice, uint16_t freq, uint8_t ctrl) {
+    uint8_t offset = (voice - 1) * 7;
+    sid_write(offset + 0x00, freq & 0xFF); /* FREQ_LO_1 */
+    sid_write(offset + 0x01, (freq >> 8) & 0xFF); /* FREQ_HI_1 */
+    sid_write(offset + 0x04, ctrl); /* CTRL_1 */
+}
+
 /* Virtual Paged Memory */
 void os_load_app_page(uint8_t page_id);
 

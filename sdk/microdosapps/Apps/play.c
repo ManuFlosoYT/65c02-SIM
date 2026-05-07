@@ -117,10 +117,21 @@ int main(void) {
             if (val == 0xFF && count == 0) break;
             sid_write(cmd, val);
             credit += SID_WRITE_CREDIT;
-        } else if (cmd == 0x81) {
+        } else if (cmd >= 0x90 && cmd <= 0x92) {
+            uint8_t voice = cmd - 0x90 + 1;
+            uint8_t f_lo = next_byte();
+            uint8_t f_hi = next_byte();
+            uint8_t ctrl = next_byte();
+            sid_trigger_note(voice, f_lo | ((uint16_t)f_hi << 8), ctrl);
+            credit += SID_WRITE_CREDIT * 3;
+        } else if (cmd == 0x81 || cmd == 0x82) {
             l1 = next_byte();
-            l2 = next_byte();
-            loops = (uint16_t)l1 | ((uint16_t)l2 << 8);
+            if (cmd == 0x81) {
+                l2 = next_byte();
+                loops = (uint16_t)l1 | ((uint16_t)l2 << 8);
+            } else {
+                loops = (uint16_t)l1;
+            }
 
             if (credit < 0xFFFF - loops)
                 credit += loops;

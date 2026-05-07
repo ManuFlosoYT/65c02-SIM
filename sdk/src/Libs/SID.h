@@ -164,6 +164,13 @@ static void sid_voice_freq(uint8_t voice, uint16_t freq) {
     SID_WRITE(offset + FREQ_HI_1, (freq >> 8) & 0xFF);
 }
 
+static void sid_trigger_note(uint8_t voice, uint16_t freq, uint8_t ctrl) {
+    uint8_t offset = (voice - 1) * 7;
+    SID_WRITE(offset + FREQ_LO_1, freq & 0xFF);
+    SID_WRITE(offset + FREQ_HI_1, (freq >> 8) & 0xFF);
+    SID_WRITE(offset + CTRL_1, ctrl);
+}
+
 static void sid_voice_adsr(uint8_t voice, uint8_t attack, uint8_t decay,
                     uint8_t sustain, uint8_t release) {
     uint8_t offset = (voice - 1) * 7;

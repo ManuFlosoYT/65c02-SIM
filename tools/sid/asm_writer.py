@@ -30,7 +30,18 @@ def write_asm(bytecode, input_path, mode):
         f.write("    lda #<music_data\n    sta $00\n    lda #>music_data\n    sta $01\n")
         f.write("    ldy #0\n")
         f.write("play_loop:\n    lda ($00), y\n    bmi special_cmd\n    tax\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    sta $4800, x\n    iny\n    bne play_loop\n    inc $01\n    jmp play_loop\n")
-        f.write("special_cmd:\n    cmp #$FF\n    beq stop\n    cmp #$81\n    beq do_delay\n    iny\n    bne play_loop\n    inc $01\n    jmp play_loop\n")
+        f.write("special_cmd:\n    cmp #$FF\n    bne :+\n    jmp stop\n")
+        f.write(":   cmp #$81\n    bne :+\n    jmp do_delay\n")
+        f.write(":   cmp #$82\n    bne :+\n    jmp do_short_delay\n")
+        f.write(":   cmp #$90\n    bcc unknown_cmd\n    jmp check_note_trigger\n")
+        f.write("unknown_cmd:\n    iny\n    bne play_loop\n    inc $01\n    jmp play_loop\n")
+        f.write("check_note_trigger:\n    cmp #$93\n    bcs unknown_cmd\n")
+        f.write("    sec\n    sbc #$90\n    sta $02\n    asl a\n    asl a\n    asl a\n    sec\n    sbc $02\n    tax\n")
+        f.write("    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    sta $4800, x\n")
+        f.write("    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    sta $4801, x\n")
+        f.write("    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    sta $4804, x\n")
+        f.write("    iny\n    bne play_loop\n    inc $01\n    jmp play_loop\n")
+        f.write("do_short_delay:\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    tax\n    sty $02\n    ldy #0\n    jmp delay_loop\n")
         f.write("do_delay:\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    tax\n    iny\n    bne :+\n    inc $01\n:   lda ($00), y\n    sty $02\n    tay\n")
         f.write("delay_loop:\n    cpx #0\n    bne :+\n    cpy #0\n    beq delay_done\n    dey\n:   dex\n    nop\n    nop\n    jmp delay_loop\n")
         f.write("delay_done:\n    ldy $02\n    iny\n    bne :+\n    inc $01\n:   jmp play_loop\n")
@@ -67,7 +78,7 @@ def _compile_and_report(asm_file, limit_bytes):
 
     # _SCRIPT_DIR = SID/generator -> SID -> project root
     project_root = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
-    linker_cfg = os.path.join(project_root, "Linker", "raw.cfg")
+    linker_cfg = os.path.join(project_root, "sdk", "linker", "raw.cfg")
 
     # Step 1: Assemble
     r = subprocess.run(

@@ -37,6 +37,12 @@ class BytecodeGenerator:
         self.bass_channel = bass_channel
         self.melody_channel = melody_channel
         self.voices = [Voice(i) for i in range(1, 4)]
+        self.sid_state = [-1] * 25
+
+    def _emit_reg(self, bytecode, reg, val):
+        if self.sid_state[reg] != val:
+            bytecode.extend([reg, val])
+            self.sid_state[reg] = val
 
     def generate(self):
         """Generate and return the SID bytecode array from the event list."""
@@ -44,13 +50,14 @@ class BytecodeGenerator:
         bytecode = []
 
         # Init SID
-        bytecode.extend([MODE_VOL, 0x0F])
+        self._emit_reg(bytecode, MODE_VOL, 0x0F)
 
         # Reset Voices
         for i in range(1, 4):
             base = get_voice_offset(i)
-            bytecode.extend([base + CTRL_1, 0x00]) # Gate Off
-            bytecode.extend([base + AD_1, 0x00, base + SR_1, 0x00])
+            self._emit_reg(bytecode, base + CTRL_1, 0x00) # Gate Off
+            self._emit_reg(bytecode, base + AD_1, 0x00)
+            self._emit_reg(bytecode, base + SR_1, 0x00)
 
             # Reset Python Voice State
             self.voices[i-1].arpeggio_notes = []
@@ -87,7 +94,10 @@ class BytecodeGenerator:
                     if loops > 0xFFFF: loops = 0xFFFF
                     lo = loops & 0xFF
                     hi = (loops >> 8) & 0xFF
-                    bytecode.extend([0x81, lo, hi])
+                    if loops <= 0xFF:
+                        bytecode.extend([0x82, lo])
+                    else:
+                        bytecode.extend([0x81, lo, hi])
                 return
 
             # If we have effects, slice the time into steps
@@ -104,7 +114,10 @@ class BytecodeGenerator:
                         loops = 0xFFFF
                     lo = loops & 0xFF
                     hi = (loops >> 8) & 0xFF
-                    bytecode.extend([0x81, lo, hi])
+                    if loops <= 0xFF:
+                        bytecode.extend([0x82, lo])
+                    else:
+                        bytecode.extend([0x81, lo, hi])
 
                 # Update Effects
                 for v in self.voices:
@@ -116,8 +129,8 @@ class BytecodeGenerator:
                         v.arp_index = (v.arp_index + 1) % len(v.arpeggio_notes)
                         note = v.arpeggio_notes[v.arp_index]
                         freq = freq_for_note(note)
-                        bytecode.extend([base + FREQ_LO_1, freq & 0xFF])
-                        bytecode.extend([base + FREQ_HI_1, (freq >> 8) & 0xFF])
+                        self._emit_reg(bytecode, base + FREQ_LO_1, freq & 0xFF)
+                        self._emit_reg(bytecode, base + FREQ_HI_1, (freq >> 8) & 0xFF)
 
                     # 2. PWM Sweep (Every step)
                     if "pwm_sweep" in getattr(v, 'features', []):
@@ -131,7 +144,8 @@ class BytecodeGenerator:
                             cur = 0x0200
                             v.pwm_dir = 1
                         v.pwm_val = cur
-                        bytecode.extend([base + PW_LO_1, cur & 0xFF, base + PW_HI_1, (cur >> 8) & 0xFF])
+                        self._emit_reg(bytecode, base + PW_LO_1, cur & 0xFF)
+                        self._emit_reg(bytecode, base + PW_HI_1, (cur >> 8) & 0xFF)
 
                 remaining -= step
 
@@ -183,35 +197,45 @@ class BytecodeGenerator:
                     v.pwm_dir = 1
 
                     # 1. Gate Off (Hard Restart)
-                    bytecode.extend([base + CTRL_1, wave & ~WAVE_GATE])
+                    self._emit_reg(bytecode, base + CTRL_1, wave & ~WAVE_GATE)
 
                     # 2. Setup Registers
-                    bytecode.extend([base + AD_1, ad, base + SR_1, sr])
+                    self._emit_reg(bytecode, base + AD_1, ad)
+                    self._emit_reg(bytecode, base + SR_1, sr)
 
                     # Pulse Width
                     if wave & (WAVE_PULSE | WAVE_TEST):
-                        bytecode.extend([base + PW_LO_1, pw & 0xFF, base + PW_HI_1, (pw >> 8) & 0xFF])
+                        self._emit_reg(bytecode, base + PW_LO_1, pw & 0xFF)
+                        self._emit_reg(bytecode, base + PW_HI_1, (pw >> 8) & 0xFF)
 
                     # Filter Setup (Bass LPF)
                     if "bass_filter" in features:
                         filt_route = 1 << (v.index - 1)
-                        bytecode.extend([CUTOFF_LO, 0x00, CUTOFF_HI, 0x20])
-                        bytecode.extend([RESON_FILT, 0x40 | filt_route])
-                        bytecode.extend([MODE_VOL, 0x1F])
+                        self._emit_reg(bytecode, CUTOFF_LO, 0x00)
+                        self._emit_reg(bytecode, CUTOFF_HI, 0x20)
+                        self._emit_reg(bytecode, RESON_FILT, 0x40 | filt_route)
+                        self._emit_reg(bytecode, MODE_VOL, 0x1F)
 
                     # 3. Trigger
                     if "kick_slide" in features:
                         start_freq = freq_for_note(note_val + 12)
-                        bytecode.extend([base + FREQ_LO_1, start_freq & 0xFF])
-                        bytecode.extend([base + FREQ_HI_1, (start_freq >> 8) & 0xFF])
-                        bytecode.extend([base + CTRL_1, wave | WAVE_GATE])
-                        bytecode.extend([base + FREQ_HI_1, ((start_freq >> 8) - 2) & 0xFF])
-                        bytecode.extend([base + FREQ_HI_1, ((start_freq >> 8) - 4) & 0xFF])
-                        bytecode.extend([base + FREQ_HI_1, ((start_freq >> 8) - 8) & 0xFF])
+                        self._emit_reg(bytecode, base + FREQ_LO_1, start_freq & 0xFF)
+                        self._emit_reg(bytecode, base + FREQ_HI_1, (start_freq >> 8) & 0xFF)
+                        self._emit_reg(bytecode, base + CTRL_1, wave | WAVE_GATE)
+                        self._emit_reg(bytecode, base + FREQ_HI_1, ((start_freq >> 8) - 2) & 0xFF)
+                        self._emit_reg(bytecode, base + FREQ_HI_1, ((start_freq >> 8) - 4) & 0xFF)
+                        self._emit_reg(bytecode, base + FREQ_HI_1, ((start_freq >> 8) - 8) & 0xFF)
                     else:
-                        bytecode.extend([base + FREQ_LO_1, freq & 0xFF])
-                        bytecode.extend([base + FREQ_HI_1, (freq >> 8) & 0xFF])
-                        bytecode.extend([base + CTRL_1, wave | WAVE_GATE])
+                        cmd = 0x90 + (v.index - 1)
+                        f_lo = freq & 0xFF
+                        f_hi = (freq >> 8) & 0xFF
+                        ctrl_val = wave | WAVE_GATE
+                        
+                        self.sid_state[base + FREQ_LO_1] = f_lo
+                        self.sid_state[base + FREQ_HI_1] = f_hi
+                        self.sid_state[base + CTRL_1] = ctrl_val
+                        
+                        bytecode.extend([cmd, f_lo, f_hi, ctrl_val])
 
             elif ev['type'] == 'note_off':
                 for v in self.voices:
@@ -228,14 +252,14 @@ class BytecodeGenerator:
                                 # v.active stays True so tail plays and effects run!
                                 base = get_voice_offset(v.index)
                                 release_cmd = v.wave & (~WAVE_GATE)
-                                bytecode.extend([base + CTRL_1, release_cmd])
+                                self._emit_reg(bytecode, base + CTRL_1, release_cmd)
 
                         elif v.note == ev['note']: # Fallback for single note
                             v.released = True
                             # v.active = False <-- REMOVED! Keep active for tail.
                             base = get_voice_offset(v.index)
                             release_cmd = v.wave & (~WAVE_GATE)
-                            bytecode.extend([base + CTRL_1, release_cmd])
+                            self._emit_reg(bytecode, base + CTRL_1, release_cmd)
 
         bytecode.append(0xFF)
         return bytecode
