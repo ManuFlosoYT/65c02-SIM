@@ -11,11 +11,14 @@ echo "--- MIDI to BIN Automation (Smart Optimization) ---"
 
 target_file=""
 MICRO_DOS=false
+SDK_MODE=false
 
-# Check for --microDOS flag
 for arg in "$@"; do
     if [ "$arg" == "--microDOS" ]; then
         MICRO_DOS=true
+    fi
+    if [ "$arg" == "--sdk" ]; then
+        SDK_MODE=true
     fi
 done
 
@@ -62,7 +65,11 @@ else
 fi
 
 # Levels: l1 (2ms) -> l8 (100ms + Chords)
-MODES=("l1" "l2" "l3" "l4" "l5" "l6" "l7" "l8")
+if [ "$SDK_MODE" = true ]; then
+    MODES=("l1")
+else
+    MODES=("l1" "l2" "l3" "l4" "l5" "l6" "l7" "l8")
+fi
 
 for midi_file in "${files[@]}"; do
     echo "========================================"
@@ -115,8 +122,12 @@ for midi_file in "${files[@]}"; do
     done
     
     if [ "$success" = false ]; then
-        echo ">> CRITICAL: Could not compile '$clean_name' even in EXTREME mode."
-        exit -1
+        if [ "$SDK_MODE" = true ]; then
+            echo "   [!] Song '$clean_name' discarded (Does not fit in Mode L1)."
+        else
+            echo ">> CRITICAL: Could not compile '$clean_name' even in EXTREME mode."
+            exit -1
+        fi
     fi
 done
 
