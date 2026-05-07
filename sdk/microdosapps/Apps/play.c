@@ -31,6 +31,7 @@ static uint8_t b_idx = 0;
 static uint16_t credit = 0;
 static uint8_t eof_reached = 0;
 static int8_t r = 0;
+static uint8_t current_waves[3] = {0, 0, 0};
 
 static uint8_t next_byte(void) {
     if (b_idx >= CHUNK_SIZE) {
@@ -122,8 +123,15 @@ int main(void) {
             uint8_t f_lo = next_byte();
             uint8_t f_hi = next_byte();
             uint8_t ctrl = next_byte();
+            current_waves[voice - 1] = ctrl;
             sid_trigger_note(voice, f_lo | ((uint16_t)f_hi << 8), ctrl);
             credit += SID_WRITE_CREDIT * 3;
+        } else if (cmd >= 0x93 && cmd <= 0x95) {
+            uint8_t voice = cmd - 0x93 + 1;
+            uint8_t ctrl = current_waves[voice - 1] & ~0x01;
+            uint8_t offset = (voice - 1) * 7;
+            sid_write(offset + 0x04, ctrl);
+            credit += SID_WRITE_CREDIT;
         } else if (cmd == 0x81 || cmd == 0x82) {
             l1 = next_byte();
             if (cmd == 0x81) {

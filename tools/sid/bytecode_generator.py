@@ -249,17 +249,17 @@ class BytecodeGenerator:
                             # If empty, enter Release phase
                             if not v.arpeggio_notes:
                                 v.released = True
-                                # v.active stays True so tail plays and effects run!
                                 base = get_voice_offset(v.index)
                                 release_cmd = v.wave & (~WAVE_GATE)
-                                self._emit_reg(bytecode, base + CTRL_1, release_cmd)
+                                self.sid_state[base + CTRL_1] = release_cmd
+                                bytecode.extend([0x93 + (v.index - 1)])
 
                         elif v.note == ev['note']: # Fallback for single note
                             v.released = True
-                            # v.active = False <-- REMOVED! Keep active for tail.
                             base = get_voice_offset(v.index)
                             release_cmd = v.wave & (~WAVE_GATE)
-                            self._emit_reg(bytecode, base + CTRL_1, release_cmd)
+                            self.sid_state[base + CTRL_1] = release_cmd
+                            bytecode.extend([0x93 + (v.index - 1)])
 
         bytecode.append(0xFF)
         return bytecode
@@ -276,10 +276,16 @@ class BytecodeGenerator:
         return score
 
     def _allocate_voice(self, note, channel, time):
-        # 1. Try to find a completely inactive voice
+        # 0. Fast path: Inactive voice that already has this channel's affinity
+        best_inactive = None
         for v in self.voices:
             if not v.active:
-                return v
+                if getattr(v, 'channel', None) == channel:
+                    return v
+                elif best_inactive is None:
+                    best_inactive = v
+        if best_inactive:
+            return best_inactive
 
         # 2. Find best victim
         # Criteria: Released > Quietest > Oldest
@@ -297,6 +303,10 @@ class BytecodeGenerator:
             # If voice is in Release phase, it is a PRIME CANDIDATE for stealing
             if getattr(v, 'released', False):
                 current_score -= 50000
+
+            # --- CHANNEL AFFINITY OPTIMIZATION ---
+            if getattr(v, 'channel', None) == channel:
+                current_score -= 20000
 
             if current_score < min_score:
                 min_score = current_score
