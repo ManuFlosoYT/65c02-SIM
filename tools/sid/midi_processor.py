@@ -13,6 +13,8 @@ except ImportError:
 from sid_constants import (
     MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3, MODE_LEVEL_4,
     MODE_LEVEL_5, MODE_LEVEL_6, MODE_LEVEL_7, MODE_LEVEL_8,
+    MODE_LEVEL_9, MODE_LEVEL_10, MODE_LEVEL_11, MODE_LEVEL_12,
+    MODE_LEVEL_13, MODE_LEVEL_14, MODE_LEVEL_15
 )
 
 
@@ -32,59 +34,31 @@ class MidiProcessor:
         self._configure_mode()
 
     def _configure_mode(self):
-        self.quant_grid = 0.002
-        self.min_note_duration = 0.01
-        self.chord_reduce = False
-        self.chord_window = 0.01
-        self.max_polyphony = 4
-
-        if self.mode == MODE_LEVEL_1: # Raw
-            self.quant_grid = 0.002
-            self.min_note_duration = 0.005
-            self.chord_reduce = False
-            self.max_polyphony = 4
-        elif self.mode == MODE_LEVEL_2: # Fine
-            self.quant_grid = 0.005
-            self.min_note_duration = 0.01
-            self.chord_reduce = True
-            self.chord_window = 0.01
-            self.max_polyphony = 3
-        elif self.mode == MODE_LEVEL_3: # Light
-            self.quant_grid = 0.010
-            self.min_note_duration = 0.02
-            self.chord_reduce = True
-            self.chord_window = 0.01
-            self.max_polyphony = 3
-        elif self.mode == MODE_LEVEL_4: # Standard
-            self.quant_grid = 0.020
-            self.min_note_duration = 0.03
-            self.chord_reduce = True
-            self.chord_window = 0.02
-            self.max_polyphony = 3
-        elif self.mode == MODE_LEVEL_5: # Medium
-            self.quant_grid = 0.030
-            self.min_note_duration = 0.04
-            self.chord_reduce = True
-            self.chord_window = 0.02
-            self.max_polyphony = 2
-        elif self.mode == MODE_LEVEL_6: # High
-            self.quant_grid = 0.040
-            self.min_note_duration = 0.05
-            self.chord_reduce = True
-            self.chord_window = 0.03
-            self.max_polyphony = 2
-        elif self.mode == MODE_LEVEL_7: # Extreme
-            self.quant_grid = 0.060
-            self.min_note_duration = 0.08
-            self.chord_reduce = True
-            self.chord_window = 0.05
-            self.max_polyphony = 1
-        elif self.mode == MODE_LEVEL_8: # Insane
-            self.quant_grid = 0.100
-            self.min_note_duration = 0.10
-            self.chord_reduce = True
-            self.chord_window = 0.08
-            self.max_polyphony = 1
+        # Quantization Grid, Min Note Duration, Chord Reduction, Chord Window, Max Polyphony
+        modes_config = {
+            "l1": (0.001, 0.001, False, 0.0, 3),
+            "l2": (0.004, 0.006, False, 0.0, 3),
+            "l3": (0.006, 0.008, False, 0.0, 3),
+            "l4": (0.008, 0.010, True, 0.010, 3),
+            "l5": (0.010, 0.012, True, 0.015, 3),
+            "l6": (0.015, 0.015, True, 0.020, 3),
+            "l7": (0.020, 0.020, True, 0.030, 3),
+            "l8": (0.025, 0.025, True, 0.040, 3),
+            "l9": (0.030, 0.035, True, 0.050, 2),
+            "l10": (0.040, 0.045, True, 0.060, 2),
+            "l11": (0.050, 0.055, True, 0.070, 2),
+            "l12": (0.060, 0.070, True, 0.080, 2),
+            "l13": (0.075, 0.085, True, 0.090, 1),
+            "l14": (0.090, 0.100, True, 0.100, 1),
+            "l15": (0.100, 0.120, True, 0.120, 1),
+        }
+        
+        cfg = modes_config.get(self.mode, modes_config["l1"])
+        self.quant_grid = cfg[0]
+        self.min_note_duration = cfg[1]
+        self.chord_reduce = cfg[2]
+        self.chord_window = cfg[3]
+        self.max_polyphony = cfg[4]
 
         print(f">> Mode: {self.mode.upper()}")
         print(f"   Grid: {self.quant_grid*1000:.1f}ms, MinDur: {self.min_note_duration*1000:.0f}ms, MaxPoly: {self.max_polyphony}")
@@ -97,11 +71,14 @@ class MidiProcessor:
         self._analyze_key()
         self._analyze_density()
 
-        if self.mode != MODE_LEVEL_1:
-            self._filter_short_notes()
+        self._filter_short_notes()
+
+        self._simplify_chords()
 
         if self.chord_reduce:
             self._reduce_chords()
+
+        self._cull_polyphony()
 
         if hasattr(self, 'density_map') and self.density_map:
             self._quantize_dynamic()
@@ -111,10 +88,107 @@ class MidiProcessor:
 
         self.events.sort(key=lambda x: (x['time'], 0 if x['type'] == 'note_off' else 1))
 
-        if self.mode != MODE_LEVEL_1:
-            self._deduplicate()
+        self._deduplicate()
 
         return self.events
+
+    def _simplify_chords(self):
+        """
+        Detecta notas simultáneas en el mismo canal (acordes) y las simplifica a
+        una sola frecuencia dominante para evitar disonancias y ahorro de voces.
+        """
+        new_events = []
+        i = 0
+        window_size = 0.005 # 5ms window
+        
+        while i < len(self.events):
+            ev = self.events[i]
+            if ev['type'] == 'note_on':
+                window_events = [ev]
+                j = i + 1
+                while j < len(self.events) and (self.events[j]['time'] - ev['time'] < window_size):
+                    if self.events[j]['type'] == 'note_on':
+                        window_events.append(self.events[j])
+                    j += 1
+                
+                chan_groups = {}
+                for wev in window_events:
+                    ch = wev.get('channel', 0)
+                    if ch not in chan_groups:
+                        chan_groups[ch] = []
+                    chan_groups[ch].append(wev)
+                
+                simplified_notes = []
+                for ch, notes in chan_groups.items():
+                    if len(notes) > 1:
+                        notes.sort(key=lambda x: x.get('note', 60))
+                        if ch == self.bass_channel:
+                            kept = notes[0] # Bass -> Lowest
+                        else:
+                            kept = notes[-1] # Melody/Others -> Highest
+                        simplified_notes.append(kept)
+                    else:
+                        simplified_notes.append(notes[0])
+                
+                for k_ev in simplified_notes:
+                    new_events.append(k_ev)
+                
+                for k in range(i + 1, j):
+                    if self.events[k]['type'] != 'note_on':
+                        new_events.append(self.events[k])
+                
+                i = j
+            else:
+                new_events.append(ev)
+                i += 1
+                
+        print(f"   Chord Simplification: Collapsed {len(self.events) - len(new_events)} inner chord notes.")
+        self.events = new_events
+
+    def _cull_polyphony(self):
+        def get_prio(ev):
+            ch = ev.get('channel', 0)
+            score = 0
+            if ch == self.melody_channel: score += 8000
+            elif ch == self.bass_channel: score += 5000
+            elif ch == 9: score += 3000
+            note = ev.get('note', 60)
+            if note > 80: score += 500
+            if note < 40: score += 500
+            return score
+
+        new_events = []
+        i = 0
+        while i < len(self.events):
+            ev = self.events[i]
+            if ev['type'] == 'note_on':
+                window_events = [ev]
+                j = i + 1
+                while j < len(self.events) and (self.events[j]['time'] - ev['time'] < 0.002):
+                    if self.events[j]['type'] == 'note_on':
+                        window_events.append(self.events[j])
+                    j += 1
+                
+                if len(window_events) > self.max_polyphony:
+                    window_events.sort(key=get_prio, reverse=True)
+                    kept = window_events[:self.max_polyphony]
+                    for k_ev in kept:
+                        new_events.append(k_ev)
+                else:
+                    for k_ev in window_events:
+                        new_events.append(k_ev)
+                
+                for k in range(i + 1, j):
+                    if self.events[k]['type'] != 'note_on':
+                        new_events.append(self.events[k])
+                
+                i = j
+            else:
+                new_events.append(ev)
+                i += 1
+                
+        print(f"   Polyphony Culling: Dropped {len(self.events) - len(new_events)} overlapping Note Ons.")
+        self.events = new_events
 
     def _flatten_events(self):
         track_events = []
@@ -270,10 +344,10 @@ class MidiProcessor:
             status = "Normal"
 
             if rate > global_density * 1.5:
-                local_grid = max(0.01, self.quant_grid * 0.5)
+                local_grid = self.quant_grid * 0.5
                 status = "Busy"
             elif rate < global_density * 0.5:
-                local_grid = min(0.1, self.quant_grid * 2.0)
+                local_grid = self.quant_grid * 2.0
                 status = "Sparse"
 
             self.density_map.append({

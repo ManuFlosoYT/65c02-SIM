@@ -197,7 +197,10 @@ class BytecodeGenerator:
                     v.pwm_dir = 1
 
                     # 1. Gate Off (Hard Restart)
-                    self._emit_reg(bytecode, base + CTRL_1, wave & ~WAVE_GATE)
+                    curr_ctrl = self.sid_state[base + CTRL_1]
+                    if curr_ctrl != -1 and (curr_ctrl & WAVE_GATE):
+                        self.sid_state[base + CTRL_1] = curr_ctrl & ~WAVE_GATE
+                        bytecode.extend([0x93 + (v.index - 1)])
 
                     # 2. Setup Registers
                     self._emit_reg(bytecode, base + AD_1, ad)

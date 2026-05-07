@@ -64,11 +64,11 @@ else
     files=("$target_file")
 fi
 
-# Levels: l1 (2ms) -> l8 (100ms + Chords)
+# Levels: l1 (2ms) -> l15 (100ms + Chords)
 if [ "$SDK_MODE" = true ]; then
     MODES=("l1")
 else
-    MODES=("l1" "l2" "l3" "l4" "l5" "l6" "l7" "l8")
+    MODES=("l1" "l2" "l3" "l4" "l5" "l6" "l7" "l8" "l9" "l10" "l11" "l12" "l13" "l14" "l15")
 fi
 
 for midi_file in "${files[@]}"; do
