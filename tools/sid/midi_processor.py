@@ -122,7 +122,7 @@ class MidiProcessor:
                 for ch, notes in chan_groups.items():
                     if len(notes) > 1:
                         notes.sort(key=lambda x: x.get('note', 60))
-                        if ch == self.bass_channel:
+                        if ch == self.bass_channel and ch != self.melody_channel:
                             kept = notes[0] # Bass -> Lowest
                         else:
                             kept = notes[-1] # Melody/Others -> Highest
@@ -150,12 +150,12 @@ class MidiProcessor:
             ch = ev.get('channel', 0)
             score = 0
             if ch == self.melody_channel: score += 8000
-            elif ch == self.bass_channel: score += 5000
+            elif ch == self.bass_channel and ch != self.melody_channel: score += 5000
             elif ch == 9: score += 3000
             note = ev.get('note', 60)
             if note > 80: score += 500
             if note < 40: score += 500
-            return score
+            return score + note
 
         new_events = []
         i = 0
@@ -196,7 +196,7 @@ class MidiProcessor:
             abs_ticks = 0
             for msg in track:
                 abs_ticks += msg.time
-                if msg.type in ['note_on', 'note_off', 'set_tempo', 'program_change']:
+                if msg.type in ['note_on', 'note_off', 'set_tempo', 'program_change', 'control_change', 'pitchwheel']:
                     track_events.append((abs_ticks, msg))
 
         track_events.sort(key=lambda x: x[0])
@@ -236,6 +236,22 @@ class MidiProcessor:
                     'type': m_type,
                     'note': msg.note,
                     'velocity': vel,
+                    'channel': getattr(msg, 'channel', 0)
+                })
+            elif msg.type == 'control_change':
+                if msg.control in [1, 7, 6, 38, 98, 99, 100, 101]: # Modulation, Volume, Data Entry, NRPN/RPN
+                    self.events.append({
+                        'time': current_time,
+                        'type': 'control_change',
+                        'control': msg.control,
+                        'value': msg.value,
+                        'channel': getattr(msg, 'channel', 0)
+                    })
+            elif msg.type == 'pitchwheel':
+                self.events.append({
+                    'time': current_time,
+                    'type': 'pitchwheel',
+                    'pitch': msg.pitch,
                     'channel': getattr(msg, 'channel', 0)
                 })
 
@@ -418,7 +434,7 @@ class MidiProcessor:
         unique = []
         seen = set()
         for ev in self.events:
-            if ev['type'] == 'program_change':
+            if ev['type'] in ['program_change', 'control_change', 'pitchwheel']:
                 unique.append(ev)
                 continue
 

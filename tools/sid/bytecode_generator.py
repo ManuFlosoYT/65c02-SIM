@@ -78,13 +78,26 @@ class BytecodeGenerator:
         self.next_arp_time = 0.0
         self.next_pwm_time = 0.0
 
+        import math
+
+        channel_patches = {}
+        channel_mod = {i: 0 for i in range(16)}
+        channel_pitchbend = {i: 0 for i in range(16)}
+        channel_pitchbend_range = {i: 2 for i in range(16)}
+        channel_rpn_msb = {i: 127 for i in range(16)}
+        channel_rpn_lsb = {i: 127 for i in range(16)}
+
         def emit_delay_and_effects(dt):
             # Fast check: active effects?
             has_effects = False
             for v in self.voices:
-                if v.active and (len(v.arpeggio_notes) > 1 or "pwm_sweep" in v.features):
-                    has_effects = True
-                    break
+                if v.active:
+                    ch = getattr(v, 'channel', 0)
+                    if (len(getattr(v, 'arpeggio_notes', [])) > 1 or "pwm_sweep" in getattr(v, 'features', []) or
+                        "vibrato" in getattr(v, 'features', []) or channel_pitchbend.get(ch, 0) != 0 or
+                        channel_mod.get(ch, 0) > 0):
+                        has_effects = True
+                        break
 
             if not has_effects:
                 # Just wait
@@ -123,14 +136,35 @@ class BytecodeGenerator:
                 for v in self.voices:
                     if not v.active: continue
                     base = get_voice_offset(v.index)
+                    ch = getattr(v, 'channel', 0)
 
-                    # 1. Arpeggios (Every step)
-                    if len(getattr(v, 'arpeggio_notes', [])) > 1:
+                    # 1. Pitch Update (Arp, Bend, Vibrato)
+                    note = getattr(v, 'note', 60)
+                    is_arp = len(getattr(v, 'arpeggio_notes', [])) > 1
+                    if is_arp:
                         v.arp_index = (v.arp_index + 1) % len(v.arpeggio_notes)
                         note = v.arpeggio_notes[v.arp_index]
-                        freq = freq_for_note(note)
-                        self._emit_reg(bytecode, base + FREQ_LO_1, freq & 0xFF)
-                        self._emit_reg(bytecode, base + FREQ_HI_1, (freq >> 8) & 0xFF)
+
+                    pb = channel_pitchbend.get(ch, 0)
+                    pb_range = channel_pitchbend_range.get(ch, 2)
+                    semitones_shift = (pb / 8192.0) * pb_range
+
+                    mod_val = channel_mod.get(ch, 0) / 127.0
+                    if mod_val == 0 and "vibrato" in getattr(v, 'features', []):
+                        mod_val = 0.3 # Intrinsic vibrato
+                    
+                    vib_semitones = 0.0
+                    if mod_val > 0:
+                        v.arp_counter += 1
+                        lfo_phase = v.arp_counter * 0.5
+                        vib_semitones = math.sin(lfo_phase) * 0.5 * mod_val
+
+                    if semitones_shift != 0.0 or vib_semitones != 0.0 or is_arp:
+                        freq = freq_for_note(note + semitones_shift + vib_semitones)
+                        if freq < 0: freq = 0
+                        if freq > 0xFFFF: freq = 0xFFFF
+                        self._emit_reg(bytecode, base + FREQ_LO_1, int(freq) & 0xFF)
+                        self._emit_reg(bytecode, base + FREQ_HI_1, (int(freq) >> 8) & 0xFF)
 
                     # 2. PWM Sweep (Every step)
                     if "pwm_sweep" in getattr(v, 'features', []):
@@ -150,7 +184,6 @@ class BytecodeGenerator:
                 remaining -= step
 
         last_time = 0.0
-        channel_patches = {}
 
         for ev in self.events:
             dt = ev['time'] - last_time
@@ -161,12 +194,32 @@ class BytecodeGenerator:
             if ev['type'] == 'program_change':
                 channel_patches[ev['channel']] = ev['program']
 
+            elif ev['type'] == 'control_change':
+                ch = ev['channel']
+                ctrl = ev['control']
+                val = ev['value']
+                if ctrl == 7: # Volume
+                    pass # Volume control disabled, kept at max
+                elif ctrl == 1: # Modulation
+                    channel_mod[ch] = val
+                elif ctrl == 101: # RPN MSB
+                    channel_rpn_msb[ch] = val
+                elif ctrl == 100: # RPN LSB
+                    channel_rpn_lsb[ch] = val
+                elif ctrl == 6: # Data Entry MSB
+                    if channel_rpn_msb.get(ch, 127) == 0 and channel_rpn_lsb.get(ch, 127) == 0:
+                        channel_pitchbend_range[ch] = val
+
+            elif ev['type'] == 'pitchwheel':
+                ch = ev['channel']
+                channel_pitchbend[ch] = ev['pitch']
+
             elif ev['type'] == 'note_on' or ev['type'] == 'arpeggio_on':
                 notes = []
                 note_val = 0
                 if ev['type'] == 'arpeggio_on':
                     notes = ev['notes']
-                    note_val = notes[0]
+                    note_val = notes[-1] # Use highest note for priority
                 else:
                     notes = [ev['note']]
                     note_val = ev['note']
@@ -212,13 +265,26 @@ class BytecodeGenerator:
                         self._emit_reg(bytecode, base + PW_LO_1, pw & 0xFF)
                         self._emit_reg(bytecode, base + PW_HI_1, (pw >> 8) & 0xFF)
 
-                    # Filter Setup (Bass LPF)
-                    if "bass_filter" in features:
-                        filt_route = 1 << (v.index - 1)
-                        self._emit_reg(bytecode, CUTOFF_LO, 0x00)
-                        self._emit_reg(bytecode, CUTOFF_HI, 0x20)
-                        self._emit_reg(bytecode, RESON_FILT, 0x40 | filt_route)
-                        self._emit_reg(bytecode, MODE_VOL, 0x1F)
+                    # Filter Setup (Bass LPF or Velocity Filter)
+                    if "bass_filter" in features or "velocity_filter" in features:
+                        is_melody = (ev['channel'] == self.melody_channel)
+                        melody_active = any(vo.active and getattr(vo, 'channel', -1) == self.melody_channel for vo in self.voices)
+                        
+                        if is_melody or not melody_active:
+                            filt_route = 1 << (v.index - 1)
+                            
+                            hi_val = 0x20
+                            if "velocity_filter" in features:
+                                hi_val = int((vel / 127.0) * 0xFF)
+                                if hi_val < 0x10: hi_val = 0x10
+                                
+                            self._emit_reg(bytecode, CUTOFF_LO, 0x00)
+                            self._emit_reg(bytecode, CUTOFF_HI, hi_val)
+                            self._emit_reg(bytecode, RESON_FILT, 0x40 | filt_route)
+                            
+                            curr = self.sid_state[MODE_VOL]
+                            if curr == -1: curr = 0x0F
+                            self._emit_reg(bytecode, MODE_VOL, curr | 0x10) # Set LP filter
 
                     # 3. Trigger
                     if "kick_slide" in features:
