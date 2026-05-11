@@ -31,11 +31,12 @@ class Voice:
 
 
 class BytecodeGenerator:
-    def __init__(self, events, mode, bass_channel, melody_channel):
+    def __init__(self, events, mode, bass_channel=-1, melody_channel=-1, noise_channel=-1):
         self.events = events
         self.mode = mode
         self.bass_channel = bass_channel
         self.melody_channel = melody_channel
+        self.noise_channel = noise_channel
         self.voices = [Voice(i) for i in range(1, 4)]
         self.sid_state = [-1] * 25
 
@@ -199,7 +200,15 @@ class BytecodeGenerator:
                 ctrl = ev['control']
                 val = ev['value']
                 if ctrl == 7: # Volume
-                    pass # Volume control disabled, kept at max
+                    val = ev['value']
+                    sustain = val >> 3 # 0-127 -> 0-15
+                    for v in self.voices:
+                        if getattr(v, 'channel', -1) == ch and v.active:
+                            patch = channel_patches.get(ch, 0)
+                            if 128 <= patch <= 130:
+                                base = get_voice_offset(v.index)
+                                sr = (sustain << 4) | 0x00
+                                self._emit_reg(bytecode, base + SR_1, sr)
                 elif ctrl == 1: # Modulation
                     channel_mod[ch] = val
                 elif ctrl == 101: # RPN MSB
@@ -344,6 +353,7 @@ class BytecodeGenerator:
         return bytecode
 
     def _get_priority(self, note, channel, now):
+        if channel == getattr(self, 'noise_channel', -1): return -1000
         score = 0
         if channel == self.melody_channel: score += 8000
         elif channel == self.bass_channel: score += 5000
@@ -352,7 +362,7 @@ class BytecodeGenerator:
         if note > 80: score += 500
         if note < 40: score += 500
 
-        return score
+        return score + note
 
     def _allocate_voice(self, note, channel, time):
         # 0. Fast path: Inactive voice that already has this channel's affinity

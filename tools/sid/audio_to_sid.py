@@ -25,7 +25,8 @@ def main():
         processor = MidiProcessor(args.input, args.mode)
     events = processor.process()
 
-    generator = BytecodeGenerator(events, args.mode, processor.bass_channel, processor.melody_channel)
+    noise_channel = getattr(processor, 'noise_channel', -1)
+    generator = BytecodeGenerator(events, args.mode, processor.bass_channel, processor.melody_channel, noise_channel)
     bytecode = generator.generate()
 
     if args.microDOS:

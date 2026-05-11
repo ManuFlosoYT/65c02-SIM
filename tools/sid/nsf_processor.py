@@ -207,6 +207,66 @@ class NsfProcessor(MidiProcessor):
         
         return self.events
 
+    def _analyze_channels(self):
+        avg_note = {0: [], 1: [], 2: [], 3: []}
+        for ev in self.events:
+            if ev['type'] == 'note_on':
+                avg_note[ev.get('channel', 0)].append(ev['note'])
+                
+        avg_0 = sum(avg_note[0])/len(avg_note[0]) if avg_note[0] else 0
+        avg_1 = sum(avg_note[1])/len(avg_note[1]) if avg_note[1] else 0
+        
+        self.melody_channel = 0 if avg_0 >= avg_1 else 1
+        self.bass_channel = 2
+        self.noise_channel = 3
+        
+        print(f"   NSF Roles -> Bass: Ch{self.bass_channel}, Melody: Ch{self.melody_channel}, Noise: Ch{self.noise_channel}")
+
+    def _cull_polyphony(self):
+        def get_prio(ev):
+            ch = ev.get('channel', 0)
+            score = 0
+            if ch == self.melody_channel: score += 8000
+            elif ch == self.bass_channel: score += 5000
+            elif ch == self.noise_channel: score -= 5000 # Noise only plays if free
+            note = ev.get('note', 60)
+            if note > 80: score += 500
+            if note < 40: score += 500
+            return score + note
+
+        new_events = []
+        i = 0
+        while i < len(self.events):
+            ev = self.events[i]
+            if ev['type'] == 'note_on':
+                window_events = [ev]
+                j = i + 1
+                while j < len(self.events) and (self.events[j]['time'] - ev['time'] < 0.002):
+                    if self.events[j]['type'] == 'note_on':
+                        window_events.append(self.events[j])
+                    j += 1
+                
+                if len(window_events) > self.max_polyphony:
+                    window_events.sort(key=get_prio, reverse=True)
+                    kept = window_events[:self.max_polyphony]
+                    for k_ev in kept:
+                        new_events.append(k_ev)
+                else:
+                    for k_ev in window_events:
+                        new_events.append(k_ev)
+                
+                for k in range(i + 1, j):
+                    if self.events[k]['type'] != 'note_on':
+                        new_events.append(self.events[k])
+                
+                i = j
+            else:
+                new_events.append(ev)
+                i += 1
+                
+        print(f"   NSF Polyphony Culling: Dropped {len(self.events) - len(new_events)} overlapping Note Ons.")
+        self.events = new_events
+
     def _capture_frame(self, current_time):
         self._process_pulse(0, 0x4000, current_time)
         self._process_pulse(1, 0x4004, current_time)
