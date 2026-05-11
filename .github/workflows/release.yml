@@ -151,7 +151,7 @@ jobs:
         run: |
           dnf -y update
           dnf -y install cc65 python3-pip zip git dosfstools mtools
-          pip3 install pillow mido
+          pip3 install pillow mido py65
 
       - name: Checkout code
         uses: actions/checkout@v5
@@ -181,7 +181,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cc65 jq python3-pip zip imagemagick librsvg2-bin dosfstools mtools
-          pip3 install pillow mido --break-system-packages
+          pip3 install pillow mido py65 --break-system-packages
 
       - name: Download SDK Artifact
         uses: actions/download-artifact@v8

@@ -109,7 +109,7 @@ Output is saved to `output/midi/<song>.bin`.
 
 ### Requirements
 
-- **Python 3** with **mido** (`pip install mido`)
+- **Python 3** with **mido** and **py65** (`pip install mido py65`)
 - **cc65** (`ca65`, `ld65`) to compile the generated assembly
 
 ### Optimization modes
