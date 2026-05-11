@@ -209,6 +209,15 @@ class BytecodeGenerator:
                 elif ctrl == 6: # Data Entry MSB
                     if channel_rpn_msb.get(ch, 127) == 0 and channel_rpn_lsb.get(ch, 127) == 0:
                         channel_pitchbend_range[ch] = val
+                elif ctrl == 14: # Custom PW (NSF)
+                    # 0: 12.5%, 1: 25%, 2: 50%, 3: 25% negated
+                    duty_map = {0: 0x0200, 1: 0x0400, 2: 0x0800, 3: 0x0C00}
+                    pw_val = duty_map.get(val, 0x0800)
+                    for v in self.voices:
+                        if v.active and getattr(v, 'channel', None) == ch:
+                            base = get_voice_offset(v.index)
+                            self._emit_reg(bytecode, base + PW_LO_1, pw_val & 0xFF)
+                            self._emit_reg(bytecode, base + PW_HI_1, (pw_val >> 8) & 0xFF)
 
             elif ev['type'] == 'pitchwheel':
                 ch = ev['channel']

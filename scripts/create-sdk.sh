@@ -53,6 +53,17 @@ for f in output/midi/*.bin; do
   fi
 done
 
+# Package NSFs
+echo "Packaging NSFs into cartridges..."
+for f in output/nsf/*.bin; do
+  if [ -f "$f" ]; then
+    name=$(basename "${f%.bin}")
+    "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "NSF file for 65c02-SIM" --ips 1000000 --sid true --type nsf
+    mkdir -p output/nsf
+    mv "output/cartridge/$name.65c" "output/nsf/"
+  fi
+done
+
 # Package VRAM images
 echo "Packaging VRAM images into cartridges..."
 for f in output/vram/*.bin; do

@@ -133,5 +133,17 @@ def get_instrument_params(program, channel, note, velocity):
             wave = WAVE_NOISE
             attack_decay = 0x00
             sustain_release = 0x00
+        elif program == 128: # APU Pulse (Raw)
+            wave = WAVE_PULSE
+            attack_decay = 0x00
+            sustain_release = 0xF0 # Instant response, full sustain, instant release
+        elif program == 129: # APU Triangle (Raw)
+            wave = WAVE_TRI
+            attack_decay = 0x00
+            sustain_release = 0xF0
+        elif program == 130: # APU Noise (Raw)
+            wave = WAVE_NOISE
+            attack_decay = 0x00
+            sustain_release = 0xF0
 
     return wave, attack_decay, sustain_release, pulse_width, features

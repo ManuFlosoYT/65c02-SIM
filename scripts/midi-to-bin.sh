@@ -7,7 +7,7 @@ if [ ! -d "assets/midi" ]; then
     exit 1
 fi
 
-echo "--- MIDI to BIN Automation (Smart Optimization) ---"
+echo "--- Audio to BIN Automation (MIDI & NSF) ---"
 
 target_file=""
 MICRO_DOS=false
@@ -25,7 +25,7 @@ done
 # Input Handling (filter out --microDOS flag)
 if [ "$1" == "all" ] || [ "$2" == "all" ]; then
     shopt -s nullglob
-    files=(assets/midi/*.mid assets/midi/*.midi)
+    files=(assets/midi/*.mid assets/midi/*.midi assets/nsf/*.nsf)
     shopt -u nullglob
     
     if [ ${#files[@]} -eq 0 ]; then
@@ -36,7 +36,7 @@ elif [ "$#" -eq 0 ]; then
     echo "Available MIDI files:"
     echo "  - all (Compile all MIDI files)"
     shopt -s nullglob
-    files=(assets/midi/*.mid assets/midi/*.midi)
+    files=(assets/midi/*.mid assets/midi/*.midi assets/nsf/*.nsf)
     shopt -u nullglob
     
     if [ ${#files[@]} -eq 0 ]; then
@@ -57,6 +57,8 @@ else
         target_file="$input_arg"
     elif [ -f "assets/midi/$input_arg" ]; then
         target_file="assets/midi/$input_arg"
+    elif [ -f "assets/nsf/$input_arg" ]; then
+        target_file="assets/nsf/$input_arg"
     else
         echo "Error: File '$input_arg' not found."
         exit 1
@@ -79,10 +81,15 @@ for midi_file in "${files[@]}"; do
     filename=$(basename "$midi_file")
     filename_no_ext="${filename%.*}"
     clean_name="${filename_no_ext// /}"
+    ext="${filename##*.}"
+    out_dir="output/midi"
+    if [ "${ext,,}" == "nsf" ]; then
+        out_dir="output/nsf"
+    fi
     
     if [ "$MICRO_DOS" = true ]; then
         echo ">> Generating Raw SID Bytes Mode: L1"
-        if ! python3 tools/sid/midi_to_sid.py "$midi_file" --mode "l1" --microDOS; then
+        if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS; then
             echo "   [!] Conversion script failed. Skipping."
             exit -1
         fi
@@ -95,7 +102,7 @@ for midi_file in "${files[@]}"; do
         echo ">> Attempting Mode: $mode"
         
         # 1. Convert MIDI to ASM
-        if ! python3 tools/sid/midi_to_sid.py "$midi_file" --mode "$mode"; then
+        if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "$mode"; then
             echo "   [!] Conversion script failed. Skipping."
             break 
         fi
@@ -107,10 +114,10 @@ for midi_file in "${files[@]}"; do
         mkdir -p tools/sid/build
         
         if ./scripts/compile-bin.sh "$clean_name" > /dev/null 2>&1; then
-            mkdir -p output/midi
+            mkdir -p "$out_dir"
             if [ -f "output/rom/$clean_name.bin" ]; then
-                mv "output/rom/$clean_name.bin" "output/midi/$clean_name.bin"
-                echo "   [OK] Compilation SUCCESS with mode '$mode'! Moved to output/midi/$clean_name.bin"
+                mv "output/rom/$clean_name.bin" "$out_dir/$clean_name.bin"
+                echo "   [OK] Compilation SUCCESS with mode '$mode'! Moved to $out_dir/$clean_name.bin"
                 success=true
                 break # Exit mode loop, done with this file
             else
