@@ -12,6 +12,8 @@ except ImportError:
     print("Please install it using: pip install py65")
     sys.exit(1)
 
+from midi_processor import MidiProcessor
+
 class NsfMemory:
     def __init__(self, processor):
         self.mem = bytearray(65536)
@@ -26,12 +28,21 @@ class NsfMemory:
             self.processor._apu_write_hook(addr, val)
 
 
-class NsfProcessor:
+class NsfProcessor(MidiProcessor):
     def __init__(self, nsf_path, mode="l1", duration=180):
+        self.midi_path = nsf_path # For compatibility
         self.nsf_path = nsf_path
         self.mode = mode
         self.duration = duration
         self.events = []
+        self.bass_channel = -1
+        self.melody_channel = -1
+        
+        self.quant_grid = 0.001
+        self.min_note_duration = 0.0
+        self.chord_reduce = False
+        
+        self._configure_mode()
         
         self.cpu = MPU()
         self.memory = NsfMemory(self)
@@ -78,7 +89,6 @@ class NsfProcessor:
             
             # Load into memory
             addr = self.load_addr
-            # If load_addr is 0, we should pad according to spec, but usually it's just raw load.
             for b in data:
                 self.memory.mem[addr] = b
                 addr = (addr + 1) & 0xFFFF
@@ -130,9 +140,15 @@ class NsfProcessor:
         current_time = 0.0
         max_time = self.duration
         
-        self.prev_ch_states = [None, None, None, None] # Pulse1, Pulse2, Tri, Noise
+        self.prev_ch_states = [{'vol': 0, 'freq': 0, 'duty': None, 'active_note': None} for _ in range(4)]
         silence_frames = 0
         
+        # Setup Pitchbend Range to 24 for all channels
+        for ch in range(4):
+            self.events.append({'time': 0, 'type': 'control_change', 'control': 101, 'value': 0, 'channel': ch})
+            self.events.append({'time': 0, 'type': 'control_change', 'control': 100, 'value': 0, 'channel': ch})
+            self.events.append({'time': 0, 'type': 'control_change', 'control': 6, 'value': 24, 'channel': ch})
+
         while current_time < max_time:
             self.has_apu_changes = False
             call_subroutine(self.play_addr)
@@ -158,15 +174,36 @@ class NsfProcessor:
                 
             current_time += frame_time
             
+        # Ensure trailing note_offs
+        for ch in range(4):
+            if self.prev_ch_states[ch]['vol'] > 0:
+                active_note = self.prev_ch_states[ch].get('active_note', 60)
+                self.events.append({'time': current_time, 'type': 'note_off', 'note': active_note, 'channel': ch})
+            
         print(f"   Generated {len(self.events)} raw events.")
+        
+        # Post-processing pipeline shared with MidiProcessor
+        self._analyze_channels()
+        
+        # We don't analyze density or key unless we want to
+        self._filter_short_notes()
+        self._simplify_chords()
+
+        if self.chord_reduce:
+            self._reduce_chords()
+
+        self._cull_polyphony()
+
+        if hasattr(self, 'density_map') and self.density_map:
+            self._quantize_dynamic()
+        else:
+            for ev in self.events:
+                ev['time'] = round(ev['time'] / self.quant_grid) * self.quant_grid
+
+        self.events.sort(key=lambda x: (x['time'], 0 if x['type'] == 'note_off' else 1))
+
         self._deduplicate()
         print(f"   Optimized to {len(self.events)} events.")
-        
-        # Add metadata for the BytecodeGenerator to understand this is raw APU stuff
-        # We'll just define the melody and bass channel for the generator
-        self.melody_channel = 0
-        self.bass_channel = 2
-        self.chord_reduce = False
         
         return self.events
 
@@ -222,12 +259,7 @@ class NsfProcessor:
         return note
 
     def _emit_channel_state(self, ch, current_time, vol, freq, duty=None):
-        state = {'vol': vol, 'freq': freq, 'duty': duty}
         prev = self.prev_ch_states[ch]
-        
-        if not prev:
-            prev = {'vol': 0, 'freq': 0, 'duty': None}
-            
         note = self._freq_to_note(freq)
         
         if vol > 0:
@@ -237,43 +269,33 @@ class NsfProcessor:
                 elif ch == 3: prog = 130 # APU Noise
                 
                 self.events.append({'time': current_time, 'type': 'program_change', 'program': prog, 'channel': ch})
-                self.events.append({'time': current_time, 'type': 'note_on', 'note': note, 'velocity': int((vol / 15.0) * 127), 'channel': ch})
+                self.events.append({'time': current_time, 'type': 'note_on', 'note': round(note), 'velocity': int((vol / 15.0) * 127), 'channel': ch})
+                prev['active_note'] = round(note)
             else:
                 if prev['vol'] != vol:
                     self.events.append({'time': current_time, 'type': 'control_change', 'control': 7, 'value': int((vol / 15.0) * 127), 'channel': ch})
                 if abs(prev['freq'] - freq) > 0.05:
-                    self.events.append({'time': current_time, 'type': 'note_on', 'note': note, 'velocity': int((vol / 15.0) * 127), 'channel': ch})
+                    active_note = prev.get('active_note', round(note))
+                    diff = note - active_note
+                    
+                    if abs(diff) > 24:
+                        self.events.append({'time': current_time, 'type': 'note_off', 'note': active_note, 'channel': ch})
+                        self.events.append({'time': current_time, 'type': 'note_on', 'note': round(note), 'velocity': int((vol / 15.0) * 127), 'channel': ch})
+                        prev['active_note'] = round(note)
+                    else:
+                        pb_val = int((diff / 24.0) * 8191)
+                        pb_val = max(-8192, min(8191, pb_val))
+                        self.events.append({'time': current_time, 'type': 'pitchwheel', 'pitch': pb_val, 'channel': ch})
             
             if duty is not None and duty != prev['duty']:
                 self.events.append({'time': current_time, 'type': 'control_change', 'control': 14, 'value': duty, 'channel': ch})
                 
         else:
             if prev['vol'] > 0:
-                self.events.append({'time': current_time, 'type': 'note_off', 'note': self._freq_to_note(prev['freq']), 'channel': ch})
+                active_note = prev.get('active_note', round(note))
+                self.events.append({'time': current_time, 'type': 'note_off', 'note': active_note, 'channel': ch})
+                prev['active_note'] = None
 
-        self.prev_ch_states[ch] = state
-
-    def _deduplicate(self):
-        unique = []
-        last_ev = {}
-        for ev in self.events:
-            ch = ev.get('channel', 0)
-            if ev['type'] == 'control_change':
-                k = (ch, ev['control'])
-                if last_ev.get(k) == ev['value']:
-                    continue
-                last_ev[k] = ev['value']
-            
-            if ev['type'] == 'note_on':
-                k = (ch, 'note')
-                if last_ev.get(k) == (ev['note'], ev['velocity']):
-                    continue
-                last_ev[k] = (ev['note'], ev['velocity'])
-            
-            if ev['type'] == 'note_off':
-                k = (ch, 'note')
-                last_ev[k] = None
-
-            unique.append(ev)
-        
-        self.events = unique
+        prev['vol'] = vol
+        prev['freq'] = freq
+        prev['duty'] = duty
