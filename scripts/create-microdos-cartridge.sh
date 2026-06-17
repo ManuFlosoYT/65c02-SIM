@@ -4,22 +4,44 @@ set -e
 # Automation script for microDOS Cartridge version 3.0
 # Requires: dosfstools (mkfs.fat), mtools (mformat, mcopy)
 
+MULTITHREAD=false
+for arg in "$@"; do
+    if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
+        MULTITHREAD=true
+    fi
+done
+
 echo "--- Building microDOS Cartridge v3.0 ---"
 
 SCRIPT_DIR="$(dirname "$0")"
 
-"$SCRIPT_DIR/compile-bin.sh" microDOS
+if [ "$MULTITHREAD" = true ]; then
+    "$SCRIPT_DIR/compile-bin.sh" microDOS -multithread
+else
+    "$SCRIPT_DIR/compile-bin.sh" microDOS
+fi
 
 # 2. Compile all available microDOS apps
 echo "  Compiling microDOS apps..."
 mkdir -p output/apps
+pids=()
 for app_src in sdk/microdosapps/Apps/*.c; do
     if [ -f "$app_src" ]; then
         app_name=$(basename "${app_src%.c}")
         echo "    Building $app_name.app..."
-        "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > /dev/null 2>&1
+        if [ "$MULTITHREAD" = true ]; then
+            "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > /dev/null 2>&1 &
+            pids+=($!)
+        else
+            "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > /dev/null 2>&1
+        fi
     fi
 done
+if [ "$MULTITHREAD" = true ]; then
+    for pid in "${pids[@]}"; do
+        wait "$pid" || exit 1
+    done
+fi
 
 # 3. Create FAT16 SD Image (32MB)
 echo "  Creating 32MB SD Card Image..."
@@ -38,7 +60,11 @@ mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
 
 # 4. Compile MIDs to .sid for microDOS
 echo "  Compiling raw SID files..."
-"$SCRIPT_DIR/midi-to-bin.sh" all --microDOS
+if [ "$MULTITHREAD" = true ]; then
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS -multithread
+else
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS
+fi
 
 # 5. Populate SD Card with /bin, /sid, and apps
 echo "  Populating SD Card..."
