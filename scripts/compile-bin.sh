@@ -21,8 +21,15 @@ fi
 
 NAME=$1
 
+MULTITHREAD=false
+for arg in "$@"; do
+    if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
+        MULTITHREAD=true
+    fi
+done
+
 # --microDOS: compile a .c file as a microDOS .app binary
-if [ "$2" == "--microDOS" ]; then
+if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
     echo "--- Compiling $NAME.app (microDOS App) ---"
     SRC=""
     if [ -f "sdk/microdosapps/Apps/$NAME.c" ]; then
@@ -38,15 +45,15 @@ if [ "$2" == "--microDOS" ]; then
         -I "sdk/src" -I "sdk/microdosapps" \
         -o "sdk/src/build/${NAME}_app.s" "$SRC"
 
-    python3 tools/linker/generate_app_cfg.py > "sdk/src/build/app.cfg"
+    python3 tools/linker/generate_app_cfg.py > "sdk/src/build/${NAME}_app.cfg"
 
-    ca65 --cpu 65C02 -g -o "sdk/src/build/App-Runtime.o" sdk/linker/App-Runtime.s
+    ca65 --cpu 65C02 -g -o "sdk/src/build/${NAME}_App-Runtime.o" sdk/linker/App-Runtime.s
     ca65 --cpu 65C02 -g -o "sdk/src/build/${NAME}_app.o" "sdk/src/build/${NAME}_app.s"
     
-    ld65 -C "sdk/src/build/app.cfg" \
+    ld65 -C "sdk/src/build/${NAME}_app.cfg" \
         -o "sdk/src/build/${NAME}.raw" \
         -m "sdk/src/build/${NAME}.map" \
-        "sdk/src/build/App-Runtime.o" \
+        "sdk/src/build/${NAME}_App-Runtime.o" \
         "sdk/src/build/${NAME}_app.o" \
         none.lib
 
@@ -106,20 +113,35 @@ elif [ "$NAME" == "microDOS" ]; then
 
     echo "  Compilando módulos en microDOS/..."
     MICRODOS_OBJS=""
+    pids=()
     for f in sdk/src/microDOS/*.c; do
         if [ -f "$f" ]; then
             mod_name=$(basename "${f%.c}")
-            cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-                -I "sdk/src" -I "sdk/src/microDOS" \
-                -o "sdk/src/build/$mod_name.s" "$f"
+            if [ "$MULTITHREAD" = true ]; then
+                cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+                    -I "sdk/src" -I "sdk/src/microDOS" \
+                    -o "sdk/src/build/$mod_name.s" "$f" &
+                pids+=($!)
+            else
+                cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+                    -I "sdk/src" -I "sdk/src/microDOS" \
+                    -o "sdk/src/build/$mod_name.s" "$f"
+            fi
             MICRODOS_OBJS="$MICRODOS_OBJS sdk/src/build/$mod_name.s"
         fi
     done
 
     echo "  Compilando main..."
-    cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-        -I "sdk/src" -I "sdk/src/microDOS" \
-        -o "sdk/src/build/microDOS.s" "sdk/src/microDOS.c"
+    if [ "$MULTITHREAD" = true ]; then
+        cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+            -I "sdk/src" -I "sdk/src/microDOS" \
+            -o "sdk/src/build/microDOS.s" "sdk/src/microDOS.c" &
+        pids+=($!)
+    else
+        cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+            -I "sdk/src" -I "sdk/src/microDOS" \
+            -o "sdk/src/build/microDOS.s" "sdk/src/microDOS.c"
+    fi
 
     CFG_FLAGS=""
     if grep -r -q '#include "Libs/NET.h"' sdk/src/microDOS/ sdk/src/microDOS.c; then
@@ -133,12 +155,31 @@ elif [ "$NAME" == "microDOS" ]; then
     CFG_FLAGS="$CFG_FLAGS --microDOS"
 
     echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
-    cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c
-    cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c
-    cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
-    cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/net_utils.s sdk/src/Libs/NET.c
-    cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/sd.s sdk/src/Libs/SD.c
+    if [ "$MULTITHREAD" = true ]; then
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c &
+        pids+=($!)
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c &
+        pids+=($!)
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c &
+        pids+=($!)
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/net_utils.s sdk/src/Libs/NET.c &
+        pids+=($!)
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/sd.s sdk/src/Libs/SD.c &
+        pids+=($!)
+    else
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/net_utils.s sdk/src/Libs/NET.c
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/sd.s sdk/src/Libs/SD.c
+    fi
     EXTRA_OBJS="sdk/src/build/bios_utils.s sdk/src/build/net_utils.s sdk/src/build/ff.s sdk/src/build/diskio.s sdk/src/build/sd.s"
+
+    if [ "$MULTITHREAD" = true ]; then
+        for pid in "${pids[@]}"; do
+            wait "$pid" || exit 1
+        done
+    fi
 
     echo "  Generating dynamic Linker CFG..."
     python3 tools/linker/generate_cfg.py $CFG_FLAGS > "sdk/src/build/C-Runtime-dynamic.cfg"
