@@ -12,6 +12,7 @@ echo "--- Audio to BIN Automation (MIDI & NSF) ---"
 target_file=""
 MICRO_DOS=false
 SDK_MODE=false
+MULTITHREAD=false
 
 for arg in "$@"; do
     if [ "$arg" == "--microDOS" ]; then
@@ -19,6 +20,9 @@ for arg in "$@"; do
     fi
     if [ "$arg" == "--sdk" ]; then
         SDK_MODE=true
+    fi
+    if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
+        MULTITHREAD=true
     fi
 done
 
@@ -73,6 +77,7 @@ else
     MODES=("l1" "l2" "l3" "l4" "l5" "l6" "l7" "l8" "l9" "l10" "l11" "l12" "l13" "l14" "l15")
 fi
 
+pids=()
 for midi_file in "${files[@]}"; do
     echo "========================================"
     echo "Processing: $midi_file"
@@ -89,11 +94,16 @@ for midi_file in "${files[@]}"; do
     
     if [ "$MICRO_DOS" = true ]; then
         echo ">> Generating Raw SID Bytes Mode: L1"
-        if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS; then
-            echo "   [!] Conversion script failed. Skipping."
-            exit -1
+        if [ "$MULTITHREAD" = true ]; then
+            python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS > /dev/null 2>&1 &
+            pids+=($!)
+        else
+            if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS; then
+                echo "   [!] Conversion script failed. Skipping."
+                exit -1
+            fi
+            echo "   [OK] Compilation SUCCESS! (Raw format)"
         fi
-        echo "   [OK] Compilation SUCCESS! (Raw format)"
         success=true
         continue
     fi
@@ -138,6 +148,12 @@ for midi_file in "${files[@]}"; do
     fi
 done
 
+
+if [ "$MULTITHREAD" = true ]; then
+    for pid in "${pids[@]}"; do
+        wait "$pid" || exit 1
+    done
+fi
 
 echo "========================================"
 echo "All Done!"
