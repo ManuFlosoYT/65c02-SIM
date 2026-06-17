@@ -4,9 +4,17 @@ set -e
 SCRIPT_DIR="$(dirname "$0")"
 
 chmod +x "$SCRIPT_DIR/compile-bin.sh" "$SCRIPT_DIR/image-to-bin.sh" "$SCRIPT_DIR/midi-to-bin.sh" "$SCRIPT_DIR/create-cartridge.sh" "$SCRIPT_DIR/create-microdos-cartridge.sh"
-"$SCRIPT_DIR/compile-bin.sh" all
-"$SCRIPT_DIR/image-to-bin.sh" all
-"$SCRIPT_DIR/midi-to-bin.sh" all --sdk
+pids=()
+"$SCRIPT_DIR/compile-bin.sh" all &
+pids+=($!)
+"$SCRIPT_DIR/image-to-bin.sh" all &
+pids+=($!)
+"$SCRIPT_DIR/midi-to-bin.sh" all --sdk &
+pids+=($!)
+
+for pid in "${pids[@]}"; do
+  wait "$pid" || exit 1
+done
 
 # Function to handle ROM flags
 get_rom_flags() {
@@ -27,6 +35,8 @@ get_rom_flags() {
   echo "$flags"
 }
 
+pids=()
+
 # Package ROMs
 echo "Packaging ROMs into cartridges..."
 for f in output/rom/*.bin; do
@@ -35,21 +45,26 @@ for f in output/rom/*.bin; do
     if [ "$name" == "microDOS" ]; then
         continue
     fi
-    "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" --type rom $(get_rom_flags "$name")
+    "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "Program for 65c02-SIM" --type rom $(get_rom_flags "$name") &
+    pids+=($!)
   fi
 done
 
 echo "Generating specialized microDOS cartridge..."
-"$SCRIPT_DIR/create-microdos-cartridge.sh"
+"$SCRIPT_DIR/create-microdos-cartridge.sh" -multithread &
+pids+=($!)
 
 # Package MIDIs
 echo "Packaging MIDIs into cartridges..."
 for f in output/midi/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
-    "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true --type midi
-    mkdir -p output/midi
-    mv "output/cartridge/$name.65c" "output/midi/"
+    (
+      "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "MIDI file for 65c02-SIM" --ips 1000000 --sid true --type midi
+      mkdir -p output/midi
+      mv "output/cartridge/$name.65c" "output/midi/"
+    ) &
+    pids+=($!)
   fi
 done
 
@@ -58,9 +73,12 @@ echo "Packaging NSFs into cartridges..."
 for f in output/nsf/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
-    "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "NSF file for 65c02-SIM" --ips 1000000 --sid true --type nsf
-    mkdir -p output/nsf
-    mv "output/cartridge/$name.65c" "output/nsf/"
+    (
+      "$SCRIPT_DIR/create-cartridge.sh" "$f" --name "$name" --author "SDK" --desc "NSF file for 65c02-SIM" --ips 1000000 --sid true --type nsf
+      mkdir -p output/nsf
+      mv "output/cartridge/$name.65c" "output/nsf/"
+    ) &
+    pids+=($!)
   fi
 done
 
@@ -69,10 +87,18 @@ echo "Packaging VRAM images into cartridges..."
 for f in output/vram/*.bin; do
   if [ -f "$f" ]; then
     name=$(basename "${f%.bin}")
-    "$SCRIPT_DIR/create-cartridge.sh" --vram "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true --type vram
-    mkdir -p output/vram
-    mv "output/cartridge/$name.65c" "output/vram/"
+    (
+      "$SCRIPT_DIR/create-cartridge.sh" --vram "$f" --name "$name" --author "SDK" --desc "VRAM image for 65c02-SIM" --gpu true --type vram
+      mkdir -p output/vram
+      mv "output/cartridge/$name.65c" "output/vram/"
+    ) &
+    pids+=($!)
   fi
+done
+
+# Wait for all background packaging processes
+for pid in "${pids[@]}"; do
+  wait "$pid" || exit 1
 done
 
 # Check if zip is installed
