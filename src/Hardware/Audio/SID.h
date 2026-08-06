@@ -92,6 +92,16 @@ class SID : public IBusDevice {
     bool soundEnabled = false;
     bool emulationPaused = true;
 
+    double filterLow = 0.0;
+    double filterBand = 0.0;
+    double filterF = 0.0;
+    double filterQ = 1.0;
+    std::uint8_t filterFiltMask = 0;
+    std::uint8_t filterMode = 0;
+
+    double dcBlockerState = 0.0;
+    double dcBlockerPrevIn = 0.0;
+
     // Audio Stream
     SDL_AudioStream* audioStream = nullptr;
     int sampleRate = 48000;

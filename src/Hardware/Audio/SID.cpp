@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <cmath>
 #include <mutex>
 #include <span>
 #include <cstring>
@@ -21,6 +22,18 @@ static uint32_t fast_rand() {
     seed ^= seed >> 17;
     seed ^= seed << 5;
     return seed;
+}
+
+static double PolyBLEP(double t, double dt) {
+    if (t < dt) {
+        double v = t / dt;
+        return v + v - (v * v) - 1.0;
+    }
+    if (t > 1.0 - dt) {
+        double v = (t - 1.0) / dt;
+        return (v * v) + v + v + 1.0;
+    }
+    return 0.0;
 }
 
 // Lookup tables for ADSR roughly based on SID specs
@@ -80,6 +93,10 @@ void SID::Reset() {
         voice.env.releaseRate = 0;
     }
     volumeRegister = 0;
+    filterLow = 0.0;
+    filterBand = 0.0;
+    dcBlockerState = 0.0;
+    dcBlockerPrevIn = 0.0;
 }
 
 void SID::EnableSound(bool enable) {
@@ -211,25 +228,68 @@ void SID::GenerateAudio(int16_t* buffer, int length) {
                 osc.accumulator = 0;
             }
         }
+
+        uint16_t fc = (registers.at(0x15) & 0x7) | (registers.at(0x16) << 3);
+        uint8_t resFilt = registers.at(0x17);
+        uint8_t modeVol = registers.at(0x18);
+
+        filterFiltMask = resFilt & 0x0F;
+        filterMode = modeVol & 0xF0;
+
+        double cutoffHz = 30.0 + ((static_cast<double>(fc) / 2047.0) * 12000.0);
+        filterF = 2.0 * std::sin(3.14159265358979323846 * cutoffHz / sampleRate);
+        filterF = std::min(filterF, 0.99);
+
+        uint8_t res = (resFilt >> 4) & 0x0F;
+        filterQ = 2.0 - (1.8 * ((static_cast<double>(res) / 15.0)));
     }  // Unlock mutex
 
     // Generation Phase (No Lock)
     std::span<int16_t> sampleBuf(buffer, static_cast<size_t>(length));
     for (int i = 0; i < length; ++i) {
-        double mix = 0.0;
-        for (auto& voice : voices) {
+        double filteredInput = 0.0;
+        double directOutput = 0.0;
+
+        for (size_t v = 0; v < voices.size(); ++v) {
+            Oscillator& voice = voices[v];
             bool gate = ((voice.control & 0x01) != 0);
             voice.env.Update(gate, sampleRate);
-            mix += voice.Next(sampleRate);
+            double voiceSample = voice.Next(sampleRate);
+
+            if ((filterFiltMask & (1 << v)) != 0) {
+                filteredInput += voiceSample;
+            } else {
+                if (v == 2 && (filterMode & 0x80) != 0) {
+                    continue;
+                }
+                directOutput += voiceSample;
+            }
         }
+
+        double high = filteredInput - filterLow - (filterQ * filterBand);
+        filterBand += (filterF * high);
+        filterLow += (filterF * filterBand);
+        filterBand = std::clamp(filterBand, -4.0, 4.0);
+        filterLow = std::clamp(filterLow, -4.0, 4.0);
+
+        double filterOutput = 0.0;
+        if ((filterMode & 0x10) != 0) filterOutput += filterLow;
+        if ((filterMode & 0x20) != 0) filterOutput += filterBand;
+        if ((filterMode & 0x40) != 0) filterOutput += high;
+
+        double mix = (directOutput + filterOutput) * 0.25;
+
+        mix = std::tanh(mix);
 
         double vol = currentVolume / 15.0;
         mix *= vol;
 
-        mix = std::min(mix, 1.0);
-        mix = std::max(mix, -1.0);
+        double filteredMix = mix - dcBlockerPrevIn + (0.995 * dcBlockerState);
+        dcBlockerState = filteredMix;
+        dcBlockerPrevIn = mix;
+        mix = filteredMix;
 
-        sampleBuf[static_cast<size_t>(i)] = static_cast<int16_t>(mix * 5000.0);
+        sampleBuf[static_cast<size_t>(i)] = static_cast<int16_t>(mix * 18000.0);
     }
 }
 
@@ -292,6 +352,9 @@ double Oscillator::Next(int sampleRate) {
     double step24 = frequency * (SID_CLOCK / sampleRate);
     accumulator = (accumulator + static_cast<uint32_t>(step24)) & 0xFFFFFF;
 
+    double t = static_cast<double>(accumulator) / 16777216.0;
+    double dt = step24 / 16777216.0;
+
     double output = 0.0;
 
     if ((control & 0x80) != 0) {  // Noise
@@ -307,14 +370,13 @@ double Oscillator::Next(int sampleRate) {
         }
         output = (static_cast<double>(temp) / 0x400000) - 1.0;
     } else if ((control & 0x20) != 0) {  // Sawtooth
-        output = (static_cast<double>(accumulator) / 0x800000) - 1.0;
+        output = (2.0 * t) - 1.0;
+        output -= 2.0 * PolyBLEP(t, dt);
     } else if ((control & 0x40) != 0) {  // Pulse
-        uint16_t accHigh = (accumulator >> 12) & 0xFFF;
-        if (accHigh >= (pulseWidth & 0xFFF)) {
-            output = 1.0;
-        } else {
-            output = -1.0;
-        }
+        double pw = static_cast<double>(pulseWidth & 0xFFF) / 4096.0;
+        output = (t >= pw) ? 1.0 : -1.0;
+        output -= 2.0 * PolyBLEP(t, dt);
+        output += 2.0 * PolyBLEP(std::fmod(t + 1.0 - pw, 1.0), dt);
     }
 
     return output * env.level;
@@ -369,6 +431,10 @@ bool SID::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, volumeRegister);
     ISerializable::Serialize(out, soundEnabled);
     ISerializable::Serialize(out, emulationPaused);
+    ISerializable::Serialize(out, filterLow);
+    ISerializable::Serialize(out, filterBand);
+    ISerializable::Serialize(out, dcBlockerState);
+    ISerializable::Serialize(out, dcBlockerPrevIn);
     return out.good();
 }
 
@@ -381,6 +447,10 @@ bool SID::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, volumeRegister);
     ISerializable::Deserialize(inStream, soundEnabled);
     ISerializable::Deserialize(inStream, emulationPaused);
+    ISerializable::Deserialize(inStream, filterLow);
+    ISerializable::Deserialize(inStream, filterBand);
+    ISerializable::Deserialize(inStream, dcBlockerState);
+    ISerializable::Deserialize(inStream, dcBlockerPrevIn);
     UpdateAudioState();
     return inStream.good();
 }
