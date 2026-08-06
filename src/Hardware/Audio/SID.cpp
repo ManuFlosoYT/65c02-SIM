@@ -146,7 +146,7 @@ void SID::AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_
         int samples = static_cast<int>(additional_amount / sizeof(int16_t));
         std::vector<int16_t> buffer(samples);
         sid->GenerateAudio(buffer.data(), samples);
-        
+
 #ifndef TARGET_WASM
         bool shouldPush = false;
         {
@@ -158,14 +158,14 @@ void SID::AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_
             sid->recorder->PushAudio(buffer.data(), samples);
         }
 #endif
-        
+
         {
             std::lock_guard<std::mutex> lock(sid->sidMutex);
             if (sid->audioCallback) {
                 sid->audioCallback(buffer.data(), samples);
             }
         }
-        
+
         SDL_PutAudioStreamData(stream, buffer.data(), additional_amount);
     }
 }
@@ -213,7 +213,7 @@ void SID::GenerateAudio(int16_t* buffer, int length) {
         }
     }  // Unlock mutex
 
-    // 2. Generation Phase (No Lock)
+    // Generation Phase (No Lock)
     std::span<int16_t> sampleBuf(buffer, static_cast<size_t>(length));
     for (int i = 0; i < length; ++i) {
         double mix = 0.0;
