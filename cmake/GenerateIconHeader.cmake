@@ -2,28 +2,28 @@
 # Usage: cmake -DMAGICK_EXECUTABLE=... -DINPUT_PNG=... -DOUTPUT_HEADER=... -P GenerateIconHeader.cmake
 
 if(NOT MAGICK_EXECUTABLE)
-    message(FATAL_ERROR "ImageMagick executable not provided.")
+	message(FATAL_ERROR "ImageMagick executable not provided.")
 endif()
 
-# 1. Convert PNG to raw RGBA8888 binary
+# Convert PNG to raw RGBA8888 binary
 set(TEMP_BIN "${OUTPUT_HEADER}.bin")
 execute_process(
-    COMMAND "${MAGICK_EXECUTABLE}" "${INPUT_PNG}" "-depth" "8" "RGBA:${TEMP_BIN}"
-    RESULT_VARIABLE res
+				COMMAND "${MAGICK_EXECUTABLE}" "${INPUT_PNG}" "-depth" "8" "RGBA:${TEMP_BIN}"
+				RESULT_VARIABLE res
 )
 
 if(NOT res EQUAL 0)
-    message(FATAL_ERROR "Failed to convert PNG to raw pixels using ImageMagick.")
+	message(FATAL_ERROR "Failed to convert PNG to raw pixels using ImageMagick.")
 endif()
 
-# 2. Read binary and generate C++ header
+# Read binary and generate C++ header
 file(READ "${TEMP_BIN}" raw_data HEX)
 file(REMOVE "${TEMP_BIN}")
 
 string(LENGTH "${raw_data}" len_hex)
 math(EXPR len_bytes "${len_hex} / 2")
 
-# Format as hex array: 0xXX, 0xXX, ...
+# Format as hex array
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " hex_array "${raw_data}")
 
 file(WRITE "${OUTPUT_HEADER}"
@@ -34,7 +34,7 @@ file(WRITE "${OUTPUT_HEADER}"
 // Generated from ${INPUT_PNG}
 
 const uint8_t icon_pixels_bin[] = {
-    ${hex_array}
+				${hex_array}
 };
 
 const uint32_t icon_pixels_bin_len = ${len_bytes};

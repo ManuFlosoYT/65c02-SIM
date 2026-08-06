@@ -1,10 +1,9 @@
 #!/bin/bash
 
-# --- CONFIGURACIÓN ---
+# --- CONFIG ---
 GPU_DIR="assets/vram"
 PYTHON_SCRIPT="tools/gpu/image-to-bin.py"
 
-# --- FUNCIONES ---
 listar_imagenes() {
     echo "-----------------------------------------------------"
     echo "Images in '$GPU_DIR/':"
@@ -20,7 +19,6 @@ listar_imagenes() {
     echo "-----------------------------------------------------"
 }
 
-# --- ARGUMENTOS ---
 INPUT_FILE="$1"
 TARGET_FILE=""
 
@@ -48,14 +46,12 @@ else
     exit 1
 fi
 
-# --- DEPENDENCIAS ---
+# --- DEPENDENCIES ---
 if ! command -v python3 &> /dev/null; then echo "Python3 not found."; exit 1; fi
 if ! python3 -c "import PIL" &> /dev/null; then
     echo "Pillow not found. Please install it using: pip install pillow"
     exit 1
 fi
-
-# --- EJECUTAR ---
 
 
 if python3 "$PYTHON_SCRIPT" "$TARGET_FILE"; then
@@ -65,7 +61,6 @@ else
     exit 1
 fi
 
-# Move to output/vram/
 FILENAME=$(basename "$TARGET_FILE")
 NAME="${FILENAME%.*}"
 mkdir -p output/vram

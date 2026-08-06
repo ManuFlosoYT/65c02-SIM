@@ -26,7 +26,6 @@ if [ "$DO_CLEAN" = true ]; then
     rm -rf "$BUILD_DIR"
 fi
 
-# --- Emscripten Automatic Setup ---
 EMSDK_DIR="emsdk_local"
 
 if ! command -v emcmake >/dev/null 2>&1; then
@@ -88,11 +87,11 @@ if command -v jq >/dev/null 2>&1; then
     echo "Generating structured roms.json..."
     # Prioritize .65c cartridges for the ROMs list
     ROMS_JSON=$(ls output/cartridge/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
-    
+
     # Keep others for compatibility or direct loading if needed
     MIDIS_JSON=$(ls output/midi/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
     VRAMS_JSON=$(ls output/vram/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
-    
+
     jq -n --argjson r "$ROMS_JSON" --argjson m "$MIDIS_JSON" --argjson v "$VRAMS_JSON" \
         '{roms: $r, midis: $m, vrams: $v}' > output/web/roms/roms.json
 else
@@ -102,7 +101,7 @@ fi
 if [ "$DO_RUN" = true ]; then
     PORT=8080
     echo "Starting local server at http://localhost:$PORT..."
-    
+
     # Open browser in background
     if command -v xdg-open > /dev/null; then
         xdg-open "http://localhost:$PORT" &

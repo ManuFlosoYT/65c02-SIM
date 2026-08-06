@@ -49,7 +49,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
 
     ca65 --cpu 65C02 -g -o "sdk/src/build/${NAME}_App-Runtime.o" sdk/linker/App-Runtime.s
     ca65 --cpu 65C02 -g -o "sdk/src/build/${NAME}_app.o" "sdk/src/build/${NAME}_app.s"
-    
+
     ld65 -C "sdk/src/build/${NAME}_app.cfg" \
         -o "sdk/src/build/${NAME}.raw" \
         -m "sdk/src/build/${NAME}.map" \
@@ -57,7 +57,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
         "sdk/src/build/${NAME}_app.o" \
         none.lib
 
-    # El Linker ya incluye la cabecera uDOS generada en .segment "HEADER"
+	# The linker already includes the uDOS header generated in .segment "HEADER"
     mkdir -p output/apps
     cp "sdk/src/build/${NAME}.raw" "output/apps/${NAME}.app"
     echo "App saved to output/apps/${NAME}.app"
@@ -66,7 +66,7 @@ fi
 
 if [ "$NAME" == "all" ]; then
     echo "--- Compiling ALL Targets ---"
-    
+
     $0 eater
 
     for f in sdk/src/*.s; do
@@ -111,7 +111,7 @@ elif [ -f "sdk/src/$NAME.s" ]; then
 elif [ "$NAME" == "microDOS" ]; then
     echo "--- Compiling microDOS (Multi-module C) ---"
 
-    echo "  Compilando módulos en microDOS/..."
+    echo "  Compiling microDOS modules..."
     MICRODOS_OBJS=""
     pids=()
     for f in sdk/src/microDOS/*.c; do
@@ -131,7 +131,7 @@ elif [ "$NAME" == "microDOS" ]; then
         fi
     done
 
-    echo "  Compilando main..."
+    echo "  Compiling microDOS main..."
     if [ "$MULTITHREAD" = true ]; then
         cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
             -I "sdk/src" -I "sdk/src/microDOS" \
@@ -154,7 +154,7 @@ elif [ "$NAME" == "microDOS" ]; then
     fi
     CFG_FLAGS="$CFG_FLAGS --microDOS"
 
-    echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
+    echo "  [SD.h detected] Compiling FatFs (ff.c + diskio.c)..."
     if [ "$MULTITHREAD" = true ]; then
         cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c &
         pids+=($!)
@@ -185,7 +185,7 @@ elif [ "$NAME" == "microDOS" ]; then
     python3 tools/linker/generate_cfg.py $CFG_FLAGS > "sdk/src/build/C-Runtime-dynamic.cfg"
     LINKER_CFG="sdk/src/build/C-Runtime-dynamic.cfg"
 
-    echo "  Enlazando binario final..."
+    echo "  Linking binary..."
     cl65 -g --cpu 65C02 -t none -C "$LINKER_CFG" \
         -o "sdk/src/build/microDOS.bin" \
         -m "sdk/src/build/microDOS.map" -vm \
@@ -199,7 +199,7 @@ elif [ "$NAME" == "microDOS" ]; then
 
     mkdir -p output/rom
     cp "sdk/src/build/microDOS.bin" "output/rom/microDOS.bin"
-    
+
 elif [ -f "sdk/src/$NAME.c" ]; then
     echo "--- Compiling $NAME.c (C) ---"
     cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
@@ -213,7 +213,7 @@ elif [ -f "sdk/src/$NAME.c" ]; then
         echo "  [GPU detected] Added --gpu to Linker"
         CFG_FLAGS="$CFG_FLAGS --gpu"
     fi
-    
+
     if grep -q '#include "Libs/NET.h"' "sdk/src/$NAME.c"; then
         echo "  [NET detected] Added --net to Linker"
         CFG_FLAGS="$CFG_FLAGS --net"
@@ -230,7 +230,7 @@ elif [ -f "sdk/src/$NAME.c" ]; then
     cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
     EXTRA_OBJS="sdk/src/build/bios_utils.s"
     if grep -q '#include "Libs/SD.h"' "sdk/src/$NAME.c"; then
-        echo "  [SD.h detected] Compilando FatFs (ff.c + diskio.c)..."
+        echo "  [SD.h detected] Compiling FatFs (ff.c + diskio.c)..."
         cl65 -O --cpu 65C02 -t none -S \
             -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c
         cl65 -O --cpu 65C02 -t none -S \

@@ -21,7 +21,7 @@ else
     "$SCRIPT_DIR/compile-bin.sh" microDOS
 fi
 
-# 2. Compile all available microDOS apps
+# Compile all available microDOS apps
 echo "  Compiling microDOS apps..."
 mkdir -p output/apps
 pids=()
@@ -43,7 +43,7 @@ if [ "$MULTITHREAD" = true ]; then
     done
 fi
 
-# 3. Create FAT16 SD Image (32MB)
+# Create FAT16 SD Image (32MB)
 echo "  Creating 32MB SD Card Image..."
 mkdir -p output/img
 SD_PATH="output/img/microDOS.img"
@@ -58,7 +58,7 @@ truncate -s 32M "$SD_PATH"
 # -n: Volume label
 mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
 
-# 4. Compile MIDs to .sid for microDOS
+# Compile MIDs to .sid for microDOS
 echo "  Compiling raw SID files..."
 if [ "$MULTITHREAD" = true ]; then
     "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS -multithread
@@ -66,7 +66,7 @@ else
     "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS
 fi
 
-# 5. Populate SD Card with /bin, /sid, and apps
+# Populate SD Card with /bin, /sid, and apps
 echo "  Populating SD Card..."
 # Use mtools (mmd, mcopy) to manipulate the raw image
 mmd -i "$SD_PATH" ::/bin
@@ -84,14 +84,14 @@ for sidfile in output/midi/*.sid; do
     fi
 done
 
-# 5. Create the Cartridge (.65c)
+# Create the Cartridge (.65c)
 echo "  Packaging Cartridge..."
 "$SCRIPT_DIR/create-cartridge.sh" output/rom/microDOS.bin \
     --sd-image "$SD_PATH" \
     --name "microDOS" \
     --author "ManuFloso" \
     --desc "microDOS Operating System with pre-loaded apps" \
-    --version "3.0" \
+    --version "3.1" \
     --ips 1000000 \
     --sid true \
     --sd true \
