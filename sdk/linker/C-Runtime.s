@@ -5,29 +5,29 @@
 .import zerobss
 .import IRQ_HANDLER
 
-; Importamos símbolos creados por el linker para inicializar la pila C
+; Import symbols created by the linker to initialize the C stack
 .import __STACKSTART__
 
 .segment "CODE"
 
 _startup:
-    ; 1. Hardware Stack
+    ; Hardware Stack
     ldx #$FF
     txs
 
-    ; 2. Configurar el Stack de C
+    ; Configure the C stack
     lda #<__STACKSTART__
     sta sp
     lda #>__STACKSTART__
     sta sp+1
 
-    ; 2.5 Init C environment
+    ; Init C environment
     jsr copydata
     jsr zerobss
 
-    jsr _main       ; Ejecuta el código C
+    jsr _main       ; Run C code
 
-    ; 3. Al volver, crash intencional
+    ; Return, intentional crash
     .byte $02
 
 .segment "RESETVEC"
