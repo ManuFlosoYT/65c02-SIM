@@ -19,6 +19,7 @@ class Voice:
         self.start_time = 0
         self.active = False
         self.released = False # Track release phase
+        self.release_timer = 0.0
         self.priority_score = 0
         self.wave = WAVE_PULSE # Default
         self.arpeggio_notes = []
@@ -68,13 +69,13 @@ class BytecodeGenerator:
             self.voices[i-1].pwm_dir = 1
             self.voices[i-1].features = []
 
-        # L1-L3: High Quality (0.03s), L7-L8: Low Quality (0.10s), else Mid (0.06s)
+        # L1-L3: High Quality (0.04s), L7-L8: Low Quality (0.10s), else Mid (0.08s)
         if self.mode in [MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3]:
-            EFFECT_STEP = 0.03
+            EFFECT_STEP = 0.04
         elif self.mode in [MODE_LEVEL_7, MODE_LEVEL_8]:
             EFFECT_STEP = 0.10
         else:
-            EFFECT_STEP = 0.06
+            EFFECT_STEP = 0.08
 
         self.next_arp_time = 0.0
         self.next_pwm_time = 0.0
@@ -100,42 +101,55 @@ class BytecodeGenerator:
                         has_effects = True
                         break
 
+        def emit_delay_bytes(dt):
+            cycles = dt * SID_CLOCK
+            loops = int(cycles / 15.0)
+            while loops > 0:
+                cur = min(loops, 0xFFFF)
+                lo = cur & 0xFF
+                hi = (cur >> 8) & 0xFF
+                if cur <= 0xFF:
+                    bytecode.extend([0x82, lo])
+                else:
+                    bytecode.extend([0x81, lo, hi])
+                loops -= cur
+
+        def emit_delay_and_effects(dt):
+            # Fast check: active effects?
+            has_effects = False
+            for v in self.voices:
+                if v.active:
+                    ch = getattr(v, 'channel', 0)
+                    if (len(getattr(v, 'arpeggio_notes', [])) > 1 or "pwm_sweep" in getattr(v, 'features', []) or
+                        "vibrato" in getattr(v, 'features', []) or channel_pitchbend.get(ch, 0) != 0 or
+                        channel_mod.get(ch, 0) > 0):
+                        has_effects = True
+                        break
+
             if not has_effects:
-                # Just wait
-                cycles = dt * SID_CLOCK
-                loops = int(cycles / 15.0)
-                if loops > 0:
-                    if loops > 0xFFFF: loops = 0xFFFF
-                    lo = loops & 0xFF
-                    hi = (loops >> 8) & 0xFF
-                    if loops <= 0xFF:
-                        bytecode.extend([0x82, lo])
-                    else:
-                        bytecode.extend([0x81, lo, hi])
+                emit_delay_bytes(dt)
                 return
 
-            # If we have effects, slice the time into steps
+            # If we have effects, slice the time into steps and accumulate delays
             remaining = dt
+            accumulated_dt = 0.0
+
             while remaining > 0:
-                step = remaining
-                if step > EFFECT_STEP: step = EFFECT_STEP
+                step = min(remaining, EFFECT_STEP)
+                accumulated_dt += step
+                remaining -= step
 
-                cycles = step * SID_CLOCK
-                loops = int(cycles / 15.0)
-
-                if loops > 0:
-                    if loops > 0xFFFF:
-                        loops = 0xFFFF
-                    lo = loops & 0xFF
-                    hi = (loops >> 8) & 0xFF
-                    if loops <= 0xFF:
-                        bytecode.extend([0x82, lo])
-                    else:
-                        bytecode.extend([0x81, lo, hi])
+                # Record length of bytecode before updating effects
+                prev_len = len(bytecode)
 
                 # Update Effects
                 for v in self.voices:
                     if not v.active: continue
+                    if getattr(v, 'released', False):
+                        v.release_timer += step
+                        if v.release_timer > 0.8:
+                            v.active = False
+                            continue
                     base = get_voice_offset(v.index)
                     ch = getattr(v, 'channel', 0)
 
@@ -152,13 +166,22 @@ class BytecodeGenerator:
 
                     mod_val = channel_mod.get(ch, 0) / 127.0
                     if mod_val == 0 and "vibrato" in getattr(v, 'features', []):
-                        mod_val = 0.3 # Intrinsic vibrato
+                        if ch == self.melody_channel:
+                            is_highest = True
+                            for other_v in self.voices:
+                                if other_v.active and other_v.index != v.index and getattr(other_v, 'channel', -1) == ch:
+                                    if getattr(other_v, 'note', 0) > getattr(v, 'note', 0):
+                                        is_highest = False
+                                        break
+                            if is_highest:
+                                mod_val = 0.3 # Intrinsic vibrato ONLY for highest melody note!
                     
                     vib_semitones = 0.0
                     if mod_val > 0:
                         v.arp_counter += 1
                         lfo_phase = v.arp_counter * 0.5
                         vib_semitones = math.sin(lfo_phase) * 0.5 * mod_val
+                        vib_semitones = round(vib_semitones * 16.0) / 16.0
 
                     if semitones_shift != 0.0 or vib_semitones != 0.0 or is_arp:
                         freq = freq_for_note(note + semitones_shift + vib_semitones)
@@ -168,10 +191,10 @@ class BytecodeGenerator:
                         self._emit_reg(bytecode, base + FREQ_HI_1, (int(freq) >> 8) & 0xFF)
 
                     # 2. PWM Sweep (Every step)
-                    if "pwm_sweep" in getattr(v, 'features', []):
+                    if "pwm_sweep" in getattr(v, 'features', []) and not getattr(v, 'released', False):
                         cur = getattr(v, 'pwm_val', 0x800)
                         d = getattr(v, 'pwm_dir', 1)
-                        cur += (64 * d) # Faster sweep since step is larger
+                        cur += (128 * d) # Balanced PWM sweep step
                         if cur > 0x0E00:
                             cur = 0x0E00
                             v.pwm_dir = -1
@@ -182,7 +205,41 @@ class BytecodeGenerator:
                         self._emit_reg(bytecode, base + PW_LO_1, cur & 0xFF)
                         self._emit_reg(bytecode, base + PW_HI_1, (cur >> 8) & 0xFF)
 
-                remaining -= step
+                # If registers were actually written during this step, prepend the accumulated delay
+                if len(bytecode) > prev_len:
+                    new_writes = bytecode[prev_len:]
+                    del bytecode[prev_len:]
+                    
+                    # Flush accumulated delay first
+                    cycles = accumulated_dt * SID_CLOCK
+                    loops = int(cycles / 15.0)
+                    while loops > 0:
+                        c = min(loops, 0xFFFF)
+                        lo = c & 0xFF
+                        hi = (c >> 8) & 0xFF
+                        if c <= 0xFF:
+                            bytecode.extend([0x82, lo])
+                        else:
+                            bytecode.extend([0x81, lo, hi])
+                        loops -= c
+                    
+                    # Append new writes after delay
+                    bytecode.extend(new_writes)
+                    accumulated_dt = 0.0
+
+            # Flush any remaining accumulated delay at the end of dt
+            if accumulated_dt > 0.0:
+                cycles = accumulated_dt * SID_CLOCK
+                loops = int(cycles / 15.0)
+                while loops > 0:
+                    c = min(loops, 0xFFFF)
+                    lo = c & 0xFF
+                    hi = (c >> 8) & 0xFF
+                    if c <= 0xFF:
+                        bytecode.extend([0x82, lo])
+                    else:
+                        bytecode.extend([0x81, lo, hi])
+                    loops -= c
 
         last_time = 0.0
 
@@ -250,6 +307,7 @@ class BytecodeGenerator:
                     v.start_time = ev['time']
                     v.priority_score = self._get_priority(note_val, ev['channel'], ev['time'])
                     v.released = False
+                    v.release_timer = 0.0
                     v.arpeggio_notes = notes
                     v.arp_index = 0
                     v.arp_counter = 0
@@ -337,6 +395,7 @@ class BytecodeGenerator:
                             # If empty, enter Release phase
                             if not v.arpeggio_notes:
                                 v.released = True
+                                v.release_timer = 0.0
                                 base = get_voice_offset(v.index)
                                 release_cmd = v.wave & (~WAVE_GATE)
                                 self.sid_state[base + CTRL_1] = release_cmd
@@ -344,6 +403,7 @@ class BytecodeGenerator:
 
                         elif v.note == ev['note']: # Fallback for single note
                             v.released = True
+                            v.release_timer = 0.0
                             base = get_voice_offset(v.index)
                             release_cmd = v.wave & (~WAVE_GATE)
                             self.sid_state[base + CTRL_1] = release_cmd
