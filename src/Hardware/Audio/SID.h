@@ -102,7 +102,6 @@ class SID : public IBusDevice {
     double dcBlockerState = 0.0;
     double dcBlockerPrevIn = 0.0;
 
-    // Audio Stream
     SDL_AudioStream* audioStream = nullptr;
     int sampleRate = 48000;
     mutable std::mutex sidMutex;
