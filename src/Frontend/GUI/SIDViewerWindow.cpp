@@ -37,6 +37,7 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
     double time = sid_time;
     float speed = 2.0F;
     float freqScale = 1.0F + ((float)voice.frequency / 4000.0F);
+    auto envLevel = static_cast<float>(voice.env.level);
 
     for (size_t nIdx = 0; nIdx < 50; nIdx++) {
         float timeRatio = (float)nIdx / 49.0F;
@@ -44,21 +45,24 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
         phase -= std::floor(phase);
 
         float val = 0.0F;
-        if ((voice.control & 0x10) != 0) {  // Triangle
-            val = (phase < 0.5F) ? (-1.0F + (4.0F * phase)) : (3.0F - (4.0F * phase));
-        } else if ((voice.control & 0x20) != 0) {  // Sawtooth
-            val = (2.0F * phase) - 1.0F;
-        } else if ((voice.control & 0x40) != 0) {  // Pulse
-            float pulseWidthRatio = (float)(voice.pulseWidth & 0xFFF) / 4095.0F;
-            if (pulseWidthRatio == 0.0F) {
-                pulseWidthRatio = 0.5F;
+        if (voice.frequency > 0 && envLevel > 0.0F) {
+            if ((voice.control & 0x10) != 0) {  // Triangle
+                val = (phase < 0.5F) ? (-1.0F + (4.0F * phase)) : (3.0F - (4.0F * phase));
+            } else if ((voice.control & 0x20) != 0) {  // Sawtooth
+                val = (2.0F * phase) - 1.0F;
+            } else if ((voice.control & 0x40) != 0) {  // Pulse
+                float pulseWidthRatio = (float)(voice.pulseWidth & 0xFFF) / 4095.0F;
+                if (pulseWidthRatio == 0.0F) {
+                    pulseWidthRatio = 0.5F;
+                }
+                val = (phase < pulseWidthRatio) ? 1.0F : -1.0F;
+            } else if ((voice.control & 0x80) != 0) {  // Noise
+                if (should_update) {
+                    noise_buffer.at(static_cast<size_t>(voiceIndex)).at(nIdx) = dist(randomGenerator);
+                }
+                val = noise_buffer.at(static_cast<size_t>(voiceIndex)).at(nIdx);
             }
-            val = (phase < pulseWidthRatio) ? 1.0F : -1.0F;
-        } else if ((voice.control & 0x80) != 0) {  // Noise
-            if (should_update) {
-                noise_buffer.at(static_cast<size_t>(voiceIndex)).at(nIdx) = dist(randomGenerator);
-            }
-            val = noise_buffer.at(static_cast<size_t>(voiceIndex)).at(nIdx);
+            val *= envLevel;
         }
         points.at(nIdx) = val;
     }
