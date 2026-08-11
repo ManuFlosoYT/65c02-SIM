@@ -1,3 +1,11 @@
 file(READ "CMakeLists.txt" CONTENT)
 string(REPLACE "VERSION 3.20" "VERSION 3.10" CONTENT "${CONTENT}")
 file(WRITE "CMakeLists.txt" "${CONTENT}")
+
+if(EXISTS "ImGuiFileDialog.cpp")
+    file(READ "ImGuiFileDialog.cpp" CPP_CONTENT)
+    string(REPLACE "m_FileListClipper.Begin((int)fdi.GetFilteredListSize(), ImGui::GetTextLineHeightWithSpacing());" "m_FileListClipper.Begin((int)fdi.GetFilteredListSize(), -1.0f);" CPP_CONTENT "${CPP_CONTENT}")
+    string(REPLACE "m_PathListClipper.Begin((int)fdi.GetPathFilteredListSize(), ImGui::GetTextLineHeightWithSpacing());" "m_PathListClipper.Begin((int)fdi.GetPathFilteredListSize(), -1.0f);" CPP_CONTENT "${CPP_CONTENT}")
+    string(REPLACE "m_FileListClipper.Begin((int)fdi.GetFilteredListSize(), itemHeight);" "m_FileListClipper.Begin((int)fdi.GetFilteredListSize(), -1.0f);" CPP_CONTENT "${CPP_CONTENT}")
+    file(WRITE "ImGuiFileDialog.cpp" "${CPP_CONTENT}")
+endif()
