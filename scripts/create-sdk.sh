@@ -123,6 +123,7 @@ zip -r SDK.zip sdk/ tools/ assets/ output/ \
     -x "output/video/*" \
     -x "output/savestate/*" \
     -x "output/img/*" \
-    -x "output/flac/*"
+    -x "output/flac/*" \
+    -x "output/SDK/*"
 
 echo "SDK Build Complete!"
