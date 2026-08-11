@@ -74,13 +74,13 @@ mmd -i "$SD_PATH" ::/sid
 
 for app in output/apps/*.app; do
     if [ -f "$app" ]; then
-        mcopy -i "$SD_PATH" "$app" ::/bin/
+        mcopy -o -i "$SD_PATH" "$app" ::/bin/
     fi
 done
 
-for sidfile in output/midi/*.sid; do
+for sidfile in output/midi/*.sid output/nsf/*.sid; do
     if [ -f "$sidfile" ]; then
-        mcopy -i "$SD_PATH" "$sidfile" ::/sid/
+        mcopy -o -i "$SD_PATH" "$sidfile" ::/sid/
     fi
 done
 

@@ -13,7 +13,8 @@ def write_bin(bytecode, input_path):
     filename_only = os.path.splitext(os.path.basename(input_path))[0].replace(" ", "") + ".sid"
     # Salida directa a la carpeta output/midi, asumiendo root del emulador a 2 niveles 
     project_root = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
-    output_dir = os.path.join(project_root, "output", "midi")
+    subfolder = "nsf" if input_path.lower().endswith(".nsf") else "midi"
+    output_dir = os.path.join(project_root, "output", subfolder)
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

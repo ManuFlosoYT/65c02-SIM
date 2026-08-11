@@ -91,6 +91,7 @@ for midi_file in "${files[@]}"; do
         out_dir="output/nsf"
     fi
 
+    success=false
     if [ "$MICRO_DOS" = true ]; then
         echo ">> Generating Raw SID Bytes Mode: L1"
         if [ "$MULTITHREAD" = true ]; then
@@ -107,7 +108,13 @@ for midi_file in "${files[@]}"; do
         continue
     fi
 
-    for mode in "${MODES[@]}"; do
+    if [ "${ext,,}" == "nsf" ] || [ "$SDK_MODE" = true ]; then
+        current_modes=("l1")
+    else
+        current_modes=("${MODES[@]}")
+    fi
+
+    for mode in "${current_modes[@]}"; do
         echo ">> Attempting Mode: $mode"
 
         # Convert MIDI to ASM
@@ -138,7 +145,9 @@ for midi_file in "${files[@]}"; do
     done
 
     if [ "$success" = false ]; then
-        if [ "$SDK_MODE" = true ]; then
+        if [ "${ext,,}" == "nsf" ]; then
+            echo "   [!] NSF song '$clean_name' discarded for independent ROM (Exceeds L1 limit)."
+        elif [ "$SDK_MODE" = true ]; then
             echo "   [!] Song '$clean_name' discarded (Does not fit in Mode L1)."
         else
             echo ">> CRITICAL: Could not compile '$clean_name' even in EXTREME mode."
