@@ -11,7 +11,7 @@ for arg in "$@"; do
         DO_CLEAN=true
     elif [[ "$arg" == "--debug" ]]; then
         BUILD_TYPE="Debug"
-    elif [[ "$arg" == "--reconfigure"]]; then
+    elif [[ "$arg" == "--reconfigure" ]]; then
         FORCE_CONFIGURE=true
     fi
 done
