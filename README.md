@@ -1,12 +1,21 @@
 <div align='center'>
 
 <h1>65c02 emulator for the BenEater memory layout implementation</h1>
-## [RUN IT ONLINE!](https://manuflosoyt.github.io/65c02-SIM/)
+<br/>
+
+# 🌐 [▶️ RUN IT ONLINE!](https://manuflosoyt.github.io/65c02-SIM/)
+
+<br/>
 <p>Emulated components: CPU, VIA, ACIA, SID, GPU, 32KB RAM, 32KB ROM, 7,5KB VRAM (6,25KB usable by CPU)</p>
 
 <h4> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/wiki"> Documentation </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Request Feature </a> </h4>
 
-[![Build and Release](https://github.com/ManuFlosoYT/65c02-SIM/actions/workflows/release.yml/badge.svg)](https://github.com/ManuFlosoYT/65c02-SIM/actions/workflows/release.yml)
+[![Build and Release](https://img.shields.io/github/actions/workflow/status/manuflosoyt/65c02-SIM/release.yml?style=for-the-badge&logo=github&label=Build%20and%20Release)](https://github.com/manuflosoyt/65c02-SIM/actions)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg?style=for-the-badge&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
+[![CMake](https://img.shields.io/badge/CMake-3.20+-064F8C?style=for-the-badge&logo=cmake&logoColor=white)](https://cmake.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![WebAssembly](https://img.shields.io/badge/WebAssembly-Emscripten-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)](https://webassembly.org/)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20Web-lightgrey?style=for-the-badge)](https://github.com/TU_USUARIO/TU_REPO)
 
 </div>
 
@@ -16,13 +25,9 @@
 
 Go to releases and download the latest release (and SDK if needed). [Here](https://github.com/ManuFlosoYT/65c02-SIM/releases)
 
-#### Run the Simulator
-
-Run the application and select the binary file you want to run.
-
 ### :package: SDK
 
-Each release includes an `SDK.zip` file containing everything needed to develop for this simulator:
+Each release includes an `SDK.zip` file containing everything needed to develop for the computer:
 
 - `Binaries/`: Example C and Assembly programs.
 - `Linker/`: Linker configurations and BIOS.
@@ -41,7 +46,7 @@ To install Fedora on Windows 10/11:
 1. Open **PowerShell** or **Command Prompt** as Administrator.
 2. Run the following command:
    ```powershell
-    wsl --install FedoraLinux-43
+    wsl --install FedoraLinux-44
    ```
 3. Open the newly installed **Fedora** application and configure your user account.
 4. Install the requiered dependencies from the prerequisites section bellow.
@@ -51,7 +56,7 @@ Once set up, you can run all the commands described below (and in the [Build fro
 Compile and run assembly or C programs from `./Binaries/` into the `output/rom` folder:
 
 ```bash
-./compile-bin.sh <program_name>
+./compile-bin.sh <file>
 ```
 
 _(Note: This tool automatically handles both `.s` and `.c` files, and also the special `eater` ROM target.)_
@@ -59,13 +64,13 @@ _(Note: This tool automatically handles both `.s` and `.c` files, and also the s
 Convert images to VRAM binary format into the `output/vram` folder:
 
 ```bash
-./image-to-bin.sh <image_name>
+./image-to-bin.sh <file>
 ```
 
-Convert MIDI files to SID assembly code into the `output/midi` folder:
+Convert MIDI or NSF files to SID assembly code into the `output/midi` or `output/nsf` folder:
 
 ```bash
-./midi-to-bin.sh <midi_file>
+./midi-to-bin.sh <file>
 ```
 
 ### :hammer_and_wrench: Build from Source
@@ -91,44 +96,32 @@ git clone https://github.com/ManuFlosoYT/65c02-SIM
 
 Build for Linux:
 
-Build for Linux:
-
 ```bash
 ./build-linux.sh
-# Check build errors or force a clean build
-./build-linux.sh --clean
+# (optional arguments) ./build-linux.sh --whatever
 ```
 
-Build for Windows (using MinGW):
+Build for Windows:
 
 ```bash
 ./build-win.sh
-# Check build errors or force a clean build
-./build-win.sh --clean
+# (optional arguments) ./build-win.sh --whatever
 ```
 
-Benchmark room.bin in headless mode (reproducible cycles/s and MHz):
+The parameters accepted by the script are divided according to their function:
 
-```bash
-./scripts/compile-bin.sh room
-./scripts/benchmark-room.sh --runs 5 --cycles 200000000
-```
+---
 
-Build optimized profiling binary (O3 + symbols + no strip):
+### Build Modes (`BUILD_TYPE`)
 
-```bash
-./scripts/build-linux.sh --perfdebug
-# LTO variant
-./scripts/build-linux.sh --perfdebug-lto
-```
+* **`--debug`**: Sets the build type to `Debug` (output directory: `build/debug`).
 
-Run automated PGO pipeline with room.bin:
+> *Note:* If none specified, the default value is `Release`.
 
-```bash
-./scripts/pgo-room.sh
-# Optional local CPU tuning
-./scripts/pgo-room.sh --native
-```
+### Environment and CMake Control
+
+* **`--clean`**: Completely removes the corresponding build directory before compiling.
+* **`--reconfigure`**: Forces CMake to reconfigure the project even if a `CMakeCache.txt` file already exists.
 
 ## :wave: Contributing
 
