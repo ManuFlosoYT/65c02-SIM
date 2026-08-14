@@ -5,31 +5,18 @@ BUILD_TYPE="Release"
 CMAKE_OPTS=""
 DO_CLEAN=false
 FORCE_CONFIGURE=false
-PERFDEBUG_LTO="OFF"
 for arg in "$@"; do
     if [[ "$arg" == "--clean" ]]; then
         DO_CLEAN=true
     elif [[ "$arg" == "--debug" ]]; then
         BUILD_TYPE="Debug"
-    elif [[ "$arg" == "--perfdebug" ]]; then
-        BUILD_TYPE="PerfDebug"
-        PERFDEBUG_LTO="OFF"
-    elif [[ "$arg" == "--perfdebug-lto" ]]; then
-        BUILD_TYPE="PerfDebug"
-        PERFDEBUG_LTO="ON"
-    elif [[ "$arg" == "--reconfigure" || "$arg" == "--configure" ]]; then
+    elif [[ "$arg" == "--reconfigure" ]]; then
         FORCE_CONFIGURE=true
     fi
 done
 
 if [[ "$BUILD_TYPE" == "Debug" ]]; then
     BUILD_DIR="build_win/debug"
-elif [[ "$BUILD_TYPE" == "PerfDebug" ]]; then
-    if [[ "$PERFDEBUG_LTO" == "ON" ]]; then
-        BUILD_DIR="build_win/perfdebug-lto"
-    else
-        BUILD_DIR="build_win/perfdebug"
-    fi
 else
     BUILD_DIR="build_win/release"
 fi
@@ -59,7 +46,7 @@ fi
 
 echo "Compiling for Windows (MinGW) in $BUILD_TYPE mode..."
 if [ ! -f "$BUILD_DIR/CMakeCache.txt" ] || [ "$FORCE_CONFIGURE" = true ]; then
-    cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DPERFDEBUG_ENABLE_LTO=$PERFDEBUG_LTO $CMAKE_OPTS
+    cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTS
 else
     echo "Skipping CMake configure (cache found). Use --reconfigure to force it."
 fi
