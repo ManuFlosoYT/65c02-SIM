@@ -215,7 +215,7 @@ static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
 }
 
 static void DrawSDKButton(AppState& state) {
-    if (ImGui::Button("SDK")) {
+    if (ImGui::Button("SDK ROMs")) {
 #ifdef TARGET_WASM
         if (!state.sdk.loaded) {
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
