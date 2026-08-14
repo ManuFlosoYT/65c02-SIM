@@ -17,41 +17,6 @@
             }
         },
         {
-            "name": "linux-release-native",
-            "displayName": "Linux Release Native",
-            "description": "Release build tuned for local CPU (-march=native)",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/release-native",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "PERF_TUNE_NATIVE": "ON"
-            }
-        },
-        {
-            "name": "linux-release-pgo-generate",
-            "displayName": "Linux Release PGO Generate",
-            "description": "Release build with PGO instrumentation enabled",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/release-pgo-generate",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "PGO_GENERATE": "ON",
-                "PGO_USE": "OFF"
-            }
-        },
-        {
-            "name": "linux-release-pgo-use",
-            "displayName": "Linux Release PGO Use",
-            "description": "Release build using generated PGO profiles",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/release-pgo-use",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "PGO_GENERATE": "OFF",
-                "PGO_USE": "ON"
-            }
-        },
-        {
             "name": "linux-debug",
             "displayName": "Linux Debug",
             "description": "Debug build for Linux using Ninja",
@@ -59,28 +24,6 @@
             "binaryDir": "${sourceDir}/build/debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "linux-perfdebug",
-            "displayName": "Linux PerfDebug",
-            "description": "Optimized debug-symbol build for profiling (no strip)",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/perfdebug",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "PerfDebug",
-                "PERFDEBUG_ENABLE_LTO": "OFF"
-            }
-        },
-        {
-            "name": "linux-perfdebug-lto",
-            "displayName": "Linux PerfDebug + LTO",
-            "description": "PerfDebug build with LTO enabled",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/perfdebug-lto",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "PerfDebug",
-                "PERFDEBUG_ENABLE_LTO": "ON"
             }
         },
         {
@@ -104,30 +47,6 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
             }
-        },
-        {
-            "name": "windows-perfdebug",
-            "displayName": "Windows PerfDebug (MinGW)",
-            "description": "Cross-compile optimized debug-symbol build for profiling (no strip)",
-            "generator": "Ninja",
-            "toolchainFile": "${sourceDir}/cmake/mingw-toolchain.cmake",
-            "binaryDir": "${sourceDir}/build_win/perfdebug",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "PerfDebug",
-                "PERFDEBUG_ENABLE_LTO": "OFF"
-            }
-        },
-        {
-            "name": "windows-perfdebug-lto",
-            "displayName": "Windows PerfDebug + LTO (MinGW)",
-            "description": "Cross-compile PerfDebug build with LTO enabled",
-            "generator": "Ninja",
-            "toolchainFile": "${sourceDir}/cmake/mingw-toolchain.cmake",
-            "binaryDir": "${sourceDir}/build_win/perfdebug-lto",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "PerfDebug",
-                "PERFDEBUG_ENABLE_LTO": "ON"
-            }
         }
     ],
     "buildPresets": [
@@ -136,28 +55,8 @@
             "configurePreset": "linux-release"
         },
         {
-            "name": "linux-release-native",
-            "configurePreset": "linux-release-native"
-        },
-        {
-            "name": "linux-release-pgo-generate",
-            "configurePreset": "linux-release-pgo-generate"
-        },
-        {
-            "name": "linux-release-pgo-use",
-            "configurePreset": "linux-release-pgo-use"
-        },
-        {
             "name": "linux-debug",
             "configurePreset": "linux-debug"
-        },
-        {
-            "name": "linux-perfdebug",
-            "configurePreset": "linux-perfdebug"
-        },
-        {
-            "name": "linux-perfdebug-lto",
-            "configurePreset": "linux-perfdebug-lto"
         },
         {
             "name": "windows-release",
@@ -166,14 +65,6 @@
         {
             "name": "windows-debug",
             "configurePreset": "windows-debug"
-        },
-        {
-            "name": "windows-perfdebug",
-            "configurePreset": "windows-perfdebug"
-        },
-        {
-            "name": "windows-perfdebug-lto",
-            "configurePreset": "windows-perfdebug-lto"
         }
     ]
 }

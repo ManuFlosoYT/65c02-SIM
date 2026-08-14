@@ -57,8 +57,8 @@ jobs:
 
       - name: Build Linux
         run: |
-          chmod +x scripts/build-linux.sh
-          ./scripts/build-linux.sh
+          chmod +x scripts/build.sh
+          ./scripts/build.sh --target linux
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v6
@@ -110,8 +110,8 @@ jobs:
 
       - name: Build Windows
         run: |
-          chmod +x scripts/build-win.sh
-          ./scripts/build-win.sh
+          chmod +x scripts/build.sh
+          ./scripts/build.sh --target win
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v6
@@ -207,8 +207,8 @@ jobs:
 
       - name: Build Web
         run: |
-          chmod +x scripts/build-web.sh
-          ./scripts/build-web.sh --clean
+          chmod +x scripts/build.sh
+          ./scripts/build.sh --target web --clean
           mkdir -p output/web/roms
           cp output/cartridge/*.65c output/web/roms/ 2>/dev/null || true
           

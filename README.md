@@ -94,18 +94,19 @@ Clone the project
 git clone https://github.com/ManuFlosoYT/65c02-SIM
 ```
 
-Build for Linux:
+Compile using the unified build script. By default, it targets Linux:
 
 ```bash
-./build-linux.sh
-# (optional arguments) ./build-linux.sh --whatever
+./scripts/build.sh
+# (optional arguments) ./scripts/build.sh --whatever
 ```
 
-Build for Windows:
+You can also specify the target OS explicitly:
 
 ```bash
-./build-win.sh
-# (optional arguments) ./build-win.sh --whatever
+./scripts/build.sh --target linux
+./scripts/build.sh --target win
+./scripts/build.sh --target web
 ```
 
 The parameters accepted by the script are divided according to their function:
