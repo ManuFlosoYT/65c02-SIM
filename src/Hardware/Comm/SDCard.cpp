@@ -2,6 +2,11 @@
 #include "Hardware/Core/ISerializable.h"
 
 #include <iostream>
+#include <cstdlib>
+
+#ifndef PROJECT_VERSION
+#define PROJECT_VERSION "unknown"
+#endif
 
 namespace Hardware {
 
@@ -26,18 +31,23 @@ bool SDCard::Mount(const std::string& imagePath) {
     }
 
     imageFile.open(imagePath, std::ios::in | std::ios::out | std::ios::binary);
-    if (!imageFile.is_open()) {
+    if (imageFile.is_open()) {
+        is_read_only = false;
+    } else {
         // Try opening read-only if read-write failed
         imageFile.clear();
         imageFile.open(imagePath, std::ios::in | std::ios::binary);
-    }
-    if (!imageFile.is_open()) {
-        // Try creating it if it doesn't exist
-        imageFile.clear();
-        imageFile.open(imagePath, std::ios::out | std::ios::binary);
         if (imageFile.is_open()) {
-            imageFile.close();
-            imageFile.open(imagePath, std::ios::in | std::ios::out | std::ios::binary);
+            is_read_only = true;
+        } else {
+            // Try creating it if it doesn't exist
+            imageFile.clear();
+            imageFile.open(imagePath, std::ios::out | std::ios::binary);
+            if (imageFile.is_open()) {
+                imageFile.close();
+                imageFile.open(imagePath, std::ios::in | std::ios::out | std::ios::binary);
+                is_read_only = false;
+            }
         }
     }
 
@@ -95,7 +105,13 @@ void SDCard::Write(Word address, Byte data) {
 }
 
 uint8_t SDCard::TransferByte(uint8_t mosi) {
-    if (!mounted || !cs_active) {
+    if (!mounted) {
+        return 0xFFU;
+    }
+    if (!cs_active) {
+        if (!is_initialized && warmup_bytes < 10) {
+            warmup_bytes++;
+        }
         return 0xFFU;
     }
 
@@ -143,6 +159,9 @@ uint8_t SDCard::TransferByte(uint8_t mosi) {
 
 void SDCard::HandleIdleState(uint8_t mosi) {
     if ((mosi & 0xC0U) == 0x40U) {  // Command starts with 01
+        if (!is_initialized && warmup_bytes < 10) {
+            return; // Ignore command if warmup is not complete
+        }
         cmd_buffer[0] = mosi;
         cmd_bytes_received = 1;
         state = State::COMMAND_RECEIVE;
@@ -170,10 +189,12 @@ void SDCard::HandleSendResponseState(uint8_t& miso) {
         miso = response_buffer.at(static_cast<size_t>(response_index++));
         if (static_cast<size_t>(response_index) == response_buffer.size()) {
             response_buffer.clear();
-            // If we just finished sending response for CMD24, we must wait for data token
+            // Transition based on the last command
             uint8_t last_cmd = cmd_buffer[0] & 0x3FU;
             if (last_cmd == 24U && !is_acmd) {
                 state = State::WRITE_DATA_TOKEN;
+            } else if (last_cmd == 17U && !is_acmd) {
+                state = State::READ_DATA_TOKEN;
             } else {
                 state = State::IDLE;
             }
@@ -234,14 +255,19 @@ void SDCard::HandleWriteDataCrcState(uint8_t& miso) {
         // Send Data Response:
         // xxx00101b = 0x05 -> Accepted
         miso = 0x05U;
+        write_busy_bytes = 5;
         state = State::WRITE_BUSY;
     }
 }
 
 void SDCard::HandleWriteBusyState(uint8_t& miso) {
-    // Simulate immediately finishing writing (output 0xFF instead of 0x00 busy)
-    miso = 0xFFU;
-    state = State::IDLE;
+    if (write_busy_bytes > 0) {
+        write_busy_bytes--;
+        miso = 0x00U;
+    } else {
+        miso = 0xFFU;
+        state = State::IDLE;
+    }
 }
 
 void SDCard::ProcessCommand() {
@@ -251,6 +277,13 @@ void SDCard::ProcessCommand() {
 
     response_index = 0;
     response_buffer.clear();
+
+    if (cmd == 0 || cmd == 8) {
+        if (cmd_buffer.at(5) != CalculateCrc7(cmd_buffer)) {
+            QueueResponse1(0x09U);  // R1: Idle + CRC error
+            return;
+        }
+    }
 
     if (is_acmd) {
         HandleAcmd(cmd, arg);
@@ -272,8 +305,13 @@ void SDCard::HandleAcmd(uint8_t cmd, uint32_t /*arg*/) {
 }
 
 void SDCard::HandleAcmd41() {
-    QueueResponse1(0x00U);  // R1: Ready (no idle bit)
-    is_initialized = true;
+    if (acmd41_attempts < acmd41_target_attempts) {
+        acmd41_attempts++;
+        QueueResponse1(0x01U);  // R1: In Idle State
+    } else {
+        QueueResponse1(0x00U);  // R1: Ready (no idle bit)
+        is_initialized = true;
+    }
 }
 
 void SDCard::HandleStandardCmd(uint8_t cmd, uint32_t arg) {
@@ -308,6 +346,8 @@ void SDCard::HandleStandardCmd(uint8_t cmd, uint32_t arg) {
 void SDCard::HandleCmd0() {
     QueueResponse1(0x01U);  // R1: In Idle State
     is_initialized = false;
+    acmd41_attempts = 0;
+    acmd41_target_attempts = static_cast<uint8_t>((std::rand() % 6) + 1);
 }
 
 void SDCard::HandleCmd8(uint32_t arg) {
@@ -325,15 +365,7 @@ void SDCard::HandleCmd17(uint32_t arg) {
         current_lba /= 512U;
     }
     ReadBlockFromImage();
-    QueueResponse1(0x00U);             // R1: Success
-    response_buffer.push_back(0xFFU);  // Delay
-    response_buffer.push_back(0xFEU);  // Data token
-    for (int i = 0; i < 512; i++) {
-        response_buffer.push_back(data_buffer.at(static_cast<size_t>(i)));
-    }
-    response_buffer.push_back(0xFFU);  // CRC high
-    response_buffer.push_back(0xFFU);  // CRC low
-    state = State::WAIT_RESPONSE;
+    QueueResponse2(0x00U, 0xFFU);  // R1: Success, then delay byte
 }
 
 void SDCard::HandleCmd24(uint32_t arg) {
@@ -395,7 +427,7 @@ void SDCard::ReadBlockFromImage() {
 }
 
 void SDCard::WriteBlockToImage() {
-    if (!mounted || !imageFile.is_open()) {
+    if (!mounted || !imageFile.is_open() || is_read_only) {
         return;
     }
     imageFile.clear();
@@ -405,6 +437,9 @@ void SDCard::WriteBlockToImage() {
 }
 
 bool SDCard::SaveState(std::ostream& out) const {
+    std::string verStr = "SD_VER:" + std::string(PROJECT_VERSION);
+    ISerializable::Serialize(out, verStr);
+
     ISerializable::Serialize(out, currentPath);
 
     ISerializable::Serialize(out, mounted);
@@ -423,11 +458,26 @@ bool SDCard::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, is_initialized);
     ISerializable::Serialize(out, is_sdhc);
 
+    ISerializable::Serialize(out, is_read_only);
+    ISerializable::Serialize(out, warmup_bytes);
+    ISerializable::Serialize(out, acmd41_attempts);
+    ISerializable::Serialize(out, acmd41_target_attempts);
+    ISerializable::Serialize(out, write_busy_bytes);
+
     return out.good();
 }
 
 bool SDCard::LoadState(std::istream& inStream) {
-    ISerializable::Deserialize(inStream, currentPath);
+    std::string firstStr;
+    ISerializable::Deserialize(inStream, firstStr);
+    
+    bool is_old_format = false;
+    if (firstStr.find("SD_VER:") == 0) {
+        ISerializable::Deserialize(inStream, currentPath);
+    } else {
+        is_old_format = true;
+        currentPath = firstStr;
+    }
 
     ISerializable::Deserialize(inStream, mounted);
     ISerializable::Deserialize(inStream, cs_active);
@@ -445,11 +495,39 @@ bool SDCard::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, is_initialized);
     ISerializable::Deserialize(inStream, is_sdhc);
 
+    if (is_old_format) {
+        is_read_only = false;
+        warmup_bytes = 10;
+        acmd41_attempts = 0;
+        acmd41_target_attempts = 1;
+        write_busy_bytes = 0;
+    } else {
+        ISerializable::Deserialize(inStream, is_read_only);
+        ISerializable::Deserialize(inStream, warmup_bytes);
+        ISerializable::Deserialize(inStream, acmd41_attempts);
+        ISerializable::Deserialize(inStream, acmd41_target_attempts);
+        ISerializable::Deserialize(inStream, write_busy_bytes);
+    }
+
     if (mounted) {
         Mount(currentPath);
     }
 
     return inStream.good();
+}
+
+uint8_t SDCard::CalculateCrc7(const std::array<std::uint8_t, 6>& buffer) const {
+    uint8_t crc = 0;
+    for (int i = 0; i < 5; i++) {
+        crc ^= buffer.at(static_cast<size_t>(i));
+        for (int j = 0; j < 8; j++) {
+            if ((crc & 0x80U) != 0) {
+                crc ^= 0x89U;
+            }
+            crc = static_cast<uint8_t>(crc << 1);
+        }
+    }
+    return static_cast<uint8_t>(crc | 1U);
 }
 
 }  // namespace Hardware

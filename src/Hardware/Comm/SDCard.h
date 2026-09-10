@@ -31,7 +31,7 @@ class SDCard : public IBusDevice {
     Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
     [[nodiscard]] std::string GetName() const override { return "SD Card"; }
-    [[nodiscard]] bool IsReadOnly() const override { return false; }
+    [[nodiscard]] bool IsReadOnly() const override { return is_read_only; }
     Byte* GetRawMemory() override { return nullptr; }
 
     // SPI interface
@@ -50,6 +50,7 @@ class SDCard : public IBusDevice {
     bool mounted = false;
     std::string currentPath;
 
+    bool is_read_only = false;
     bool cs_active = false;  // Active low
 
     // SPI State Machine
@@ -89,7 +90,13 @@ class SDCard : public IBusDevice {
     bool is_initialized = false;
     bool is_sdhc = false;
 
+    uint8_t warmup_bytes = 0;
+    uint8_t acmd41_attempts = 0;
+    uint8_t acmd41_target_attempts = 0;
+    uint8_t write_busy_bytes = 0;
+
     // Helpers
+    uint8_t CalculateCrc7(const std::array<std::uint8_t, 6>& buffer) const;
     void ProcessCommand();
     void HandleAcmd(uint8_t cmd, uint32_t arg);
     void HandleStandardCmd(uint8_t cmd, uint32_t arg);

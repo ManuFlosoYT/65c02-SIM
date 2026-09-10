@@ -104,6 +104,9 @@ static int sd_send_block(const BYTE* buf, uint8_t token) {
     spi_xfer(0xFF);
 
     resp = spi_xfer(0xFF) & 0x1Fu;
+    if (resp == 0x05) {
+        if (!sd_wait_ready()) return 0;
+    }
     return (resp == 0x05); /* Data accepted */
 }
 
