@@ -152,31 +152,38 @@ static void DrawSDKPopup(AppState& state) {
 
 static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
     ImGui::BeginDisabled(cartLoaded);
-    if (ImGui::Button("Load ROM")) {
-#ifdef TARGET_WASM
-        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-            std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
-            state.rom.data.assign(dataSpan.begin(), dataSpan.end());
+    if (ImGui::Button(state.rom.loaded ? "Eject ROM" : "Load ROM")) {
+        if (state.rom.loaded) {
+            state.rom.loaded = false;
+            state.rom.bin = "";
+            state.emulator.Reset();
             state.emulator.Pause();
-            std::string errorMsg;
-            if (state.emulator.InitFromMemory(state.rom.data, filename, errorMsg)) {
-                Console::Clear();
-                state.rom.bin = filename;
-                state.rom.loaded = true;
-                state.rom.symbols.Clear();
-                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-                state.emulator.ClearProfiler();
-                state.emulator.ClearCartridge();
-            } else {
-                std::cerr << "Failed to load ROM: " << errorMsg << "\n";
-            }
-        };
-        WebFileUtils::open_browser_file_picker(".bin");
+        } else {
+#ifdef TARGET_WASM
+            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+                std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
+                state.rom.data.assign(dataSpan.begin(), dataSpan.end());
+                state.emulator.Pause();
+                std::string errorMsg;
+                if (state.emulator.InitFromMemory(state.rom.data, filename, errorMsg)) {
+                    Console::Clear();
+                    state.rom.bin = filename;
+                    state.rom.loaded = true;
+                    state.rom.symbols.Clear();
+                    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+                    state.emulator.ClearProfiler();
+                    state.emulator.ClearCartridge();
+                } else {
+                    std::cerr << "Failed to load ROM: " << errorMsg << "\n";
+                }
+            };
+            WebFileUtils::open_browser_file_picker(".bin");
 #else
-        if (!Frontend::CustomFileDialog::IsOpened()) {
-            Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
-        }
+            if (!Frontend::CustomFileDialog::IsOpened()) {
+                Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+            }
 #endif
+        }
     }
     ImGui::EndDisabled();
     if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -188,10 +195,13 @@ static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
 }
 
 static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
+    ImGui::BeginDisabled(state.rom.loaded);
     const char* cartBtnText = cartLoaded ? "Eject Cartridge" : "Load Cartridge (.65c)";
     if (ImGui::Button(cartBtnText)) {
         if (cartLoaded) {
             state.emulator.ClearCartridge();
+            state.emulator.Reset();
+            state.emulator.Pause();
         } else {
 #ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
@@ -210,6 +220,13 @@ static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
                 Frontend::CustomFileDialog::OpenDialog("ChooseCartridgeDlgKey", "Choose Cartridge", ".65c", ".");
             }
 #endif
+        }
+    }
+    ImGui::EndDisabled();
+    if (state.rom.loaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Eject ROM first to load a Cartridge");
+            ImGui::EndTooltip();
         }
     }
 }
@@ -245,7 +262,7 @@ static void DrawSDKButton(AppState& state) {
 
 #ifndef TARGET_WASM
 static void DrawIDEButton(AppState& state, bool cartLoaded) {
-    ImGui::BeginDisabled(cartLoaded);
+    ImGui::BeginDisabled(cartLoaded || state.rom.loaded);
     if (ImGui::Button("Open IDE")) {
         state.ide.open = !state.ide.open;
         if (state.ide.code.empty()) {
@@ -253,9 +270,9 @@ static void DrawIDEButton(AppState& state, bool cartLoaded) {
         }
     }
     ImGui::EndDisabled();
-    if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    if ((cartLoaded || state.rom.loaded) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         if (ImGui::BeginItemTooltip()) {
-            ImGui::TextUnformatted("Eject cartridge first to use the IDE");
+            ImGui::TextUnformatted("Eject cartridge/ROM first to use the IDE");
             ImGui::EndTooltip();
         }
     }
