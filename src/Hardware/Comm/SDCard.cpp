@@ -81,11 +81,11 @@ void SDCard::SetCS(bool csVal) {
     cs_active = !csVal;
 
     if (!cs_active) {
-        // When CS goes high, the transaction is canceled or done
-        // We might want to clear output buffer to 0xFF, but SPI keeps outputting last/0xFF
-        state = State::IDLE;
-        cmd_bytes_received = 0;
-        response_buffer.clear();
+        if (state != State::WRITE_BUSY && state != State::CMD12_BUSY) {
+            state = State::IDLE;
+            cmd_bytes_received = 0;
+            response_buffer.clear();
+        }
     }
 }
 
@@ -165,6 +165,9 @@ uint8_t SDCard::TransferByte(uint8_t mosi) {
         case State::WRITE_BUSY:
             HandleWriteBusyState(miso);
             break;
+        case State::CMD12_BUSY:
+            HandleCmd12BusyState(miso);
+            break;
         default:
             state = State::IDLE;
             break;
@@ -210,8 +213,11 @@ void SDCard::HandleSendResponseState(uint8_t& miso) {
                 state = State::WRITE_DATA_TOKEN;
             } else if ((last_cmd == 17U || last_cmd == 18U) && !is_acmd) {
                 state = State::READ_PENDING;
+            } else if (last_cmd == 12U && !is_acmd) {
+                state = State::CMD12_BUSY;
             } else {
                 state = State::IDLE;
+                sd_status_byte = 0x00; // Clear status on normal completion
             }
         }
     } else {
@@ -381,6 +387,17 @@ void SDCard::HandleWriteBusyState(uint8_t& miso) {
     }
 }
 
+void SDCard::HandleCmd12BusyState(uint8_t& miso) {
+    if (cmd12_busy_bytes > 0) {
+        cmd12_busy_bytes--;
+        miso = 0x00U;
+    } else {
+        miso = 0xFFU;
+        state = State::IDLE;
+        sd_status_byte = 0x00; // Clear status
+    }
+}
+
 void SDCard::ProcessCommand() {
     uint8_t cmd = cmd_buffer.at(0) & 0x3FU;
     uint32_t arg = (static_cast<uint32_t>(cmd_buffer.at(1)) << 24) | (static_cast<uint32_t>(cmd_buffer.at(2)) << 16) |
@@ -483,6 +500,7 @@ void SDCard::HandleCmd8(uint32_t arg) {
 
 void SDCard::HandleCmd12() {
     is_read_multiblock = false;
+    cmd12_busy_bytes = 2; // Busy for a couple of bytes
     QueueResponse1(0x00U);
 }
 
@@ -605,8 +623,9 @@ void SDCard::HandleCmd55() {
 }
 
 void SDCard::HandleCmd58() {
-    // Return OCR. Bit 30 (CCS) = 1 (SDHC)
-    QueueResponse3(is_initialized ? 0x00U : 0x01U, 0xC0FF8000U);
+    // Return OCR. Bit 30 (CCS) = is_sdhc ? 1 : 0
+    uint32_t ocr = is_sdhc ? 0xC0FF8000U : 0x80FF8000U;
+    QueueResponse3(is_initialized ? 0x00U : 0x01U, ocr);
 }
 
 void SDCard::HandleCmd59(uint32_t arg) {
@@ -713,6 +732,7 @@ bool SDCard::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, acmd41_attempts);
     ISerializable::Serialize(out, acmd41_target_attempts);
     ISerializable::Serialize(out, write_busy_bytes);
+    ISerializable::Serialize(out, cmd12_busy_bytes);
     
     ISerializable::Serialize(out, read_delay_bytes);
     ISerializable::Serialize(out, crc_enabled);
@@ -758,6 +778,7 @@ bool SDCard::LoadState(std::istream& inStream) {
         acmd41_attempts = 0;
         acmd41_target_attempts = 1;
         write_busy_bytes = 0;
+        cmd12_busy_bytes = 0;
         read_delay_bytes = 0;
         crc_enabled = false;
         read_latency_enabled = false;
@@ -776,6 +797,7 @@ bool SDCard::LoadState(std::istream& inStream) {
         ISerializable::Deserialize(inStream, acmd41_attempts);
         ISerializable::Deserialize(inStream, acmd41_target_attempts);
         ISerializable::Deserialize(inStream, write_busy_bytes);
+        ISerializable::Deserialize(inStream, cmd12_busy_bytes);
         ISerializable::Deserialize(inStream, read_delay_bytes);
         ISerializable::Deserialize(inStream, crc_enabled);
         ISerializable::Deserialize(inStream, read_latency_enabled);

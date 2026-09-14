@@ -72,7 +72,8 @@ class SDCard : public IBusDevice {
         WRITE_DATA_TOKEN,
         WRITE_DATA_BLOCK,
         WRITE_DATA_CRC,
-        WRITE_BUSY
+        WRITE_BUSY,
+        CMD12_BUSY
     };
 
     State state = State::IDLE;
@@ -103,6 +104,7 @@ class SDCard : public IBusDevice {
     uint8_t acmd41_attempts = 0;
     uint8_t acmd41_target_attempts = 0;
     uint8_t write_busy_bytes = 0;
+    uint8_t cmd12_busy_bytes = 0;
     uint8_t read_delay_bytes = 0;
     uint8_t sd_status_byte = 0x00;
     
@@ -157,6 +159,7 @@ class SDCard : public IBusDevice {
     void HandleWriteDataBlockState(uint8_t mosi);
     void HandleWriteDataCrcState(uint8_t& miso);
     void HandleWriteBusyState(uint8_t& miso);
+    void HandleCmd12BusyState(uint8_t& miso);
 };
 
 }  // namespace Hardware
