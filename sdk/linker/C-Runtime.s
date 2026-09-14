@@ -15,6 +15,12 @@ _startup:
     ldx #$FF
     txs
 
+    ; Init ACIA for interrupts and DTR
+    lda #$01        ; Rx IRQ enabled, DTR enabled
+    sta $5002       ; ACIA_CMD
+    lda #$1F        ; 19200 baud, 8 data bits, 1 stop bit
+    sta $5003       ; ACIA_CTRL
+
     ; Configure the C stack
     lda #<__STACKSTART__
     sta sp

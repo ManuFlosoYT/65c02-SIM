@@ -76,6 +76,13 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
     }
 
     currentBinPath = name;
+    
+    {
+        std::lock_guard<std::mutex> lock(bufferMutex);
+        inputBuffer.clear();
+        hasInput.store(false, std::memory_order_relaxed);
+    }
+    
     SetupHardware();
     std::cout << "Loaded ROM from memory: " << name << " (" << data.size() << " bytes)\n";
 
@@ -212,18 +219,25 @@ void Emulator::HandleSerialInput() {
         return;
     }
 
-    if (baudDelay > 0 || acia.HasIRQ() || (via.GetPortA() & 0x01) != 0) {
+    if (baudDelay > 0 || !acia.CanReceive() || (via.GetPortA() & 0x01) != 0) {
         return;
     }
 
     std::lock_guard<std::mutex> lock(bufferMutex);
-    if (!inputBuffer.empty() && !acia.HasIRQ() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
+    if (!inputBuffer.empty() && acia.CanReceive() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
         char chr = inputBuffer.front();
         inputBuffer.pop_front();
 
         acia.ReceiveData(chr);
-        pendingInterruptAny.store(true, std::memory_order_relaxed);
-        baudDelay = 2000;
+        if (acia.HasIRQ()) {
+            pendingInterruptAny.store(true, std::memory_order_relaxed);
+        }
+        
+        int baudRate = acia.GetBaudRate();
+        if (baudRate <= 0) baudRate = 19200;
+        int ips = targetIPS.load(std::memory_order_relaxed);
+        if (ips <= 0) ips = 1000000;
+        baudDelay = (ips * 10) / baudRate;
     }
 
     if (inputBuffer.empty()) {
