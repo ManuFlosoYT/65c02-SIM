@@ -4,13 +4,6 @@
 #include <string.h>
 
 static const command_t command_table[] = {
-    {"ls",    cmd_ls},
-    {"cat",   cmd_cat},
-    {"touch", cmd_touch},
-    {"mkdir", cmd_mkdir},
-    {"cd",    cmd_cd},
-    {"rm",    cmd_rm},
-    {"wifi",  cmd_wifi},
     {"run",   cmd_run},
     {"help",  cmd_help},
     {"exit",  cmd_exit},

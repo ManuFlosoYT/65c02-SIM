@@ -1,12 +1,14 @@
-#include "commands.h"
-#include "../Libs/BIOS.h"
-#include "../Libs/NET.h"
-#include "shell.h"
-#include "msg.h"
+/* wifi.c - microDOS command */
+#include <stdint.h>
 #include <string.h>
+#include "../Libs/app-bios.h"
 
-void cmd_wifi(void) {
+#define arg_count  (*(volatile uint8_t*)0x60)
+#define _args_ptr  ((char**)(*(uint16_t*)0x61))
+
+int main(void) {
     char chr;
+    char** args = _args_ptr;
     
     if (arg_count == 1) {
         println("Scanning for networks...");
@@ -20,12 +22,13 @@ void cmd_wifi(void) {
                 if (chr == 'R') break; /* ERROR */
             }
         }
-        return;
+        return 0;
     }
 
     if (arg_count < 3) {
-        print_str(M_USE); println("wifi <SSID> <Password>");
-        return;
+        print_str("Usage: ");
+        println("wifi <SSID> <Password>");
+        return 1;
     }
 
     print_str("Connecting to ");
@@ -39,8 +42,17 @@ void cmd_wifi(void) {
             chr = (char)net_getc();
             if (chr == '\r') continue;
             bios_putchar(chr);
-            if (chr == 'K') { println(""); println("Success: IP obtained"); break; }
-            if (chr == 'R') { println(""); println("Error: Could not connect to network"); break; }
+            if (chr == 'K') { 
+                println(""); 
+                println("Success: IP obtained"); 
+                break; 
+            }
+            if (chr == 'R') { 
+                println(""); 
+                println("Error: Could not connect to network"); 
+                break; 
+            }
         }
     }
+    return 0;
 }

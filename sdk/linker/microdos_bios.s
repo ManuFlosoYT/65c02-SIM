@@ -210,6 +210,9 @@ IRQ_HANDLER:
 .import _net_send, _net_cmd, _net_send_num
 .import _os_load_app_page
 .import _sid_write, _sid_reset
+.import _sd_opendir, _sd_readdir, _sd_closedir
+.import _sd_mkdir, _sd_remove, _sd_exists
+.import _net_wifi
 
 .export BIOS_JUMPTABLE
 .segment "JUMPTABLE"
@@ -234,3 +237,10 @@ BIOS_JUMPTABLE:
     jmp _os_load_app_page ; $FFC3 — void os_load_app_page(uint8_t)
     jmp _sid_write      ; $FFC6 — void sid_write(uint8_t,uint8_t)
     jmp _sid_reset      ; $FFC9 — void sid_reset(void)
+    jmp _sd_opendir     ; $FFCC — int sd_opendir(SD_DIR*, const char*)
+    jmp _sd_readdir     ; $FFCF — int sd_readdir(SD_DIR*, SD_INFO*)
+    jmp _sd_closedir    ; $FFD2 — void sd_closedir(SD_DIR*)
+    jmp _sd_mkdir       ; $FFD5 — uint8_t sd_mkdir(const char*)
+    jmp _sd_remove      ; $FFD8 — uint8_t sd_remove(const char*)
+    jmp _sd_exists      ; $FFDB — uint8_t sd_exists(const char*)
+    jmp _net_wifi       ; $FFDE — void net_wifi(const char*, const char*)

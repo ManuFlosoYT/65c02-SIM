@@ -20,7 +20,16 @@
 /* Opaque handles for FatFs (sizes for TINY=1 config) */
 typedef struct { uint8_t reserved[34]; } SD_FILE;
 typedef struct { uint8_t reserved[40]; } SD_DIR;
-typedef struct { uint8_t reserved[22]; } SD_INFO;
+typedef struct {
+    uint32_t fsize;
+    uint16_t fdate;
+    uint16_t ftime;
+    uint8_t  fattrib;
+    char     fname[13];
+} SD_INFO;
+
+#define AM_DIR           0x10
+
 #define SD_READ          0x01
 #define SD_WRITE         0x02
 #define SD_CREATE_NEW    0x04
@@ -51,11 +60,18 @@ uint8_t  sd_puts(SD_FILE* fp, const char* s);
 int16_t  sd_getc(SD_FILE* fp);
 uint8_t  sd_getcwd(char* buf, uint16_t len);
 uint8_t  sd_chdir(const char* path);
+int      sd_opendir(SD_DIR* dp, const char* path);
+int      sd_readdir(SD_DIR* dp, SD_INFO* fno);
+void     sd_closedir(SD_DIR* dp);
+uint8_t  sd_mkdir(const char* path);
+uint8_t  sd_remove(const char* path);
+uint8_t  sd_exists(const char* path);
 
 /* NET */
 void net_send(const char* s);
 void net_cmd(const char* s);
 void net_send_num(uint16_t n);
+void net_wifi(const char* ssid, const char* pass);
 
 /* SID BIOS API */
 void sid_write(uint8_t reg, uint8_t val);
