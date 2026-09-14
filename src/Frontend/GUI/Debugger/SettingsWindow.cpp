@@ -8,6 +8,10 @@
 #include <iterator>
 #include <sstream>
 #include <vector>
+#include <filesystem>
+#include <miniz.h>
+#include <nlohmann/json.hpp>
+#include <iostream>
 
 #include "Frontend/GUI/SDUtils.h"
 #ifdef TARGET_WASM
@@ -302,7 +306,78 @@ static void DrawSettingsCRTPart2(AppState& state) {
     ImGui::SliderFloat("Gamma", &state.crt.gamma, 1.0F, 3.5F, "%.2f");
 }
 
+static std::string pendingManifestStr;
+
+static void DrawExportCartridgePopup(AppState& state) {
+    if (ImGui::BeginPopupModal("Export ROM to Cartridge###ExportCartridgePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        static char nameBuf[64] = "My Cartridge";
+        static char authorBuf[64] = "Unknown";
+        static char descBuf[128] = "";
+        static char verBuf[16] = "1.1";
+
+        ImGui::InputText("Name", nameBuf, sizeof(nameBuf));
+        ImGui::InputText("Author", authorBuf, sizeof(authorBuf));
+        ImGui::InputText("Description", descBuf, sizeof(descBuf));
+        ImGui::InputText("Version", verBuf, sizeof(verBuf));
+
+        ImGui::SeparatorText("Hardware Configuration (Copied)");
+        ImGui::Text("Target IPS: %d", state.emulation.instructionsPerFrame);
+        ImGui::Text("GPU: %s", state.emulation.gpuEnabled ? "Enabled" : "Disabled");
+        ImGui::Text("Cycle Accurate: %s", state.emulation.cycleAccurate ? "Enabled" : "Disabled");
+        ImGui::Text("SID: %s", state.emulator.GetSID().IsSoundEnabled() ? "Enabled" : "Disabled");
+        ImGui::Text("ESP: %s", state.emulation.espEnabled ? "Enabled" : "Disabled");
+        ImGui::Text("SD Card: %s", state.emulation.sdEnabled ? "Enabled" : "Disabled");
+
+        ImGui::Separator();
+        if (ImGui::Button("Export", ImVec2(120, 0))) {
+            nlohmann::json manifest;
+            manifest["version"] = "2.2";
+            manifest["metadata"] = {
+                {"name", nameBuf},
+                {"author", authorBuf},
+                {"description", descBuf},
+                {"version", verBuf},
+                {"type", "rom"}
+            };
+            manifest["rom"] = "rom.bin";
+            manifest["config"] = {
+                {"target_ips", state.emulation.instructionsPerFrame},
+                {"gpu_enabled", state.emulation.gpuEnabled},
+                {"cycle_accurate", state.emulation.cycleAccurate},
+                {"sid_enabled", state.emulator.GetSID().IsSoundEnabled()},
+                {"esp_enabled", state.emulation.espEnabled},
+                {"sd_enabled", state.emulation.sdEnabled}
+            };
+            manifest["bus"] = nlohmann::json::array({
+                {{"name", "RAM"}, {"start", "0x0000"}, {"end", "0x7FFF"}},
+                {{"name", "ROM"}, {"start", "0x8000"}, {"end", "0xFFFF"}},
+                {{"name", "ACIA"}, {"start", "0x5000"}, {"end", "0x5003"}},
+                {{"name", "VIA"}, {"start", "0x6000"}, {"end", "0x600F"}},
+                {{"name", "ESP8266"}, {"start", "0x5004"}, {"end", "0x5007"}},
+                {{"name", "SD Card"}, {"start", "0x5008"}, {"end", "0x500B"}},
+                {{"name", "SID"}, {"start", "0x4800"}, {"end", "0x481F"}},
+                {{"name", "GPU"}, {"start", "0x2000"}, {"end", "0x3FFF"}}
+            });
+
+            pendingManifestStr = manifest.dump(2);
+            
+            std::filesystem::path binPath(state.rom.bin);
+            std::string cartName = binPath.stem().string() + ".65c";
+            
+            Frontend::CustomFileDialog::OpenDialog("ExportCartridgeDlgKey", "Export Cartridge", ".65c", ".", cartName);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
 void DrawSettingsContent(AppState& state) {
+    bool openExportCartridgePopup = false;
     ImGui::BeginChild("SettingsContent", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     
     if (ImGui::BeginTable("SettingsLayoutTable", 3, ImGuiTableFlags_None)) {
@@ -314,6 +389,26 @@ void DrawSettingsContent(AppState& state) {
         DrawSDCardSettings(state);
         ImGui::Spacing();
         DrawSettingsSaveState(state);
+        ImGui::Spacing();
+
+        if (state.rom.loaded) {
+            ImGui::SeparatorText("Export");
+#ifdef TARGET_WASM
+            ImGui::BeginDisabled(true);
+            ImGui::Button("Export to Cartridge");
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                if (ImGui::BeginItemTooltip()) {
+                    ImGui::TextUnformatted("Export to cartridge is not supported in the web version");
+                    ImGui::EndTooltip();
+                }
+            }
+            ImGui::EndDisabled();
+#else
+            if (ImGui::Button("Export to Cartridge")) {
+                openExportCartridgePopup = true;
+            }
+#endif
+        }
 
         ImGui::TableNextColumn();
         DrawSettingsCRTPart1(state);
@@ -322,6 +417,41 @@ void DrawSettingsContent(AppState& state) {
         DrawSettingsCRTPart2(state);
 
         ImGui::EndTable();
+    }
+    
+    if (openExportCartridgePopup) {
+        ImGui::OpenPopup("ExportCartridgePopup");
+    }
+    DrawExportCartridgePopup(state);
+
+    if (Frontend::CustomFileDialog::Display("ExportCartridgeDlgKey")) {
+        if (Frontend::CustomFileDialog::IsOk()) {
+            std::string outPath = Frontend::CustomFileDialog::GetFilePathName();
+            mz_zip_archive zip_archive;
+            memset(&zip_archive, 0, sizeof(zip_archive));
+            if (mz_zip_writer_init_file(&zip_archive, outPath.c_str(), 0)) {
+                mz_zip_writer_add_mem(&zip_archive, "manifest.json", pendingManifestStr.c_str(), pendingManifestStr.size(), MZ_BEST_COMPRESSION);
+                if (state.rom.data.empty()) {
+                    mz_zip_writer_add_file(&zip_archive, "rom.bin", state.rom.bin.c_str(), nullptr, 0, MZ_BEST_COMPRESSION);
+                } else {
+                    mz_zip_writer_add_mem(&zip_archive, "rom.bin", state.rom.data.data(), state.rom.data.size(), MZ_BEST_COMPRESSION);
+                }
+                
+                if (state.emulator.GetSDCard().IsMounted()) {
+                    std::string sdPath = state.emulator.GetSDCard().GetMountedPath();
+                    if (!mz_zip_writer_add_file(&zip_archive, "sdcard.img", sdPath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION)) {
+                        std::cerr << "Warning: Could not read mounted SD Card file for export: " << sdPath << "\n";
+                    }
+                }
+
+                mz_zip_writer_finalize_archive(&zip_archive);
+                mz_zip_writer_end(&zip_archive);
+                std::cout << "Cartridge exported successfully to " << outPath << "\n";
+            } else {
+                std::cerr << "Failed to initialize zip for cartridge export: " << outPath << "\n";
+            }
+        }
+        Frontend::CustomFileDialog::Close();
     }
 
     ImGui::EndChild();
