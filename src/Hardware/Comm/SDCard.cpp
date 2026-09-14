@@ -26,6 +26,7 @@ void SDCard::Reset() {
     crc_enabled = false;
     is_read_multiblock = false;
     is_write_multiblock = false;
+    sd_status_byte = 0x00;
 }
 
 bool SDCard::Mount(const std::string& imagePath) {
@@ -138,19 +139,19 @@ uint8_t SDCard::TransferByte(uint8_t mosi) {
             HandleSendResponseState(miso);
             break;
         case State::READ_PENDING:
-            HandleReadPendingState(miso);
+            HandleReadPendingState(mosi, miso);
             break;
         case State::READ_DATA_DELAY:
-            HandleReadDataDelayState(miso);
+            HandleReadDataDelayState(mosi, miso);
             break;
         case State::READ_DATA_TOKEN:
-            HandleReadDataTokenState(miso);
+            HandleReadDataTokenState(mosi, miso);
             break;
         case State::READ_DATA_BLOCK:
-            HandleReadDataBlockState(miso);
+            HandleReadDataBlockState(mosi, miso);
             break;
         case State::READ_DATA_CRC:
-            HandleReadDataCrcState(miso);
+            HandleReadDataCrcState(mosi, miso);
             break;
         case State::WRITE_DATA_TOKEN:
             HandleWriteDataTokenState(mosi);
@@ -215,10 +216,27 @@ void SDCard::HandleSendResponseState(uint8_t& miso) {
         }
     } else {
         state = State::IDLE;
+        sd_status_byte = 0x00; // Clear status on normal completion
     }
 }
 
-void SDCard::HandleReadPendingState(uint8_t& miso) {
+bool SDCard::CheckForStopCommand(uint8_t mosi) {
+    if (is_read_multiblock && mosi == 0x4CU) {
+        // Abort read
+        is_read_multiblock = false;
+        cmd_buffer[0] = mosi;
+        cmd_bytes_received = 1;
+        state = State::COMMAND_RECEIVE;
+        return true;
+    }
+    return false;
+}
+
+void SDCard::HandleReadPendingState(uint8_t mosi, uint8_t& miso) {
+    if (CheckForStopCommand(mosi)) {
+        miso = 0xFFU;
+        return;
+    }
     miso = 0xFFU;
 #ifndef TARGET_WASM
     if (io_future.valid() && io_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
@@ -234,7 +252,11 @@ void SDCard::HandleReadPendingState(uint8_t& miso) {
     state = State::READ_DATA_DELAY;
 }
 
-void SDCard::HandleReadDataDelayState(uint8_t& miso) {
+void SDCard::HandleReadDataDelayState(uint8_t mosi, uint8_t& miso) {
+    if (CheckForStopCommand(mosi)) {
+        miso = 0xFFU;
+        return;
+    }
     miso = 0xFFU;
     if (read_delay_bytes > 0) {
         read_delay_bytes--;
@@ -243,14 +265,22 @@ void SDCard::HandleReadDataDelayState(uint8_t& miso) {
     }
 }
 
-void SDCard::HandleReadDataTokenState(uint8_t& miso) {
+void SDCard::HandleReadDataTokenState(uint8_t mosi, uint8_t& miso) {
+    if (CheckForStopCommand(mosi)) {
+        miso = 0xFFU;
+        return;
+    }
     // Output token 0xFE before data block
     miso = 0xFEU;
     data_index = 0;
     state = State::READ_DATA_BLOCK;
 }
 
-void SDCard::HandleReadDataBlockState(uint8_t& miso) {
+void SDCard::HandleReadDataBlockState(uint8_t mosi, uint8_t& miso) {
+    if (CheckForStopCommand(mosi)) {
+        miso = 0xFFU;
+        return;
+    }
     miso = data_buffer.at(static_cast<size_t>(data_index++));
     if (data_index == 512) {
         state = State::READ_DATA_CRC;
@@ -258,7 +288,11 @@ void SDCard::HandleReadDataBlockState(uint8_t& miso) {
     }
 }
 
-void SDCard::HandleReadDataCrcState(uint8_t& miso) {
+void SDCard::HandleReadDataCrcState(uint8_t mosi, uint8_t& miso) {
+    if (CheckForStopCommand(mosi)) {
+        miso = 0xFFU;
+        return;
+    }
     if (data_index == 0) {
         miso = static_cast<uint8_t>((current_crc >> 8) & 0xFFU);
     } else {
@@ -369,11 +403,11 @@ void SDCard::ProcessCommand() {
     }
 }
 
-void SDCard::HandleAcmd(uint8_t cmd, uint32_t /*arg*/) {
+void SDCard::HandleAcmd(uint8_t cmd, uint32_t arg) {
     is_acmd = false;
     switch (cmd) {
         case 41:
-            HandleAcmd41();
+            HandleAcmd41(arg);
             break;
         default:
             QueueResponse1(0x04U);  // R1: Illegal command
@@ -381,11 +415,12 @@ void SDCard::HandleAcmd(uint8_t cmd, uint32_t /*arg*/) {
     }
 }
 
-void SDCard::HandleAcmd41() {
+void SDCard::HandleAcmd41(uint32_t arg) {
     if (acmd41_attempts < acmd41_target_attempts) {
         acmd41_attempts++;
         QueueResponse1(0x01U);  // R1: In Idle State
     } else {
+        is_sdhc = ((arg >> 30) & 1U) != 0; // HCS bit
         QueueResponse1(0x00U);  // R1: Ready (no idle bit)
         is_initialized = true;
     }
@@ -452,7 +487,7 @@ void SDCard::HandleCmd12() {
 }
 
 void SDCard::HandleCmd13() {
-    QueueResponse2(is_initialized ? 0x00U : 0x01U, 0x00U); // R2 response
+    QueueResponse2(is_initialized ? 0x00U : 0x01U, sd_status_byte); // R2 response
 }
 
 void SDCard::HandleCmd16() {
@@ -466,6 +501,7 @@ void SDCard::HandleCmd17(uint32_t arg) {
         return;
     }
     if (arg >= total_blocks && is_sdhc) {
+        sd_status_byte |= 0x40U;
         QueueResponse1(0x40U); // R1: Parameter Error
         return;
     }
@@ -473,6 +509,7 @@ void SDCard::HandleCmd17(uint32_t arg) {
     if (!is_sdhc) {
         current_lba /= 512U;
         if (current_lba >= total_blocks) {
+            sd_status_byte |= 0x40U;
             QueueResponse1(0x40U);
             return;
         }
@@ -493,6 +530,7 @@ void SDCard::HandleCmd18(uint32_t arg) {
         return;
     }
     if (arg >= total_blocks && is_sdhc) {
+        sd_status_byte |= 0x40U;
         QueueResponse1(0x40U); // R1: Parameter Error
         return;
     }
@@ -500,6 +538,7 @@ void SDCard::HandleCmd18(uint32_t arg) {
     if (!is_sdhc) {
         current_lba /= 512U;
         if (current_lba >= total_blocks) {
+            sd_status_byte |= 0x40U;
             QueueResponse1(0x40U);
             return;
         }
@@ -521,6 +560,7 @@ void SDCard::HandleCmd24(uint32_t arg) {
         return;
     }
     if (arg >= total_blocks && is_sdhc) {
+        sd_status_byte |= 0x40U;
         QueueResponse1(0x40U); // R1: Parameter Error
         return;
     }
@@ -528,6 +568,7 @@ void SDCard::HandleCmd24(uint32_t arg) {
     if (!is_sdhc) {
         current_lba /= 512U;
         if (current_lba >= total_blocks) {
+            sd_status_byte |= 0x40U;
             QueueResponse1(0x40U);
             return;
         }
@@ -541,6 +582,7 @@ void SDCard::HandleCmd25(uint32_t arg) {
         return;
     }
     if (arg >= total_blocks && is_sdhc) {
+        sd_status_byte |= 0x40U;
         QueueResponse1(0x40U); // R1: Parameter Error
         return;
     }
@@ -548,6 +590,7 @@ void SDCard::HandleCmd25(uint32_t arg) {
     if (!is_sdhc) {
         current_lba /= 512U;
         if (current_lba >= total_blocks) {
+            sd_status_byte |= 0x40U;
             QueueResponse1(0x40U);
             return;
         }
@@ -663,6 +706,7 @@ bool SDCard::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, is_sdhc);
     ISerializable::Serialize(out, is_read_multiblock);
     ISerializable::Serialize(out, is_write_multiblock);
+    ISerializable::Serialize(out, sd_status_byte);
 
     ISerializable::Serialize(out, is_read_only);
     ISerializable::Serialize(out, warmup_bytes);
@@ -722,9 +766,11 @@ bool SDCard::LoadState(std::istream& inStream) {
         is_read_multiblock = false;
         is_write_multiblock = false;
         total_blocks = 0;
+        sd_status_byte = 0x00;
     } else {
         ISerializable::Deserialize(inStream, is_read_multiblock);
         ISerializable::Deserialize(inStream, is_write_multiblock);
+        ISerializable::Deserialize(inStream, sd_status_byte);
         ISerializable::Deserialize(inStream, is_read_only);
         ISerializable::Deserialize(inStream, warmup_bytes);
         ISerializable::Deserialize(inStream, acmd41_attempts);
