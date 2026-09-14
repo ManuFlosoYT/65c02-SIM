@@ -22,6 +22,24 @@
    ----------------------------------------------------------------------- */
 
 static DSTATUS Stat = STA_NOINIT;
+static uint8_t sd_crc_enabled = 0;
+
+static uint16_t crc16_ccitt(const uint8_t* data, uint16_t len) {
+    uint16_t crc = 0;
+    uint16_t i;
+    int j;
+    for (i = 0; i < len; i++) {
+        crc ^= (uint16_t)data[i] << 8;
+        for (j = 0; j < 8; j++) {
+            if (crc & 0x8000u) {
+                crc = (crc << 1) ^ 0x1021u;
+            } else {
+                crc = crc << 1;
+            }
+        }
+    }
+    return crc;
+}
 
 static void spi_init(void) {
     /* Ensure CS is high (inactive) */
@@ -100,8 +118,14 @@ static int sd_send_block(const BYTE* buf, uint8_t token) {
     for (i = 0; i < 512u; i++) {
         spi_xfer(buf[i]);
     }
-    spi_xfer(0xFF); /* Dummy CRC */
-    spi_xfer(0xFF);
+    if (sd_crc_enabled) {
+        uint16_t crc = crc16_ccitt(buf, 512);
+        spi_xfer((uint8_t)(crc >> 8));
+        spi_xfer((uint8_t)(crc & 0xFF));
+    } else {
+        spi_xfer(0xFF); /* Dummy CRC */
+        spi_xfer(0xFF);
+    }
 
     resp = spi_xfer(0xFF) & 0x1Fu;
     if (resp == 0x05) {
@@ -225,4 +249,12 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void* buff) {
         default:
             return RES_PARERR;
     }
+}
+
+void sd_set_crc(uint8_t enable) {
+    sd_crc_enabled = enable;
+    spi_cs_low();
+    sd_send_cmd(59, enable ? 1 : 0);
+    spi_cs_high();
+    spi_xfer(0xFF);
 }

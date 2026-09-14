@@ -38,6 +38,7 @@ int sd_mount(void);
 const char* sd_error_string(int res);
 void sd_unmount(void);
 int sd_is_present(void);
+void sd_set_crc(uint8_t enable);
 
 /* File I/O */
 uint8_t  sd_open(SD_FILE* fp, const char* path, uint8_t mode);

@@ -60,6 +60,7 @@ class SDCard : public IBusDevice {
         COMMAND_EXECUTE,
         WAIT_RESPONSE,
         SEND_RESPONSE,
+        READ_DATA_DELAY,
         READ_DATA_TOKEN,
         READ_DATA_BLOCK,
         READ_DATA_CRC,
@@ -94,9 +95,15 @@ class SDCard : public IBusDevice {
     uint8_t acmd41_attempts = 0;
     uint8_t acmd41_target_attempts = 0;
     uint8_t write_busy_bytes = 0;
+    uint8_t read_delay_bytes = 0;
+    
+    bool crc_enabled = false;
+    uint16_t current_crc = 0;
+    uint16_t received_crc = 0;
 
     // Helpers
     uint8_t CalculateCrc7(const std::array<std::uint8_t, 6>& buffer) const;
+    uint16_t CalculateCrc16(const std::array<std::uint8_t, 512>& buffer) const;
     void ProcessCommand();
     void HandleAcmd(uint8_t cmd, uint32_t arg);
     void HandleStandardCmd(uint8_t cmd, uint32_t arg);
@@ -108,6 +115,7 @@ class SDCard : public IBusDevice {
     void HandleCmd24(uint32_t arg);
     void HandleCmd55();
     void HandleCmd58();
+    void HandleCmd59(uint32_t arg);
 
     void QueueResponse1(uint8_t response1);
     void QueueResponse2(uint8_t response1, uint8_t response2);
@@ -121,6 +129,7 @@ class SDCard : public IBusDevice {
     void HandleCommandReceiveState(uint8_t mosi);
     void HandleWaitResponseState(uint8_t& miso);
     void HandleSendResponseState(uint8_t& miso);
+    void HandleReadDataDelayState(uint8_t& miso);
     void HandleReadDataTokenState(uint8_t& miso);
     void HandleReadDataBlockState(uint8_t& miso);
     void HandleReadDataCrcState(uint8_t& miso);
