@@ -94,6 +94,15 @@ sid.SetEmulationPaused(true);     // Pause generation (mute)
 bool enabled = sid.IsSoundEnabled();
 ```
 
+### Audio Recording (WAV Export)
+
+The emulator features a thread-safe `AudioRecorder` component (using `libsndfile`) that can dump the raw 16-bit PCM output from the SID chip directly into a `.wav` file, without blocking the emulation thread.
+
+1. **Start Recording**: Call `emu.start_audio_recording("output.wav")` from a Python script or via the C++ API `recorder.Start()`.
+2. **Buffering**: As the `GenerateAudio()` function creates new samples, they are pushed into a thread-safe `std::queue<std::vector<int16_t>>`.
+3. **Background Writing**: A dedicated `WorkerThread` wakes up via a `std::condition_variable` and continuously flushes the queued chunks to disk.
+4. **Stop Recording**: Call `emu.stop_audio_recording()` to signal the worker thread to flush any remaining data and safely close the file handle.
+
 ## Frontend visualisation
 
 The **SID Viewer** window in the GUI shows in real time:

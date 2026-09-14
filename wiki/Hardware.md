@@ -81,6 +81,45 @@ emulator.SetLCDOutputCallback([](char c) {
 });
 ```
 
+### Advanced Features
+
+#### Time-Travel Debugging (Rewind)
+The emulator supports maintaining a circular buffer of structural savestates allowing the user to step backwards in time (`Rewind()`).
+```cpp
+emulator.SetRewindSnapshotsEnabled(true);
+if (emulator.CanRewind()) {
+    emulator.Rewind();
+}
+```
+
+#### Auto-Reload
+During development, the emulator can watch the current loaded binary file for modifications. If it detects a change, it triggers a reload automatically.
+```cpp
+emulator.SetAutoReload(true);
+bool enabled = emulator.IsAutoReloadEnabled();
+```
+
+#### Headless Mode
+The `Emulator` can run entirely without graphical context, executing tests or automated workflows as fast as the host CPU allows, or bounded by `SetTargetIPS`.
+```cpp
+emulator.SetHeadless(true);
+```
+
+#### Memory Profiler
+Profiling is baked into the core execution. When enabled, the `Bus` object tracks the exact number of times each memory address is read or written. This data is exposed as a flat array.
+```cpp
+emulator.SetProfilingEnabled(true);
+uint32_t* counts = emulator.GetProfilerCounts();
+emulator.ClearProfiler();
+```
+
+#### Cartridge System Management
+The Core natively parses and handles `.65c` Cartridges, orchestrating the dynamic loading of SD images, VRAM contents, and toggling specific hardware flags dynamically.
+```cpp
+emulator.SetCartridge(loadedCartridge);
+emulator.SetupHardware(); // Reinitializes hardware according to Cartridge metadata
+```
+
 ---
 
 ## `Bus` class — Memory system and Device Orchestration

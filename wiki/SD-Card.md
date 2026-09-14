@@ -16,8 +16,14 @@ The system emulates the behavior of **SDSC** (Standard Capacity) and **SDHC** (H
   - `CMD17` (READ_SINGLE_BLOCK)
   - `CMD24` (WRITE_SINGLE_BLOCK)
   - `CMD55` (APP_CMD)
-  - `CMD58` (READ_OCR)
+  - `CMD58` (READ_OCR) (Accurate OCR register handling)
   - `ACMD41` (SD_SEND_OP_COND)
+
+### Advanced SPI Fidelity
+
+The emulation includes highly precise behavior mirroring real-world SD cards:
+- **Busy States**: Writing blocks or processing certain commands (like CMD12 Stop Transmission) accurately emit R1b responses and hold the MISO line Low (Busy) until the operation completes. The busy state correctly persists across Chip Select (CS) toggling.
+- **Read Latency**: A realistic read latency feature can be enabled (`SetReadLatencyEnabled()`), which simulates the time it takes for an SD card to seek and fetch a block, padding the MISO line with `0xFF` before the `0xFE` start token arrives. This prevents software from falsely assuming instant data availability.
 
 ## Memory Mapped I/O Interface
 

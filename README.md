@@ -6,7 +6,7 @@
 # 🌐 [▶️ RUN IT ONLINE!](https://manuflosoyt.github.io/65c02-SIM/)
 
 <br/>
-<p>Emulated components: CPU, VIA, ACIA, SID, GPU, 32KB RAM, 32KB ROM, 7,5KB VRAM (6,25KB usable by CPU)</p>
+<p>Emulated components: CPU, VIA, ACIA, SID, GPU, SD Card (SPI), ESP8266 (Wi-Fi), 32KB RAM, 32KB ROM, 7,5KB VRAM (6,25KB usable by CPU)</p>
 
 <h4> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/wiki"> Documentation </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Request Feature </a> </h4>
 
@@ -18,6 +18,14 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20Web-lightgrey?style=for-the-badge)](https://github.com/TU_USUARIO/TU_REPO)
 
 </div>
+
+## Key Features
+
+- **Accurate Hardware Simulation:** Emulates the 65C02 CPU and a suite of peripherals (VIA, ACIA, SID, GPU, SD Card, ESP8266) with optional cycle-accurate timings.
+- **Integrated IDE & Debugger:** Includes a built-in code editor, assembler, memory profiler, and an advanced breakpoint system (Time-Travel Debugging included).
+- **Cartridge System (.65c):** Package your ROMs, VRAM images, SD cards, and hardware configurations into a single distributable zip-based file.
+- **Python Scripting Engine:** Automate tests, create TAS (Tool-Assisted Speedruns), and manipulate hardware states via the integrated PocketPy engine.
+- **Headless Mode:** Run the emulator from the CLI for CI/CD pipelines without any GUI overhead.
 
 ## :toolbox: Getting Started
 

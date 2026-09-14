@@ -23,7 +23,11 @@ Frontend/
     ├── LCDWindow             ← LCD display
     ├── VRAMViewerWindow      ← VRAM viewer
     ├── SIDViewerWindow       ← SID chip viewer
-    └── UpdatePopup           ← Update available popup
+    ├── IDEWindow             ← Integrated IDE & Debugger
+    ├── ScriptConsoleWindow   ← Python script console
+    ├── SDUtils               ← SD Card utilities
+    ├── UpdatePopup           ← App update popup
+    └── SDKUpdatePopup        ← SDK update popup
 ```
 
 ## GUI windows
@@ -138,6 +142,25 @@ checker.CheckAsync([](const std::string& latestVersion) {
 ```
 
 > **Note:** The version displayed in the Frontend and used by the `UpdateChecker` is injected at compile time via Git (`PROJECT_VERSION`) and does not require manual changes in the code.
+
+### SDKUpdatePopup — SDK Updater
+
+Similar to `UpdatePopup`, but specifically tracks and alerts users when a new SDK package (`SDK.zip`) is available to be downloaded from GitHub.
+
+### IDEWindow — Code Editor and Debugger
+
+An integrated development environment.
+- Allows real-time editing of 6502 assembly code.
+- Interactive breakpoints, symbol tables, and assembling on the fly.
+- (See [Debugger](Debugger) page for full details).
+
+### ScriptConsoleWindow — Python Console
+
+A dedicated console window for Python scripts (PocketPy). It seamlessly captures `print()` outputs from the background script thread without blocking the emulator.
+
+### SDUtils — SD Card utilities
+
+Dialog windows and utilities for mounting, unmounting, formatting and interacting with virtual SD card images (`.img`).
 
 ## AppState — Global state
 

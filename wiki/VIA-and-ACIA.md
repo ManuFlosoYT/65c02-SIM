@@ -34,13 +34,33 @@ The **VIA 6522** is the main I/O interface chip of the system. It provides bidir
 ### Timers
 
 **Timer 1 (T1)** — 16 bits, two modes:
-- **One-shot:** generates an IRQ when it expires and keeps counting.
+- **One-shot:** generates an IRQ when it expires and keeps counting (underflows to 0xFFFF).
 - **Continuous (ACR bit 6=1):** reloads from the latch and generates periodic IRQs.
 - Optionally controls the state of **PB7** (ACR bit 7).
 
 **Timer 2 (T2)** — 16 bits, two modes:
 - **One-shot:** generates an IRQ when it expires and stops.
-- **Pulse counting (ACR bit 5=1):** counts edges on the PB6 input.
+- **Pulse counting (ACR bit 5=1):** instead of counting system clock cycles, T2 decrements every time a high-to-low transition is detected on the external **PB6** pin.
+
+### External Control Lines (CA1, CA2, CB1, CB2)
+
+The VIA provides 4 external pins used for hardware handshaking and interrupts. These are fully simulated with accurate pulse triggering and output modes, configured through the `PCR` (Peripheral Control Register).
+
+- **Input Mode**: Can trigger IRQs on rising or falling edges.
+- **Output Mode (CA2/CB2)**: Can be manually set High/Low or emit automatic pulses during specific read/write operations (e.g. pulsing Low when reading/writing to Port A or B).
+
+Callbacks can be registered in the emulator to react to these signals:
+```cpp
+via.SetCA2Callback([](bool state) { /* React to CA2 level */ });
+via.SetCB1Callback([](bool state) { /* React to CB1 level */ });
+via.SetCB2Callback([](bool state) { /* React to CB2 level */ });
+```
+
+### Input Latching
+
+The VIA supports **Input Latching** for both Port A and Port B, controlled by `ACR[0]` and `ACR[1]`.
+- When enabled, the input register will "latch" (freeze) the exact state of the external pins at the moment a transition occurs on the CA1 or CB1 lines.
+- Reading the port will return this latched value, and automatically release the latch to capture new data.
 
 ### Shift Register (SR)
 
