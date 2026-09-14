@@ -161,8 +161,12 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
         baudDelay--;
     }
 
+    int ips = targetIPS.load(std::memory_order_relaxed);
+    if (ips <= 0) ips = 1000000;
+
     via.Clock();
-    if (via.isIRQAsserted()) {
+    acia.Clock(ips);
+    if (via.isIRQAsserted() || acia.HasIRQ()) {
         pendingInterruptAny.store(true, std::memory_order_relaxed);
     }
 
@@ -170,8 +174,9 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
         int extraCycles = cpu.remainingCycles;
         for (int i = 0; i < extraCycles; ++i) {
             via.Clock();
+            acia.Clock(ips);
         }
-        if (via.isIRQAsserted()) {
+        if (via.isIRQAsserted() || acia.HasIRQ()) {
             pendingInterruptAny.store(true, std::memory_order_relaxed);
         }
         cpu.remainingCycles = 0;

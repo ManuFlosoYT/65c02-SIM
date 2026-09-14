@@ -41,6 +41,11 @@ class ACIA : public IBusDevice {
     [[nodiscard]] bool HasIRQ() const { return (STATUS & ACIA_STATUS_IRQ) != 0; }
     [[nodiscard]] bool CanReceive() const;
     [[nodiscard]] int GetBaudRate() const;
+    [[nodiscard]] int GetFrameBits() const;
+
+    void Clock(int ips = 1000000);
+    void SetDCD(bool active);
+    void SetDSR(bool active);
 
    private:
     void UpdateIRQ();
@@ -50,6 +55,17 @@ class ACIA : public IBusDevice {
     Byte STATUS;
     Byte CMD;
     Byte CTRL;
+
+    int shiftRegisterTicks;
+    Byte shiftRegisterData;
+    bool isShifting;
+    bool echoPending;
+    Byte echoByte;
+
+    bool dcdState;
+    bool dsrState;
+    bool dcdInterrupt;
+    bool dsrInterrupt;
 
     std::function<void(char)> outputCallback;
 };
@@ -70,8 +86,13 @@ inline Byte ACIA::Read(Word address) {
             STATUS &= ~ACIA_STATUS_RDRF;  // Clear interrupt/ready bit on read
             UpdateIRQ();
             return rxData;
-        case ACIA_STATUS & 0x03:
-            return STATUS;
+        case ACIA_STATUS & 0x03: {
+            Byte ret = STATUS;
+            dcdInterrupt = false;
+            dsrInterrupt = false;
+            UpdateIRQ();
+            return ret;
+        }
         case ACIA_CMD & 0x03:
             return CMD;
         case ACIA_CTRL & 0x03:
