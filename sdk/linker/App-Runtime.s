@@ -23,7 +23,7 @@ os_sp_save = $70
     .word _app_startup     ; Offset 6-7: Entry point
     .word __CORE_SIZE__    ; Offset 8-9: Resident Core Size (calculated by linker)
     .word $2000            ; Offset 10-11: Page size (8KB by default)
-    .word $2000            ; Offset 12-13: RAM address of the paging window
+    .word $2800            ; Offset 12-13: RAM address of the paging window
     .res 2, 0              ; Offset 14-15: Reserved
 
 .segment "CODE"

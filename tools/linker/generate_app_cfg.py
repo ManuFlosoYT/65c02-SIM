@@ -13,16 +13,15 @@ import argparse
 
 # Fixed layout for apps
 APP_BASE    = 0x1000  # Where the app loader puts the binary (Resident Core)
-APP_END     = 0x1FFF  # Max code+rodata end for the resident core (4KB)
+APP_END     = 0x27FF  # Max code+rodata end for the resident core (6KB)
 BSS_START   = 0x6010  # BSS / static data starts here (safe RAM_5 area)
-BSS_END     = 0x79FF  # Large BSS (6.5KB)
-STACK_TOP   = 0x7BFF  # C stack area for apps
+BSS_END     = 0x7BFF  # Large BSS (6.9KB)
 ZP_APP_BASE = 0x00    # MISMO ZP que microDOS para compartir el 'sp' de CC65
 ZP_APP_END  = 0x5F    # 96 bytes for app virtual registers
 
 # Paging layout
-PAGE_WINDOW_BASE = 0x2000
-PAGE_WINDOW_END  = 0x3FFF
+PAGE_WINDOW_BASE = 0x2800
+PAGE_WINDOW_END  = 0x47FF
 
 # Fixed addresses of the BIOS jump table entries (matches bios.s JUMPTABLE)
 JUMPTABLE = 0xFF90
