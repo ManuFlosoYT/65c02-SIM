@@ -41,6 +41,9 @@ class SDCard : public IBusDevice {
     // Transfers one byte (receives MOSI, returns MISO)
     uint8_t TransferByte(uint8_t mosi);
 
+    void SetReadLatencyEnabled(bool enabled) { read_latency_enabled = enabled; }
+    [[nodiscard]] bool IsReadLatencyEnabled() const { return read_latency_enabled; }
+
     // State management
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
@@ -98,6 +101,7 @@ class SDCard : public IBusDevice {
     uint8_t read_delay_bytes = 0;
     
     bool crc_enabled = false;
+    bool read_latency_enabled = false;
     uint16_t current_crc = 0;
     uint16_t received_crc = 0;
 

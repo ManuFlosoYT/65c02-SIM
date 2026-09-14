@@ -89,6 +89,7 @@ static void HandleLoadStateFilePicker(AppState& state) {
                 state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
                 state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
                 state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
+                state.emulation.sdLatencyEnabled = state.emulator.GetSDCard().IsReadLatencyEnabled();
                 state.rom.bin = state.emulator.GetCurrentBinPath();
             }
 

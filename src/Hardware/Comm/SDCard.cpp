@@ -401,7 +401,11 @@ void SDCard::HandleCmd17(uint32_t arg) {
     }
     ReadBlockFromImage();
     current_crc = CalculateCrc16(data_buffer);
-    read_delay_bytes = static_cast<uint8_t>((std::rand() % 20) + 5);
+    if (read_latency_enabled) {
+        read_delay_bytes = static_cast<uint8_t>((std::rand() % 20) + 5);
+    } else {
+        read_delay_bytes = 0;
+    }
     QueueResponse1(0x00U);  // R1: Success
 }
 
@@ -512,6 +516,7 @@ bool SDCard::SaveState(std::ostream& out) const {
     
     ISerializable::Serialize(out, read_delay_bytes);
     ISerializable::Serialize(out, crc_enabled);
+    ISerializable::Serialize(out, read_latency_enabled);
     ISerializable::Serialize(out, current_crc);
     ISerializable::Serialize(out, received_crc);
 
@@ -554,6 +559,7 @@ bool SDCard::LoadState(std::istream& inStream) {
         write_busy_bytes = 0;
         read_delay_bytes = 0;
         crc_enabled = false;
+        read_latency_enabled = false;
         current_crc = 0;
         received_crc = 0;
     } else {
@@ -568,6 +574,7 @@ bool SDCard::LoadState(std::istream& inStream) {
         // For simplicity, we just deserialize and if it hits EOF it will fail gracefully.
         ISerializable::Deserialize(inStream, read_delay_bytes);
         ISerializable::Deserialize(inStream, crc_enabled);
+        ISerializable::Deserialize(inStream, read_latency_enabled);
         ISerializable::Deserialize(inStream, current_crc);
         ISerializable::Deserialize(inStream, received_crc);
     }

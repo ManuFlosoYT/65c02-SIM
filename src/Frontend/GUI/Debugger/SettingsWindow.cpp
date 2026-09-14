@@ -59,6 +59,9 @@ static void DrawEmulationSettings(AppState& state) {
         state.emulator.SetAutoReload(state.emulation.autoReload);
     }
 #endif
+    if (ImGui::Checkbox("Simulate SD Read Latency", &state.emulation.sdLatencyEnabled)) {
+        state.emulator.GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
+    }
 }
 
 static void DrawScriptingSettings(AppState& state) {
@@ -227,6 +230,7 @@ static void DrawSettingsSaveState(AppState& state) {
             state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
             state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
             state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
+            state.emulation.sdLatencyEnabled = state.emulator.GetSDCard().IsReadLatencyEnabled();
             state.rom.bin = state.emulator.GetCurrentBinPath();
         };
         WebFileUtils::open_browser_file_picker(".savestate");
