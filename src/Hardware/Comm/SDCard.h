@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <future>
 
 #include "Hardware/Core/IBusDevice.h"
 
@@ -63,6 +64,7 @@ class SDCard : public IBusDevice {
         COMMAND_EXECUTE,
         WAIT_RESPONSE,
         SEND_RESPONSE,
+        READ_PENDING,
         READ_DATA_DELAY,
         READ_DATA_TOKEN,
         READ_DATA_BLOCK,
@@ -88,11 +90,14 @@ class SDCard : public IBusDevice {
     std::array<std::uint8_t, 512> data_buffer{};
     int data_index = 0;
     uint32_t current_lba = 0;  // Current Logical Block Address
+    uint32_t total_blocks = 0;
 
     // Internal flags
     bool is_acmd = false;
     bool is_initialized = false;
     bool is_sdhc = false;
+    bool is_read_multiblock = false;
+    bool is_write_multiblock = false;
 
     uint8_t warmup_bytes = 0;
     uint8_t acmd41_attempts = 0;
@@ -105,6 +110,10 @@ class SDCard : public IBusDevice {
     uint16_t current_crc = 0;
     uint16_t received_crc = 0;
 
+#ifndef TARGET_WASM
+    std::future<void> io_future;
+#endif
+
     // Helpers
     uint8_t CalculateCrc7(const std::array<std::uint8_t, 6>& buffer) const;
     uint16_t CalculateCrc16(const std::array<std::uint8_t, 512>& buffer) const;
@@ -114,9 +123,13 @@ class SDCard : public IBusDevice {
     void HandleAcmd41();
     void HandleCmd0();
     void HandleCmd8(uint32_t arg);
+    void HandleCmd12();
+    void HandleCmd13();
     void HandleCmd16();
     void HandleCmd17(uint32_t arg);
+    void HandleCmd18(uint32_t arg);
     void HandleCmd24(uint32_t arg);
+    void HandleCmd25(uint32_t arg);
     void HandleCmd55();
     void HandleCmd58();
     void HandleCmd59(uint32_t arg);
@@ -133,6 +146,7 @@ class SDCard : public IBusDevice {
     void HandleCommandReceiveState(uint8_t mosi);
     void HandleWaitResponseState(uint8_t& miso);
     void HandleSendResponseState(uint8_t& miso);
+    void HandleReadPendingState(uint8_t& miso);
     void HandleReadDataDelayState(uint8_t& miso);
     void HandleReadDataTokenState(uint8_t& miso);
     void HandleReadDataBlockState(uint8_t& miso);
