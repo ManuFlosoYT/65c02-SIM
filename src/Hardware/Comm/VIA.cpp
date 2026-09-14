@@ -25,8 +25,8 @@ VIA::VIA()
       t1l(0xFFFF),
       t2c(0xFFFF),
       t2l(0xFFFF),
-      t1_active(false),
-      t2_active(false),
+      t1_interrupt_armed(false),
+      t2_interrupt_armed(false),
       t1_pb7_output(true),
       ira(0x00),
       irb(0x00),
@@ -41,7 +41,17 @@ VIA::VIA()
       last_cb2(true),
       sr_cnt(0),
       sr_active(false),
-      sr_out_cb2(true) {
+      sr_out_cb2(true),
+      ira_latched(0),
+      irb_latched(0),
+      ira_latch_full(false),
+      irb_latch_full(false),
+      ca2_out(true),
+      cb1_out(true),
+      cb2_out(true),
+      ca2_pulse_pending(false),
+      cb1_pulse_pending(false),
+      cb2_pulse_pending(false) {
     Reset();
 }
 
@@ -67,8 +77,8 @@ void VIA::Reset() {
     t1l = 0xFFFF;
     t2c = 0xFFFF;
     t2l = 0xFFFF;
-    t1_active = false;
-    t2_active = false;
+    t1_interrupt_armed = false;
+    t2_interrupt_armed = false;
 
     ira = 0x00;
     irb = 0x00;
@@ -85,19 +95,58 @@ void VIA::Reset() {
     sr_cnt = 0;
     sr_active = false;
     sr_out_cb2 = true;
+    ira_latched = 0;
+    irb_latched = 0;
+    ira_latch_full = false;
+    irb_latch_full = false;
+    ca2_out = true;
+    cb1_out = true;
+    cb2_out = true;
+    ca2_pulse_pending = false;
+    cb1_pulse_pending = false;
+    cb2_pulse_pending = false;
     UpdateAnyActive();
 }
 
 Byte VIA::Read(Word address) {
     switch (address & 0x0F) {
-        case PORTB & 0x0F:
-            ifr &= ~0x18;  // Clear CB1 and CB2 flags
+        case PORTB & 0x0F: {
+            Byte cb2_mode = (pcr >> 5) & 0x07;
+            if (cb2_mode == 1 || cb2_mode == 3) {
+                ifr &= ~0x10;  // Clear CB1 only
+            } else {
+                ifr &= ~0x18;  // Clear CB1 and CB2 flags
+            }
             UpdateIRQ();
-            return (irb & ~ddrb) | (orb & ddrb);
-        case PORTA & 0x0F:
-            ifr &= ~0x03;  // Clear CA1 and CA2 flags
+            
+            Byte val = irb;
+            if ((acr & 0x02) != 0 && irb_latch_full) {
+                val = irb_latched;
+            }
+            return (val & ~ddrb) | (GetEffectiveORB() & ddrb);
+        }
+        case PORTA & 0x0F: {
+            Byte ca2_mode = (pcr >> 1) & 0x07;
+            if (ca2_mode == 1 || ca2_mode == 3) {
+                ifr &= ~0x02;  // Clear CA1 only
+            } else {
+                ifr &= ~0x03;  // Clear CA1 and CA2 flags
+            }
             UpdateIRQ();
-            return (ira & ~ddra) | (ora & ddra);
+            
+            if (ca2_mode == 4) {
+                UpdateCA2Output(false);
+            } else if (ca2_mode == 5) {
+                UpdateCA2Output(false);
+                ca2_pulse_pending = true;
+            }
+            
+            Byte val = (ira & ~ddra) | (ora & ddra);
+            if ((acr & 0x01) != 0 && ira_latch_full) {
+                val = ira_latched;
+            }
+            return val;
+        }
         case DDRB & 0x0F:
             return ddrb;
         case DDRA & 0x0F:
@@ -133,8 +182,13 @@ Byte VIA::Read(Word address) {
             return ifr;
         case IER & 0x0F:
             return ier | 0x80;
-        case ORA_NH & 0x0F:
-            return ora_nh;
+        case ORA_NH & 0x0F: {
+            Byte val = (ira & ~ddra) | (ora & ddra);
+            if ((acr & 0x01) != 0 && ira_latch_full) {
+                val = ira_latched;
+            }
+            return val;
+        }
         default:
             return 0;
     }
@@ -143,14 +197,26 @@ Byte VIA::Read(Word address) {
 void VIA::Write(Word address, Byte data) {
     switch (address & 0x0F) {
         case PORTB & 0x0F: {
-            Byte old_pins = (irb & ~ddrb) | (orb & ddrb);
+            Byte old_pins = (irb & ~ddrb) | (GetEffectiveORB() & ddrb);
             orb = data;
-            Byte new_pins = (irb & ~ddrb) | (orb & ddrb);
+            Byte new_pins = (irb & ~ddrb) | (GetEffectiveORB() & ddrb);
             if (port_b_callback && (old_pins != new_pins)) {
                 port_b_callback(new_pins);
             }
-            ifr &= ~0x18;  // Clear CB1 and CB2 flags
+            Byte cb2_mode = (pcr >> 5) & 0x07;
+            if (cb2_mode == 1 || cb2_mode == 3) {
+                ifr &= ~0x10;  // Clear CB1 only
+            } else {
+                ifr &= ~0x18;  // Clear CB1 and CB2 flags
+            }
             UpdateIRQ();
+            
+            if (cb2_mode == 4) {
+                UpdateCB2Output(false);
+            } else if (cb2_mode == 5) {
+                UpdateCB2Output(false);
+                cb2_pulse_pending = true;
+            }
             break;
         }
         case PORTA & 0x0F: {
@@ -160,8 +226,20 @@ void VIA::Write(Word address, Byte data) {
             if (port_a_callback && (old_pins != new_pins)) {
                 port_a_callback(new_pins);
             }
-            ifr &= ~0x03;  // Clear CA1 and CA2 flags
+            Byte ca2_mode = (pcr >> 1) & 0x07;
+            if (ca2_mode == 1 || ca2_mode == 3) {
+                ifr &= ~0x02;  // Clear CA1 only
+            } else {
+                ifr &= ~0x03;  // Clear CA1 and CA2 flags
+            }
             UpdateIRQ();
+
+            if (ca2_mode == 4) {
+                UpdateCA2Output(false);
+            } else if (ca2_mode == 5) {
+                UpdateCA2Output(false);
+                ca2_pulse_pending = true;
+            }
             break;
         }
         case DDRB & 0x0F: {
@@ -191,13 +269,11 @@ void VIA::Write(Word address, Byte data) {
             t1l = (data << 8) | t1l_l;
             t1c = t1l;  // Load counter with latch
             ifr &= ~0x40;
-            t1_active = true;
-            UpdateAnyActive();
-            t1_pb7_output = false;
+            t1_interrupt_armed = true;
+            t1_pb7_output = false; // Drop PB7 on start (both one-shot and continuous)
             if (((acr & 0x80) != 0) && ((ddrb & 0x80) != 0)) {
-                orb &= ~0x80;
                 if (port_b_callback) {
-                    port_b_callback((irb & ~ddrb) | (orb & ddrb));
+                    port_b_callback((irb & ~ddrb) | (GetEffectiveORB() & ddrb));
                 }
             }
             UpdateIRQ();
@@ -221,8 +297,7 @@ void VIA::Write(Word address, Byte data) {
             t2l = (data << 8) | (t2l & 0xFF);
             t2c = t2l;
             ifr &= ~0x20;
-            t2_active = true;
-            UpdateAnyActive();
+            t2_interrupt_armed = true;
             UpdateIRQ();
             break;
         case VIA_SR & 0x0F:
@@ -233,12 +308,28 @@ void VIA::Write(Word address, Byte data) {
             sr_cnt = 0;
             UpdateIRQ();
             break;
-        case ACR & 0x0F:
+        case ACR & 0x0F: {
+            Byte old_acr = acr;
             acr = data;
+            if ((old_acr & 0x01) != 0 && (acr & 0x01) == 0) {
+                ira_latch_full = false;
+            }
+            if ((old_acr & 0x02) != 0 && (acr & 0x02) == 0) {
+                irb_latch_full = false;
+            }
             break;
-        case PCR & 0x0F:
+        }
+        case PCR & 0x0F: {
             pcr = data;
+            Byte ca2_mode = (pcr >> 1) & 0x07;
+            if (ca2_mode == 6) UpdateCA2Output(false);
+            else if (ca2_mode == 7) UpdateCA2Output(true);
+
+            Byte cb2_mode = (pcr >> 5) & 0x07;
+            if (cb2_mode == 6) UpdateCB2Output(false);
+            else if (cb2_mode == 7) UpdateCB2Output(true);
             break;
+        }
         case IFR & 0x0F:
             ifr &= ~(data & 0x7F);
             UpdateIRQ();
@@ -252,10 +343,16 @@ void VIA::Write(Word address, Byte data) {
             ier &= 0x7F;
             UpdateIRQ();
             break;
-        case ORA_NH & 0x0F:
+        case ORA_NH & 0x0F: {
+            Byte old_pins = (ira & ~ddra) | (ora & ddra);
             ora_nh = data;
             ora = data;
+            Byte new_pins = (ira & ~ddra) | (ora & ddra);
+            if (port_a_callback && (old_pins != new_pins)) {
+                port_a_callback(new_pins);
+            }
             break;
+        }
         default:
             break;
     }
@@ -270,7 +367,7 @@ void VIA::UpdateIRQ() {
 }
 
 Byte VIA::GetPortA() const { return (ira & ~ddra) | (ora & ddra); }
-Byte VIA::GetPortB() const { return (irb & ~ddrb) | (orb & ddrb); }
+Byte VIA::GetPortB() const { return (irb & ~ddrb) | (GetEffectiveORB() & ddrb); }
 
 void VIA::SetInputA(Byte val) { ira = val; }
 
@@ -288,6 +385,14 @@ void VIA::SetCA1(bool val) {
         }
     }
     if (active_edge) {
+        if ((acr & 0x01) != 0) {
+            ira_latched = (ira & ~ddra) | (ora & ddra);
+            ira_latch_full = true;
+        }
+        Byte ca2_mode = (pcr >> 1) & 0x07;
+        if (ca2_mode == 4) {
+            UpdateCA2Output(true);
+        }
         ifr |= 0x02;
         UpdateIRQ();
     }
@@ -319,7 +424,7 @@ void VIA::SetCA2(bool val) {
 void VIA::SetInputB(Byte val) {
     // Pulse Counting for T2 (PB6)
     // Check PB6 transition high-to-low
-    if (((acr & 0x20) != 0) && t2_active) {
+    if (((acr & 0x20) != 0)) {
         // PB6 is bit 6
         bool old_pb6 = (irb & 0x40) != 0;
         bool new_pb6 = (val & 0x40) != 0;
@@ -327,10 +432,16 @@ void VIA::SetInputB(Byte val) {
         if (old_pb6 && !new_pb6) {  // Falling edge
             t2c--;
             if (t2c == 0xFFFF) {
-                ifr |= 0x20;
-                t2_active = false;
-                UpdateAnyActive();
-                UpdateIRQ();
+                if (t2_interrupt_armed) {
+                    ifr |= 0x20;
+                    t2_interrupt_armed = false;
+                    UpdateIRQ();
+                }
+                
+                Byte sr_mode = (acr >> 2) & 0x07;
+                if (sr_mode == 1 || sr_mode == 4 || sr_mode == 5) {
+                    t2c = t2l;
+                }
             }
         }
     }
@@ -352,7 +463,34 @@ void VIA::SetCB1(bool val) {
         }
     }
     if (active_edge) {
+        if ((acr & 0x02) != 0) {
+            irb_latched = irb;
+            irb_latch_full = true;
+        }
+        Byte cb2_mode = (pcr >> 5) & 0x07;
+        if (cb2_mode == 4) {
+            UpdateCB2Output(true); // Handshake restored by CB1 active edge
+        }
         ifr |= 0x10;
+        
+        if (sr_active) {
+            Byte sr_mode = (acr >> 2) & 0x07;
+            if (sr_mode == 3 || sr_mode == 7) {
+                if (sr_mode == 7) {
+                    sr_out_cb2 = (sr & 0x80) != 0;
+                    UpdateCB2Output(sr_out_cb2);
+                    sr = (sr << 1) | (sr_out_cb2 ? 1 : 0);
+                } else {
+                    bool cb2_val = cb2_in;
+                    sr = (sr << 1) | (cb2_val ? 1 : 0);
+                }
+                sr_cnt++;
+                if (sr_cnt == 8) {
+                    ifr |= 0x04;
+                    sr_cnt = 0;
+                }
+            }
+        }
         UpdateIRQ();
     }
 }
@@ -443,8 +581,8 @@ bool VIA::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, t1l);
     ISerializable::Serialize(out, t2c);
     ISerializable::Serialize(out, t2l);
-    ISerializable::Serialize(out, t1_active);
-    ISerializable::Serialize(out, t2_active);
+    ISerializable::Serialize(out, t1_interrupt_armed);
+    ISerializable::Serialize(out, t2_interrupt_armed);
     ISerializable::Serialize(out, t1_pb7_output);
     ISerializable::Serialize(out, ira);
     ISerializable::Serialize(out, irb);
@@ -460,6 +598,16 @@ bool VIA::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, sr_cnt);
     ISerializable::Serialize(out, sr_active);
     ISerializable::Serialize(out, sr_out_cb2);
+    ISerializable::Serialize(out, ira_latched);
+    ISerializable::Serialize(out, irb_latched);
+    ISerializable::Serialize(out, ira_latch_full);
+    ISerializable::Serialize(out, irb_latch_full);
+    ISerializable::Serialize(out, ca2_out);
+    ISerializable::Serialize(out, cb1_out);
+    ISerializable::Serialize(out, cb2_out);
+    ISerializable::Serialize(out, ca2_pulse_pending);
+    ISerializable::Serialize(out, cb1_pulse_pending);
+    ISerializable::Serialize(out, cb2_pulse_pending);
     return out.good();
 }
 
@@ -484,8 +632,8 @@ bool VIA::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, t1l);
     ISerializable::Deserialize(inStream, t2c);
     ISerializable::Deserialize(inStream, t2l);
-    ISerializable::Deserialize(inStream, t1_active);
-    ISerializable::Deserialize(inStream, t2_active);
+    ISerializable::Deserialize(inStream, t1_interrupt_armed);
+    ISerializable::Deserialize(inStream, t2_interrupt_armed);
     ISerializable::Deserialize(inStream, t1_pb7_output);
     ISerializable::Deserialize(inStream, ira);
     ISerializable::Deserialize(inStream, irb);
@@ -501,6 +649,16 @@ bool VIA::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, sr_cnt);
     ISerializable::Deserialize(inStream, sr_active);
     ISerializable::Deserialize(inStream, sr_out_cb2);
+    ISerializable::Deserialize(inStream, ira_latched);
+    ISerializable::Deserialize(inStream, irb_latched);
+    ISerializable::Deserialize(inStream, ira_latch_full);
+    ISerializable::Deserialize(inStream, irb_latch_full);
+    ISerializable::Deserialize(inStream, ca2_out);
+    ISerializable::Deserialize(inStream, cb1_out);
+    ISerializable::Deserialize(inStream, cb2_out);
+    ISerializable::Deserialize(inStream, ca2_pulse_pending);
+    ISerializable::Deserialize(inStream, cb1_pulse_pending);
+    ISerializable::Deserialize(inStream, cb2_pulse_pending);
     UpdateAnyActive();
     UpdateIRQ();
     return inStream.good();
