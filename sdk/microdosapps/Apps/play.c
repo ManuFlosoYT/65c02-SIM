@@ -11,7 +11,7 @@
 #define _args_ptr  (*(uint16_t*)0x61)
 
 #define CHUNK_SIZE 64
-#define NUM_BUFS 32
+#define NUM_BUFS 80
 #define SD_CHUNK_COST 363
 #define SID_WRITE_CREDIT 4
 
