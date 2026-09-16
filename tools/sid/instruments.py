@@ -4,7 +4,7 @@ from sid_constants import (
     WAVE_TRI, WAVE_SAW, WAVE_PULSE, WAVE_NOISE,
 )
 
-def get_instrument_params(program, channel, note, velocity):
+def get_instrument_params(program, channel, note, velocity, chip="8580"):
     """
     Returns SID voice parameters for a given GM program, channel, note and velocity.
 
@@ -27,11 +27,15 @@ def get_instrument_params(program, channel, note, velocity):
             attack_decay = 0x05 # Fast attack, med decay
             sustain_release = 0x00 # No sustain, fast release
             features.append("kick_slide")
+            if chip == "6581":
+                features.append("pcm_sample")
         elif note in [38, 40]: # Snare
             wave = WAVE_NOISE
             attack_decay = 0x05
             sustain_release = 0x00
             features.append("snare_macro") # Use macro for noise+tone
+            if chip == "6581":
+                features.append("pcm_sample")
         elif note in [42, 44, 46]: # HiHats
             wave = WAVE_NOISE
             attack_decay = 0x00 # Instant
@@ -67,7 +71,9 @@ def get_instrument_params(program, channel, note, velocity):
             pulse_width = 0x0400
         elif 24 <= program <= 31: # Guitar (24-31)
             wave = WAVE_SAW # Nylon/Steel
-            if program >= 29: wave = WAVE_PULSE # Overdrive -> Square
+            if program >= 29:
+                wave = WAVE_PULSE # Overdrive -> Square
+                features.append("hard_sync")
             attack_decay = 0x09
             sustain_release = (sus_nibble << 4) | 0x4
         elif 32 <= program <= 39: # Bass (32-39)
@@ -105,19 +111,21 @@ def get_instrument_params(program, channel, note, velocity):
             sustain_release = (sus_nibble << 4) | 0x6
             features.append("vibrato")
         elif 80 <= program <= 87: # Synth Lead (80-87)
-            wave = WAVE_PULSE
-            if program in [81, 87]: wave = WAVE_SAW
+            wave = WAVE_PULSE | WAVE_TRI
+            if program in [81, 87]: wave = WAVE_SAW | WAVE_TRI
             attack_decay = 0x05
             sustain_release = (sus_nibble << 4) | 0x9
             features.append("pwm_sweep")
             features.append("vibrato")
+            if program == 81:
+                features.append("ring_mod")
         elif 88 <= program <= 95: # Synth Pad (88-95)
             wave = WAVE_SAW
             attack_decay = 0xAA # Slowest attack
             sustain_release = 0xAA # Slowest release
             features.append("pwm_sweep")
         elif 96 <= program <= 103: # Synth Effects (96-103)
-            wave = WAVE_PULSE
+            wave = WAVE_PULSE | WAVE_NOISE
             attack_decay = 0x2A
             sustain_release = 0x8A
             features.append("pwm_sweep")
@@ -145,5 +153,10 @@ def get_instrument_params(program, channel, note, velocity):
             wave = WAVE_NOISE
             attack_decay = 0x00
             sustain_release = 0xF0
+
+    # 6581 Noise Mixing Bug Fix
+    if chip == "6581":
+        if (wave & WAVE_NOISE) and (wave != WAVE_NOISE):
+            wave = WAVE_NOISE # Fallback to pure noise to avoid 0V short
 
     return wave, attack_decay, sustain_release, pulse_width, features

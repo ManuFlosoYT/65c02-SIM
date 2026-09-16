@@ -1,14 +1,16 @@
 # SID bytecode generation from processed MIDI events
 
 from sid_constants import (
-    SID_CLOCK, MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3,
+    CLOCK_NTSC, CLOCK_PAL, MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3,
     MODE_LEVEL_7, MODE_LEVEL_8,
     FREQ_LO_1, FREQ_HI_1, PW_LO_1, PW_HI_1, CTRL_1, AD_1, SR_1,
-    WAVE_GATE, WAVE_PULSE, WAVE_TEST,
+    WAVE_GATE, WAVE_PULSE, WAVE_TEST, WAVE_SYNC, WAVE_RING,
     CUTOFF_LO, CUTOFF_HI, RESON_FILT, MODE_VOL,
+    FILT_LP, FILT_BP, FILT_HP, FILT_OFF3,
     get_voice_offset, freq_for_note,
 )
 from instruments import get_instrument_params
+import math
 
 
 class Voice:
@@ -29,17 +31,29 @@ class Voice:
         self.pwm_val = 0x800
         self.pwm_dir = 1
         self.features = []
+        self.is_modulator = False
 
 
 class BytecodeGenerator:
-    def __init__(self, events, mode, bass_channel=-1, melody_channel=-1, noise_channel=-1):
+    def __init__(self, events, mode, chip="8580", system="NTSC", bass_channel=-1, melody_channel=-1, noise_channel=-1):
         self.events = events
         self.mode = mode
+        self.chip = chip
+        self.system = system
         self.bass_channel = bass_channel
         self.melody_channel = melody_channel
         self.noise_channel = noise_channel
         self.voices = [Voice(i) for i in range(1, 4)]
         self.sid_state = [-1] * 25
+        self.sid_clock = CLOCK_NTSC if system == "NTSC" else CLOCK_PAL
+
+    def _freq_to_cutoff_dac(self, hz):
+        if self.chip == "6581":
+            dac = int(2047.0 * math.pow(hz / 12500.0, 0.4))
+            return max(0, min(2047, dac))
+        else:
+            dac = int((hz / 12500.0) * 2047.0)
+            return max(0, min(2047, dac))
 
     def _emit_reg(self, bytecode, reg, val):
         if self.sid_state[reg] != val:
@@ -68,6 +82,7 @@ class BytecodeGenerator:
             self.voices[i-1].pwm_val = 0x0800
             self.voices[i-1].pwm_dir = 1
             self.voices[i-1].features = []
+            self.voices[i-1].is_modulator = False
 
         # L1-L3: High Quality (0.04s), L7-L8: Low Quality (0.10s), else Mid (0.08s)
         if self.mode in [MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3]:
@@ -102,7 +117,7 @@ class BytecodeGenerator:
                         break
 
         def emit_delay_bytes(dt):
-            cycles = dt * SID_CLOCK
+            cycles = dt * self.sid_clock
             loops = int(cycles / 15.0)
             while loops > 0:
                 cur = min(loops, 0xFFFF)
@@ -211,7 +226,7 @@ class BytecodeGenerator:
                     del bytecode[prev_len:]
                     
                     # Flush accumulated delay first
-                    cycles = accumulated_dt * SID_CLOCK
+                    cycles = accumulated_dt * self.sid_clock
                     loops = int(cycles / 15.0)
                     while loops > 0:
                         c = min(loops, 0xFFFF)
@@ -229,7 +244,7 @@ class BytecodeGenerator:
 
             # Flush any remaining accumulated delay at the end of dt
             if accumulated_dt > 0.0:
-                cycles = accumulated_dt * SID_CLOCK
+                cycles = accumulated_dt * self.sid_clock
                 loops = int(cycles / 15.0)
                 while loops > 0:
                     c = min(loops, 0xFFFF)
@@ -299,7 +314,11 @@ class BytecodeGenerator:
                     notes = [ev['note']]
                     note_val = ev['note']
 
-                v = self._allocate_voice(note_val, ev['channel'], ev['time'])
+                prog = channel_patches.get(ev['channel'], 0)
+                vel = ev.get('velocity', 100)
+                wave, ad, sr, pw, features = get_instrument_params(prog, ev['channel'], note_val, vel, self.chip)
+
+                v = self._allocate_voice(note_val, ev['channel'], ev['time'], features)
                 if v:
                     v.note = note_val
                     v.channel = ev['channel']
@@ -316,11 +335,6 @@ class BytecodeGenerator:
                     base = get_voice_offset(v.index)
                     freq = freq_for_note(notes[0])
                     if freq > 0xFFFF: freq = 0xFFFF
-
-                    prog = channel_patches.get(ev['channel'], 0)
-                    vel = ev.get('velocity', 100)
-
-                    wave, ad, sr, pw, features = get_instrument_params(prog, ev['channel'], note_val, vel)
                     v.wave = wave
                     v.features = features
                     v.pwm_val = pw
@@ -341,29 +355,53 @@ class BytecodeGenerator:
                         self._emit_reg(bytecode, base + PW_LO_1, pw & 0xFF)
                         self._emit_reg(bytecode, base + PW_HI_1, (pw >> 8) & 0xFF)
 
-                    # Filter Setup (Bass LPF or Velocity Filter)
-                    if "bass_filter" in features or "velocity_filter" in features:
+                    # Filter Setup
+                    has_filt = any(f in features for f in ["bass_filter", "velocity_filter", "filter_hp", "filter_bp"])
+                    if has_filt:
                         is_melody = (ev['channel'] == self.melody_channel)
                         melody_active = any(vo.active and getattr(vo, 'channel', -1) == self.melody_channel for vo in self.voices)
                         
                         if is_melody or not melody_active:
                             filt_route = 1 << (v.index - 1)
                             
-                            hi_val = 0x20
+                            target_hz = 1000.0
                             if "velocity_filter" in features:
-                                hi_val = int((vel / 127.0) * 0xFF)
-                                if hi_val < 0x10: hi_val = 0x10
-                                
-                            self._emit_reg(bytecode, CUTOFF_LO, 0x00)
-                            self._emit_reg(bytecode, CUTOFF_HI, hi_val)
-                            self._emit_reg(bytecode, RESON_FILT, 0x40 | filt_route)
+                                target_hz = 200.0 + (vel / 127.0) * 8000.0
+                            elif "bass_filter" in features:
+                                target_hz = 1500.0
+
+                            dac_val = self._freq_to_cutoff_dac(target_hz)
+                            self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
+                            self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
+                            
+                            res = 0x40 # default resonance
+                            if self.chip == "6581" and dac_val > 1500:
+                                res = 0x10 # Q-Drop
+                            self._emit_reg(bytecode, RESON_FILT, res | filt_route)
                             
                             curr = self.sid_state[MODE_VOL]
                             if curr == -1: curr = 0x0F
-                            self._emit_reg(bytecode, MODE_VOL, curr | 0x10) # Set LP filter
+                            fmode = FILT_LP
+                            if "filter_hp" in features: fmode = FILT_HP
+                            elif "filter_bp" in features: fmode = FILT_BP
+                            
+                            # if voice 3 is modulator, turn off its audio output
+                            if self.voices[2].is_modulator:
+                                fmode |= FILT_OFF3
+                                
+                            curr = curr & ~(FILT_LP | FILT_BP | FILT_HP | FILT_OFF3)
+                            self._emit_reg(bytecode, MODE_VOL, curr | fmode)
 
                     # 3. Trigger
-                    if "kick_slide" in features:
+                    if "pcm_sample" in features and self.chip == "6581":
+                        # Fast Volume DAC manipulation for PCM
+                        for vol in [15, 12, 9, 6, 3, 0]:
+                            curr = self.sid_state[MODE_VOL]
+                            if curr == -1: curr = 0x00
+                            self._emit_reg(bytecode, MODE_VOL, (curr & 0xF0) | vol)
+                            bytecode.extend([0x82, 0x10]) # micro delay
+                        self._emit_reg(bytecode, MODE_VOL, (curr & 0xF0) | 0x0F)
+                    elif "kick_slide" in features:
                         start_freq = freq_for_note(note_val + 12)
                         self._emit_reg(bytecode, base + FREQ_LO_1, start_freq & 0xFF)
                         self._emit_reg(bytecode, base + FREQ_HI_1, (start_freq >> 8) & 0xFF)
@@ -424,45 +462,50 @@ class BytecodeGenerator:
 
         return score + note
 
-    def _allocate_voice(self, note, channel, time):
+    def _allocate_voice(self, note, channel, time, features=[]):
         # 0. Fast path: Inactive voice that already has this channel's affinity
         best_inactive = None
         for v in self.voices:
             if not v.active:
                 if getattr(v, 'channel', None) == channel:
-                    return v
+                    best_inactive = v
+                    break
                 elif best_inactive is None:
                     best_inactive = v
-        if best_inactive:
-            return best_inactive
+                    
+        chosen = best_inactive
 
-        # 2. Find best victim
-        # Criteria: Released > Quietest > Oldest
-        min_score = 999999
-        best_victim = None
+        if not chosen:
+            # 2. Find best victim
+            # Criteria: Released > Quietest > Oldest
+            min_score = 999999
+            best_victim = None
 
-        for v in self.voices:
-            age = time - v.start_time
-            age_bonus = 0
-            if age < 0.05: age_bonus = 10000
+            for v in self.voices:
+                age = time - v.start_time
+                age_bonus = 0
+                if age < 0.05: age_bonus = 10000
 
-            # Base priority
-            current_score = v.priority_score + age_bonus
+                # Base priority
+                current_score = v.priority_score + age_bonus
 
-            # If voice is in Release phase, it is a PRIME CANDIDATE for stealing
-            if getattr(v, 'released', False):
-                current_score -= 50000
+                # If voice is in Release phase, it is a PRIME CANDIDATE for stealing
+                if getattr(v, 'released', False):
+                    current_score -= 50000
 
-            # --- CHANNEL AFFINITY OPTIMIZATION ---
-            # Affinity MUST outrank Release to ensure instruments stick to their voices!
-            if getattr(v, 'channel', None) == channel:
-                current_score -= 100000
+                # --- CHANNEL AFFINITY OPTIMIZATION ---
+                # Affinity MUST outrank Release to ensure instruments stick to their voices!
+                if getattr(v, 'channel', None) == channel:
+                    current_score -= 100000
 
-            if current_score < min_score:
-                min_score = current_score
-                best_victim = v
+                if current_score < min_score:
+                    min_score = current_score
+                    best_victim = v
+                    
+            chosen = best_victim if best_victim else self.voices[0]
+            
+        if "hard_sync" in features or "ring_mod" in features:
+            mod_idx = (chosen.index - 2) % 3
+            self.voices[mod_idx].is_modulator = True
 
-        if best_victim:
-            return best_victim
-
-        return self.voices[0]
+        return chosen

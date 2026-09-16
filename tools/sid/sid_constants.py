@@ -1,7 +1,8 @@
 # SID chip constants and utility functions
 
 SID_CHANNELS = 3
-SID_CLOCK = 1000000.0  # 1 MHz
+CLOCK_NTSC = 1000000.0  # 1 MHz
+CLOCK_PAL = 985248.0
 
 # --- SID Voice Register Offsets (relative to voice base) ---
 FREQ_LO_1 = 0x00
@@ -28,6 +29,12 @@ CUTOFF_LO = 0x15
 CUTOFF_HI = 0x16
 RESON_FILT= 0x17
 MODE_VOL  = 0x18
+
+# --- Filter Modes ---
+FILT_LP = 0x10
+FILT_BP = 0x20
+FILT_HP = 0x40
+FILT_OFF3 = 0x80
 
 # --- Mode Level Constants ---
 MODE_LEVEL_1 = "l1"

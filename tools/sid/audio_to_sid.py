@@ -13,6 +13,10 @@ def main():
     parser.add_argument("input", help="Input MIDI or NSF file")
     parser.add_argument("--mode", choices=ALL_MODES, default=MODE_LEVEL_1,
                         help="Optimization Level (l1-l8)")
+    parser.add_argument("--chip", choices=["6581", "8580"], default="8580",
+                        help="Target SID Chip model (6581 or 8580)")
+    parser.add_argument("--system", choices=["NTSC", "PAL"], default="NTSC",
+                        help="Target clock system (NTSC=1MHz, PAL=985kHz)")
     parser.add_argument("--microDOS", action='store_true', help="Output raw execution bytes instead of ASM")
     parser.add_argument("--duration", type=int, default=180, help="Max duration in seconds for infinite NSF loops")
 
@@ -26,7 +30,7 @@ def main():
     events = processor.process()
 
     noise_channel = getattr(processor, 'noise_channel', -1)
-    generator = BytecodeGenerator(events, args.mode, processor.bass_channel, processor.melody_channel, noise_channel)
+    generator = BytecodeGenerator(events, args.mode, args.chip, args.system, processor.bass_channel, processor.melody_channel, noise_channel)
     bytecode = generator.generate()
 
     if args.microDOS:
