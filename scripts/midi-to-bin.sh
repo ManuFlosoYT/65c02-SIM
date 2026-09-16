@@ -12,21 +12,32 @@ target_file=""
 MICRO_DOS=false
 SDK_MODE=false
 MULTITHREAD=false
+EXTRA_ARGS=""
+input_target=""
 
+prev_arg=""
 for arg in "$@"; do
+    if [ -n "$prev_arg" ]; then
+        EXTRA_ARGS="$EXTRA_ARGS $prev_arg $arg"
+        prev_arg=""
+        continue
+    fi
+
     if [ "$arg" == "--microDOS" ]; then
         MICRO_DOS=true
-    fi
-    if [ "$arg" == "--sdk" ]; then
+    elif [ "$arg" == "--sdk" ]; then
         SDK_MODE=true
-    fi
-    if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
+    elif [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
         MULTITHREAD=true
+    elif [ "$arg" == "--chip" ] || [ "$arg" == "--system" ]; then
+        prev_arg="$arg"
+    elif [[ "$arg" != -* ]]; then
+        input_target="$arg"
     fi
 done
 
-# Input Handling (filter out --microDOS flag)
-if [ "$1" == "all" ] || [ "$2" == "all" ]; then
+# Input Handling
+if [ "$input_target" == "all" ]; then
     shopt -s nullglob
     files=(assets/midi/*.mid assets/midi/*.midi assets/nsf/*.nsf)
     shopt -u nullglob
@@ -35,7 +46,7 @@ if [ "$1" == "all" ] || [ "$2" == "all" ]; then
         echo "Error: No MIDI files found in assets/midi/"
         exit 1
     fi
-elif [ "$#" -eq 0 ]; then
+elif [ -z "$input_target" ]; then
     echo "Available MIDI files:"
     echo "  - all (Compile all MIDI files)"
     shopt -s nullglob
@@ -50,20 +61,18 @@ elif [ "$#" -eq 0 ]; then
         done
     fi
     echo ""
-    echo "Usage: $0 <midi_name>"
+    echo "Usage: $0 <midi_name> [options]"
     exit 0
 else
-    # Argument provided
-    input_arg="$1"
     # Check if exact path or just filename
-    if [ -f "$input_arg" ]; then
-        target_file="$input_arg"
-    elif [ -f "assets/midi/$input_arg" ]; then
-        target_file="assets/midi/$input_arg"
-    elif [ -f "assets/nsf/$input_arg" ]; then
-        target_file="assets/nsf/$input_arg"
+    if [ -f "$input_target" ]; then
+        target_file="$input_target"
+    elif [ -f "assets/midi/$input_target" ]; then
+        target_file="assets/midi/$input_target"
+    elif [ -f "assets/nsf/$input_target" ]; then
+        target_file="assets/nsf/$input_target"
     else
-        echo "Error: File '$input_arg' not found."
+        echo "Error: File '$input_target' not found."
         exit 1
     fi
     files=("$target_file")
@@ -95,10 +104,10 @@ for midi_file in "${files[@]}"; do
     if [ "$MICRO_DOS" = true ]; then
         echo ">> Generating Raw SID Bytes Mode: L1"
         if [ "$MULTITHREAD" = true ]; then
-            python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS > /dev/null 2>&1 &
+            python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS $EXTRA_ARGS > /dev/null 2>&1 &
             pids+=($!)
         else
-            if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS; then
+            if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS $EXTRA_ARGS; then
                 echo "   [!] Conversion script failed. Skipping."
                 exit -1
             fi
@@ -118,7 +127,7 @@ for midi_file in "${files[@]}"; do
         echo ">> Attempting Mode: $mode"
 
         # Convert MIDI to ASM
-        if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "$mode"; then
+        if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "$mode" $EXTRA_ARGS; then
             echo "   [!] Conversion script failed. Skipping."
             break
         fi
