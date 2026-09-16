@@ -152,7 +152,7 @@ static void DrawSDKPopup(AppState& state) {
 
 static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
     ImGui::BeginDisabled(cartLoaded);
-    if (ImGui::Button(state.rom.loaded ? "Eject ROM" : "Load ROM")) {
+    if (ImGui::Button((state.rom.loaded && !cartLoaded) ? "Eject ROM" : "Load ROM")) {
         if (state.rom.loaded) {
             state.rom.loaded = false;
             state.rom.bin = "";
@@ -195,11 +195,13 @@ static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
 }
 
 static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
-    ImGui::BeginDisabled(state.rom.loaded);
+    ImGui::BeginDisabled(state.rom.loaded && !cartLoaded);
     const char* cartBtnText = cartLoaded ? "Eject Cartridge" : "Load Cartridge (.65c)";
     if (ImGui::Button(cartBtnText)) {
         if (cartLoaded) {
             state.emulator.ClearCartridge();
+            state.rom.loaded = false;
+            state.rom.bin = "";
             state.emulator.Reset();
             state.emulator.Pause();
         } else {
