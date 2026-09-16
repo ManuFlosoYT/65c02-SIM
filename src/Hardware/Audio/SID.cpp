@@ -319,8 +319,6 @@ void Oscillator::Next(SIDModel model) {
     if (waveControl == 0) {
         out = 0;
     } else if (noiseOn) {
-        // Noise grounding behavior: if Noise is combined with anything, it usually grounds out to 0 or Noise.
-        // For accurate 6581 emulation, we just output Noise (and sometimes it zeroes). We'll output noise.
         uint16_t noise = (
             ((noiseShift & 0x400000) >> 11) |
             ((noiseShift & 0x100000) >> 10) |
@@ -331,7 +329,13 @@ void Oscillator::Next(SIDModel model) {
             ((noiseShift & 0x000010) << 1)  |
             ((noiseShift & 0x000004) << 2)
         ) & 0xFFF;
-        out = noise;
+        
+        if (model == SIDModel::MOS6581 && waveControl != 0x08) {
+            // Noise mixing bug: combining noise with other waveforms on 6581 sinks the output to 0V.
+            out = 0;
+        } else {
+            out = noise;
+        }
     } else {
         uint32_t ringMask = ((control & 0x04) != 0 && prevOsc) ? 0x800000 : 0;
         uint32_t syncAcc = prevOsc ? prevOsc->accumulator : 0;
@@ -397,20 +401,18 @@ void SID::Clock() {
     
     double fcScaled = static_cast<double>(fc) / 2047.0;
     
-    // Voice 3 cutoff modulation (analog ext)
-    if ((filterMode & 0x80) == 0 && (filterFiltMask & 0x04) == 0) {
-        // Modulates the control voltage directly (Voz 3 output varies from -0.5 to 0.5 roughly)
-        double v3 = (voices[2].oscOutput / 4095.0) - 0.5;
-        fcScaled += v3 * 0.4; // Modulation depth
-        fcScaled = std::clamp(fcScaled, 0.0, 1.0);
-    }
-    
     double cutoffHz;
     if (model == SIDModel::MOS6581) {
         // Approximated FET non-linear mapping (cubic curve)
         cutoffHz = 30.0 + 12000.0 * (fcScaled * fcScaled * fcScaled);
+        
+        // Q drop: on 6581, resonance dies out at high frequencies due to parasitic capacitance.
+        double effectiveRes = (res / 15.0) * (1.0 - (fcScaled * fcScaled * 0.85));
+        effectiveRes = std::max(0.0, effectiveRes);
+        filterQ = 1.5 - (1.0 * effectiveRes);
     } else {
         cutoffHz = 30.0 + (fcScaled * 12000.0);
+        filterQ = 2.0 - (1.8 * (res / 15.0));
     }
     
     // Clamp to prevent instability in filter coefficients
@@ -419,7 +421,6 @@ void SID::Clock() {
     // ZDF Filter coefficients evaluated at SID_CLOCK (1,000,000 Hz)
     double w = 2.0 * 3.14159265358979323846 * cutoffHz / SID_CLOCK;
     double g = std::tan(w / 2.0);
-    filterQ = (model == SIDModel::MOS6581) ? (1.5 - (1.0 * (res / 15.0))) : (2.0 - (1.8 * (res / 15.0)));
     double R = 1.0 / filterQ;
     
     for (size_t v = 0; v < voices.size(); ++v) {
@@ -462,7 +463,17 @@ void SID::Clock() {
     uint8_t currentVolume = volumeRegister & 0x0F;
     mix *= (currentVolume / 15.0);
     
-    double filteredMix = mix - dcBlockerPrevIn + (0.995 * dcBlockerState);
+    if (model == SIDModel::MOS6581) {
+        // Volume DAC Bug: The 6581 master volume control has a severe DC offset bug.
+        // This causes clicks when the volume changes, heavily exploited for PCM playback.
+        double volumeOffset = (currentVolume / 15.0) - 0.5;
+        mix += volumeOffset * 0.45; // Depth of the PCM volume bug
+    }
+    
+    // The DC Blocker must be very slow for 6581 to allow PCM samples (which are effectively low freq jumps)
+    // to pass through, but fast enough to prevent long-term DC drift.
+    double pole = (model == SIDModel::MOS6581) ? 0.99995 : 0.995;
+    double filteredMix = mix - dcBlockerPrevIn + (pole * dcBlockerState);
     dcBlockerState = filteredMix;
     dcBlockerPrevIn = mix;
     mix = filteredMix;
