@@ -24,10 +24,13 @@ struct ADSREnvelope {
     State state = IDLE;
     uint8_t level = 0;
     
-    // Internal counters for pseudo-logarithmic envelope
+    // 15-bit LFSR / Rate Counter and exponential divider logic
     uint16_t rateCounter = 0;
-    uint16_t lfsr = 0x7FFF;
-    uint8_t divider = 0;
+    uint16_t ratePeriod = 0;
+    uint8_t exponentialCounter = 0;
+    uint8_t exponentialCounterPeriod = 1;
+    bool holdZero = true;
+    bool gate = false;
 
     // Parameters from registers
     int attackRate = 0;
@@ -92,6 +95,7 @@ class SID : public IBusDevice {
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
+    void Clock();
 
     void StartRecording(const std::string& filename);
     void StopRecording();
@@ -143,7 +147,6 @@ class SID : public IBusDevice {
                                int total_amount);
     void GenerateAudio(int16_t* buffer, int length);
     void UpdateAudioState();
-    void Clock();
 };
 
 }  // namespace Hardware
