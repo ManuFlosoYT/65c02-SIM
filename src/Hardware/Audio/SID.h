@@ -12,6 +12,7 @@
 #include "Hardware/Audio/AudioRecorder.h"
 #endif
 #include "Hardware/Core/IBusDevice.h"
+#include "Hardware/Audio/SIDResampler.h"
 #include <memory>
 #include <optional>
 
@@ -33,10 +34,16 @@ struct ADSREnvelope {
     bool gate = false;
 
     // Parameters from registers
-    int attackRate = 0;
-    int decayRate = 0;
-    int sustainLevel = 0;
-    int releaseRate = 0;
+    uint8_t attackRate = 0;
+    uint8_t decayRate = 0;
+    uint8_t sustainLevel = 0;
+    uint8_t releaseRate = 0;
+
+    // Registers updated by CPU, applied to the active rates only when the LFSR ticks
+    uint8_t targetAttackRate = 0;
+    uint8_t targetDecayRate = 0;
+    uint8_t targetSustainLevel = 0;
+    uint8_t targetReleaseRate = 0;
 
     void Update(bool gate);
     double Next();
@@ -132,6 +139,8 @@ class SID : public IBusDevice {
 
     double dcBlockerState = 0.0;
     double dcBlockerPrevIn = 0.0;
+    
+    SIDResampler resampler;
 
     SDL_AudioStream* audioStream = nullptr;
     int sampleRate = 48000;

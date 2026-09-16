@@ -11,6 +11,8 @@
 #include <iostream>
 #include <vector>
 
+#include "Hardware/Audio/SIDWaveTables.h"
+
 namespace Hardware {
 
 constexpr double SID_CLOCK = 1000000.0;
@@ -92,6 +94,7 @@ void SID::Reset() {
     dcBlockerPrevIn = 0.0;
     clockCounter = 0;
     fractionalCycles = 0.0;
+    resampler.Clear();
     sampleBuffer.clear();
 }
 
@@ -174,18 +177,10 @@ void SID::Write(Word addr, Byte data) {
 
         uint8_t attackDecay = registers.at(regOffset + 5);
         uint8_t sustainRelease = registers.at(regOffset + 6);
-        osc.env.attackRate = (attackDecay >> 4) & 0xF;
-        osc.env.decayRate = attackDecay & 0xF;
-        osc.env.sustainLevel = (sustainRelease >> 4) & 0xF;
-        osc.env.releaseRate = sustainRelease & 0xF;
-        
-        if (osc.env.state == ADSREnvelope::ATTACK) {
-            osc.env.ratePeriod = RATE_COUNTER_PERIODS[osc.env.attackRate];
-        } else if (osc.env.state == ADSREnvelope::DECAY) {
-            osc.env.ratePeriod = RATE_COUNTER_PERIODS[osc.env.decayRate];
-        } else if (osc.env.state == ADSREnvelope::RELEASE) {
-            osc.env.ratePeriod = RATE_COUNTER_PERIODS[osc.env.releaseRate];
-        }
+        osc.env.targetAttackRate = (attackDecay >> 4) & 0xF;
+        osc.env.targetDecayRate = attackDecay & 0xF;
+        osc.env.targetSustainLevel = (sustainRelease >> 4) & 0xF;
+        osc.env.targetReleaseRate = sustainRelease & 0xF;
     }
     
     uint16_t fc = (registers.at(0x15) & 0x7) | (registers.at(0x16) << 3);
@@ -202,10 +197,18 @@ void ADSREnvelope::Update(bool newGate) {
 
     if (gateRising) {
         state = ATTACK;
+        attackRate = targetAttackRate;
+        decayRate = targetDecayRate;
+        sustainLevel = targetSustainLevel;
+        releaseRate = targetReleaseRate;
         ratePeriod = RATE_COUNTER_PERIODS[attackRate];
         holdZero = false;
     } else if (gateFalling) {
         state = RELEASE;
+        attackRate = targetAttackRate;
+        decayRate = targetDecayRate;
+        sustainLevel = targetSustainLevel;
+        releaseRate = targetReleaseRate;
         ratePeriod = RATE_COUNTER_PERIODS[releaseRate];
     }
 
@@ -219,6 +222,16 @@ void ADSREnvelope::Update(bool newGate) {
     }
 
     rateCounter = 0;
+    
+    // Latch target registers on LFSR clock
+    attackRate = targetAttackRate;
+    decayRate = targetDecayRate;
+    sustainLevel = targetSustainLevel;
+    releaseRate = targetReleaseRate;
+    
+    if (state == ATTACK) ratePeriod = RATE_COUNTER_PERIODS[attackRate];
+    else if (state == DECAY) ratePeriod = RATE_COUNTER_PERIODS[decayRate];
+    else if (state == RELEASE) ratePeriod = RATE_COUNTER_PERIODS[releaseRate];
 
     if (state == ATTACK || ++exponentialCounter == exponentialCounterPeriod) {
         exponentialCounter = 0;
@@ -288,42 +301,26 @@ void Oscillator::Next(SIDModel model) {
     }
 
     uint16_t out = 0;
-    int waves = 0;
-
-    if ((control & 0x10) != 0) { // Triangle
-        uint32_t msb = accumulator & 0x800000;
-        if ((control & 0x04) != 0 && prevOsc) {
-            msb ^= (prevOsc->accumulator & 0x800000);
-        }
-        uint32_t temp = accumulator ^ (msb ? 0xFFFFFF : 0);
-        uint16_t tri = (temp >> 11) & 0xFFF;
-        
-        if (waves == 0) out = tri;
-        else out &= tri;
-        waves++;
-    }
     
-    if ((control & 0x20) != 0) { // Saw
-        uint16_t saw = (accumulator >> 12) & 0xFFF;
-        if (waves == 0) out = saw;
-        else out &= saw;
-        waves++;
-    }
+    uint8_t waveControl = (control >> 4) & 0x0F;
+    bool noiseOn = (waveControl & 0x08) != 0;
+    bool pulseOn = (waveControl & 0x04) != 0;
+    bool sawOn = (waveControl & 0x02) != 0;
+    bool triOn = (waveControl & 0x01) != 0;
     
-    if ((control & 0x40) != 0) { // Pulse
-        uint16_t test = (control & 0x08) ? 0xFFF : 0;
-        uint16_t pulse = ((accumulator >> 12) >= pulseWidth) ? 0xFFF : 0;
-        pulse = (control & 0x08) ? test : pulse; // Handle test bit specifically if needed, but normally pulse is 0xFFF or 0
-        if (waves == 0) out = pulse;
-        else out &= pulse;
-        waves++;
-    }
-    
-    if ((control & 0x80) != 0) { // Noise
+    // Update Noise Shift Register
+    if (noiseOn) {
         if ((accumulator & 0x80000) != (prevAcc & 0x80000)) {
             uint32_t bit = ((noiseShift >> 22) ^ (noiseShift >> 17)) & 1;
             noiseShift = ((noiseShift << 1) & 0x7FFFFF) | bit;
         }
+    }
+    
+    if (waveControl == 0) {
+        out = 0;
+    } else if (noiseOn) {
+        // Noise grounding behavior: if Noise is combined with anything, it usually grounds out to 0 or Noise.
+        // For accurate 6581 emulation, we just output Noise (and sometimes it zeroes). We'll output noise.
         uint16_t noise = (
             ((noiseShift & 0x400000) >> 11) |
             ((noiseShift & 0x100000) >> 10) |
@@ -334,23 +331,46 @@ void Oscillator::Next(SIDModel model) {
             ((noiseShift & 0x000010) << 1)  |
             ((noiseShift & 0x000004) << 2)
         ) & 0xFFF;
+        out = noise;
+    } else {
+        uint32_t ringMask = ((control & 0x04) != 0 && prevOsc) ? 0x800000 : 0;
+        uint32_t syncAcc = prevOsc ? prevOsc->accumulator : 0;
+        uint16_t ix = (accumulator ^ (~syncAcc & ringMask)) >> 12;
         
-        if (waves == 0) out = noise;
-        else out &= noise;
-        waves++;
+        uint16_t pulseOutput = ((accumulator >> 12) >= pulseWidth) ? 0xFFF : 0;
+        if (control & 0x08) pulseOutput = 0xFFF; // Test bit sets pulse high
+        
+        if (model == SIDModel::MOS6581) {
+            if (waveControl == 0x01) { // Tri
+                uint32_t msb = accumulator & 0x800000;
+                if (ringMask) msb ^= (syncAcc & 0x800000);
+                out = ((accumulator ^ (msb ? 0xFFFFFF : 0)) >> 11) & 0xFFF;
+            } else if (waveControl == 0x02) { // Saw
+                out = ix;
+            } else if (waveControl == 0x04) { // Pulse
+                out = pulseOutput;
+            } else if (waveControl == 0x03) { // Tri + Saw
+                out = wave6581__ST[ix];
+            } else if (waveControl == 0x05) { // Tri + Pulse
+                out = wave6581_P_T[ix] & (pulseOutput | ~0xFFF);
+            } else if (waveControl == 0x06) { // Saw + Pulse
+                out = wave6581_PS_[ix] & (pulseOutput | ~0xFFF);
+            } else if (waveControl == 0x07) { // Tri + Saw + Pulse
+                out = wave6581_PST[ix] & (pulseOutput | ~0xFFF);
+            }
+        } else {
+            // 8580 Clean logical AND mixing
+            out = 0xFFF;
+            if (triOn) {
+                uint32_t msb = accumulator & 0x800000;
+                if (ringMask) msb ^= (syncAcc & 0x800000);
+                out &= ((accumulator ^ (msb ? 0xFFFFFF : 0)) >> 11) & 0xFFF;
+            }
+            if (sawOn) out &= ix;
+            if (pulseOn) out &= pulseOutput;
+        }
     }
 
-    if (waves == 0) out = 0;
-    else if (waves > 1 && model == SIDModel::MOS6581) {
-        // 6581 Non-linear mixing approximation:
-        // When multiple waveforms are combined, the voltage drops and there's a DC offset.
-        // We approximate this by lowering the amplitude and adding a bias.
-        out = (out / 2) + 0x300;
-    }
-
-    // 8580 handles mixing cleaner. 6581 has AND-like mixing behavior (simulated above with &=).
-    // The exact mixing matrix is complex, but this is a close approximation.
-    
     oscOutput = out;
 }
 
@@ -375,14 +395,26 @@ void SID::Clock() {
     uint8_t resFilt = registers.at(0x17);
     uint8_t res = (resFilt >> 4) & 0x0F;
     
-    double cutoffHz = 30.0 + ((static_cast<double>(fc) / 2047.0) * 12000.0);
+    double fcScaled = static_cast<double>(fc) / 2047.0;
     
     // Voice 3 cutoff modulation (analog ext)
     if ((filterMode & 0x80) == 0 && (filterFiltMask & 0x04) == 0) {
-        // Voice 3 not routed to audio output, nor to the filter input.
-        // Modulation by voice 3 can be emulated here.
-        cutoffHz += voice3OscOutput * 10.0;
+        // Modulates the control voltage directly (Voz 3 output varies from -0.5 to 0.5 roughly)
+        double v3 = (voices[2].oscOutput / 4095.0) - 0.5;
+        fcScaled += v3 * 0.4; // Modulation depth
+        fcScaled = std::clamp(fcScaled, 0.0, 1.0);
     }
+    
+    double cutoffHz;
+    if (model == SIDModel::MOS6581) {
+        // Approximated FET non-linear mapping (cubic curve)
+        cutoffHz = 30.0 + 12000.0 * (fcScaled * fcScaled * fcScaled);
+    } else {
+        cutoffHz = 30.0 + (fcScaled * 12000.0);
+    }
+    
+    // Clamp to prevent instability in filter coefficients
+    cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
     
     // ZDF Filter coefficients evaluated at SID_CLOCK (1,000,000 Hz)
     double w = 2.0 * 3.14159265358979323846 * cutoffHz / SID_CLOCK;
@@ -435,18 +467,10 @@ void SID::Clock() {
     dcBlockerPrevIn = mix;
     mix = filteredMix;
     
-    static double mixAccum = 0;
-    static int mixCount = 0;
-    mixAccum += mix;
-    mixCount++;
+    resampler.PushSample(mix);
     
-    fractionalCycles += (48000.0 / 1000000.0);
-    if (fractionalCycles >= 1.0) {
-        fractionalCycles -= 1.0;
-        double finalMix = mixAccum / mixCount;
-        mixAccum = 0;
-        mixCount = 0;
-        
+    while (resampler.HasOutput()) {
+        double finalMix = resampler.GetOutput();
         sampleBuffer.push_back(static_cast<int16_t>(finalMix * 18000.0));
         
         if (sampleBuffer.size() >= 512) {
