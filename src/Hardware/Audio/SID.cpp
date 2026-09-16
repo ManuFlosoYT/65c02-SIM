@@ -96,6 +96,10 @@ void SID::Reset() {
     fractionalCycles = 0.0;
     resampler.Clear();
     sampleBuffer.clear();
+    
+    if (audioStream != nullptr) {
+        SDL_ClearAudioStream(audioStream);
+    }
 }
 
 void SID::SetModel(SIDModel newModel) {
@@ -109,6 +113,17 @@ SIDModel SID::GetModel() const {
 
 void SID::EnableSound(bool enable) {
     std::lock_guard<std::mutex> lock(sidMutex);
+    
+    if (!soundEnabled && enable) {
+        // Clear old state before enabling
+        resampler.Clear();
+        dcBlockerState = 0.0;
+        dcBlockerPrevIn = 0.0;
+        if (audioStream != nullptr) {
+            SDL_ClearAudioStream(audioStream);
+        }
+    }
+    
     soundEnabled = enable;
 
 #ifndef TARGET_WASM
@@ -126,6 +141,17 @@ void SID::EnableSound(bool enable) {
 
 void SID::SetEmulationPaused(bool paused) {
     std::lock_guard<std::mutex> lock(sidMutex);
+    
+    if (emulationPaused && !paused) {
+        // Resuming from pause: clear stale data to prevent audio pop
+        resampler.Clear();
+        dcBlockerState = 0.0;
+        dcBlockerPrevIn = 0.0;
+        if (audioStream != nullptr) {
+            SDL_ClearAudioStream(audioStream);
+        }
+    }
+    
     emulationPaused = paused;
 #ifndef TARGET_WASM
     if (!emulationPaused && soundEnabled && !pendingFilename.empty()) {
