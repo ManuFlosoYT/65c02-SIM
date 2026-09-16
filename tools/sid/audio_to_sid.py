@@ -1,7 +1,7 @@
 import sys
 import argparse
 
-from sid_constants import ALL_MODES, MODE_LEVEL_1
+from sid_constants import ALL_MODES, MODE_MAX_QUALITY
 from midi_processor import MidiProcessor
 from nsf_processor import NsfProcessor
 from bytecode_generator import BytecodeGenerator
@@ -11,8 +11,8 @@ from bin_writer import write_bin
 def main():
     parser = argparse.ArgumentParser(description="Audio to SID Converter (MIDI & NSF)")
     parser.add_argument("input", help="Input MIDI or NSF file")
-    parser.add_argument("--mode", choices=ALL_MODES, default=MODE_LEVEL_1,
-                        help="Optimization Level (l1-l8)")
+    parser.add_argument("--mode", choices=ALL_MODES, default=MODE_MAX_QUALITY,
+                        help="Optimization Level (max_quality, quality, balanced, compressed, max_compression)")
     parser.add_argument("--chip", choices=["6581", "8580"], default="8580",
                         help="Target SID Chip model (6581 or 8580)")
     parser.add_argument("--system", choices=["NTSC", "PAL"], default="NTSC",

@@ -1,8 +1,8 @@
 # SID bytecode generation from processed MIDI events
 
 from sid_constants import (
-    CLOCK_NTSC, CLOCK_PAL, MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3,
-    MODE_LEVEL_7, MODE_LEVEL_8,
+    CLOCK_NTSC, CLOCK_PAL, MODE_MAX_QUALITY, MODE_QUALITY, MODE_BALANCED,
+    MODE_COMPRESSED, MODE_MAX_COMPRESSION,
     FREQ_LO_1, FREQ_HI_1, PW_LO_1, PW_HI_1, CTRL_1, AD_1, SR_1,
     WAVE_GATE, WAVE_PULSE, WAVE_TEST, WAVE_SYNC, WAVE_RING,
     CUTOFF_LO, CUTOFF_HI, RESON_FILT, MODE_VOL,
@@ -84,10 +84,10 @@ class BytecodeGenerator:
             self.voices[i-1].features = []
             self.voices[i-1].is_modulator = False
 
-        # L1-L3: High Quality (0.04s), L7-L8: Low Quality (0.10s), else Mid (0.08s)
-        if self.mode in [MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3]:
+        # Max Quality/Quality: High (0.04s), Compressed/Max: Low (0.10s), else Mid (0.08s)
+        if self.mode in [MODE_MAX_QUALITY, MODE_QUALITY]:
             EFFECT_STEP = 0.04
-        elif self.mode in [MODE_LEVEL_7, MODE_LEVEL_8]:
+        elif self.mode in [MODE_COMPRESSED, MODE_MAX_COMPRESSION]:
             EFFECT_STEP = 0.10
         else:
             EFFECT_STEP = 0.08

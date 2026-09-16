@@ -11,15 +11,13 @@ except ImportError:
     sys.exit(1)
 
 from sid_constants import (
-    MODE_LEVEL_1, MODE_LEVEL_2, MODE_LEVEL_3, MODE_LEVEL_4,
-    MODE_LEVEL_5, MODE_LEVEL_6, MODE_LEVEL_7, MODE_LEVEL_8,
-    MODE_LEVEL_9, MODE_LEVEL_10, MODE_LEVEL_11, MODE_LEVEL_12,
-    MODE_LEVEL_13, MODE_LEVEL_14, MODE_LEVEL_15
+    MODE_MAX_QUALITY, MODE_QUALITY, MODE_BALANCED,
+    MODE_COMPRESSED, MODE_MAX_COMPRESSION
 )
 
 
 class MidiProcessor:
-    def __init__(self, midi_path, mode=MODE_LEVEL_1):
+    def __init__(self, midi_path, mode=MODE_MAX_QUALITY):
         self.midi_path = midi_path
         self.mode = mode
         self.mid = mido.MidiFile(midi_path, clip=True)
@@ -36,24 +34,14 @@ class MidiProcessor:
     def _configure_mode(self):
         # Quantization Grid, Min Note Duration, Chord Reduction, Chord Window, Max Polyphony
         modes_config = {
-            "l1": (0.001, 0.001, False, 0.0, 3),
-            "l2": (0.004, 0.006, False, 0.0, 3),
-            "l3": (0.006, 0.008, False, 0.0, 3),
-            "l4": (0.008, 0.010, True, 0.010, 3),
-            "l5": (0.010, 0.012, True, 0.015, 3),
-            "l6": (0.015, 0.015, True, 0.020, 3),
-            "l7": (0.020, 0.020, True, 0.030, 3),
-            "l8": (0.025, 0.025, True, 0.040, 3),
-            "l9": (0.030, 0.035, True, 0.050, 2),
-            "l10": (0.040, 0.045, True, 0.060, 2),
-            "l11": (0.050, 0.055, True, 0.070, 2),
-            "l12": (0.060, 0.070, True, 0.080, 2),
-            "l13": (0.075, 0.085, True, 0.090, 1),
-            "l14": (0.090, 0.100, True, 0.100, 1),
-            "l15": (0.100, 0.120, True, 0.120, 1),
+            MODE_MAX_QUALITY: (0.001, 0.001, False, 0.0, 3),      # old l1
+            MODE_QUALITY: (0.006, 0.008, False, 0.0, 3),          # old l3
+            MODE_BALANCED: (0.010, 0.012, True, 0.015, 3),        # old l5
+            MODE_COMPRESSED: (0.020, 0.020, True, 0.030, 3),      # old l7
+            MODE_MAX_COMPRESSION: (0.030, 0.035, True, 0.050, 2), # old l9
         }
         
-        cfg = modes_config.get(self.mode, modes_config["l1"])
+        cfg = modes_config.get(self.mode, modes_config[MODE_MAX_QUALITY])
         self.quant_grid = cfg[0]
         self.min_note_duration = cfg[1]
         self.chord_reduce = cfg[2]

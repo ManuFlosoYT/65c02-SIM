@@ -13,6 +13,7 @@ except ImportError:
     sys.exit(1)
 
 from midi_processor import MidiProcessor
+from sid_constants import MODE_MAX_QUALITY
 
 class NsfMemory:
     def __init__(self, processor):
@@ -29,7 +30,7 @@ class NsfMemory:
 
 
 class NsfProcessor(MidiProcessor):
-    def __init__(self, nsf_path, mode="l1", duration=180):
+    def __init__(self, nsf_path, mode=MODE_MAX_QUALITY, duration=180):
         self.midi_path = nsf_path # For compatibility
         self.nsf_path = nsf_path
         self.mode = mode

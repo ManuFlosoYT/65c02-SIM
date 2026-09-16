@@ -78,11 +78,11 @@ else
     files=("$target_file")
 fi
 
-# Levels: l1 (2ms) -> l15 (100ms + Chords)
+# Levels: max_quality -> max_compression
 if [ "$SDK_MODE" = true ]; then
-    MODES=("l1")
+    MODES=("max_quality")
 else
-    MODES=("l1" "l2" "l3" "l4" "l5" "l6" "l7" "l8" "l9" "l10" "l11" "l12" "l13" "l14" "l15")
+    MODES=("max_quality" "quality" "balanced" "compressed" "max_compression")
 fi
 
 pids=()
@@ -102,12 +102,12 @@ for midi_file in "${files[@]}"; do
 
     success=false
     if [ "$MICRO_DOS" = true ]; then
-        echo ">> Generating Raw SID Bytes Mode: L1"
+        echo ">> Generating Raw SID Bytes Mode: MAX_QUALITY"
         if [ "$MULTITHREAD" = true ]; then
-            python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS $EXTRA_ARGS > /dev/null 2>&1 &
+            python3 tools/sid/audio_to_sid.py "$midi_file" --mode "max_quality" --microDOS $EXTRA_ARGS > /dev/null 2>&1 &
             pids+=($!)
         else
-            if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "l1" --microDOS $EXTRA_ARGS; then
+            if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "max_quality" --microDOS $EXTRA_ARGS; then
                 echo "   [!] Conversion script failed. Skipping."
                 exit -1
             fi
@@ -118,7 +118,7 @@ for midi_file in "${files[@]}"; do
     fi
 
     if [ "${ext,,}" == "nsf" ] || [ "$SDK_MODE" = true ]; then
-        current_modes=("l1")
+        current_modes=("max_quality")
     else
         current_modes=("${MODES[@]}")
     fi
@@ -155,9 +155,9 @@ for midi_file in "${files[@]}"; do
 
     if [ "$success" = false ]; then
         if [ "${ext,,}" == "nsf" ]; then
-            echo "   [!] NSF song '$clean_name' discarded for independent ROM (Exceeds L1 limit)."
+            echo "   [!] NSF song '$clean_name' discarded for independent ROM (Exceeds Max Quality limit)."
         elif [ "$SDK_MODE" = true ]; then
-            echo "   [!] Song '$clean_name' discarded (Does not fit in Mode L1)."
+            echo "   [!] Song '$clean_name' discarded (Does not fit in Max Quality Mode)."
         else
             echo ">> CRITICAL: Could not compile '$clean_name' even in EXTREME mode."
             exit -1
