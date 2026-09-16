@@ -7,8 +7,7 @@
 #include "Libs/app-bios.h"
 
 /* Args forwarded from the shell via ZP */
-#define arg_count  (*(volatile uint8_t*)0x60)
-#define _args_ptr  ((char**)(*(uint16_t*)0x61))
+
 
 int main(void) {
     SD_FILE fp;

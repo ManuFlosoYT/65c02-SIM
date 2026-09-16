@@ -6,8 +6,7 @@
 #include <string.h>
 #include "Libs/app-bios.h"
 
-#define arg_count  (*(volatile uint8_t*)0x60)
-#define _args_ptr  ((char**)(*(uint16_t*)0x61))
+
 
 static char get_net_char(void) {
     while (!net_has_data()) {}

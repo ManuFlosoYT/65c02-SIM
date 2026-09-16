@@ -4,11 +4,10 @@
  */
 #include <stdint.h>
 #include <string.h>
+
 #include "Libs/app-bios.h"
 
 // Argument mapping from microDOS init wrapper
-#define arg_count  (*(volatile uint8_t*)0x60)
-#define _args_ptr  (*(uint16_t*)0x61)
 
 #define CHUNK_SIZE 64
 #define NUM_BUFS 80
@@ -42,7 +41,10 @@ static uint8_t next_byte(void) {
     if (count == 0) {
         if (eof_reached) return 0xFF;
         r = sd_read(&file, buffers[head], CHUNK_SIZE);
-        if (r <= 0) { eof_reached = 1; return 0xFF; }
+        if (r <= 0) {
+            eof_reached = 1;
+            return 0xFF;
+        }
         head = (head + 1) % NUM_BUFS;
         count++;
     }
@@ -52,7 +54,6 @@ static uint8_t next_byte(void) {
 int main(void) {
     uint8_t cmd, l1, l2, val, i;
     char path[32];
-    char** args = (char**)(uintptr_t)_args_ptr;
     uint8_t pathp, argp;
     uint16_t loops;
 
@@ -66,17 +67,18 @@ int main(void) {
         strcpy(path, "/sid/");
         pathp = 5;
         argp = 0;
-        
-        while(args[1][argp] && pathp < 28) {
+
+        while (args[1][argp] && pathp < 28) {
             path[pathp++] = args[1][argp++];
         }
         path[pathp] = '\0';
-        
-        if (pathp > 4 && 
-           !(path[pathp-4] == '.' && path[pathp-3] == 's' && 
-             path[pathp-2] == 'i' && path[pathp-1] == 'd')) {
-            path[pathp++] = '.'; path[pathp++] = 's';
-            path[pathp++] = 'i'; path[pathp++] = 'd';
+
+        if (pathp > 4 &&
+            !(path[pathp - 4] == '.' && path[pathp - 3] == 's' && path[pathp - 2] == 'i' && path[pathp - 1] == 'd')) {
+            path[pathp++] = '.';
+            path[pathp++] = 's';
+            path[pathp++] = 'i';
+            path[pathp++] = 'd';
             path[pathp] = '\0';
         }
 
@@ -96,7 +98,7 @@ int main(void) {
         head = (head + 1) % NUM_BUFS;
         count++;
     }
-    
+
     sid_reset();
 
     while (1) {
@@ -112,7 +114,7 @@ int main(void) {
 
         cmd = next_byte();
         if (cmd == 0xFF) break;
-        
+
         if (cmd < 0x20) {
             val = next_byte();
             if (val == 0xFF && count == 0) break;
