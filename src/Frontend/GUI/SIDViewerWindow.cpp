@@ -37,7 +37,7 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
     double time = sid_time;
     float speed = 2.0F;
     float freqScale = 1.0F + ((float)voice.frequency / 4000.0F);
-    auto envLevel = static_cast<float>(voice.env.level);
+    auto envLevel = static_cast<float>(voice.env.level) / 255.0F;
 
     for (size_t nIdx = 0; nIdx < 50; nIdx++) {
         float timeRatio = (float)nIdx / 49.0F;
@@ -86,7 +86,7 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
 
     std::ostringstream envOss;
     envOss << "A:" << std::hex << std::uppercase << static_cast<int>(voice.env.attackRate)
-           << " D:" << static_cast<int>(voice.env.decayRate) << " S:" << static_cast<int>(voice.env.sustainLevel * 15)
+           << " D:" << static_cast<int>(voice.env.decayRate) << " S:" << static_cast<int>(voice.env.sustainLevel)
            << " R:" << static_cast<int>(voice.env.releaseRate);
     ImGui::TextUnformatted(envOss.str().c_str());
 

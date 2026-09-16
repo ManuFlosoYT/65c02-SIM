@@ -88,9 +88,15 @@ static void DrawPlaybackControls(AppState& state) {
         }
     }
     ImGui::SameLine();
-    ImGui::BeginDisabled(!state.emulator.IsPaused() || state.emulator.IsHalted());
+    bool stepDisabled = !state.emulator.IsPaused() || state.emulator.IsHalted();
+    ImGui::BeginDisabled(stepDisabled);
     if (ImGui::Button("Step")) {
         state.emulator.Step();
+    }
+    if (stepDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Emulator must be paused to use Step.");
+        ImGui::EndTooltip();
     }
     ImGui::EndDisabled();
     ImGui::EndDisabled();
@@ -115,11 +121,11 @@ static void DrawAudioVideoControls(AppState& state) {
         state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
     }
     ImGui::EndDisabled();
-    if (gpuOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
-            ImGui::TextUnformatted("Managed by Cartridge");
-            ImGui::EndTooltip();
-        }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (gpuOverridden) ImGui::TextUnformatted("Managed by Cartridge");
+        else ImGui::TextUnformatted("Enable/Disable Graphics Processing Unit (GPU)");
+        ImGui::EndTooltip();
     }
 
     ImGui::SameLine();
@@ -130,28 +136,30 @@ static void DrawAudioVideoControls(AppState& state) {
         state.emulator.GetSID().EnableSound(soundEnabled);
     }
     ImGui::EndDisabled();
-    if (sidOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
-            ImGui::TextUnformatted("Managed by Cartridge");
-            ImGui::EndTooltip();
-        }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (sidOverridden) ImGui::TextUnformatted("Managed by Cartridge");
+        else ImGui::TextUnformatted("Enable/Disable Sound Interface Device (SID)");
+        ImGui::EndTooltip();
     }
 
-    ImGui::SameLine();
-    bool sidModelOverridden = state.emulator.GetCartridge().config.sidModel.has_value();
-    ImGui::BeginDisabled(sidModelOverridden);
-    ImGui::PushItemWidth(100);
-    const char* sidModels[] = { "MOS 6581", "MOS 8580" };
-    int currentSIDModel = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
-    if (ImGui::Combo("##SIDModel", &currentSIDModel, sidModels, 2)) {
-        state.emulator.GetSID().SetModel(currentSIDModel == 0 ? Hardware::SIDModel::MOS6581 : Hardware::SIDModel::MOS8580);
-    }
-    ImGui::PopItemWidth();
-    ImGui::EndDisabled();
-    if (sidModelOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
-            ImGui::TextUnformatted("Model forced by Cartridge");
-            ImGui::EndTooltip();
+    if (soundEnabled) {
+        ImGui::SameLine();
+        bool sidModelOverridden = state.emulator.GetCartridge().config.sidModel.has_value();
+        ImGui::BeginDisabled(sidModelOverridden);
+        ImGui::PushItemWidth(150);
+        const char* sidModels[] = { "MOS 6581", "MOS 8580" };
+        int currentSIDModel = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
+        if (ImGui::Combo("##SIDModel", &currentSIDModel, sidModels, 2)) {
+            state.emulator.GetSID().SetModel(currentSIDModel == 0 ? Hardware::SIDModel::MOS6581 : Hardware::SIDModel::MOS8580);
+        }
+        ImGui::PopItemWidth();
+        ImGui::EndDisabled();
+        if (sidModelOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            if (ImGui::BeginItemTooltip()) {
+                ImGui::TextUnformatted("Model forced by Cartridge");
+                ImGui::EndTooltip();
+            }
         }
     }
 }
