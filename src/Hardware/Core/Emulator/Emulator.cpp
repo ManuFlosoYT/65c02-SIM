@@ -166,6 +166,7 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
 
     via.Clock();
     acia.Clock(ips);
+    sid.Clock();
     if (via.isIRQAsserted() || acia.HasIRQ()) {
         pendingInterruptAny.store(true, std::memory_order_relaxed);
     }
@@ -175,6 +176,7 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
         for (int i = 0; i < extraCycles; ++i) {
             via.Clock();
             acia.Clock(ips);
+            sid.Clock();
         }
         if (via.isIRQAsserted() || acia.HasIRQ()) {
             pendingInterruptAny.store(true, std::memory_order_relaxed);

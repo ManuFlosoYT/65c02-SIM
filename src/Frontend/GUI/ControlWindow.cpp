@@ -136,6 +136,24 @@ static void DrawAudioVideoControls(AppState& state) {
             ImGui::EndTooltip();
         }
     }
+
+    ImGui::SameLine();
+    bool sidModelOverridden = state.emulator.GetCartridge().config.sidModel.has_value();
+    ImGui::BeginDisabled(sidModelOverridden);
+    ImGui::PushItemWidth(100);
+    const char* sidModels[] = { "MOS 6581", "MOS 8580" };
+    int currentSIDModel = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
+    if (ImGui::Combo("##SIDModel", &currentSIDModel, sidModels, 2)) {
+        state.emulator.GetSID().SetModel(currentSIDModel == 0 ? Hardware::SIDModel::MOS6581 : Hardware::SIDModel::MOS8580);
+    }
+    ImGui::PopItemWidth();
+    ImGui::EndDisabled();
+    if (sidModelOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Model forced by Cartridge");
+            ImGui::EndTooltip();
+        }
+    }
 }
 
 static void DrawControlButtonBar(AppState& state) {

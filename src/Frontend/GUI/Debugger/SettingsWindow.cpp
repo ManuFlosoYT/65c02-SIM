@@ -318,6 +318,7 @@ static void DrawExportCartridgePopup(AppState& state) {
         static char authorBuf[64] = "Unknown";
         static char descBuf[128] = "";
         static char verBuf[16] = "1.1";
+        static int exportSidModel = 1; // 0=6581, 1=8580
 
         ImGui::InputText("Name", nameBuf, sizeof(nameBuf));
         ImGui::InputText("Author", authorBuf, sizeof(authorBuf));
@@ -329,6 +330,15 @@ static void DrawExportCartridgePopup(AppState& state) {
         ImGui::Text("GPU: %s", state.emulation.gpuEnabled ? "Enabled" : "Disabled");
         ImGui::Text("Cycle Accurate: %s", state.emulation.cycleAccurate ? "Enabled" : "Disabled");
         ImGui::Text("SID: %s", state.emulator.GetSID().IsSoundEnabled() ? "Enabled" : "Disabled");
+        
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("SID Model:");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(100);
+        const char* sidModels[] = { "MOS 6581", "MOS 8580" };
+        ImGui::Combo("##ExportSIDModel", &exportSidModel, sidModels, 2);
+        ImGui::PopItemWidth();
+        
         ImGui::Text("ESP: %s", state.emulation.espEnabled ? "Enabled" : "Disabled");
         ImGui::Text("SD Card: %s", state.emulation.sdEnabled ? "Enabled" : "Disabled");
 
@@ -349,6 +359,7 @@ static void DrawExportCartridgePopup(AppState& state) {
                 {"gpu_enabled", state.emulation.gpuEnabled},
                 {"cycle_accurate", state.emulation.cycleAccurate},
                 {"sid_enabled", state.emulator.GetSID().IsSoundEnabled()},
+                {"sid_model", exportSidModel == 0 ? "6581" : "8580"},
                 {"esp_enabled", state.emulation.espEnabled},
                 {"sd_enabled", state.emulation.sdEnabled}
             };

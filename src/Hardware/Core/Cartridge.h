@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <optional>
+#include "Hardware/Audio/SID.h"
 
 namespace Core {
 
@@ -21,6 +22,7 @@ struct CartridgeConfig {
     std::optional<bool> sidEnabled;
     std::optional<bool> espEnabled;
     std::optional<bool> sdEnabled;
+    std::optional<Hardware::SIDModel> sidModel;
 };
 
 struct DeviceConfig {

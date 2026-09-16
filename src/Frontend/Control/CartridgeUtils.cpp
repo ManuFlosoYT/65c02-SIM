@@ -31,7 +31,12 @@ void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
     }
     
     // Explicit hardware activation
-    state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value_or(false));
+    if (cart.config.sidEnabled.has_value()) {
+        state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value());
+    }
+    if (cart.config.sidModel.has_value()) {
+        state.emulator.GetSID().SetModel(cart.config.sidModel.value());
+    }
     
     state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
     state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);

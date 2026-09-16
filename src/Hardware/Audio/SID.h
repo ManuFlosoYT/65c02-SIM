@@ -13,21 +13,29 @@
 #endif
 #include "Hardware/Core/IBusDevice.h"
 #include <memory>
+#include <optional>
 
 namespace Hardware {
+
+enum class SIDModel { MOS6581, MOS8580 };
 
 struct ADSREnvelope {
     enum State : std::uint8_t { IDLE, ATTACK, DECAY, SUSTAIN, RELEASE };
     State state = IDLE;
-    double level = 0.0;
+    uint8_t level = 0;
+    
+    // Internal counters for pseudo-logarithmic envelope
+    uint16_t rateCounter = 0;
+    uint16_t lfsr = 0x7FFF;
+    uint8_t divider = 0;
 
     // Parameters from registers
     int attackRate = 0;
     int decayRate = 0;
-    double sustainLevel = 0.0;
+    int sustainLevel = 0;
     int releaseRate = 0;
 
-    void Update(bool gate, int sampleRate = 48000);
+    void Update(bool gate);
     double Next();
 
     bool SaveState(std::ostream& out) const;
@@ -41,11 +49,15 @@ struct Oscillator {
     uint8_t control = 0;  // Gate, Sync, Ring, Test, Tri, Saw, Pulse, Noise
 
     ADSREnvelope env;
+    Oscillator* prevOsc = nullptr; // For Hard Sync and Ring Mod
 
     // Noise generation
     uint32_t noiseShift = 0x7FFFF8;
+    
+    // Output state
+    uint16_t oscOutput = 0;
 
-    double Next(int sampleRate = 48000);
+    void Next(SIDModel model);
 
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& inStream);
@@ -71,6 +83,8 @@ class SID : public IBusDevice {
 
     void EnableSound(bool enable);
     void SetEmulationPaused(bool paused);
+    void SetModel(SIDModel model);
+    SIDModel GetModel() const;
 
     bool IsSoundEnabled() const;
 
@@ -91,6 +105,19 @@ class SID : public IBusDevice {
     std::uint8_t volumeRegister{0};
     bool soundEnabled = false;
     bool emulationPaused = true;
+    
+    SIDModel model = SIDModel::MOS8580;
+    
+    // Cycle accuracy
+    uint64_t clockCounter = 0;
+    double fractionalCycles = 0.0;
+    
+    // Buffer for audio generated during Clock()
+    std::vector<int16_t> sampleBuffer;
+    
+    // Cache for read-only registers
+    uint8_t voice3OscOutput = 0;
+    uint8_t voice3EnvOutput = 0;
 
     double filterLow = 0.0;
     double filterBand = 0.0;
@@ -116,6 +143,7 @@ class SID : public IBusDevice {
                                int total_amount);
     void GenerateAudio(int16_t* buffer, int length);
     void UpdateAudioState();
+    void Clock();
 };
 
 }  // namespace Hardware
