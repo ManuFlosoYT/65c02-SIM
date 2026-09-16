@@ -9,9 +9,10 @@
 
 // Argument mapping from microDOS init wrapper
 
-#define CHUNK_SIZE 64
-#define NUM_BUFS 80
-#define SD_CHUNK_COST 363
+
+#define CHUNK_SIZE 512
+#define NUM_BUFS 10
+#define SD_CHUNK_COST 1444
 #define SID_WRITE_CREDIT 4
 
 static void do_delay(uint16_t loops) {
@@ -26,7 +27,7 @@ static uint8_t buffers[NUM_BUFS][CHUNK_SIZE];
 static uint8_t head = 0;
 static uint8_t tail = 0;
 static uint8_t count = 0;
-static uint8_t b_idx = 0;
+static uint16_t b_idx = 0;
 static uint16_t credit = 0;
 static uint8_t eof_reached = 0;
 static int8_t r = 0;
@@ -54,6 +55,7 @@ static uint8_t next_byte(void) {
 int main(void) {
     uint8_t cmd, l1, l2, val, i;
     char path[32];
+    char** args = _args_ptr;
     uint8_t pathp, argp;
     uint16_t loops;
 
@@ -91,8 +93,12 @@ int main(void) {
 
     print_str("Playing -> ");
     println(args[1]);
-    
-    head = 0; tail = 0; count = 0; b_idx = 0; credit = 0;
+
+    head = 0;
+    tail = 0;
+    count = 0;
+    b_idx = 0;
+    credit = 0;
     for (i = 0; i < NUM_BUFS; i++) {
         if (sd_read(&file, buffers[head], CHUNK_SIZE) <= 0) break;
         head = (head + 1) % NUM_BUFS;
