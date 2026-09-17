@@ -12,30 +12,11 @@ static FATFS _sd_fs;
 
 int sd_mount(void) { return (int)f_mount(&_sd_fs, "", 1); }
 
+extern const char* os_get_msg(unsigned char msg_id);
+
 const char* sd_error_string(int res) {
-    switch (res) {
-        case FR_OK: return "OK";
-        case FR_DISK_ERR: return "Disk Error";
-        case FR_INT_ERR: return "Internal Error";
-        case FR_NOT_READY: return "Not Ready";
-        case FR_NO_FILE: return "File Not Found";
-        case FR_NO_PATH: return "Path Not Found";
-        case FR_INVALID_NAME: return "Invalid Name";
-        case FR_DENIED: return "Access Denied";
-        case FR_EXIST: return "Already Exists";
-        case FR_INVALID_OBJECT: return "Invalid Object";
-        case FR_WRITE_PROTECTED: return "Write Protected";
-        case FR_INVALID_DRIVE: return "Invalid Drive";
-        case FR_NOT_ENABLED: return "Volume Not Enabled";
-        case FR_NO_FILESYSTEM: return "No Filesystem";
-        case FR_MKFS_ABORTED: return "Mkfs Aborted";
-        case FR_TIMEOUT: return "Timeout";
-        case FR_LOCKED: return "Locked";
-        case FR_NOT_ENOUGH_CORE: return "Out of Memory";
-        case FR_TOO_MANY_OPEN_FILES: return "Too Many Open Files";
-        case FR_INVALID_PARAMETER: return "Invalid Parameter";
-        default: return "Unknown Error";
-    }
+    if (res == FR_OK) return "OK";
+    return os_get_msg((unsigned char)res);
 }
 
 void sd_unmount(void) { f_unmount(""); }

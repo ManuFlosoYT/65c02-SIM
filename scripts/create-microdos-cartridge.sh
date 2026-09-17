@@ -71,6 +71,10 @@ echo "  Populating SD Card..."
 # Use mtools (mmd, mcopy) to manipulate the raw image
 mmd -i "$SD_PATH" ::/bin
 mmd -i "$SD_PATH" ::/sid
+mmd -i "$SD_PATH" ::/SYSTEM
+
+python3 tools/microDOS/build_udos_sys.py assets/microDOS/strings.txt assets/microDOS/uDOS.sys
+mcopy -o -i "$SD_PATH" assets/microDOS/uDOS.sys ::/SYSTEM/
 
 for app in output/apps/*.app; do
     if [ -f "$app" ]; then

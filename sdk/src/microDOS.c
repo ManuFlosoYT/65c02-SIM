@@ -5,6 +5,8 @@
 #include "microDOS/commands.h"
 #include "microDOS/msg.h"
 
+extern unsigned char os_clear_swap(void);
+
 int main(void) {
     char cwd[64];
     int res = -1;
@@ -27,6 +29,9 @@ int main(void) {
     }
 
     println(M_RDY);
+
+    println("[i] Initializing system and cleaning swap...");
+    os_clear_swap();
 
     while (1) {
         if (!sd_getcwd(cwd, 64)) {

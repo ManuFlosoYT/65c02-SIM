@@ -32,5 +32,12 @@ void delay(unsigned int ms);
 
 // Paginated Virtual Memory
 void os_load_app_page(unsigned char page_id);
+unsigned char os_swap_save(const char* name, void* addr, unsigned int size);
+unsigned char os_swap_load(const char* name, void* addr, unsigned int size);
+void* os_alloc(unsigned int size);
+void os_free(void* ptr);
+unsigned char os_clear_swap(void);
+
+const char* os_get_msg(unsigned char msg_id);
 
 #endif

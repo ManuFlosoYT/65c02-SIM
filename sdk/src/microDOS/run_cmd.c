@@ -45,6 +45,7 @@ void os_load_app_page(uint8_t page_id) {
 static int load_and_run(const char* path) {
     uint16_t core_size;
     uint16_t entry_point;
+    int ret_code;
 
     if (!sd_open(&active_app_file, path, SD_READ)) {
         return 0;
@@ -55,10 +56,10 @@ static int load_and_run(const char* path) {
         app_hdr[0] != 'u' || app_hdr[1] != 'D' || app_hdr[2] != 'O' || app_hdr[3] != 'S' ||
         app_hdr[4] != 3) {
         sd_close(&active_app_file);
-        print_str(M_ERR); print_str("Invalid Executable Format. Required: microDOS v3. Found: ");
+        print_str(M_ERR); print_str(os_get_msg(20));
         bios_putchar((char)app_hdr[0]); bios_putchar((char)app_hdr[1]); 
         bios_putchar((char)app_hdr[2]); bios_putchar((char)app_hdr[3]);
-        print_str(" version "); print_num(app_hdr[4]); println("");
+        print_str(os_get_msg(21)); print_num(app_hdr[4]); println("");
         return 1;
     }
 
@@ -69,7 +70,7 @@ static int load_and_run(const char* path) {
     sd_seek(&active_app_file, 0);
     if (sd_read(&active_app_file, (void*)APP_LOAD_ADDR, core_size) != core_size) {
         sd_close(&active_app_file);
-        print_str(M_ERR); println("Failed to read application resident core from SD");
+        print_str(M_ERR); println(os_get_msg(22));
         return 1;
     }
 
@@ -81,11 +82,19 @@ static int load_and_run(const char* path) {
         APP_ARGS_ZP[2] = (uint8_t)(args_addr >> 8);
     }
 
-    /* JSR to loaded app via its absolute entry point */
-    ((void(*)(void))(uintptr_t)entry_point)();
+    /* JSR to loaded app via its absolute entry point and capture return code */
+    ret_code = ((int(*)(void))(uintptr_t)entry_point)();
 
     /* We return here after app finishes. Close the virtual memory backend file */
     sd_close(&active_app_file);
+
+    if (ret_code == 0) {
+        if (os_clear_swap()) {
+            println("[i] Cleaning swap memory...");
+        }
+    } else {
+        println("[i] App exited with error. Swap tables preserved.");
+    }
 
     return 1;
 }
@@ -109,7 +118,7 @@ void cmd_run(void) {
     }
 
     if (!load_and_run(path)) {
-        print_str(M_ERR); print_str("Application not found or inaccessible: "); println(path);
+        print_str(M_ERR); print_str(os_get_msg(23)); println(path);
     }
 }
 

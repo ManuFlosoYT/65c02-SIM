@@ -31,20 +31,7 @@ void exec_command(const char* name) {
 void cmd_help(void) {
     SD_DIR dir;
     SD_INFO fno;
-
-    println("microDOS Commands:");
-    println("  ls [dir]: List contents");
-    println("  cd <dir>: Change dir");
-    println("  mkdir <dir>: New dir");
-    println("  touch <file>: New file");
-    println("  cat <file>: Show file");
-    println("  rm <path>: Remove");
-    println("  wifi <ssid> <pwd>: Connect");
-    println("  run <app>: Run app");
-    println("  help: Show help");
-    println("  exit");
-
-    println("\nApplications in /bin/:");
+    print_str(os_get_msg(24));
     if (sd_opendir(&dir, "/bin")) {
         while (sd_readdir(&dir, &fno)) {
             if (!(fno.fattrib & AM_DIR)) {

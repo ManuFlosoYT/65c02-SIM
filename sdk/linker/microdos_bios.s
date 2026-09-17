@@ -213,6 +213,7 @@ IRQ_HANDLER:
 .import _sd_opendir, _sd_readdir, _sd_closedir
 .import _sd_mkdir, _sd_remove, _sd_exists
 .import _net_wifi
+.import _os_swap_save, _os_swap_load, _os_alloc, _os_free
 
 .export BIOS_JUMPTABLE
 .segment "JUMPTABLE"
@@ -244,3 +245,7 @@ BIOS_JUMPTABLE:
     jmp _sd_remove      ; $FFD8 — uint8_t sd_remove(const char*)
     jmp _sd_exists      ; $FFDB — uint8_t sd_exists(const char*)
     jmp _net_wifi       ; $FFDE — void net_wifi(const char*, const char*)
+    jmp _os_swap_save   ; $FFE1 — uint8_t os_swap_save(const char*, void*, uint16_t)
+    jmp _os_swap_load   ; $FFE4 — uint8_t os_swap_load(const char*, void*, uint16_t)
+    jmp _os_alloc       ; $FFE7 — void* os_alloc(uint16_t)
+    jmp _os_free        ; $FFEA — void os_free(void*)

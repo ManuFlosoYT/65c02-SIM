@@ -6,20 +6,36 @@
  * functions; the generated JSR goes straight to the jump table entry.
  *
  * JUMPTABLE layout (see Linker/bios.s):
- *  $FF90 print_str   $FF93 println    $FF96 print_num   $FF99 print_hex_byte
- *  $FF9C bios_getchar $FF9F bios_putchar
- *  $FFA2 sd_open     $FFA5 sd_read    $FFA8 sd_write    $FFAB sd_close
- *  $FFAE sd_puts     $FFB1 sd_getc    $FFB4 sd_getcwd   $FFB7 sd_chdir
- *  $FFBA net_send    $FFBD net_cmd    $FFC0 net_send_num
  */
 #ifndef APP_BIOS_H
 #define APP_BIOS_H
 
 #include <stdint.h>
 
-/* App arguments */
+/* ========================================================================= */
+/*                           APP ARGUMENTS                                   */
+/* ========================================================================= */
+
 #define arg_count  (*(volatile uint8_t*)0x60)
 #define _args_ptr  ((char**)(*(uint16_t*)0x61))
+
+
+/* ========================================================================= */
+/*                             SYSTEM BIOS                                   */
+/* ========================================================================= */
+
+/* BIOS — resolved to jump table by app linker */
+void print_str(const char* s);
+void println(const char* s);
+void print_num(unsigned int n);
+void print_hex_byte(unsigned char v);
+char bios_getchar(void);
+void bios_putchar(char c);
+
+
+/* ========================================================================= */
+/*                         FILE SYSTEM (SD/FATFS)                            */
+/* ========================================================================= */
 
 /* Opaque handles for FatFs (sizes for TINY=1 config) */
 typedef struct { uint8_t reserved[34]; } SD_FILE;
@@ -40,43 +56,6 @@ typedef struct {
 #define SD_CREATE_ALWAYS 0x08
 #define SD_OPEN_ALWAYS   0x10
 
-/* ESP8266 MMIO */
-#define ESP8266_DATA   (*(volatile uint8_t*)0x5004)
-#define ESP8266_STATUS (*(volatile uint8_t*)0x5005)
-#define net_has_data() (ESP8266_STATUS & 0x80)
-#define net_putc(c)    (ESP8266_DATA = (c))
-#define net_getc()     (ESP8266_DATA)
-
-/* VIA 6522 MMIO */
-#define VIA_ORB    (*(volatile uint8_t*)0x6000)
-#define VIA_IRB    (*(volatile uint8_t*)0x6000)
-#define VIA_ORA    (*(volatile uint8_t*)0x6001)
-#define VIA_IRA    (*(volatile uint8_t*)0x6001)
-#define VIA_DDRB   (*(volatile uint8_t*)0x6002)
-#define VIA_DDRA   (*(volatile uint8_t*)0x6003)
-#define VIA_T1C_L  (*(volatile uint8_t*)0x6004)
-#define VIA_T1C_H  (*(volatile uint8_t*)0x6005)
-#define VIA_T1L_L  (*(volatile uint8_t*)0x6006)
-#define VIA_T1L_H  (*(volatile uint8_t*)0x6007)
-#define VIA_T2C_L  (*(volatile uint8_t*)0x6008)
-#define VIA_T2C_H  (*(volatile uint8_t*)0x6009)
-#define VIA_SR     (*(volatile uint8_t*)0x600A)
-#define VIA_ACR    (*(volatile uint8_t*)0x600B)
-#define VIA_PCR    (*(volatile uint8_t*)0x600C)
-#define VIA_IFR    (*(volatile uint8_t*)0x600D)
-#define VIA_IER    (*(volatile uint8_t*)0x600E)
-#define VIA_ORA_NH (*(volatile uint8_t*)0x600F)
-#define VIA_IRA_NH (*(volatile uint8_t*)0x600F)
-
-/* BIOS — resolved to jump table by app linker */
-void print_str(const char* s);
-void println(const char* s);
-void print_num(unsigned int n);
-void print_hex_byte(unsigned char v);
-char bios_getchar(void);
-void bios_putchar(char c);
-
-/* SD */
 uint8_t  sd_open(SD_FILE* fp, const char* path, uint8_t mode);
 int16_t  sd_read(SD_FILE* fp, void* buf, uint16_t len);
 int16_t  sd_write(SD_FILE* fp, const void* buf, uint16_t len);
@@ -92,56 +71,54 @@ uint8_t  sd_mkdir(const char* path);
 uint8_t  sd_remove(const char* path);
 uint8_t  sd_exists(const char* path);
 
-/* NET */
+
+/* ========================================================================= */
+/*                         NETWORK & WIFI (ESP8266)                          */
+/* ========================================================================= */
+
+/* ESP8266 MMIO */
+#define ESP8266_DATA   (*(volatile uint8_t*)0x5004)
+#define ESP8266_STATUS (*(volatile uint8_t*)0x5005)
+#define net_has_data() (ESP8266_STATUS & 0x80)
+#define net_putc(c)    (ESP8266_DATA = (c))
+#define net_getc()     (ESP8266_DATA)
+
+/* NET API */
 void net_send(const char* s);
 void net_cmd(const char* s);
 void net_send_num(uint16_t n);
 void net_wifi(const char* ssid, const char* pass);
 
-/* SID BIOS API */
-void sid_write(uint8_t reg, uint8_t val);
-void sid_reset(void);
 
-static void sid_trigger_note(uint8_t voice, uint16_t freq, uint8_t ctrl) {
-    uint8_t offset = (voice - 1) * 7;
-    sid_write(offset + 0x00, freq & 0xFF); /* FREQ_LO_1 */
-    sid_write(offset + 0x01, (freq >> 8) & 0xFF); /* FREQ_HI_1 */
-    sid_write(offset + 0x04, ctrl); /* CTRL_1 */
-}
+/* ========================================================================= */
+/*                          HARDWARE IO (VIA 6522)                           */
+/* ========================================================================= */
 
-static void sid_stop_note(uint8_t voice) {
-    uint8_t offset = (voice - 1) * 7;
-    sid_write(offset + 0x04, 0x00); /* Gate off */
-}
+/* VIA 6522 MMIO */
+#define VIA_ORB    (*(volatile uint8_t*)0x6000)
+#define VIA_IRB    (*(volatile uint8_t*)0x6000)
+#define VIA_ORA    (*(volatile uint8_t*)0x6001)
+#define VIA_IRA    (*(volatile uint8_t*)0x6001)
+#define VIA_DDRB   (*(volatile uint8_t*)0x6002)
+#define VIA_DDRA   (*(volatile uint8_t*)0x6003)
+#define VIA_T1C_L  (*(volatile uint8_t*)0x6004)
+#define VIA_T1C_H  (*(volatile uint8_t*)0x6005)
+#define VIA_T1L_L  (*(volatile uint8_t*)0x6006)
+#define VIA_T1L_H  (*(volatile uint8_t*)0x6007)
+#define VIA_T2C_L  (*(volatile uint8_t*)0x6008)
+#define VIA_T2C_H  (*(volatile uint8_t*)0x6009)
+#define VIA_SR     (*(voslatile uint8_t*)0x600A)
+#define VIA_ACR    (*(volatile uint8_t*)0x600B)
+#define VIA_PCR    (*(volatile uint8_t*)0x600C)
+#define VIA_IFR    (*(volatile uint8_t*)0x600D)
+#define VIA_IER    (*(volatile uint8_t*)0x600E)
+#define VIA_ORA_NH (*(volatile uint8_t*)0x600F)
+#define VIA_IRA_NH (*(volatile uint8_t*)0x600F)
 
-static void sid_set_envelope(uint8_t voice, uint8_t attack, uint8_t decay, uint8_t sustain, uint8_t release) {
-    uint8_t offset = (voice - 1) * 7;
-    sid_write(offset + 0x05, (attack << 4) | (decay & 0x0F)); /* AD_1 */
-    sid_write(offset + 0x06, (sustain << 4) | (release & 0x0F)); /* SR_1 */
-}
 
-static void sid_set_pw(uint8_t voice, uint16_t pw) {
-    uint8_t offset = (voice - 1) * 7;
-    sid_write(offset + 0x02, pw & 0xFF); /* PW_LO_1 */
-    sid_write(offset + 0x03, (pw >> 8) & 0x0F); /* PW_HI_1 */
-}
-
-static void sid_set_volume(uint8_t vol) {
-    sid_write(0x18, vol & 0x0F); /* MODE_VOL */
-}
-
-static void sid_set_filter_cutoff(uint16_t cutoff) {
-    sid_write(0x15, cutoff & 0x07); /* FC_LO */
-    sid_write(0x16, (cutoff >> 3) & 0xFF); /* FC_HI */
-}
-
-static void sid_set_filter_config(uint8_t reson, uint8_t voices, uint8_t mode, uint8_t vol) {
-    sid_write(0x17, (reson << 4) | (voices & 0x0F)); /* RES_FILT */
-    sid_write(0x18, mode | (vol & 0x0F)); /* MODE_VOL */
-}
-
-/* Virtual Paged Memory */
-void os_load_app_page(uint8_t page_id);
+/* ========================================================================= */
+/*                              AUDIO (SID)                                  */
+/* ========================================================================= */
 
 // SID Register Offsets
 #define FREQ_LO_1 0x00
@@ -206,5 +183,63 @@ void os_load_app_page(uint8_t page_id);
 #define NOTE_E4  0x1599
 #define NOTE_G4  0x19B0
 #define NOTE_C5  0x2249
+
+/* SID BIOS API */
+void sid_write(uint8_t reg, uint8_t val);
+void sid_reset(void);
+
+#define sid_trigger_note(voice, freq, ctrl) do { \
+    uint8_t _offset = ((voice) - 1) * 7; \
+    sid_write(_offset + 0x00, (freq) & 0xFF); \
+    sid_write(_offset + 0x01, ((freq) >> 8) & 0xFF); \
+    sid_write(_offset + 0x04, (ctrl)); \
+} while(0)
+
+#define sid_stop_note(voice) do { \
+    uint8_t _offset = ((voice) - 1) * 7; \
+    sid_write(_offset + 0x04, 0x00); \
+} while(0)
+
+#define sid_set_envelope(voice, attack, decay, sustain, release) do { \
+    uint8_t _offset = ((voice) - 1) * 7; \
+    sid_write(_offset + 0x05, ((attack) << 4) | ((decay) & 0x0F)); \
+    sid_write(_offset + 0x06, ((sustain) << 4) | ((release) & 0x0F)); \
+} while(0)
+
+#define sid_set_pw(voice, pw) do { \
+    uint8_t _offset = ((voice) - 1) * 7; \
+    sid_write(_offset + 0x02, (pw) & 0xFF); \
+    sid_write(_offset + 0x03, ((pw) >> 8) & 0x0F); \
+} while(0)
+
+#define sid_set_volume(vol) do { \
+    sid_write(0x18, (vol) & 0x0F); \
+} while(0)
+
+#define sid_set_filter_cutoff(cutoff) do { \
+    sid_write(0x15, (cutoff) & 0x07); \
+    sid_write(0x16, ((cutoff) >> 3) & 0xFF); \
+} while(0)
+
+#define sid_set_filter_config(reson, voices, mode, vol) do { \
+    sid_write(0x17, ((reson) << 4) | ((voices) & 0x0F)); \
+    sid_write(0x18, (mode) | ((vol) & 0x0F)); \
+} while(0)
+
+
+/* ========================================================================= */
+/*                         VIRTUAL PAGED MEMORY                              */
+/* ========================================================================= */
+
+void os_load_app_page(uint8_t page_id);
+
+#define SWAP_WINDOW_ADDR ((void*)0x2800)
+#define SWAP_WINDOW_SIZE 0x2000
+
+uint8_t os_swap_save(const char* name, void* addr, uint16_t size);
+uint8_t os_swap_load(const char* name, void* addr, uint16_t size);
+
+void* os_alloc(uint16_t size);
+void  os_free(void* ptr);
 
 #endif /* APP_BIOS_H */
