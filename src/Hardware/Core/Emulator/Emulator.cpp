@@ -316,9 +316,9 @@ void Emulator::RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMa
     } else if (dev.name == "ESP8266" || dev.name == "ESP32") {
         bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
     } else if (dev.name == "SID") {
-        bus.RegisterDevice(dev.start, dev.end, &sid, true, true);
+        bus.RegisterDevice(dev.start, dev.end, &sid, cartridge.config.sidEnabled.value_or(true), true);
     } else if (dev.name == "GPU") {
-        bus.RegisterDevice(dev.start, dev.end, &gpu, true, true);
+        bus.RegisterDevice(dev.start, dev.end, &gpu, cartridge.config.gpuEnabled.value_or(this->gpuEnabled), true);
     } else if (dev.name == "LCD") {
         bus.RegisterVirtualDevice(&lcd, true);
     } else if (dev.name == "SD Card") {
@@ -355,8 +355,8 @@ void Emulator::RegisterDefaultLayout() {
     bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
     bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
     bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-    bus.RegisterDevice(0x4800, 0x481F, &sid, true, true);
-    bus.RegisterDevice(0x2000, 0x3FFF, &gpu, true, true);
+    bus.RegisterDevice(0x4800, 0x481F, &sid, cartridge.config.sidEnabled.value_or(true), true);
+    bus.RegisterDevice(0x2000, 0x3FFF, &gpu, cartridge.config.gpuEnabled.value_or(this->gpuEnabled), true);
     bus.RegisterVirtualDevice(&lcd, true);
 }
 
