@@ -48,8 +48,8 @@ static void spi_init(void) {
 
 /* Send/receive one byte via MMIO SPI */
 static uint8_t spi_xfer(uint8_t mosi) {
-    SD_DATA = mosi;     /* Write starts transfer */
-    return SD_DATA;    /* Read returns MISO */
+    SD_DATA = mosi; /* Write starts transfer */
+    return SD_DATA; /* Read returns MISO */
 }
 
 static void spi_cs_low(void) { SD_CTRL = 1; }
