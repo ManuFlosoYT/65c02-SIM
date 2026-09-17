@@ -47,6 +47,27 @@ typedef struct {
 #define net_putc(c)    (ESP8266_DATA = (c))
 #define net_getc()     (ESP8266_DATA)
 
+/* VIA 6522 MMIO */
+#define VIA_ORB    (*(volatile uint8_t*)0x6000)
+#define VIA_IRB    (*(volatile uint8_t*)0x6000)
+#define VIA_ORA    (*(volatile uint8_t*)0x6001)
+#define VIA_IRA    (*(volatile uint8_t*)0x6001)
+#define VIA_DDRB   (*(volatile uint8_t*)0x6002)
+#define VIA_DDRA   (*(volatile uint8_t*)0x6003)
+#define VIA_T1C_L  (*(volatile uint8_t*)0x6004)
+#define VIA_T1C_H  (*(volatile uint8_t*)0x6005)
+#define VIA_T1L_L  (*(volatile uint8_t*)0x6006)
+#define VIA_T1L_H  (*(volatile uint8_t*)0x6007)
+#define VIA_T2C_L  (*(volatile uint8_t*)0x6008)
+#define VIA_T2C_H  (*(volatile uint8_t*)0x6009)
+#define VIA_SR     (*(volatile uint8_t*)0x600A)
+#define VIA_ACR    (*(volatile uint8_t*)0x600B)
+#define VIA_PCR    (*(volatile uint8_t*)0x600C)
+#define VIA_IFR    (*(volatile uint8_t*)0x600D)
+#define VIA_IER    (*(volatile uint8_t*)0x600E)
+#define VIA_ORA_NH (*(volatile uint8_t*)0x600F)
+#define VIA_IRA_NH (*(volatile uint8_t*)0x600F)
+
 /* BIOS — resolved to jump table by app linker */
 void print_str(const char* s);
 void println(const char* s);
@@ -88,6 +109,37 @@ static void sid_trigger_note(uint8_t voice, uint16_t freq, uint8_t ctrl) {
     sid_write(offset + 0x04, ctrl); /* CTRL_1 */
 }
 
+static void sid_stop_note(uint8_t voice) {
+    uint8_t offset = (voice - 1) * 7;
+    sid_write(offset + 0x04, 0x00); /* Gate off */
+}
+
+static void sid_set_envelope(uint8_t voice, uint8_t attack, uint8_t decay, uint8_t sustain, uint8_t release) {
+    uint8_t offset = (voice - 1) * 7;
+    sid_write(offset + 0x05, (attack << 4) | (decay & 0x0F)); /* AD_1 */
+    sid_write(offset + 0x06, (sustain << 4) | (release & 0x0F)); /* SR_1 */
+}
+
+static void sid_set_pw(uint8_t voice, uint16_t pw) {
+    uint8_t offset = (voice - 1) * 7;
+    sid_write(offset + 0x02, pw & 0xFF); /* PW_LO_1 */
+    sid_write(offset + 0x03, (pw >> 8) & 0x0F); /* PW_HI_1 */
+}
+
+static void sid_set_volume(uint8_t vol) {
+    sid_write(0x18, vol & 0x0F); /* MODE_VOL */
+}
+
+static void sid_set_filter_cutoff(uint16_t cutoff) {
+    sid_write(0x15, cutoff & 0x07); /* FC_LO */
+    sid_write(0x16, (cutoff >> 3) & 0xFF); /* FC_HI */
+}
+
+static void sid_set_filter_config(uint8_t reson, uint8_t voices, uint8_t mode, uint8_t vol) {
+    sid_write(0x17, (reson << 4) | (voices & 0x0F)); /* RES_FILT */
+    sid_write(0x18, mode | (vol & 0x0F)); /* MODE_VOL */
+}
+
 /* Virtual Paged Memory */
 void os_load_app_page(uint8_t page_id);
 
@@ -121,12 +173,21 @@ void os_load_app_page(uint8_t page_id);
 #define RES_FILT  0x17
 #define MODE_VOL  0x18
 
-// Waveforms
+// Waveforms & Features
 #define WAVE_GATE  0x01
+#define WAVE_SYNC  0x02
+#define WAVE_RING  0x04
+#define WAVE_TEST  0x08
 #define WAVE_TRI   0x10
 #define WAVE_SAW   0x20
 #define WAVE_PULSE 0x40
 #define WAVE_NOISE 0x80
+
+// Mixed Waveforms
+#define WAVE_TRI_SAW       (WAVE_TRI | WAVE_SAW)
+#define WAVE_TRI_PULSE     (WAVE_TRI | WAVE_PULSE)
+#define WAVE_SAW_PULSE     (WAVE_SAW | WAVE_PULSE)
+#define WAVE_TRI_SAW_PULSE (WAVE_TRI | WAVE_SAW | WAVE_PULSE)
 
 // Common Notes
 #define NOTE_C3  0x0892
