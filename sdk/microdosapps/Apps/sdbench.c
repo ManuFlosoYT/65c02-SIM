@@ -6,15 +6,6 @@
 #include <stdint.h>
 #include "Libs/app-bios.h"
 
-
-
-#define VIA_T1C_L  (*(volatile uint8_t*)0x6004)
-#define VIA_T1C_H  (*(volatile uint8_t*)0x6005)
-#define VIA_T1L_L  (*(volatile uint8_t*)0x6006)
-#define VIA_T1L_H  (*(volatile uint8_t*)0x6007)
-#define VIA_ACR    (*(volatile uint8_t*)0x600B)
-#define VIA_IFR    (*(volatile uint8_t*)0x600D)
-
 #define BUF_SIZE 512
 #define NUM_SAMPLES 16
 
