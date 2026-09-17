@@ -64,7 +64,8 @@ fi
 
 # Determine main name for the cartridge
 BASE_FILE="${ROM_FILE:-$VRAM_FILE}"
-CARTRIDGE_NAME=$(basename "$BASE_FILE" | cut -d. -f1).65c
+BASENAME=$(basename "$BASE_FILE")
+CARTRIDGE_NAME="${BASENAME%.*}.65c"
 OUTPUT_DIR="$(pwd)/output/cartridge"
 mkdir -p "$OUTPUT_DIR"
 TEMP_DIR=$(mktemp -d)

@@ -87,6 +87,7 @@ void delay(unsigned int ms) {
 #define SWAP_WINDOW_ADDR 0x2800
 #define SWAP_WINDOW_SIZE 0x2000
 
+#ifdef ENABLE_SD_SUPPORT
 /* Asignador de Memoria Dinámica (Swap Heap) */
 #define MAX_SWAP_BLOCKS 16
 
@@ -267,3 +268,4 @@ const char* os_get_msg(unsigned char msg_id) {
     sd_close(&f);
     return msg_buffer;
 }
+#endif

@@ -160,7 +160,7 @@ elif [ "$NAME" == "microDOS" ]; then
         pids+=($!)
         cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c &
         pids+=($!)
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c &
+        cl65 -O --cpu 65C02 -t none -S -D ENABLE_SD_SUPPORT=1 -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c &
         pids+=($!)
         cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/net_utils.s sdk/src/Libs/NET.c &
         pids+=($!)
@@ -169,7 +169,7 @@ elif [ "$NAME" == "microDOS" ]; then
     else
         cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c
         cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
+        cl65 -O --cpu 65C02 -t none -S -D ENABLE_SD_SUPPORT=1 -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
         cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/net_utils.s sdk/src/Libs/NET.c
         cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/sd.s sdk/src/Libs/SD.c
     fi
@@ -227,17 +227,19 @@ elif [ -f "sdk/src/$NAME.c" ]; then
     python3 tools/linker/generate_cfg.py $CFG_FLAGS > "sdk/src/build/C-Runtime-dynamic.cfg"
     LINKER_CFG="sdk/src/build/C-Runtime-dynamic.cfg"
 
-    cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
-    EXTRA_OBJS="sdk/src/build/bios_utils.s"
     if grep -q '#include "Libs/SD.h"' "sdk/src/$NAME.c"; then
         echo "  [SD.h detected] Compiling FatFs (ff.c + diskio.c)..."
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -D ENABLE_SD_SUPPORT=1 -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
         cl65 -O --cpu 65C02 -t none -S \
             -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c
         cl65 -O --cpu 65C02 -t none -S \
             -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c
         cl65 -O --cpu 65C02 -t none -S \
             -o sdk/src/build/sd.s sdk/src/Libs/SD.c
-        EXTRA_OBJS="$EXTRA_OBJS sdk/src/build/ff.s sdk/src/build/diskio.s sdk/src/build/sd.s"
+        EXTRA_OBJS="sdk/src/build/bios_utils.s sdk/src/build/ff.s sdk/src/build/diskio.s sdk/src/build/sd.s"
+    else
+        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
+        EXTRA_OBJS="sdk/src/build/bios_utils.s"
     fi
 
     cl65 -g --cpu 65C02 -t none -C "$LINKER_CFG" \
