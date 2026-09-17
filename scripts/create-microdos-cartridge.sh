@@ -95,10 +95,11 @@ echo "  Packaging Cartridge..."
     --name "microDOS" \
     --author "ManuFloso" \
     --desc "microDOS Operating System with pre-loaded apps" \
-    --version "4.0" \
+    --version "5.0" \
     --ips 1000000 \
     --sid true \
     --sd true \
-    --esp true
+    --esp true \
+    --gpu false
 
 echo "Done! Cartridge created at output/cartridge/microDOS.65c"
