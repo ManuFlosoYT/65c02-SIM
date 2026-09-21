@@ -31,7 +31,7 @@ def generate_cfg(flags):
     cfg.append("MEMORY {")
     cfg.append(f"    ZP:     start = ${ZP_APP_BASE:02X}, size = ${ZP_APP_END - ZP_APP_BASE + 1:02X}, type = rw, file = \"\";")
     cfg.append("")
-    cfg.append(f"    CORE:   start = ${APP_BASE:04X}, size = ${APP_END - APP_BASE + 1:04X}, type = rw, file = %O, fill = yes, fillval = $FF;")
+    cfg.append(f"    CORE:   start = ${APP_BASE:04X}, size = ${APP_END - APP_BASE + 1:04X}, type = rw, file = %O;")
     cfg.append(f"    BSS:    start = ${BSS_START:04X}, size = ${BSS_END - BSS_START + 1:04X}, type = rw, file = \"\";")
     cfg.append("}")
     cfg.append("")
@@ -51,7 +51,7 @@ def generate_cfg(flags):
     cfg.append("")
     cfg.append("    # C constructors / init")
     cfg.append("    STARTUP:  load = CORE, type = ro, optional = yes;")
-    cfg.append("    ONCE:     load = CORE, type = ro, optional = yes;")
+    cfg.append("    ONCE:     load = CORE, type = ro, optional = yes, define = yes;")
     cfg.append("}")
     cfg.append("")
     cfg.append("FEATURES {")
@@ -63,7 +63,7 @@ def generate_cfg(flags):
     stack_start = 0x7BFF
     
     cfg.append(f"    __STACKSTART__: type = weak, value = ${stack_start:04X};")
-    cfg.append(f"    __CORE_SIZE__:  type = weak, value = ${APP_END - APP_BASE + 1:04X};")
+    cfg.append(f"    __CORE_SIZE__:  type = weak, value = __ONCE_LOAD__ + __ONCE_SIZE__ - ${APP_BASE:04X};")
     cfg.append("")
     cfg.append("    # OS ABI: resolve calls directly to jump table entries in ROM")
 
