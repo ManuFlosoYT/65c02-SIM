@@ -89,11 +89,9 @@ static int load_and_run(const char* path) {
     sd_close(&active_app_file);
 
     if (ret_code == 0) {
-        if (os_clear_swap()) {
-            println("[i] Cleaning swap memory...");
-        }
+        os_clear_swap_blocks();
     } else {
-        println("[i] App exited with error. Swap tables preserved.");
+        println("[E] App exited with error. Swap tables preserved.");
     }
 
     return 1;

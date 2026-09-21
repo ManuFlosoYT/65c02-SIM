@@ -106,25 +106,8 @@ static const char* SWP_PFX = "SYSTEM/SWAP/";
 void* os_alloc(uint16_t size);
 void os_free(void* ptr);
 
-unsigned char os_clear_swap(void) {
-    SD_DIR dir;
-    SD_INFO info;
-    char path[64];
+void os_clear_swap_blocks(void) {
     uint8_t i;
-    uint8_t cleaned = 0;
-
-    sd_mkdir(SYS_DIR);
-    sd_mkdir(SWP_DIR);
-    if (sd_opendir(&dir, SWP_DIR) == 0) {
-        while (sd_readdir(&dir, &info) == 0 && info.fname[0] != 0) {
-            cleaned = 1;
-            strcpy(path, SWP_PFX);
-            strcat(path, info.fname);
-            sd_remove(path);
-        }
-        sd_closedir(&dir);
-    }
-
     swap_blocks[0].start = SWAP_WINDOW_ADDR;
     swap_blocks[0].size = SWAP_WINDOW_SIZE;
     swap_blocks[0].used = 0;
@@ -132,7 +115,6 @@ unsigned char os_clear_swap(void) {
         swap_blocks[i].size = 0;
         swap_blocks[i].used = 0;
     }
-    return cleaned;
 }
 
 void* os_alloc(uint16_t size) {
