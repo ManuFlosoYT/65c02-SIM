@@ -23,7 +23,7 @@
 #define APP_ARGS_ZP  ((volatile uint8_t*)0x60)
 
 /* The app binary is loaded here */
-#define APP_LOAD_ADDR 0x1000
+#define APP_LOAD_ADDR 0x0200
 
 SD_FILE active_app_file;
 uint8_t app_hdr[16];
