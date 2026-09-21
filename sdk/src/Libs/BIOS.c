@@ -217,7 +217,7 @@ unsigned char os_swap_load(const char* name, void* addr, unsigned int size) {
     return 1;
 }
 
-static char msg_buffer[512];
+static char msg_buffer[128];
 
 const char* os_get_msg(unsigned char msg_id) {
     SD_FILE f;
