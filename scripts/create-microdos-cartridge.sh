@@ -11,7 +11,7 @@ for arg in "$@"; do
     fi
 done
 
-echo "--- Building microDOS Cartridge v4.0 ---"
+echo "--- Building microDOS Cartridge v5.1 ---"
 
 SCRIPT_DIR="$(dirname "$0")"
 
@@ -95,7 +95,7 @@ echo "  Packaging Cartridge..."
     --name "microDOS" \
     --author "ManuFloso" \
     --desc "microDOS Operating System with pre-loaded apps" \
-    --version "5.0" \
+    --version "5.1" \
     --ips 1000000 \
     --sid true \
     --sd true \
