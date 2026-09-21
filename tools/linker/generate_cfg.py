@@ -16,7 +16,7 @@ def generate_cfg(flags):
         reserved_blocks.append((0x4800, 0x481F, "SID"))
 
     if '--microDOS' in flags:
-        reserved_blocks.append((0x1000, 0x47FF, "App Load Area (Reserved)"))
+        reserved_blocks.append((0x0200, 0x47FF, "App Load Area (Reserved)"))
         reserved_blocks.append((0x6010, 0x7BFF, "App RAM / BSS (Reserved)"))
         
     if '--gpu' in flags or '--double-buffer' in flags:
@@ -64,7 +64,8 @@ def generate_cfg(flags):
     cfg.append("")
     cfg.append("    # 0x100 - 0x1FF reserved for stack")
     cfg.append("")
-    cfg.append("    INPUT_BUFFER: start = $0300, size = $0100, type = rw, file = \"\";")
+    if '--microDOS' not in flags:
+        cfg.append("    INPUT_BUFFER: start = $0300, size = $0100, type = rw, file = \"\";")
     cfg.append("")
     
     # Print RAM blocks
@@ -97,14 +98,18 @@ def generate_cfg(flags):
     cfg.append("SEGMENTS {")
     cfg.append("    # --- Standard C segments ---")
     cfg.append("    ZEROPAGE:     load = ZP,  type = zp;")
-    cfg.append("    INPUT_BUFFER: load = INPUT_BUFFER, type = rw;")
+    
+    main_ram = ram_names[0][0]
+    
+    if '--microDOS' in flags:
+        cfg.append(f"    INPUT_BUFFER: load = {main_ram}, type = rw;")
+    else:
+        cfg.append("    INPUT_BUFFER: load = INPUT_BUFFER, type = rw;")
+    
     cfg.append("")
     cfg.append("    # Header at the start of ROM")
     cfg.append("    HEADER:       load = ROM, type = ro;")
     cfg.append("    ")
-    
-    main_ram = ram_names[0][0]
-    
     cfg.append(f"    # Code copied from ROM to RAM at startup")
     cfg.append(f"    DATA:         load = ROM, run = {main_ram}, type = rw, define = yes;")
     cfg.append(f"    ")

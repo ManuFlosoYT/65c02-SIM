@@ -12,8 +12,8 @@ import sys
 import argparse
 
 # Fixed layout for apps
-APP_BASE    = 0x1000  # Where the app loader puts the binary (Resident Core)
-APP_END     = 0x27FF  # Max code+rodata end for the resident core (6KB)
+APP_BASE    = 0x0200  # Where the app loader puts the binary (Resident Core)
+APP_END     = 0x47FF  # Max code+rodata end for the resident core (17.5KB)
 BSS_START   = 0x6010  # BSS / static data starts here (safe RAM_5 area)
 BSS_END     = 0x7BFF  # Large BSS (6.9KB)
 ZP_APP_BASE = 0x00    # MISMO ZP que microDOS para compartir el 'sp' de CC65
