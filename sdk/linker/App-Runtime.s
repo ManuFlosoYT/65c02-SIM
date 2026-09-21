@@ -46,12 +46,20 @@ _app_startup:
     jsr zerobss
 
     jsr _main       ; Run app main()
+    
+    ; Save return code (A and X)
+    sta os_sp_save+2
+    stx os_sp_save+3
 
     ; Restore OS stack pointer
     lda os_sp_save
     sta sp
     lda os_sp_save+1
     sta sp+1
+
+    ; Restore return code
+    lda os_sp_save+2
+    ldx os_sp_save+3
 
     ; Return to cmd_run() in microDOS
     rts
