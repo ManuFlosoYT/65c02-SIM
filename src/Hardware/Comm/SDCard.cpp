@@ -160,7 +160,7 @@ uint8_t SDCard::TransferByte(uint8_t mosi) {
             HandleWriteDataBlockState(mosi);
             break;
         case State::WRITE_DATA_CRC:
-            HandleWriteDataCrcState(miso);
+            HandleWriteDataCrcState(mosi, miso);
             break;
         case State::WRITE_BUSY:
             HandleWriteBusyState(miso);
@@ -344,15 +344,15 @@ void SDCard::HandleWriteDataBlockState(uint8_t mosi) {
     }
 }
 
-void SDCard::HandleWriteDataCrcState(uint8_t& miso) {
+void SDCard::HandleWriteDataCrcState(uint8_t mosi, uint8_t& miso) {
     if (data_index == 0) {
-        received_crc = static_cast<uint16_t>(miso) << 8;
-    } else {
-        received_crc |= static_cast<uint16_t>(miso);
+        received_crc = static_cast<uint16_t>(mosi) << 8;
+    } else if (data_index == 1) {
+        received_crc |= static_cast<uint16_t>(mosi);
     }
 
     data_index++;
-    if (data_index == 2) {
+    if (data_index == 3) {
         if (crc_enabled && received_crc != CalculateCrc16(data_buffer)) {
             // CRC Error: xxx01011b = 0x0B -> CRC Error
             miso = 0x0BU;

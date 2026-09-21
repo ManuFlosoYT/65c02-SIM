@@ -157,7 +157,7 @@ class SDCard : public IBusDevice {
     void HandleReadDataCrcState(uint8_t mosi, uint8_t& miso);
     void HandleWriteDataTokenState(uint8_t mosi);
     void HandleWriteDataBlockState(uint8_t mosi);
-    void HandleWriteDataCrcState(uint8_t& miso);
+    void HandleWriteDataCrcState(uint8_t mosi, uint8_t& miso);
     void HandleWriteBusyState(uint8_t& miso);
     void HandleCmd12BusyState(uint8_t& miso);
 };
