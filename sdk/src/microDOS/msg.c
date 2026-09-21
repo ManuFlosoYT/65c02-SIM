@@ -9,4 +9,4 @@ const char M_SPACE[]= " ";
 const char M_SSL[]  = "SSL";
 const char M_TCP[]  = "TCP";
 const char M_PROMPT[]= "> ";
-const char M_RDY[]   = "MntReady";
+const char M_RDY[]   = "Ready";
