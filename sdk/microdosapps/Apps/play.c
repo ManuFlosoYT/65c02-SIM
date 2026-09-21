@@ -11,9 +11,10 @@
 
 
 #define CHUNK_SIZE 512
-#define NUM_BUFS 10
 #define SD_CHUNK_COST 1444
 #define SID_WRITE_CREDIT 4
+
+extern char _CORE_SIZE__[];
 
 static void do_delay(uint16_t loops) {
     volatile uint16_t i;
@@ -23,7 +24,9 @@ static void do_delay(uint16_t loops) {
 }
 
 static SD_FILE file;
-static uint8_t buffers[NUM_BUFS][CHUNK_SIZE];
+static uint8_t* buffer_pool;
+static uint8_t num_bufs;
+#define BUF_PTR(idx) (buffer_pool + ((uint16_t)(idx) << 9))
 static uint8_t head = 0;
 static uint8_t tail = 0;
 static uint8_t count = 0;
@@ -35,21 +38,21 @@ static uint8_t current_waves[3] = {0, 0, 0};
 
 static uint8_t next_byte(void) {
     if (b_idx >= CHUNK_SIZE) {
-        tail = (tail + 1) % NUM_BUFS;
+        tail = (tail + 1) % num_bufs;
         count--;
         b_idx = 0;
     }
     if (count == 0) {
         if (eof_reached) return 0xFF;
-        r = sd_read(&file, buffers[head], CHUNK_SIZE);
+        r = sd_read(&file, BUF_PTR(head), CHUNK_SIZE);
         if (r <= 0) {
             eof_reached = 1;
             return 0xFF;
         }
-        head = (head + 1) % NUM_BUFS;
+        head = (head + 1) % num_bufs;
         count++;
     }
-    return buffers[tail][b_idx++];
+    return BUF_PTR(tail)[b_idx++];
 }
 
 int main(void) {
@@ -59,7 +62,18 @@ int main(void) {
     uint8_t pathp, argp;
     uint16_t loops;
 
+    uint16_t core_size = (uint16_t)_CORE_SIZE__;
+
     println("microDOS SID Player");
+    
+    buffer_pool = (uint8_t*)(APP_SAFE_RAM_START + core_size);
+    num_bufs = (APP_SAFE_RAM_END - (uint16_t)buffer_pool + 1) / CHUNK_SIZE;
+
+    if (num_bufs == 0) {
+        println("Error: Not enough RAM for buffers");
+        return 1;
+    }
+    
     if (arg_count < 2) {
         println("Usage: play <file.sid>");
         return 1;
@@ -99,18 +113,18 @@ int main(void) {
     count = 0;
     b_idx = 0;
     credit = 0;
-    for (i = 0; i < NUM_BUFS; i++) {
-        if (sd_read(&file, buffers[head], CHUNK_SIZE) <= 0) break;
-        head = (head + 1) % NUM_BUFS;
+    for (i = 0; i < num_bufs; i++) {
+        if (sd_read(&file, BUF_PTR(head), CHUNK_SIZE) <= 0) break;
+        head = (head + 1) % num_bufs;
         count++;
     }
 
     sid_reset();
 
     while (1) {
-        if (!eof_reached && count < NUM_BUFS && credit >= SD_CHUNK_COST) {
-            if (sd_read(&file, buffers[head], CHUNK_SIZE) > 0) {
-                head = (head + 1) % NUM_BUFS;
+        if (!eof_reached && count < num_bufs && credit >= SD_CHUNK_COST) {
+            if (sd_read(&file, BUF_PTR(head), CHUNK_SIZE) > 0) {
+                head = (head + 1) % num_bufs;
                 count++;
                 credit -= SD_CHUNK_COST;
             } else {
@@ -154,12 +168,12 @@ int main(void) {
             else
                 credit = 0xFFFF;
 
-            while (!eof_reached && count < NUM_BUFS && credit >= SD_CHUNK_COST) {
-                if (sd_read(&file, buffers[head], CHUNK_SIZE) <= 0) {
+            while (!eof_reached && count < num_bufs && credit >= SD_CHUNK_COST) {
+                if (sd_read(&file, BUF_PTR(head), CHUNK_SIZE) <= 0) {
                     eof_reached = 1;
                     break;
                 }
-                head = (head + 1) % NUM_BUFS;
+                head = (head + 1) % num_bufs;
                 count++;
                 credit -= SD_CHUNK_COST;
             }
