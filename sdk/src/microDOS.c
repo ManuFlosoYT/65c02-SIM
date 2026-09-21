@@ -30,7 +30,7 @@ int main(void) {
 
     println(M_RDY);
 
-    println("[i] Initializing system and cleaning swap...");
+    println("[i] Initializing system...");
     os_clear_swap_blocks();
 
     while (1) {
