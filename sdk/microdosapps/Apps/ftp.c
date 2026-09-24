@@ -138,7 +138,7 @@ static SD_FILE early_fp;
 static uint8_t early_open = 0;
 static uint32_t early_total = 0;
 static uint8_t early_closed = 0;
-static char early_fbuf[256];
+static char early_fbuf[1024];
 static uint16_t early_fbuf_len = 0;
 
 static void push_early_data(char c) {
@@ -596,6 +596,13 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     uint8_t ok = 0;
                     NetEvent ev2;
 
+                    if (early_open) {
+                        sd_close(&early_fp);
+                    }
+                    early_closed = 0;
+                    early_total = 0;
+                    early_open = 0;
+
                     h1 = 0;
                     while (*p != ',') {
                         h1 = h1 * 10 + (*p - '0');
@@ -670,7 +677,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     print_str("[TRANSFER] Downloading: "); println(abs_path);
                     send_link(0, "150 Opening data connection\r\n");
                     if (sd_open(&fp, abs_path, SD_READ)) {
-                        static char fbuf[64];
+                        static char fbuf[2048];
                         int16_t r;
                         while ((r = sd_read(&fp, fbuf, sizeof(fbuf))) > 0) {
                             send_link_bin(1, fbuf, r);
@@ -686,6 +693,21 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     resolve_path(current_dir, file, abs_path);
                     print_str("[TRANSFER] Uploading: "); println(abs_path);
                     send_link(0, "150 Ready to receive\r\n");
+
+                    if (!early_closed) {
+                        while (1) {
+                            NetEvent ev2;
+                            next_event(&ev2);
+                            if (ev2.type == TYPE_DATA && ev2.link == 1) {
+                                push_early_data(ev2.c);
+                            } else if (ev2.type == TYPE_CLOSED && ev2.link == 1) {
+                                break;
+                            } else if (ev2.type == TYPE_ERROR) {
+                                break;
+                            }
+                        }
+                    }
+
                     if (early_open) {
                         if (early_fbuf_len > 0) {
                             sd_write(&early_fp, early_fbuf, early_fbuf_len);
@@ -695,56 +717,30 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                         early_open = 0;
                     }
 
-                    if (sd_open(&fp, abs_path, SD_WRITE | SD_CREATE_ALWAYS)) {
-                        static char fbuf[256];
-                        static int fbuf_len;
-                        static int total;
-                        fbuf_len = 0;
-                        total = 0;
-                        
-                        if (early_total > 0) {
+                    send_link(0, "226 Transfer complete\r\n");
+
+                    if (early_total > 0) {
+                        if (sd_open(&fp, abs_path, SD_WRITE | SD_CREATE_ALWAYS)) {
                             static SD_FILE tfp;
                             if (sd_open(&tfp, "/TEMP.DAT", SD_READ)) {
+                                static char fbuf[2048];
                                 int16_t r;
                                 while ((r = sd_read(&tfp, fbuf, sizeof(fbuf))) > 0) {
                                     sd_write(&fp, fbuf, r);
                                 }
                                 sd_close(&tfp);
                             }
-                            total = early_total;
-                            early_total = 0;
+                            sd_close(&fp);
                         }
-
-                        if (early_closed) {
-                            early_closed = 0;
-                        } else {
-                            while (1) {
-                                NetEvent ev2;
-                                next_event(&ev2);
-                                if (ev2.type == TYPE_DATA && ev2.link == 1) {
-                                    fbuf[fbuf_len++] = ev2.c;
-                                    total++;
-                                    if (fbuf_len == sizeof(fbuf)) {
-                                        sd_write(&fp, fbuf, fbuf_len);
-                                        fbuf_len = 0;
-                                    }
-                                } else if (ev2.type == TYPE_CLOSED && ev2.link == 1) {
-                                    if (fbuf_len > 0) {
-                                        sd_write(&fp, fbuf, fbuf_len);
-                                    }
-                                    break;
-                                } else if (ev2.type == TYPE_ERROR) {
-                                    break;
-                                }
-                            }
-                        }
-                        sd_close(&fp);
-                        send_link(0, "226 Transfer complete\r\n");
+                        sd_remove("/TEMP.DAT");
                     } else {
-                        send_link(0, "550 Could not open file\r\n");
-                        early_total = 0;
-                        early_closed = 0;
+                        if (sd_open(&fp, abs_path, SD_WRITE | SD_CREATE_ALWAYS)) {
+                            sd_close(&fp);
+                        }
                     }
+
+                    early_total = 0;
+                    early_closed = 0;
                 } else if (strncmp(buf, "QUIT", 4) == 0) {
                     println("[COMM] Client disconnected");
                     send_link(0, "221 Goodbye\r\n");
