@@ -239,6 +239,12 @@ void ESP8266::RxLoopTCP(int linkId) {
             if (muxEnabled) {
                 header = "+IPD," + std::to_string(linkId) + "," + std::to_string(numBytes) + ":";
             }
+            
+            printf("[ASIO] Rx %zu bytes on link %d. First bytes: ", numBytes, linkId);
+            for(size_t i=0; i<std::min((size_t)16, numBytes); i++) {
+                printf("%02X ", (uint8_t)buffer[i]);
+            }
+            printf("\n");
 
             std::lock_guard<std::mutex> lock(rxMutex);
             for (char chr : header) {
