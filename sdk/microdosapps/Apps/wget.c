@@ -44,7 +44,7 @@ int main(void) {
         strcpy(protocol, "SSL");
         p = url + 8;
     } else {
-        strcpy(protocol, "TCP");
+        strcpy(protocol, "SSL");
         p = url;
     }
 
@@ -92,7 +92,7 @@ int main(void) {
             if (get_net_char() == 'R') break;
         }
     }
-    net_send("GET "); net_send(path); net_send(" HTTP/1.0\r\n");
+    net_send("GET "); net_send(path); net_send(" HTTP/1.1\r\n");
     net_send("Host: "); net_send(host); net_send("\r\n");
     net_send("Connection: close\r\n\r\n");
 
