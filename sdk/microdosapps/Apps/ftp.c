@@ -41,6 +41,7 @@ static void resolve_path(const char* cwd, const char* path, char* out) {
 #define TYPE_CLOSED 3
 #define TYPE_OK 4
 #define TYPE_ERROR 5
+#define TYPE_PROMPT 6
 
 typedef struct {
     uint8_t type;
@@ -110,23 +111,51 @@ static void next_event(NetEvent* ev) {
                 }
             }
             last_c = 0;
-        } else if (c == 'O' && last_c == '\n') {
+        } else if (c == 'O' && (last_c == '\n' || last_c == ' ')) {
             if (get_net_char() == 'K') {
                 while (get_net_char() != '\n');
                 ev->type = TYPE_OK;
                 return;
             }
             last_c = 'K';
-        } else if (c == 'E' && last_c == '\n') {
-            if (get_net_char() == 'R') {
+        } else if ((c == 'E' && last_c == '\n') || (c == 'F' && last_c == ' ')) {
+            if (get_net_char() == (c == 'E' ? 'R' : 'A')) {
                 while (get_net_char() != '\n');
                 ev->type = TYPE_ERROR;
                 return;
             }
-            last_c = 'R';
+            last_c = (c == 'E' ? 'R' : 'A');
+        } else if (c == '>') {
+            ev->type = TYPE_PROMPT;
+            return;
         } else {
             last_c = c;
         }
+    }
+}
+
+static SD_FILE early_fp;
+static uint8_t early_open = 0;
+static uint32_t early_total = 0;
+static uint8_t early_closed = 0;
+static char early_fbuf[256];
+static uint16_t early_fbuf_len = 0;
+
+static void push_early_data(char c) {
+    if (!early_open) {
+        if (sd_open(&early_fp, "/TEMP.DAT", SD_WRITE | SD_CREATE_ALWAYS)) {
+            early_open = 1;
+            early_fbuf_len = 0;
+            early_total = 0;
+        } else {
+            return;
+        }
+    }
+    early_fbuf[early_fbuf_len++] = c;
+    early_total++;
+    if (early_fbuf_len == sizeof(early_fbuf)) {
+        sd_write(&early_fp, early_fbuf, early_fbuf_len);
+        early_fbuf_len = 0;
     }
 }
 
@@ -138,6 +167,10 @@ static void read_line(uint8_t link, char* buf, int max_len) {
         if (ev.type == TYPE_DATA && ev.link == link) {
             if (ev.c == '\n') break;
             if (ev.c != '\r') buf[pos++] = ev.c;
+        } else if (ev.type == TYPE_DATA && ev.link == 1) {
+            push_early_data(ev.c);
+        } else if (ev.type == TYPE_CLOSED && ev.link == 1) {
+            early_closed = 1;
         } else if (ev.type == TYPE_CLOSED && ev.link == link) {
             break;
         }
@@ -166,10 +199,14 @@ static void send_link(uint8_t link, const char* str) {
     net_send("\r\n");
 
     while (1) {
-        char c = get_net_char();
-        if (c == '>') break;
-        if (c == 'E') {
-            if (get_net_char() == 'R') return;
+        NetEvent ev;
+        next_event(&ev);
+        if (ev.type == TYPE_PROMPT) break;
+        if (ev.type == TYPE_ERROR) return;
+        if (ev.type == TYPE_DATA && ev.link == 1) {
+            push_early_data(ev.c);
+        } else if (ev.type == TYPE_CLOSED && ev.link == 1) {
+            early_closed = 1;
         }
     }
     net_send(str);
@@ -189,10 +226,14 @@ static void send_link_bin(uint8_t link, const void* data, uint16_t len) {
     net_send("\r\n");
 
     while (1) {
-        char c = get_net_char();
-        if (c == '>') break;
-        if (c == 'E') {
-            if (get_net_char() == 'R') return;
+        NetEvent ev;
+        next_event(&ev);
+        if (ev.type == TYPE_PROMPT) break;
+        if (ev.type == TYPE_ERROR) return;
+        if (ev.type == TYPE_DATA && ev.link == 1) {
+            push_early_data(ev.c);
+        } else if (ev.type == TYPE_CLOSED && ev.link == 1) {
+            early_closed = 1;
         }
     }
 
@@ -380,11 +421,14 @@ static void run_client(const char* server, const char* user, const char* pass, c
 }
 
 static void run_server(const char* user, const char* pass, const char* port_str) {
-    char buf[128];
+    static char buf[128];
     NetEvent ev;
-    char current_dir[128] = "/";
+    static char current_dir[128];
     uint8_t quotes = 0;
-    int port = 2121;    if (port_str) {
+    int port = 2121;
+
+    strcpy(current_dir, "/");
+    if (port_str) {
         port = 0;
         while (*port_str >= '0' && *port_str <= '9') {
             port = port * 10 + (*port_str - '0');
@@ -474,14 +518,14 @@ static void run_server(const char* user, const char* pass, const char* port_str)
 
                 if (strncmp(buf, "USER ", 5) == 0) {
                     char* u = buf + 5;
-                    print_str("[LOGIN] Intento usuario: "); println(u);
+                    print_str("[LOGIN] User attempt: "); println(u);
                     if (strcmp(u, user) == 0)
                         send_link(0, "331 \r\n");
                     else
                         send_link(0, "530 Invalid user\r\n");
                 } else if (strncmp(buf, "PASS ", 5) == 0) {
                     char* p_pass = buf + 5;
-                    print_str("[LOGIN] Intento password: "); println(p_pass);
+                    print_str("[LOGIN] Password attempt: "); println(p_pass);
                     if (strcmp(p_pass, pass) == 0)
                         send_link(0, "230 \r\n");
                     else
@@ -498,7 +542,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                 } else if (strncmp(buf, "CWD", 3) == 0) {
                     char* target = buf + 4;
                     if (*target == ' ') target++;
-                    print_str("[DIR] Peticion de cambio de directorio a: "); println(target);
+                    print_str("[DIR] Change directory request to: "); println(target);
                     resolve_path(current_dir, target, current_dir);
                     send_link(0, "250 CWD command successful\r\n");
                 } else if (strncmp(buf, "CDUP", 4) == 0) {
@@ -506,9 +550,9 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     resolve_path(current_dir, "..", current_dir);
                     send_link(0, "250 CDUP command successful\r\n");
                 } else if (strncmp(buf, "LIST", 4) == 0) {
-                    SD_DIR dp;
-                    SD_INFO fno;
-                    char target_dir[128];
+                    static SD_DIR dp;
+                    static SD_INFO fno;
+                    static char target_dir[128];
                     char* target = buf + 4;
                     if (*target == ' ') target++;
                     if (*target == '-' && *(target+1) == 'a') {
@@ -520,11 +564,11 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     } else {
                         resolve_path(current_dir, target, target_dir);
                     }
-                    print_str("[LIST] Peticion de listado de directorio: "); println(target_dir);
+                    print_str("[LIST] Directory list request: "); println(target_dir);
                     send_link(0, "150 Here comes the directory listing.\r\n");
                     if (sd_opendir(&dp, target_dir)) {
                         while (sd_readdir(&dp, &fno) && fno.fname[0] != 0) {
-                            char line[128];
+                            static char line[128];
                             int is_dir;
                             is_dir = fno.fattrib & AM_DIR;
                             line[0] = '\0';
@@ -620,13 +664,13 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                         send_link(0, "500 PORT failed\r\n");
                 } else if (strncmp(buf, "RETR", 4) == 0) {
                     char* file = buf + 5;
-                    char abs_path[128];
-                    SD_FILE fp;
+                    static char abs_path[128];
+                    static SD_FILE fp;
                     resolve_path(current_dir, file, abs_path);
-                    print_str("[TRANSFERENCIA] Descargando: "); println(abs_path);
+                    print_str("[TRANSFER] Downloading: "); println(abs_path);
                     send_link(0, "150 Opening data connection\r\n");
                     if (sd_open(&fp, abs_path, SD_READ)) {
-                        char fbuf[64];
+                        static char fbuf[64];
                         int16_t r;
                         while ((r = sd_read(&fp, fbuf, sizeof(fbuf))) > 0) {
                             send_link_bin(1, fbuf, r);
@@ -637,28 +681,72 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     send_link(0, "226 Transfer complete\r\n");
                 } else if (strncmp(buf, "STOR", 4) == 0) {
                     char* file = buf + 5;
-                    char abs_path[128];
-                    SD_FILE fp;
+                    static char abs_path[128];
+                    static SD_FILE fp;
                     resolve_path(current_dir, file, abs_path);
-                    print_str("[TRANSFERENCIA] Subiendo: "); println(abs_path);
+                    print_str("[TRANSFER] Uploading: "); println(abs_path);
                     send_link(0, "150 Ready to receive\r\n");
+                    if (early_open) {
+                        if (early_fbuf_len > 0) {
+                            sd_write(&early_fp, early_fbuf, early_fbuf_len);
+                            early_fbuf_len = 0;
+                        }
+                        sd_close(&early_fp);
+                        early_open = 0;
+                    }
+
                     if (sd_open(&fp, abs_path, SD_WRITE | SD_CREATE_ALWAYS)) {
-                        while (1) {
-                            NetEvent ev2;
-                            next_event(&ev2);
-                            if (ev2.type == TYPE_DATA && ev2.link == 1) {
-                                sd_write(&fp, &ev2.c, 1);
-                            } else if (ev2.type == TYPE_CLOSED && ev2.link == 1) {
-                                break;
+                        static char fbuf[256];
+                        static int fbuf_len;
+                        static int total;
+                        fbuf_len = 0;
+                        total = 0;
+                        
+                        if (early_total > 0) {
+                            static SD_FILE tfp;
+                            if (sd_open(&tfp, "/TEMP.DAT", SD_READ)) {
+                                int16_t r;
+                                while ((r = sd_read(&tfp, fbuf, sizeof(fbuf))) > 0) {
+                                    sd_write(&fp, fbuf, r);
+                                }
+                                sd_close(&tfp);
+                            }
+                            total = early_total;
+                            early_total = 0;
+                        }
+
+                        if (early_closed) {
+                            early_closed = 0;
+                        } else {
+                            while (1) {
+                                NetEvent ev2;
+                                next_event(&ev2);
+                                if (ev2.type == TYPE_DATA && ev2.link == 1) {
+                                    fbuf[fbuf_len++] = ev2.c;
+                                    total++;
+                                    if (fbuf_len == sizeof(fbuf)) {
+                                        sd_write(&fp, fbuf, fbuf_len);
+                                        fbuf_len = 0;
+                                    }
+                                } else if (ev2.type == TYPE_CLOSED && ev2.link == 1) {
+                                    if (fbuf_len > 0) {
+                                        sd_write(&fp, fbuf, fbuf_len);
+                                    }
+                                    break;
+                                } else if (ev2.type == TYPE_ERROR) {
+                                    break;
+                                }
                             }
                         }
                         sd_close(&fp);
                         send_link(0, "226 Transfer complete\r\n");
                     } else {
                         send_link(0, "550 Could not open file\r\n");
+                        early_total = 0;
+                        early_closed = 0;
                     }
                 } else if (strncmp(buf, "QUIT", 4) == 0) {
-                    println("[COMUNICACION] Cliente desconectado");
+                    println("[COMM] Client disconnected");
                     send_link(0, "221 Goodbye\r\n");
                     net_send("AT+CIPCLOSE=0\r\n");
                     break;
