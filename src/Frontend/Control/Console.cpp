@@ -40,8 +40,6 @@ void OutputCallback(char character) {
         if (state.cursorX > 0) {
             state.cursorX--;
         }
-    } else if (character == 0x0C) { // Form feed
-        Clear();
     } else if (character >= 32) {
         if (state.cursorX >= static_cast<int>(state.currentLine.size())) {
             state.currentLine.resize(state.cursorX + 1, ' ');
