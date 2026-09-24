@@ -7,11 +7,13 @@
 namespace Hardware {
 
 void ATConnection::StopRxThread() {
+    std::lock_guard<std::recursive_mutex> lock(rxThreadMutex);
     active = false;
     if (rxThread.joinable()) {
         try {
             if (tcpSocket) {
                 asio::error_code closeErr;
+                tcpSocket->shutdown(asio::ip::tcp::socket::shutdown_both, closeErr);
                 closeErr = tcpSocket->close(closeErr);
                 (void)closeErr;
             }
@@ -42,6 +44,7 @@ void ATConnection::StopRxThread() {
 void ESP8266::ConnectTCP(int linkId, const std::string& host, int port) {
     auto& conn = connections.at(linkId);
 
+    std::lock_guard<std::recursive_mutex> lock(conn.rxThreadMutex);
     conn.StopRxThread();
     conn.tcpSocket = std::make_unique<asio::ip::tcp::socket>(ioContext);
 
@@ -79,11 +82,19 @@ void ESP8266::ConnectTCP(int linkId, const std::string& host, int port) {
 void ESP8266::ConnectUDP(int linkId, const std::string& host, int port, int localPort, int mode) {
     auto& conn = connections.at(linkId);
 
+    std::lock_guard<std::recursive_mutex> lock(conn.rxThreadMutex);
     conn.StopRxThread();
     conn.udpSocket = std::make_unique<asio::ip::udp::socket>(ioContext);
 
     asio::error_code openErrCode;
     openErrCode = conn.udpSocket->open(asio::ip::udp::v4(), openErrCode);
+    if (openErrCode) {
+        conn.udpSocket.reset();
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
+
+    conn.udpSocket->non_blocking(true, openErrCode);
     if (openErrCode) {
         conn.udpSocket.reset();
         EnqueueResponse("\r\nERROR\r\n");
@@ -129,6 +140,7 @@ void ESP8266::ConnectUDP(int linkId, const std::string& host, int port, int loca
 void ESP8266::ConnectSSL(int linkId, const std::string& host, int port) {
     auto& conn = connections.at(linkId);
 
+    std::lock_guard<std::recursive_mutex> lock(conn.rxThreadMutex);
     conn.StopRxThread();
     conn.sslStream = std::make_unique<asio::ssl::stream<asio::ip::tcp::socket>>(ioContext, sslContext);
 
@@ -295,7 +307,17 @@ void ESP8266::RxLoopUDP(int linkId) {
         asio::ip::udp::endpoint senderEndpoint;
         size_t numBytes = conn.udpSocket->receive_from(asio::buffer(buffer), senderEndpoint, 0, rxErrCode);
 
-        if (!rxErrCode && numBytes > 0) {
+        if (rxErrCode) {
+            if (rxErrCode == asio::error::would_block || rxErrCode == asio::error::try_again) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            conn.active = false;
+            EnqueueLinkClosedResponse(linkId);
+            break;
+        }
+
+        if (numBytes > 0) {
             if (conn.udpMode == 1 || conn.udpMode == 2) {
                 conn.udpRemoteEndpoint = senderEndpoint;
             }
@@ -358,6 +380,14 @@ void ESP8266::StartServer(int port) {
         return;
     }
 
+    serverAcceptor->non_blocking(true, serverErrCode);
+    if (serverErrCode) {
+        printf("StartServer: non_blocking failed: %s\n", serverErrCode.message().c_str());
+        serverAcceptor.reset();
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
+
     serverRunning = true;
     EnqueueResponse("\r\nOK\r\n");
     acceptThread = std::thread(&ESP8266::AcceptLoop, this);
@@ -378,33 +408,42 @@ void ESP8266::StopServer() {
 
 void ESP8266::AcceptLoop() {
     while (serverRunning) {
-        int freeId = FindFreeLinkId();
-        if (freeId < 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-
-        auto& conn = connections.at(freeId);
-        conn.tcpSocket = std::make_unique<asio::ip::tcp::socket>(ioContext);
-
+        auto socket = std::make_unique<asio::ip::tcp::socket>(ioContext);
         asio::error_code acceptErrCode;
-        acceptErrCode = serverAcceptor->accept(*conn.tcpSocket, acceptErrCode);
+        serverAcceptor->accept(*socket, acceptErrCode);
 
         if (acceptErrCode) {
-            conn.tcpSocket.reset();
+            if (acceptErrCode == asio::error::would_block || acceptErrCode == asio::error::try_again) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
             if (!serverRunning) {
                 break;
             }
             continue;
         }
 
-        asio::error_code epErrCode;
-        auto remoteEp = conn.tcpSocket->remote_endpoint(epErrCode);
-        conn.active = true;
-        conn.protocol = "TCP";
-        conn.remoteHost = epErrCode ? "unknown" : remoteEp.address().to_string();
-        conn.remotePort = epErrCode ? 0 : static_cast<int>(remoteEp.port());
-        conn.rxThread = std::thread(&ESP8266::RxLoopTCP, this, freeId);
+        int freeId = FindFreeLinkId();
+        if (freeId < 0) {
+            asio::error_code closeErr;
+            socket->close(closeErr);
+            continue;
+        }
+
+        auto& conn = connections.at(freeId);
+        {
+            std::lock_guard<std::recursive_mutex> lock(conn.rxThreadMutex);
+            conn.StopRxThread();
+            conn.tcpSocket = std::move(socket);
+
+            asio::error_code epErrCode;
+            auto remoteEp = conn.tcpSocket->remote_endpoint(epErrCode);
+            conn.active = true;
+            conn.protocol = "TCP";
+            conn.remoteHost = epErrCode ? "unknown" : remoteEp.address().to_string();
+            conn.remotePort = epErrCode ? 0 : static_cast<int>(remoteEp.port());
+            conn.rxThread = std::thread(&ESP8266::RxLoopTCP, this, freeId);
+        }
 
         EnqueueResponse(std::to_string(freeId) + ",CONNECT\r\n");
     }

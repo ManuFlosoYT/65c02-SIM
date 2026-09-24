@@ -41,6 +41,7 @@ struct ATConnection {
     asio::ip::udp::endpoint udpRemoteEndpoint;
     int udpMode{0};
     std::thread rxThread;
+    std::recursive_mutex rxThreadMutex;
     std::atomic<bool> active{false};
     std::string protocol;
     std::string remoteHost;

@@ -22,8 +22,8 @@ ESP8266::~ESP8266() {
         stopPing.store(true);
         pingThread.join();
     }
-    DisconnectAll();
     StopServer();
+    DisconnectAll();
 }
 
 void ESP8266::Reset() {
@@ -48,8 +48,8 @@ void ESP8266::Reset() {
     wifiConnected = false;
     connectedSSID = "";
     cwMode = CWMode::Station;
-    DisconnectAll();
     StopServer();
+    DisconnectAll();
 }
 
 Byte ESP8266::Read(Word address) {

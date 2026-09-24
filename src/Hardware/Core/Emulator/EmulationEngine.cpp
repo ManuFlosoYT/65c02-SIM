@@ -272,9 +272,7 @@ void Emulator::CheckAutoReload(std::chrono::high_resolution_clock::time_point& l
                     if (latestTime > lastBinModificationTime) {
                         std::string errorMsg;
                         std::cerr << "Auto-reloading: " << currentBinPath << '\n';
-                        if (Init(currentBinPath, errorMsg)) {
-                            Console::Clear();
-                        } else {
+                        if (!Init(currentBinPath, errorMsg)) {
                             std::cerr << "Auto-reload failed: " << errorMsg << '\n';
                         }
                     }
