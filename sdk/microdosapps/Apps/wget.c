@@ -71,10 +71,14 @@ int main(void) {
     while (1) {
         chr = get_net_char();
         if (chr == 'O') {
-            if (get_net_char() == 'K') break;
+            if (get_net_char() == 'K') {
+                while (get_net_char() != '\n');
+                break;
+            }
         }
         if (chr == 'E') {
             if (get_net_char() == 'R') {
+                while (get_net_char() != '\n');
                 print_str("Error: "); println("Connection failed"); 
                 return 1; 
             }
