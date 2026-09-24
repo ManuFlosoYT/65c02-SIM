@@ -123,7 +123,17 @@ void ESP8266::HandleCIFSR() {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }
-    EnqueueResponse("\r\n+CIFSR:STAIP,\"192.168.1.100\"\r\n+CIFSR:STAMAC,\"00:11:22:33:44:55\"\r\nOK\r\n");
+    
+    std::string localIp = "127.0.0.1";
+    try {
+        asio::ip::udp::socket socket(ioContext);
+        socket.connect(asio::ip::udp::endpoint(asio::ip::make_address("8.8.8.8"), 53));
+        localIp = socket.local_endpoint().address().to_string();
+    } catch (...) {
+        // Fallback to 127.0.0.1 if routing fails
+    }
+
+    EnqueueResponse("\r\n+CIFSR:STAIP,\"" + localIp + "\"\r\n+CIFSR:STAMAC,\"00:11:22:33:44:55\"\r\nOK\r\n");
 }
 
 void ESP8266::HandleCIPSTART(const std::string& cmd) {
