@@ -31,11 +31,11 @@ int main(void) {
     uint32_t wr_cnt = 0;
 
     if (arg_count < 3) {
-        print_str("Usage: "); println("wget <filename> <url>");
+        print_str("Usage: "); println("wget <url> <filename>");
         return 1;
     }
 
-    url = args[2];
+    url = args[1];
 
     if (strncmp(url, "http://", 7) == 0) {
         strcpy(protocol, "TCP");
@@ -96,7 +96,7 @@ int main(void) {
     net_send("Host: "); net_send(host); net_send("\r\n");
     net_send("Connection: close\r\n\r\n");
 
-    if (!sd_open(&fp, args[1], SD_WRITE | SD_CREATE_ALWAYS)) {
+    if (!sd_open(&fp, args[2], SD_WRITE | SD_CREATE_ALWAYS)) {
         print_str("Error: "); println("Could not open file for writing");
         return 1;
     }
