@@ -231,6 +231,20 @@ void ESP8266::RxLoopTCP(int linkId) {
     std::array<Byte, 1024> buffer{};
 
     while (conn.active) {
+        while (conn.active) {
+            bool full;
+            {
+                std::lock_guard<std::mutex> lock(rxMutex);
+                full = (rxQueue.size() >= 2048);
+            }
+            if (full) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            } else {
+                break;
+            }
+        }
+        if (!conn.active) break;
+
         asio::error_code rxErrCode;
         size_t numBytes = conn.tcpSocket->read_some(asio::buffer(buffer), rxErrCode);
  
@@ -274,6 +288,20 @@ void ESP8266::RxLoopSSL(int linkId) {
     std::array<Byte, 1024> buffer{};
 
     while (conn.active) {
+        while (conn.active) {
+            bool full;
+            {
+                std::lock_guard<std::mutex> lock(rxMutex);
+                full = (rxQueue.size() >= 2048);
+            }
+            if (full) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            } else {
+                break;
+            }
+        }
+        if (!conn.active) break;
+
         asio::error_code rxErrCode;
         size_t numBytes = conn.sslStream->read_some(asio::buffer(buffer), rxErrCode);
 
@@ -309,6 +337,20 @@ void ESP8266::RxLoopUDP(int linkId) {
     std::array<Byte, 1024> buffer{};
 
     while (conn.active) {
+        while (conn.active) {
+            bool full;
+            {
+                std::lock_guard<std::mutex> lock(rxMutex);
+                full = (rxQueue.size() >= 2048);
+            }
+            if (full) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            } else {
+                break;
+            }
+        }
+        if (!conn.active) break;
+
         asio::error_code rxErrCode;
         asio::ip::udp::endpoint senderEndpoint;
         size_t numBytes = conn.udpSocket->receive_from(asio::buffer(buffer), senderEndpoint, 0, rxErrCode);
