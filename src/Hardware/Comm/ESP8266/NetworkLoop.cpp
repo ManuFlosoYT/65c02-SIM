@@ -334,6 +334,7 @@ void ESP8266::StartServer(int port) {
 
     serverErrCode = serverAcceptor->open(asio::ip::tcp::v4(), serverErrCode);
     if (serverErrCode) {
+        printf("StartServer: open failed: %s\n", serverErrCode.message().c_str());
         serverAcceptor.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;
@@ -343,6 +344,7 @@ void ESP8266::StartServer(int port) {
 
     serverErrCode = serverAcceptor->bind(asio::ip::tcp::endpoint(asio::ip::tcp::v4(), static_cast<unsigned short>(port)), serverErrCode);
     if (serverErrCode) {
+        printf("StartServer: bind failed on port %d: %s\n", port, serverErrCode.message().c_str());
         serverAcceptor.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;
@@ -350,6 +352,7 @@ void ESP8266::StartServer(int port) {
 
     serverErrCode = serverAcceptor->listen(asio::socket_base::max_listen_connections, serverErrCode);
     if (serverErrCode) {
+        printf("StartServer: listen failed: %s\n", serverErrCode.message().c_str());
         serverAcceptor.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;
