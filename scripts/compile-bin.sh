@@ -114,17 +114,17 @@ elif [ "$NAME" == "microDOS" ]; then
     echo "  Compiling microDOS modules..."
     MICRODOS_OBJS=""
     pids=()
-    for f in sdk/src/microDOS/*.c; do
+    for f in sdk/microdos/src/microDOS/*.c; do
         if [ -f "$f" ]; then
             mod_name=$(basename "${f%.c}")
             if [ "$MULTITHREAD" = true ]; then
                 cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-                    -I "sdk/src" -I "sdk/src/microDOS" \
+                    -I "sdk/src" -I "sdk/microdos/src" \
                     -o "sdk/src/build/$mod_name.s" "$f" &
                 pids+=($!)
             else
                 cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-                    -I "sdk/src" -I "sdk/src/microDOS" \
+                    -I "sdk/src" -I "sdk/microdos/src" \
                     -o "sdk/src/build/$mod_name.s" "$f"
             fi
             MICRODOS_OBJS="$MICRODOS_OBJS sdk/src/build/$mod_name.s"
@@ -134,21 +134,21 @@ elif [ "$NAME" == "microDOS" ]; then
     echo "  Compiling microDOS main..."
     if [ "$MULTITHREAD" = true ]; then
         cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-            -I "sdk/src" -I "sdk/src/microDOS" \
+            -I "sdk/src" -I "sdk/microdos/src" \
             -o "sdk/src/build/microDOS.s" "sdk/microdos/src/microDOS.c" &
         pids+=($!)
     else
         cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-            -I "sdk/src" -I "sdk/src/microDOS" \
+            -I "sdk/src" -I "sdk/microdos/src" \
             -o "sdk/src/build/microDOS.s" "sdk/microdos/src/microDOS.c"
     fi
 
     CFG_FLAGS=""
-    if grep -r -q '#include "Libs/NET.h"' sdk/src/microDOS/ sdk/microdos/src/microDOS.c; then
+    if grep -r -q '#include "Libs/NET.h"' sdk/microdos/src/ sdk/microdos/src/microDOS.c; then
         echo "  [NET detected] Added --net to Linker"
         CFG_FLAGS="$CFG_FLAGS --net"
     fi
-    if grep -r -q '#include ".*SID.h"' sdk/src/microDOS/; then
+    if grep -r -q '#include ".*SID.h"' sdk/microdos/src/microDOS/; then
         echo "  [SID detected] Added --sid to Linker"
         CFG_FLAGS="$CFG_FLAGS --sid"
     fi
