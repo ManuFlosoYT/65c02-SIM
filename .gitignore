@@ -9,7 +9,7 @@ compile_commands.json
 SDK.zip
 *.o
 
-# Ramas separadas (worktrees)
+# Worktrees
 /sdk/
 /tools/
 /assets/
