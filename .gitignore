@@ -4,23 +4,12 @@ compile_commands.json
 /build
 /build_win
 /emsdk_local
-
-/sdk/src/build/
-/sdk/msbasic/tmp/
-/tools/sid/build/
-/tools/sid/__pycache__/
-
-*.o
-/sdk/src/build/*.bin
-/sdk/src/build/*.map
-/sdk/src/build/*.lst
-/sdk/src/build/*.s
-/sdk/src/build/*.lbl
-/sdk/src/build/*.dbg
-/sdk/src/build/*.cfg
+/output
 
 SDK.zip
-/output
+*.o
+
+# Ramas separadas (worktrees)
 /sdk/
 /tools/
 /assets/
