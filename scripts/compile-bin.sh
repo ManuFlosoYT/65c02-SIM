@@ -32,8 +32,8 @@ done
 if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
     echo "--- Compiling $NAME.app (microDOS App) ---"
     SRC=""
-    if [ -f "sdk/microdosapps/Apps/$NAME.c" ]; then
-        SRC="sdk/microdosapps/Apps/$NAME.c"
+    if [ -f "sdk/microdos/apps/$NAME.c" ]; then
+        SRC="sdk/microdos/apps/$NAME.c"
     elif [ -f "sdk/src/$NAME.c" ]; then
         SRC="sdk/src/$NAME.c"
     else
@@ -42,7 +42,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
     fi
 
     cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-        -I "sdk/src" -I "sdk/microdosapps" \
+        -I "sdk/src" -I "sdk/microdos" \
         -o "sdk/src/build/${NAME}_app.s" "$SRC"
 
     python3 tools/linker/generate_app_cfg.py > "sdk/src/build/${NAME}_app.cfg"
@@ -135,16 +135,16 @@ elif [ "$NAME" == "microDOS" ]; then
     if [ "$MULTITHREAD" = true ]; then
         cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
             -I "sdk/src" -I "sdk/src/microDOS" \
-            -o "sdk/src/build/microDOS.s" "sdk/src/microDOS.c" &
+            -o "sdk/src/build/microDOS.s" "sdk/microdos/src/microDOS.c" &
         pids+=($!)
     else
         cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
             -I "sdk/src" -I "sdk/src/microDOS" \
-            -o "sdk/src/build/microDOS.s" "sdk/src/microDOS.c"
+            -o "sdk/src/build/microDOS.s" "sdk/microdos/src/microDOS.c"
     fi
 
     CFG_FLAGS=""
-    if grep -r -q '#include "Libs/NET.h"' sdk/src/microDOS/ sdk/src/microDOS.c; then
+    if grep -r -q '#include "Libs/NET.h"' sdk/src/microDOS/ sdk/microdos/src/microDOS.c; then
         echo "  [NET detected] Added --net to Linker"
         CFG_FLAGS="$CFG_FLAGS --net"
     fi
