@@ -21,3 +21,7 @@ compile_commands.json
 
 SDK.zip
 /output
+/sdk/
+/tools/
+/assets/
+/wiki/
