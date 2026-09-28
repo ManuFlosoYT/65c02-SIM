@@ -93,8 +93,8 @@ jobs:
 
       - name: Build Linux
         run: |
-          chmod +x scripts/build.sh
-          ./scripts/build.sh --target linux
+          chmod +x build.sh
+          ././build.sh --target linux
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v6
@@ -182,8 +182,8 @@ jobs:
 
       - name: Build Windows
         run: |
-          chmod +x scripts/build.sh
-          ./scripts/build.sh --target win
+          chmod +x build.sh
+          ././build.sh --target win
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v6
@@ -270,8 +270,8 @@ jobs:
 
       - name: Create SDK
         run: |
-          chmod +x scripts/create-sdk.sh
-          ./scripts/create-sdk.sh
+          chmod +x sdk/scripts/create-sdk.sh
+          ./sdk/scripts/create-sdk.sh
 
       - name: Upload SDK Artifact
         uses: actions/upload-artifact@v6
@@ -337,12 +337,12 @@ jobs:
       - name: Extract SDK
         run: |
           unzip -o SDK.zip
-          chmod +x scripts/compile-bin.sh scripts/image-to-bin.sh scripts/midi-to-bin.sh
+          chmod +x sdk/scripts/compile-bin.sh sdk/scripts/image-to-bin.sh sdk/scripts/midi-to-bin.sh
 
       - name: Compile SDK ROMs and Assets
         run: |
-          chmod +x scripts/create-sdk.sh
-          ./scripts/create-sdk.sh
+          chmod +x sdk/scripts/create-sdk.sh
+          ./sdk/scripts/create-sdk.sh
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -351,8 +351,8 @@ jobs:
 
       - name: Build Web
         run: |
-          chmod +x scripts/build.sh
-          ./scripts/build.sh --target web --clean
+          chmod +x build.sh
+          ././build.sh --target web --clean
           mkdir -p output/web/roms
           cp output/cartridge/*.65c output/web/roms/ 2>/dev/null || true
           
