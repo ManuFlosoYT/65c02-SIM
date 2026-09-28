@@ -249,3 +249,4 @@ BIOS_JUMPTABLE:
     jmp _os_swap_load   ; $FFE4 — uint8_t os_swap_load(const char*, void*, uint16_t)
     jmp _os_alloc       ; $FFE7 — void* os_alloc(uint16_t)
     jmp _os_free        ; $FFEA — void os_free(void*)
+    jmp MONGETCHAR_NB   ; $FFED — char bios_getchar_nb(void)

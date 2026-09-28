@@ -37,6 +37,7 @@ void println(const char* s);
 void print_num(unsigned int n);
 void print_hex_byte(unsigned char v);
 char bios_getchar(void);
+char bios_getchar_nb(void);
 void bios_putchar(char c);
 
 

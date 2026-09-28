@@ -6,8 +6,15 @@
 
 #include "Libs/app-bios.h"
 
+uint8_t ftp_abort = 0;
+
 static char get_net_char(void) {
     while (!net_has_data()) {
+        char k = bios_getchar_nb();
+        if (k == 'q' || k == 'Q') {
+            ftp_abort = 1;
+            return '\n';
+        }
     }
     return (char)net_getc();
 }
@@ -60,7 +67,10 @@ static void next_event(NetEvent* ev) {
     ev->link = 0;
     ev->c = 0;
 
+    ev->c = 0;
+
     while (1) {
+        if (ftp_abort) return;
         if (in_ipd && cur_ipd_len > 0) {
             ev->type = TYPE_DATA;
             ev->link = cur_ipd_link;
@@ -79,6 +89,7 @@ static void next_event(NetEvent* ev) {
                 cur_ipd_len = 0;
                 while (1) {
                     char d = get_net_char();
+                    if (ftp_abort) return;
                     if (d == ':') break;
                     cur_ipd_len = cur_ipd_len * 10 + (d - '0');
                 }
@@ -163,6 +174,7 @@ static void read_line(uint8_t link, char* buf, int max_len) {
     int pos = 0;
     while (pos < max_len - 1) {
         NetEvent ev;
+        if (ftp_abort) { buf[0] = '\0'; return; }
         next_event(&ev);
         if (ev.type == TYPE_DATA && ev.link == link) {
             if (ev.c == '\n') break;
@@ -180,7 +192,9 @@ static void read_line(uint8_t link, char* buf, int max_len) {
 
 static int read_ftp_code(uint8_t link, char* buf, int max_len) {
     while (1) {
+        if (ftp_abort) return -1;
         read_line(link, buf, max_len);
+        if (ftp_abort) return -1;
         if (strlen(buf) >= 3 && buf[3] == ' ') {
             return (buf[0] - '0') * 100 + (buf[1] - '0') * 10 + (buf[2] - '0');
         }
@@ -200,6 +214,7 @@ static void send_link(uint8_t link, const char* str) {
 
     while (1) {
         NetEvent ev;
+        if (ftp_abort) return;
         next_event(&ev);
         if (ev.type == TYPE_PROMPT) break;
         if (ev.type == TYPE_ERROR) return;
@@ -227,6 +242,7 @@ static void send_link_bin(uint8_t link, const void* data, uint16_t len) {
 
     while (1) {
         NetEvent ev;
+        if (ftp_abort) return;
         next_event(&ev);
         if (ev.type == TYPE_PROMPT) break;
         if (ev.type == TYPE_ERROR) return;
@@ -288,13 +304,17 @@ static void run_client(const char* server, const char* user, const char* pass, c
 
     net_send("AT+CIPMUX=1\r\n");
     next_event(&ev);
-    while (ev.type != TYPE_OK) next_event(&ev);
+    while (ev.type != TYPE_OK) {
+        if (ftp_abort) return;
+        next_event(&ev);
+    }
 
     net_send("AT+CIPSTART=0,\"TCP\",\"");
     net_send(server);
     net_send("\",21\r\n");
 
     while (1) {
+        if (ftp_abort) return;
         next_event(&ev);
         if (ev.type == TYPE_CONNECT && ev.link == 0) break;
         if (ev.type == TYPE_ERROR) {
@@ -381,6 +401,7 @@ static void run_client(const char* server, const char* user, const char* pass, c
     net_send_num(port);
     net_send("\r\n");
     while (1) {
+        if (ftp_abort) return;
         next_event(&ev);
         if (ev.type == TYPE_CONNECT && ev.link == 1) break;
         if (ev.type == TYPE_ERROR) {
@@ -402,6 +423,7 @@ static void run_client(const char* server, const char* user, const char* pass, c
     }
 
     while (1) {
+        if (ftp_abort) break;
         next_event(&ev);
         if (ev.type == TYPE_DATA && ev.link == 1) {
             sd_write(&fp, &ev.c, 1);
@@ -435,11 +457,12 @@ static void run_server(const char* user, const char* pass, const char* port_str)
             port_str++;
         }
     }
-
+    println("Press 'q' to exit");
     net_send("AT+CIFSR\r\n");
     print_str("Listening on IP: ");
     while (1) {
         char c = get_net_char();
+        if (ftp_abort) return;
         if (c == 'O') {
             if (get_net_char() == 'K') {
                 if (quotes == 0) print_str("Unknown");
@@ -465,6 +488,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     if (quotes == 2) {
         while (1) {
             char c = get_net_char();
+            if (ftp_abort) return;
             if (c == 'O') {
                 if (get_net_char() == 'K') {
                     while (get_net_char() != '\n');
@@ -482,6 +506,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     net_send("AT+CIPMUX=1\r\n");
     next_event(&ev);
     while (ev.type != TYPE_OK) {
+        if (ftp_abort) return;
         if (ev.type == TYPE_ERROR) {
             println("Failed to set MUX");
             return;
@@ -494,6 +519,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     net_send("\r\n");
     next_event(&ev);
     while (ev.type != TYPE_OK) {
+        if (ftp_abort) return;
         if (ev.type == TYPE_ERROR) {
             print_str("Failed to start server on port ");
             print_num((uint16_t)port);
@@ -504,13 +530,16 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     }
 
     while (1) {
+        if (ftp_abort) break;
         next_event(&ev);
         if (ev.type == TYPE_CONNECT && ev.link == 0) {
             println("Client connected");
             send_link(0, "220 microDOS FTP Server Ready\r\n");
 
             while (link_state[0]) {
+                if (ftp_abort) break;
                 read_line(0, buf, sizeof(buf));
+                if (ftp_abort) break;
                 if (buf[0] == '\0') continue;
 
                 print_str(">> ");
@@ -656,6 +685,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     net_send("\r\n");
 
                     while (1) {
+                        if (ftp_abort) break;
                         next_event(&ev2);
                         if (ev2.type == TYPE_CONNECT && ev2.link == 1) {
                             ok = 1;
@@ -697,6 +727,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     if (!early_closed) {
                         while (1) {
                             NetEvent ev2;
+                            if (ftp_abort) break;
                             next_event(&ev2);
                             if (ev2.type == TYPE_DATA && ev2.link == 1) {
                                 push_early_data(ev2.c);
@@ -755,7 +786,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     }
     net_send("AT+CIPSERVER=0\r\n");
     net_send("AT+CIPMUX=0\r\n");
-    println("Server stopped");
+    println("\r\nServer stopped");
 }
 
 int main(void) {

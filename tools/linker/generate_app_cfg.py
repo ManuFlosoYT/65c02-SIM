@@ -98,6 +98,7 @@ def generate_cfg(flags):
     cfg.append(f"    _os_swap_load:    type = weak, value = ${JUMPTABLE + 0x54:04X};")
     cfg.append(f"    _os_alloc:        type = weak, value = ${JUMPTABLE + 0x57:04X};")
     cfg.append(f"    _os_free:         type = weak, value = ${JUMPTABLE + 0x5A:04X};")
+    cfg.append(f"    _bios_getchar_nb: type = weak, value = ${JUMPTABLE + 0x5D:04X};")
     cfg.append("}")
     cfg.append("")
     return "\n".join(cfg)
