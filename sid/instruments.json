@@ -1,0 +1,238 @@
+{
+  "melodic": {
+    "0-7": {
+      "name": "Piano",
+      "waves": ["PULSE"],
+      "attack_decay": "0x09",
+      "sustain_release_base": "0x05",
+      "pulse_width": "0x0600",
+      "features": []
+    },
+    "8-15": {
+      "name": "Chromatic Percussion",
+      "waves": ["TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x05",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "16-23": {
+      "name": "Organ",
+      "waves": ["PULSE", "TRI"],
+      "attack_decay": "0x11",
+      "sustain_release_base": "0x02",
+      "pulse_width": "0x0400",
+      "features": []
+    },
+    "24-28": {
+      "name": "Acoustic Guitar",
+      "waves": ["SAW"],
+      "attack_decay": "0x09",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "29-31": {
+      "name": "Electric/Overdrive Guitar",
+      "waves": ["PULSE", "SAW"],
+      "attack_decay": "0x09",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": ["hard_sync"]
+    },
+    "32-34": {
+      "name": "Acoustic/Electric Bass",
+      "waves": ["PULSE"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": ["bass_filter", "velocity_filter"]
+    },
+    "35-37": {
+      "name": "Fretless/Slap Bass",
+      "waves": ["SAW"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": ["bass_filter", "velocity_filter"]
+    },
+    "38-39": {
+      "name": "Synth Bass",
+      "waves": ["TRI", "PULSE"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": ["bass_filter", "velocity_filter", "pwm_sweep"]
+    },
+    "40-47": {
+      "name": "Strings",
+      "waves": ["SAW"],
+      "attack_decay": "0x68",
+      "sustain_release_base": "0x09",
+      "pulse_width": "0x0800",
+      "features": ["pwm_sweep", "vibrato"]
+    },
+    "48-55": {
+      "name": "Ensemble",
+      "waves": ["SAW", "TRI"],
+      "attack_decay": "0x88",
+      "sustain_release_base": "0x0A",
+      "pulse_width": "0x0800",
+      "features": ["pwm_sweep"]
+    },
+    "56-63": {
+      "name": "Brass",
+      "waves": ["SAW"],
+      "attack_decay": "0x25",
+      "sustain_release_base": "0x05",
+      "pulse_width": "0x0800",
+      "features": ["velocity_filter"]
+    },
+    "64-71": {
+      "name": "Reed",
+      "waves": ["TRI", "PULSE"],
+      "attack_decay": "0x45",
+      "sustain_release_base": "0x06",
+      "pulse_width": "0x0800",
+      "features": ["vibrato"]
+    },
+    "72-79": {
+      "name": "Pipe",
+      "waves": ["TRI"],
+      "attack_decay": "0x56",
+      "sustain_release_base": "0x06",
+      "pulse_width": "0x0800",
+      "features": ["vibrato"]
+    },
+    "80": {
+      "name": "Synth Lead (Square)",
+      "waves": ["PULSE", "TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x09",
+      "pulse_width": "0x0800",
+      "features": ["pwm_sweep", "vibrato"]
+    },
+    "81": {
+      "name": "Synth Lead (Sawtooth)",
+      "waves": ["SAW", "TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x09",
+      "pulse_width": "0x0800",
+      "features": ["pwm_sweep", "vibrato", "ring_mod"]
+    },
+    "82-87": {
+      "name": "Synth Lead (Other)",
+      "waves": ["PULSE", "TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x09",
+      "pulse_width": "0x0800",
+      "features": ["pwm_sweep", "vibrato"]
+    },
+    "88-95": {
+      "name": "Synth Pad",
+      "waves": ["SAW", "TRI"],
+      "attack_decay": "0xAA",
+      "sustain_release_base": "0x0A",
+      "pulse_width": "0x0800",
+      "features": ["pwm_sweep"]
+    },
+    "96-103": {
+      "name": "Synth Effects",
+      "waves": ["PULSE", "NOISE"],
+      "attack_decay": "0x2A",
+      "sustain_release_base": "0x0A",
+      "pulse_width": "0x0800",
+      "features": ["pwm_sweep"]
+    },
+    "104-111": {
+      "name": "Ethnic",
+      "waves": ["TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x06",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "112-119": {
+      "name": "Percussive",
+      "waves": ["PULSE", "TRI"],
+      "attack_decay": "0x01",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "120-127": {
+      "name": "Sound Effects",
+      "waves": ["NOISE"],
+      "attack_decay": "0x00",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "128": {
+      "name": "APU Pulse",
+      "waves": ["PULSE"],
+      "attack_decay": "0x00",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "129": {
+      "name": "APU Triangle",
+      "waves": ["TRI"],
+      "attack_decay": "0x00",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "130": {
+      "name": "APU Noise",
+      "waves": ["NOISE"],
+      "attack_decay": "0x00",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": []
+    }
+  },
+  "percussion": {
+    "35,36": {
+      "name": "Kick",
+      "waves": ["TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": ["kick_slide", "pcm_sample"]
+    },
+    "38,40": {
+      "name": "Snare",
+      "waves": ["NOISE", "TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": ["snare_macro", "pcm_sample"]
+    },
+    "42,44,46": {
+      "name": "HiHats",
+      "waves": ["NOISE"],
+      "attack_decay": "0x00",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "49,57": {
+      "name": "Crash",
+      "waves": ["NOISE"],
+      "attack_decay": "0x0F",
+      "sustain_release_base": "0x08",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "default": {
+      "name": "Generic Percussion",
+      "waves": ["NOISE"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": []
+    }
+  }
+}
