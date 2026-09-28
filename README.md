@@ -61,10 +61,10 @@ To install Fedora on Windows 10/11:
 
 Once set up, you can run all the commands described below (and in the [Build from Source](#hammer_and_wrench-build-from-source) section) directly from the Fedora terminal.
 
-Compile and run assembly or C programs from `./Binaries/` into the `output/rom` folder:
+Compile and run assembly or C programs from `./sdk/` into the `output/rom` folder:
 
 ```bash
-./compile-bin.sh <file>
+./sdk/scripts/compile-bin.sh <file>
 ```
 
 _(Note: This tool automatically handles both `.s` and `.c` files, and also the special `eater` ROM target.)_
@@ -72,13 +72,13 @@ _(Note: This tool automatically handles both `.s` and `.c` files, and also the s
 Convert images to VRAM binary format into the `output/vram` folder:
 
 ```bash
-./image-to-bin.sh <file>
+./sdk/scripts/image-to-bin.sh <file>
 ```
 
 Convert MIDI or NSF files to SID assembly code into the `output/midi` or `output/nsf` folder:
 
 ```bash
-./midi-to-bin.sh <file>
+./sdk/scripts/midi-to-bin.sh <file>
 ```
 
 ### :hammer_and_wrench: Build from Source
@@ -96,25 +96,52 @@ sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-d
 
 #### Compile and Run Locally
 
-Clone the project
+### 🌳 Repository Architecture (Git Worktrees)
 
+This project uses **Git Worktrees** to keep different components completely isolated in their own orphan branches. This keeps the `master` branch clean and avoids downloading huge assets when they are not needed.
+
+The branches are structured as follows:
+- **`master`**: The core C++ emulator and build scripts.
+- **`SDK`**: Libraries, BIOS, and headers for 6502 development (mounted at `/sdk/`).
+- **`MSBasic`**: Microsoft BASIC port for the 6502 (mounted at `/sdk/msbasic/`).
+- **`MicroDOS`**: Custom operating system for the emulator (mounted at `/sdk/microdos/`).
+- **`Tools`**: Python scripts and utilities for data conversion (mounted at `/tools/`).
+- **`Assets`**: Audio, MIDI, NSF, and VRAM files (mounted at `/assets/`).
+- **`Wiki`**: Documentation files (mounted at `/wiki/`).
+
+#### Clone the project (All Worktrees)
+
+To clone the repository and automatically mount all components into their respective folders, use the following one-liner:
+
+**Linux / macOS (Bash):**
 ```bash
-git clone https://github.com/ManuFlosoYT/65c02-SIM
+git clone https://github.com/ManuFlosoYT/65c02-SIM.git && cd 65c02-SIM && \
+git worktree add sdk SDK && \
+git worktree add sdk/msbasic MSBasic && \
+git worktree add sdk/microdos MicroDOS && \
+git worktree add tools Tools && \
+git worktree add assets Assets && \
+git worktree add wiki Wiki
+```
+
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/ManuFlosoYT/65c02-SIM.git ; if ($?) { cd 65c02-SIM ; git worktree add sdk SDK ; git worktree add sdk/msbasic MSBasic ; git worktree add sdk/microdos MicroDOS ; git worktree add tools Tools ; git worktree add assets Assets ; git worktree add wiki Wiki }
 ```
 
 Compile using the unified build script. By default, it targets Linux:
 
 ```bash
-./scripts/build.sh
-# (optional arguments) ./scripts/build.sh --whatever
+./build.sh
+# (optional arguments) ./build.sh --whatever
 ```
 
 You can also specify the target OS explicitly:
 
 ```bash
-./scripts/build.sh --target linux
-./scripts/build.sh --target win
-./scripts/build.sh --target web
+./build.sh --target linux
+./build.sh --target win
+./build.sh --target web
 ```
 
 The parameters accepted by the script are divided according to their function:
