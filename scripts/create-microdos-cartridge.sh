@@ -25,7 +25,7 @@ fi
 echo "  Compiling microDOS apps..."
 mkdir -p output/apps
 pids=()
-for app_src in sdk/microdos/apps/*.c; do
+for app_src in sdk/microdos/Apps/*.c; do
     if [ -f "$app_src" ]; then
         app_name=$(basename "${app_src%.c}")
         echo "    Building $app_name.app..."

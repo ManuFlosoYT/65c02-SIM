@@ -32,8 +32,8 @@ done
 if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
     echo "--- Compiling $NAME.app (microDOS App) ---"
     SRC=""
-    if [ -f "sdk/microdos/apps/$NAME.c" ]; then
-        SRC="sdk/microdos/apps/$NAME.c"
+    if [ -f "sdk/microdos/Apps/$NAME.c" ]; then
+        SRC="sdk/microdos/Apps/$NAME.c"
     elif [ -f "sdk/src/$NAME.c" ]; then
         SRC="sdk/src/$NAME.c"
     else
