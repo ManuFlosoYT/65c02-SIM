@@ -1,8 +1,7 @@
 #pragma once
-#include <vector>
 #include <cmath>
 #include <cstdint>
-#include <queue>
+#include <vector>
 
 namespace Hardware {
 
@@ -35,13 +34,18 @@ private:
     // FIR Filter state
     std::vector<double> firTable;
     std::vector<double> ringBuffer;
-    size_t ringIndex;
+    std::size_t ringBufferSize = 0;
+    std::size_t ringIndex = 0;
+    std::size_t numInputTaps = 0;
     
     // Timing state
-    double fractionalTime;
+    double fractionalTime = 0.0;
     
-    // Output queue
-    std::queue<double> outputQueue;
+    // Output ring buffer
+    std::vector<double> outputBuffer;
+    std::size_t outputReadIndex = 0;
+    std::size_t outputWriteIndex = 0;
+    std::size_t outputCount = 0;
     
     // Polyphase configuration
     static constexpr int PHASES = 256;

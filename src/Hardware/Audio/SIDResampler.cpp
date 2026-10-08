@@ -11,12 +11,16 @@ void SIDResampler::SetRates(double inRate, double outRate) {
     outputRate = outRate;
     ratio = inputRate / outputRate;
     
-    int requiredBufferSize = static_cast<int>(FILTER_TAPS * ratio) + 2;
-    ringBuffer.assign(requiredBufferSize, 0.0);
+    ringBufferSize = static_cast<std::size_t>(FILTER_TAPS * ratio) + 2;
+    numInputTaps = static_cast<std::size_t>(FILTER_TAPS * ratio);
+    ringBuffer.assign(ringBufferSize, 0.0);
     ringIndex = 0;
     fractionalTime = 0.0;
-    
-    while(!outputQueue.empty()) outputQueue.pop();
+
+    outputBuffer.assign(1024, 0.0);
+    outputReadIndex = 0;
+    outputWriteIndex = 0;
+    outputCount = 0;
     
     BuildPolyphaseTable();
 }
@@ -36,8 +40,8 @@ double SIDResampler::BesselI0(double x) {
 void SIDResampler::BuildPolyphaseTable() {
     double cutoff = (outputRate * 0.45) / inputRate; // 90% of Nyquist to give room for transition
     
-    int numInputTaps = static_cast<int>(FILTER_TAPS * ratio);
-    int halfTaps = numInputTaps / 2;
+    const int tapCount = static_cast<int>(numInputTaps);
+    int halfTaps = tapCount / 2;
     
     firTable.assign(numInputTaps * PHASES, 0.0);
     
@@ -48,7 +52,7 @@ void SIDResampler::BuildPolyphaseTable() {
         double phaseOffset = static_cast<double>(p) / PHASES;
         
         double sum = 0.0;
-        for (int i = 0; i < numInputTaps; ++i) {
+        for (int i = 0; i < tapCount; ++i) {
             double x = (i - halfTaps) - phaseOffset;
             
             // Sinc
@@ -60,7 +64,7 @@ void SIDResampler::BuildPolyphaseTable() {
             
             // Kaiser Window
             double window = 0.0;
-            double arg = (2.0 * x) / numInputTaps;
+            double arg = (2.0 * x) / tapCount;
             if (arg >= -1.0 && arg <= 1.0) {
                 window = BesselI0(kaiserBeta * std::sqrt(1.0 - arg * arg)) / i0Beta;
             }
@@ -72,7 +76,7 @@ void SIDResampler::BuildPolyphaseTable() {
         
         // Normalize phase
         if (sum > 0.0) {
-            for (int i = 0; i < numInputTaps; ++i) {
+            for (int i = 0; i < tapCount; ++i) {
                 firTable[p * numInputTaps + i] /= sum;
             }
         }
@@ -83,48 +87,62 @@ void SIDResampler::Clear() {
     std::fill(ringBuffer.begin(), ringBuffer.end(), 0.0);
     ringIndex = 0;
     fractionalTime = 0.0;
-    while(!outputQueue.empty()) outputQueue.pop();
+    outputReadIndex = 0;
+    outputWriteIndex = 0;
+    outputCount = 0;
 }
 
 void SIDResampler::PushSample(double sample) {
     ringBuffer[ringIndex] = sample;
-    ringIndex = (ringIndex + 1) % ringBuffer.size();
+    ++ringIndex;
+    if (ringIndex == ringBufferSize) ringIndex = 0;
     
     fractionalTime += 1.0;
     
     if (fractionalTime >= ratio) {
         fractionalTime -= ratio;
-        
-        int numInputTaps = static_cast<int>(FILTER_TAPS * ratio);
-        
+
         double phase = fractionalTime / ratio;
         int phaseIdx = static_cast<int>(phase * PHASES);
         if (phaseIdx >= PHASES) phaseIdx = PHASES - 1;
         if (phaseIdx < 0) phaseIdx = 0;
         
         double outSample = 0.0;
-        size_t readIdx = (ringIndex + ringBuffer.size() - numInputTaps) % ringBuffer.size();
+        std::size_t readIdx = ringIndex + ringBufferSize - numInputTaps;
+        if (readIdx >= ringBufferSize) readIdx -= ringBufferSize;
         
         const double* tablePtr = &firTable[phaseIdx * numInputTaps];
         
-        for (int i = 0; i < numInputTaps; ++i) {
+        for (std::size_t i = 0; i < numInputTaps; ++i) {
             outSample += ringBuffer[readIdx] * tablePtr[i];
             readIdx++;
-            if (readIdx >= ringBuffer.size()) readIdx = 0;
+            if (readIdx == ringBufferSize) readIdx = 0;
         }
         
-        outputQueue.push(outSample);
+        if (outputCount == outputBuffer.size()) {
+            std::vector<double> expandedBuffer(outputBuffer.size() * 2);
+            for (std::size_t i = 0; i < outputCount; ++i) {
+                expandedBuffer[i] = outputBuffer[(outputReadIndex + i) % outputBuffer.size()];
+            }
+            outputBuffer = std::move(expandedBuffer);
+            outputReadIndex = 0;
+            outputWriteIndex = outputCount;
+        }
+        outputBuffer[outputWriteIndex] = outSample;
+        outputWriteIndex = (outputWriteIndex + 1) % outputBuffer.size();
+        ++outputCount;
     }
 }
 
 bool SIDResampler::HasOutput() const {
-    return !outputQueue.empty();
+    return outputCount != 0;
 }
 
 double SIDResampler::GetOutput() {
-    if (outputQueue.empty()) return 0.0;
-    double val = outputQueue.front();
-    outputQueue.pop();
+    if (outputCount == 0) return 0.0;
+    double val = outputBuffer[outputReadIndex];
+    outputReadIndex = (outputReadIndex + 1) % outputBuffer.size();
+    --outputCount;
     return val;
 }
 

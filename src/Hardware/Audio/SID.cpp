@@ -106,6 +106,7 @@ void SID::Reset() {
 void SID::SetModel(SIDModel newModel) {
     std::lock_guard<std::mutex> lock(sidMutex);
     this->model = newModel;
+    filterCoefficientsDirty = true;
 }
 
 SIDModel SID::GetModel() const {
@@ -115,20 +116,22 @@ SIDModel SID::GetModel() const {
 void SID::EnableSound(bool enable) {
     std::lock_guard<std::mutex> lock(sidMutex);
     
-    if (!soundEnabled && enable) {
+    if (!soundEnabled.load(std::memory_order_relaxed) && enable) {
         // Clear old state before enabling
         resampler.Clear();
         dcBlockerState = 0.0;
         dcBlockerPrevIn = 0.0;
+        filterCoefficientsDirty = true;
         if (audioStream != nullptr) {
             SDL_ClearAudioStream(audioStream);
         }
     }
     
-    soundEnabled = enable;
+    soundEnabled.store(enable, std::memory_order_relaxed);
 
 #ifndef TARGET_WASM
-    if (soundEnabled && !emulationPaused && !pendingFilename.empty()) {
+    if (soundEnabled.load(std::memory_order_relaxed) &&
+        !emulationPaused.load(std::memory_order_relaxed) && !pendingFilename.empty()) {
         recorder = std::make_unique<AudioRecorder>();
         if (!recorder->Start(pendingFilename, sampleRate)) {
             recorder.reset();
@@ -143,11 +146,11 @@ void SID::EnableSound(bool enable) {
 void SID::SetEmulationPaused(bool paused) {
     std::lock_guard<std::mutex> lock(sidMutex);
 
-    if (emulationPaused == paused) {
+    if (emulationPaused.load(std::memory_order_relaxed) == paused) {
         return;
     }
     
-    if (emulationPaused && !paused) {
+    if (emulationPaused.load(std::memory_order_relaxed) && !paused) {
         // Resuming from pause: clear stale data to prevent audio pop
         resampler.Clear();
         dcBlockerState = 0.0;
@@ -157,9 +160,10 @@ void SID::SetEmulationPaused(bool paused) {
         }
     }
     
-    emulationPaused = paused;
+    emulationPaused.store(paused, std::memory_order_relaxed);
 #ifndef TARGET_WASM
-    if (!emulationPaused && soundEnabled && !pendingFilename.empty()) {
+    if (!emulationPaused.load(std::memory_order_relaxed) &&
+        soundEnabled.load(std::memory_order_relaxed) && !pendingFilename.empty()) {
         auto newRecorder = std::make_unique<AudioRecorder>();
         if (newRecorder->Start(pendingFilename, sampleRate)) {
             recorder = std::move(newRecorder);
@@ -173,7 +177,8 @@ void SID::SetEmulationPaused(bool paused) {
 void SID::UpdateAudioState() {
     if (audioStream != nullptr) {
         SDL_AudioDeviceID devId = SDL_GetAudioStreamDevice(audioStream);
-        if (!soundEnabled || emulationPaused) {
+        if (!soundEnabled.load(std::memory_order_relaxed) ||
+            emulationPaused.load(std::memory_order_relaxed)) {
             SDL_PauseAudioDevice(devId);
         } else {
             SDL_ResumeAudioDevice(devId);
@@ -195,6 +200,9 @@ void SID::Write(Word addr, Byte data) {
     
     if (reg == 0x18) {
         volumeRegister = data & 0x0F;
+    }
+    if (reg >= 0x15 && reg <= 0x18) {
+        filterCoefficientsDirty = true;
     }
     
     // Sync registers directly to voices for real-time accurate clocking
@@ -442,7 +450,7 @@ void SID::Clock() {
     voice3OscOutput = (voices[2].oscOutput >> 4) & 0xFF;
     voice3EnvOutput = voices[2].env.level;
     
-    if (!soundEnabled) return;
+    if (!soundEnabled.load(std::memory_order_relaxed)) return;
     
     // Process audio generation
     double filteredInput = 0.0;
@@ -450,34 +458,28 @@ void SID::Clock() {
     const auto filterStart = profilingEnabled ? std::chrono::steady_clock::now()
                                               : std::chrono::steady_clock::time_point{};
     
-    uint16_t fc = (registers.at(0x15) & 0x7) | (registers.at(0x16) << 3);
-    uint8_t resFilt = registers.at(0x17);
-    uint8_t res = (resFilt >> 4) & 0x0F;
-    
-    double fcScaled = static_cast<double>(fc) / 2047.0;
-    
-    double cutoffHz;
-    if (model == SIDModel::MOS6581) {
-        // Approximated FET non-linear mapping (cubic curve)
-        cutoffHz = 30.0 + 12000.0 * (fcScaled * fcScaled * fcScaled);
-        
-        // Q drop: on 6581, resonance dies out at high frequencies due to parasitic capacitance.
-        double effectiveRes = (res / 15.0) * (1.0 - (fcScaled * fcScaled * 0.85));
-        effectiveRes = std::max(0.0, effectiveRes);
-        filterQ = 1.5 - (1.0 * effectiveRes);
-    } else {
-        cutoffHz = 30.0 + (fcScaled * 12000.0);
-        filterQ = 2.0 - (1.8 * (res / 15.0));
+    if (filterCoefficientsDirty) {
+        uint16_t fc = (registers.at(0x15) & 0x7) | (registers.at(0x16) << 3);
+        uint8_t resFilt = registers.at(0x17);
+        uint8_t res = (resFilt >> 4) & 0x0F;
+        double fcScaled = static_cast<double>(fc) / 2047.0;
+        double cutoffHz;
+        if (model == SIDModel::MOS6581) {
+            cutoffHz = 30.0 + 12000.0 * (fcScaled * fcScaled * fcScaled);
+            double effectiveRes = (res / 15.0) * (1.0 - (fcScaled * fcScaled * 0.85));
+            effectiveRes = std::max(0.0, effectiveRes);
+            filterQ = 1.5 - effectiveRes;
+        } else {
+            cutoffHz = 30.0 + (fcScaled * 12000.0);
+            filterQ = 2.0 - (1.8 * (res / 15.0));
+        }
+        cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
+        double w = 2.0 * 3.14159265358979323846 * cutoffHz / SID_CLOCK;
+        filterG = std::tan(w / 2.0);
+        filterR = 1.0 / filterQ;
+        filterCoefficientsDirty = false;
     }
-    
-    // Clamp to prevent instability in filter coefficients
-    cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
-    
-    // ZDF Filter coefficients evaluated at SID_CLOCK (1,000,000 Hz)
-    double w = 2.0 * 3.14159265358979323846 * cutoffHz / SID_CLOCK;
-    double g = std::tan(w / 2.0);
-    double R = 1.0 / filterQ;
-    
+
     for (size_t v = 0; v < voices.size(); ++v) {
         double voiceSample = ((static_cast<double>(voices[v].oscOutput) / 2048.0) - 1.0) * (voices[v].env.level / 255.0);
         
@@ -490,12 +492,13 @@ void SID::Clock() {
     }
     
     // ZDF SVF equations
-    double hp = (filteredInput - filterLow - filterBand * (R + g)) / (1.0 + g * (R + g));
-    double bp = filterBand + g * hp;
-    double lp = filterLow + g * bp;
-    
-    filterBand = bp + g * hp;
-    filterLow = lp + g * bp;
+    double hp = (filteredInput - filterLow - filterBand * (filterR + filterG)) /
+                (1.0 + filterG * (filterR + filterG));
+    double bp = filterBand + filterG * hp;
+    double lp = filterLow + filterG * bp;
+
+    filterBand = bp + filterG * hp;
+    filterLow = lp + filterG * bp;
     
     if (model == SIDModel::MOS6581) {
         // Non-linear OTA clipping
@@ -557,11 +560,13 @@ void SID::Clock() {
         sampleBuffer.push_back(static_cast<int16_t>(finalMix * 18000.0));
         
         if (sampleBuffer.size() >= 512) {
-            if (audioStream != nullptr && !emulationPaused) {
+            std::lock_guard<std::mutex> lock(sidMutex);
+            if (audioStream != nullptr && !emulationPaused.load(std::memory_order_relaxed)) {
                 SDL_PutAudioStreamData(audioStream, sampleBuffer.data(), sampleBuffer.size() * sizeof(int16_t));
             }
 #ifndef TARGET_WASM
-            if (recorder && soundEnabled && !emulationPaused) {
+            if (recorder && soundEnabled.load(std::memory_order_relaxed) &&
+                !emulationPaused.load(std::memory_order_relaxed)) {
                 recorder->PushAudio(sampleBuffer.data(), sampleBuffer.size());
             }
 #endif
@@ -634,8 +639,10 @@ bool SID::SaveState(std::ostream& out) const {
         voice.SaveState(out);
     }
     ISerializable::Serialize(out, volumeRegister);
-    ISerializable::Serialize(out, soundEnabled);
-    ISerializable::Serialize(out, emulationPaused);
+    bool savedSoundEnabled = soundEnabled.load(std::memory_order_relaxed);
+    bool savedEmulationPaused = emulationPaused.load(std::memory_order_relaxed);
+    ISerializable::Serialize(out, savedSoundEnabled);
+    ISerializable::Serialize(out, savedEmulationPaused);
     ISerializable::Serialize(out, filterLow);
     ISerializable::Serialize(out, filterBand);
     ISerializable::Serialize(out, dcBlockerState);
@@ -653,12 +660,17 @@ bool SID::LoadState(std::istream& inStream) {
         voice.LoadState(inStream);
     }
     ISerializable::Deserialize(inStream, volumeRegister);
-    ISerializable::Deserialize(inStream, soundEnabled);
-    ISerializable::Deserialize(inStream, emulationPaused);
+    bool loadedSoundEnabled = false;
+    bool loadedEmulationPaused = true;
+    ISerializable::Deserialize(inStream, loadedSoundEnabled);
+    ISerializable::Deserialize(inStream, loadedEmulationPaused);
+    soundEnabled.store(loadedSoundEnabled, std::memory_order_relaxed);
+    emulationPaused.store(loadedEmulationPaused, std::memory_order_relaxed);
     ISerializable::Deserialize(inStream, filterLow);
     ISerializable::Deserialize(inStream, filterBand);
     ISerializable::Deserialize(inStream, dcBlockerState);
     ISerializable::Deserialize(inStream, dcBlockerPrevIn);
+    filterCoefficientsDirty = true;
     
     uint8_t mod = 0;
     if (!inStream.eof()) {
@@ -672,7 +684,8 @@ bool SID::LoadState(std::istream& inStream) {
 void SID::StartRecording(const std::string& filename) {
     std::lock_guard<std::mutex> lock(sidMutex);
 #ifndef TARGET_WASM
-    if (!emulationPaused && soundEnabled) {
+    if (!emulationPaused.load(std::memory_order_relaxed) &&
+        soundEnabled.load(std::memory_order_relaxed)) {
         recorder = std::make_unique<AudioRecorder>();
         if (!recorder->Start(filename, sampleRate)) {
             recorder.reset();
