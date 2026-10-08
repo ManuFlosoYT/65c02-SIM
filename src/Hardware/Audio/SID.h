@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -73,6 +74,15 @@ struct Oscillator {
     bool LoadState(std::istream& inStream);
 };
 
+struct SIDProfilingStats {
+    std::uint64_t clockCount = 0;
+    std::uint64_t oscillatorNanoseconds = 0;
+    std::uint64_t envelopeNanoseconds = 0;
+    std::uint64_t filterNanoseconds = 0;
+    std::uint64_t resamplerNanoseconds = 0;
+    std::uint64_t outputNanoseconds = 0;
+};
+
 class SID : public IBusDevice {
    public:
     static constexpr int MAX_SID_VOICES = 3;
@@ -109,6 +119,9 @@ class SID : public IBusDevice {
     bool IsRecording() const;
     void SetAudioCallback(std::function<void(const int16_t*, int)> callback);
     void ClearAudioCallback();
+    void SetProfilingEnabled(bool enabled);
+    void ClearProfilingStats();
+    SIDProfilingStats GetProfilingStats() const;
 
    private:
     std::array<std::uint8_t, 0x20> registers{};
@@ -151,6 +164,8 @@ class SID : public IBusDevice {
 #endif
     std::string pendingFilename;
     std::function<void(const int16_t*, int)> audioCallback;
+    bool profilingEnabled = false;
+    SIDProfilingStats profilingStats;
 
     static void AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
                                int total_amount);

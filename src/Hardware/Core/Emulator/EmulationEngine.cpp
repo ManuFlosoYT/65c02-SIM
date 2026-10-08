@@ -32,7 +32,9 @@ void Emulator::Stop() {
 }
 
 void Emulator::Pause() {
-    paused = true;
+    if (paused.exchange(true)) {
+        return;
+    }
     sid.SetEmulationPaused(true);
     pauseCV.notify_all();
 }

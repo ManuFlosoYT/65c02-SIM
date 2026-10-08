@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <mutex>
 #include <span>
 #include <cstring>
@@ -141,6 +142,10 @@ void SID::EnableSound(bool enable) {
 
 void SID::SetEmulationPaused(bool paused) {
     std::lock_guard<std::mutex> lock(sidMutex);
+
+    if (emulationPaused == paused) {
+        return;
+    }
     
     if (emulationPaused && !paused) {
         // Resuming from pause: clear stale data to prevent audio pop
@@ -406,10 +411,32 @@ void Oscillator::Next(SIDModel model) {
 
 void SID::Clock() {
     clockCounter++;
-    
-    for (int i = 0; i < 3; ++i) {
-        voices[i].Next(model);
-        voices[i].env.Update((voices[i].control & 0x01) != 0);
+
+    const auto measure = [this](std::uint64_t& total, auto&& function) {
+        if (!profilingEnabled) {
+            function();
+            return;
+        }
+        const auto start = std::chrono::steady_clock::now();
+        function();
+        total += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - start)
+                .count());
+    };
+
+    measure(profilingStats.oscillatorNanoseconds, [this] {
+        for (int i = 0; i < 3; ++i) {
+            voices[i].Next(model);
+        }
+    });
+    measure(profilingStats.envelopeNanoseconds, [this] {
+        for (int i = 0; i < 3; ++i) {
+            voices[i].env.Update((voices[i].control & 0x01) != 0);
+        }
+    });
+    if (profilingEnabled) {
+        ++profilingStats.clockCount;
     }
     
     voice3OscOutput = (voices[2].oscOutput >> 4) & 0xFF;
@@ -420,6 +447,8 @@ void SID::Clock() {
     // Process audio generation
     double filteredInput = 0.0;
     double directOutput = 0.0;
+    const auto filterStart = profilingEnabled ? std::chrono::steady_clock::now()
+                                              : std::chrono::steady_clock::time_point{};
     
     uint16_t fc = (registers.at(0x15) & 0x7) | (registers.at(0x16) << 3);
     uint8_t resFilt = registers.at(0x17);
@@ -503,9 +532,26 @@ void SID::Clock() {
     dcBlockerState = filteredMix;
     dcBlockerPrevIn = mix;
     mix = filteredMix;
-    
+
+    if (profilingEnabled) {
+        profilingStats.filterNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - filterStart)
+                .count());
+    }
+
+    const auto resamplerStart = profilingEnabled ? std::chrono::steady_clock::now()
+                                                 : std::chrono::steady_clock::time_point{};
     resampler.PushSample(mix);
-    
+    if (profilingEnabled) {
+        profilingStats.resamplerNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - resamplerStart)
+                .count());
+    }
+
+    const auto outputStart = profilingEnabled ? std::chrono::steady_clock::now()
+                                              : std::chrono::steady_clock::time_point{};
     while (resampler.HasOutput()) {
         double finalMix = resampler.GetOutput();
         sampleBuffer.push_back(static_cast<int16_t>(finalMix * 18000.0));
@@ -524,6 +570,12 @@ void SID::Clock() {
             }
             sampleBuffer.clear();
         }
+    }
+    if (profilingEnabled) {
+        profilingStats.outputNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - outputStart)
+                .count());
     }
 }
 
@@ -661,6 +713,18 @@ void SID::SetAudioCallback(std::function<void(const int16_t*, int)> callback) {
 void SID::ClearAudioCallback() {
     std::lock_guard<std::mutex> lock(sidMutex);
     audioCallback = nullptr;
+}
+
+void SID::SetProfilingEnabled(bool enabled) {
+    profilingEnabled = enabled;
+}
+
+void SID::ClearProfilingStats() {
+    profilingStats = {};
+}
+
+SIDProfilingStats SID::GetProfilingStats() const {
+    return profilingStats;
 }
 
 }  // namespace Hardware

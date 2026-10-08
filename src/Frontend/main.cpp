@@ -11,6 +11,7 @@
 
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <charconv>
 #include <span>
@@ -208,6 +209,8 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
 
 struct Args {
     bool headless = false;
+    bool profileSID = false;
+    bool sidSound = false;
     std::string scriptPath;
     std::string romPath;
     std::string dumpMemPath;
@@ -238,6 +241,8 @@ static void PrintHeadlessUsage(const char* exeName) {
               << "  --rom <path>            Load ROM from path (fallback: output/rom/room.bin)\n"
               << "  --script <path>         Load and run Python script\n"
               << "  --run-cycles <N>        Run N cycles (N >= 0)\n"
+              << "  --sid-sound <on|off>    Enable or disable SID audio processing\n"
+              << "  --profile-sid           Print SID timing counters\n"
               << "  --dump-mem <file>       Dump 64KB memory to file\n"
               << "  --help                  Show this help\n";
 }
@@ -253,6 +258,24 @@ static ParseArgsResult ParseArgs(std::span<const char* const> argv) {
         }
         if (arg == "--headless") {
             args.headless = true;
+        } else if (arg == "--profile-sid") {
+            args.profileSID = true;
+        } else if (arg == "--sid-sound") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --sid-sound";
+                return result;
+            }
+            std::string_view value = argv[++i];
+            if (value == "on") {
+                args.sidSound = true;
+            } else if (value == "off") {
+                args.sidSound = false;
+            } else {
+                result.ok = false;
+                result.error = "Invalid value for --sid-sound: " + std::string(value);
+                return result;
+            }
         } else if (arg == "--script") {
             if (i + 1 >= argv.size()) {
                 result.ok = false;
@@ -327,6 +350,9 @@ static int RunHeadless(const Args& args) {
     emulator.SetHeadless(true);
     emulator.SetRewindSnapshotsEnabled(false);
     emulator.GetSID().Init(sidSampleRate);
+    emulator.GetSID().EnableSound(args.sidSound);
+    emulator.GetSID().SetProfilingEnabled(args.profileSID);
+    emulator.GetSID().ClearProfilingStats();
     emulator.SetGPUEnabled(false);
 
     std::string romPath = ResolveHeadlessRomPath(args);
@@ -353,9 +379,27 @@ static int RunHeadless(const Args& args) {
     if (args.runCycles > 0) {
         emulator.Resume();
         for (int i = 0; i < args.runCycles; ++i) {
-            emulator.Step();
+            if (emulator.IsHalted() || emulator.Step() != 0) {
+                break;
+            }
         }
-        emulator.Pause();
+        if (!emulator.IsPaused()) {
+            emulator.Pause();
+        }
+    }
+
+    if (args.profileSID) {
+        const auto stats = emulator.GetSID().GetProfilingStats();
+        const auto toMilliseconds = [](std::uint64_t nanoseconds) {
+            return static_cast<double>(nanoseconds) / 1'000'000.0;
+        };
+        std::cout << std::fixed << std::setprecision(3)
+                  << "SID profile: clocks=" << stats.clockCount
+                  << ", oscillator_ms=" << toMilliseconds(stats.oscillatorNanoseconds)
+                  << ", envelope_ms=" << toMilliseconds(stats.envelopeNanoseconds)
+                  << ", filter_ms=" << toMilliseconds(stats.filterNanoseconds)
+                  << ", resampler_ms=" << toMilliseconds(stats.resamplerNanoseconds)
+                  << ", output_ms=" << toMilliseconds(stats.outputNanoseconds) << '\n';
     }
 
     if (!args.dumpMemPath.empty()) {
