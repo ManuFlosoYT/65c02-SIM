@@ -36,6 +36,15 @@ using namespace Hardware;
 
 class Emulator {
    public:
+    struct RuntimeStats {
+        uint64_t cyclesPerSecond = 0;
+        uint64_t instructionsPerSecond = 0;
+        uint64_t slicesPerSecond = 0;
+        uint64_t emulationNanoseconds = 0;
+        uint64_t sleepNanoseconds = 0;
+        uint64_t lateNanoseconds = 0;
+    };
+
     Emulator();
     ~Emulator() = default;
 
@@ -114,6 +123,7 @@ class Emulator {
     void SetTargetIPS(int ips);
     int GetTargetIPS() const;
     int GetActualIPS() const;
+    [[nodiscard]] RuntimeStats GetRuntimeStats() const;
 
     void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
@@ -165,8 +175,14 @@ class Emulator {
     bool LoadComponentsState(std::istream& stateStream);
     bool LoadInternalState(std::istream& stateStream);
 
-    int EmulateSlice(int instructionsPerSlice);
-    int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions, int& stopCode);
+    struct SliceResult {
+        uint64_t cycles = 0;
+        uint64_t instructions = 0;
+    };
+
+    SliceResult EmulateSlice(int instructionsPerSlice);
+    int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
+                     uint64_t& batchCycles, int& stopCode);
     void handleStop(int code);
     void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
 
@@ -216,6 +232,13 @@ class Emulator {
     std::atomic<bool> halted{false};
     std::atomic<int> targetIPS{1000000};
     std::atomic<int> actualIPS{0};
+    std::atomic<uint64_t> actualCyclesPerSecond{0};
+    std::atomic<uint64_t> actualInstructionsPerSecond{0};
+    std::atomic<uint64_t> slicesPerSecond{0};
+    std::atomic<uint64_t> emulationNanoseconds{0};
+    std::atomic<uint64_t> sleepNanoseconds{0};
+    std::atomic<uint64_t> lateNanoseconds{0};
+    uint64_t lastStepCycles = 0;
     std::thread emulatorThread;
     std::mutex threadMutex;
     std::condition_variable pauseCV;
@@ -291,6 +314,16 @@ inline bool Core::Emulator::IsHalted() const { return halted; }
 inline void Core::Emulator::SetTargetIPS(int ips) { targetIPS = ips; }
 inline int Core::Emulator::GetTargetIPS() const { return targetIPS; }
 inline int Core::Emulator::GetActualIPS() const { return actualIPS; }
+inline Core::Emulator::RuntimeStats Core::Emulator::GetRuntimeStats() const {
+    return {
+        .cyclesPerSecond = actualCyclesPerSecond.load(std::memory_order_relaxed),
+        .instructionsPerSecond = actualInstructionsPerSecond.load(std::memory_order_relaxed),
+        .slicesPerSecond = slicesPerSecond.load(std::memory_order_relaxed),
+        .emulationNanoseconds = emulationNanoseconds.load(std::memory_order_relaxed),
+        .sleepNanoseconds = sleepNanoseconds.load(std::memory_order_relaxed),
+        .lateNanoseconds = lateNanoseconds.load(std::memory_order_relaxed),
+    };
+}
 
 inline void Core::Emulator::SetProfilingEnabled(bool enabled) { bus.SetProfilingEnabled(enabled); }
 inline void Core::Emulator::ClearProfiler() { bus.ClearProfiler(); }

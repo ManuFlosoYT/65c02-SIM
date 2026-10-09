@@ -207,26 +207,33 @@ static void DrawTargetIPS(AppState& state, float mainColWidth) {
 }
 
 static void DrawActualIPS(AppState& state) {
-    int actualIPS = state.emulator.GetActualIPS();
+    const auto stats = state.emulator.GetRuntimeStats();
+    const uint64_t displayedRate = state.emulation.cycleAccurate
+                                       ? stats.cyclesPerSecond
+                                       : stats.instructionsPerSecond;
     std::ostringstream oss;
-    if (state.emulation.cycleAccurate) {
-        if (actualIPS >= 1000000) {
-            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000000.0F) << " MHz";
-        } else if (actualIPS >= 1000) {
-            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000.0F) << " KHz";
-        } else {
-            oss << "Sim: " << actualIPS << " Hz";
-        }
+    if (displayedRate >= 1000000) {
+        oss << "Sim: " << std::fixed << std::setprecision(2)
+            << (static_cast<double>(displayedRate) / 1000000.0) << (state.emulation.cycleAccurate ? " MHz" : " MIPS");
+    } else if (displayedRate >= 1000) {
+        oss << "Sim: " << std::fixed << std::setprecision(2)
+            << (static_cast<double>(displayedRate) / 1000.0) << (state.emulation.cycleAccurate ? " KHz" : " KIPS");
     } else {
-        if (actualIPS >= 1000000) {
-            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000000.0F) << " MIPS";
-        } else if (actualIPS >= 1000) {
-            oss << "Sim: " << std::fixed << std::setprecision(2) << (static_cast<float>(actualIPS) / 1000.0F) << " KIPS";
-        } else {
-            oss << "Sim: " << actualIPS << " IPS";
-        }
+        oss << "Sim: " << displayedRate << (state.emulation.cycleAccurate ? " Hz" : " IPS");
     }
     ImGui::TextUnformatted(oss.str().c_str());
+
+    if (ImGui::IsItemHovered()) {
+        if (ImGui::BeginItemTooltip()) {
+            ImGui::Text("Cycles/s: %llu", static_cast<unsigned long long>(stats.cyclesPerSecond));
+            ImGui::Text("Instructions/s: %llu", static_cast<unsigned long long>(stats.instructionsPerSecond));
+            ImGui::Text("Slices/s: %llu", static_cast<unsigned long long>(stats.slicesPerSecond));
+            ImGui::Text("Emulation: %.2f ms", static_cast<double>(stats.emulationNanoseconds) / 1'000'000.0);
+            ImGui::Text("Scheduler sleep: %.2f ms", static_cast<double>(stats.sleepNanoseconds) / 1'000'000.0);
+            ImGui::Text("Scheduler late: %.2f ms", static_cast<double>(stats.lateNanoseconds) / 1'000'000.0);
+            ImGui::EndTooltip();
+        }
+    }
 }
 static void DrawVideoOptions(AppState& state) {
     ImGui::Separator();

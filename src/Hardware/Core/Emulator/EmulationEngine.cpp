@@ -64,7 +64,9 @@ void Emulator::WaitUntilSafeToMutate() {
 void Emulator::ThreadLoop() {
     using namespace std::chrono;
     auto nextSliceTime = high_resolution_clock::now();
-    int instructionsThisSecond = 0;
+    uint64_t cyclesThisSecond = 0;
+    uint64_t instructionsThisSecond = 0;
+    uint64_t slicesThisSecond = 0;
     auto lastSecondTime = high_resolution_clock::now();
 
     double instructionAccumulator = 0.0;
@@ -98,13 +100,25 @@ void Emulator::ThreadLoop() {
         int instructionsPerSlice = (int)instructionAccumulator;
         instructionAccumulator -= instructionsPerSlice;
 
-        int actuallyExecuted = EmulateSlice(instructionsPerSlice);
-        instructionsThisSecond += actuallyExecuted;
+        const auto sliceStart = high_resolution_clock::now();
+        const SliceResult slice = EmulateSlice(instructionsPerSlice);
+        const auto sliceEnd = high_resolution_clock::now();
+        emulationNanoseconds.fetch_add(
+            static_cast<uint64_t>(duration_cast<nanoseconds>(sliceEnd - sliceStart).count()),
+            std::memory_order_relaxed);
+        cyclesThisSecond += slice.cycles;
+        instructionsThisSecond += slice.instructions;
+        slicesThisSecond++;
 
         auto now = high_resolution_clock::now();
         if (duration_cast<seconds>(now - lastSecondTime).count() >= 1) {
-            actualIPS = instructionsThisSecond;
+            actualCyclesPerSecond.store(cyclesThisSecond, std::memory_order_relaxed);
+            actualInstructionsPerSecond.store(instructionsThisSecond, std::memory_order_relaxed);
+            actualIPS.store(static_cast<int>(instructionsThisSecond), std::memory_order_relaxed);
+            slicesPerSecond.store(slicesThisSecond, std::memory_order_relaxed);
+            cyclesThisSecond = 0;
             instructionsThisSecond = 0;
+            slicesThisSecond = 0;
             lastSecondTime = now;
         }
 
@@ -112,8 +126,14 @@ void Emulator::ThreadLoop() {
 
         auto sleepCheckTime = high_resolution_clock::now();
         if (sleepCheckTime < nextSliceTime) {
+            sleepNanoseconds.fetch_add(
+                static_cast<uint64_t>(duration_cast<nanoseconds>(nextSliceTime - sleepCheckTime).count()),
+                std::memory_order_relaxed);
             std::this_thread::sleep_until(nextSliceTime);
         } else {
+            lateNanoseconds.fetch_add(
+                static_cast<uint64_t>(duration_cast<nanoseconds>(sleepCheckTime - nextSliceTime).count()),
+                std::memory_order_relaxed);
             nextSliceTime = sleepCheckTime;
             std::this_thread::yield();
         }
@@ -122,15 +142,14 @@ void Emulator::ThreadLoop() {
     }
 }
 
-int Emulator::EmulateSlice(int instructionsPerSlice) {
+Emulator::SliceResult Emulator::EmulateSlice(int instructionsPerSlice) {
     if (instructionsPerSlice <= 0) {
-        return 0;
+        return {};
     }
 
     static constexpr int MAX_BATCH_SIZE = 500000;
     static constexpr int NO_STOP = std::numeric_limits<int>::min();
     int remaining = instructionsPerSlice;
-    int totalExecuted = 0;
     uint64_t localCycleDelta = 0;
     uint64_t localInstructionDelta = 0;
     bool totalsCommitted = false;
@@ -152,14 +171,15 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
     while (remaining > 0) {
         int currentBatchSize = std::min(remaining, MAX_BATCH_SIZE);
         int batchInstructions = 0;
+        uint64_t batchCycles = 0;
         int stopCode = NO_STOP;
         int stepsInBatch = 0;
 
-        stepsInBatch = this->ProcessBatch(currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions, stopCode);
-        localCycleDelta += static_cast<uint64_t>(stepsInBatch);
+        stepsInBatch = this->ProcessBatch(
+            currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions, batchCycles, stopCode);
+        localCycleDelta += batchCycles;
         localInstructionDelta += static_cast<uint64_t>(batchInstructions);
 
-        totalExecuted += stepsInBatch;
         remaining -= stepsInBatch;
 
         if (stopCode != NO_STOP) {
@@ -182,10 +202,11 @@ int Emulator::EmulateSlice(int instructionsPerSlice) {
         totalInstructions.fetch_add(localInstructionDelta, std::memory_order_relaxed);
     }
 
-    return totalExecuted;
+    return {.cycles = localCycleDelta, .instructions = localInstructionDelta};
 }
 
-int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions, int& stopCode) {
+int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
+                           uint64_t& batchCycles, int& stopCode) {
     stopCode = std::numeric_limits<int>::min();
     if (cpu.cycleAccurate) {
         for (int i = 0; i < count; ++i) {
@@ -201,6 +222,7 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             if (isNew) {
                 batchInstructions++;
             }
+            batchCycles += lastStepCycles;
 
             if (res != 0) {
                 stopCode = res;
@@ -227,6 +249,7 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             }
 
             batchInstructions++;
+            batchCycles += lastStepCycles;
 
             if (res != 0) {
                 stopCode = res;
