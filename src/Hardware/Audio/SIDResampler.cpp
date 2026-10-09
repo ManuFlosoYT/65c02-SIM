@@ -93,8 +93,9 @@ void SIDResampler::Clear() {
 }
 
 void SIDResampler::PushSample(double sample) {
-    ringBuffer[ringIndex] = sample;
-    ringBuffer[ringIndex + ringBufferSize] = sample;
+    double* ringData = ringBuffer.data();
+    ringData[ringIndex] = sample;
+    ringData[ringIndex + ringBufferSize] = sample;
     ++ringIndex;
     if (ringIndex == ringBufferSize) ringIndex = 0;
     
@@ -113,23 +114,26 @@ void SIDResampler::PushSample(double sample) {
         if (readIdx >= ringBufferSize) readIdx -= ringBufferSize;
         
         const double* tablePtr = firTable.data() + phaseIdx * numInputTaps;
-        const double* samplePtr = ringBuffer.data() + readIdx;
+        const double* samplePtr = ringData + readIdx;
+        const double* const tableEnd = tablePtr + numInputTaps;
         
-        for (std::size_t i = 0; i < numInputTaps; ++i) {
-            outSample += samplePtr[i] * tablePtr[i];
+        while (tablePtr != tableEnd) {
+            outSample += *samplePtr++ * *tablePtr++;
         }
         
         if (outputCount == outputBuffer.size()) {
-            std::vector<double> expandedBuffer(outputBuffer.size() * 2);
+            const std::size_t outputBufferCapacity = outputBuffer.size();
+            std::vector<double> expandedBuffer(outputBufferCapacity * 2);
             for (std::size_t i = 0; i < outputCount; ++i) {
-                expandedBuffer[i] = outputBuffer[(outputReadIndex + i) % outputBuffer.size()];
+                expandedBuffer[i] = outputBuffer[(outputReadIndex + i) % outputBufferCapacity];
             }
             outputBuffer = std::move(expandedBuffer);
             outputReadIndex = 0;
             outputWriteIndex = outputCount;
         }
+        const std::size_t outputBufferCapacity = outputBuffer.size();
         outputBuffer[outputWriteIndex] = outSample;
-        outputWriteIndex = (outputWriteIndex + 1) % outputBuffer.size();
+        outputWriteIndex = (outputWriteIndex + 1) % outputBufferCapacity;
         ++outputCount;
     }
 }
