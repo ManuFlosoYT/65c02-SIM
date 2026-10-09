@@ -168,6 +168,7 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
     via.Clock();
     acia.Clock(ips);
     if (sidEnabled) {
+        sid.SetClockRate(static_cast<double>(ips));
         sid.Clock();
     }
     if (via.isIRQAsserted() || acia.HasIRQ()) {
@@ -181,6 +182,7 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
             via.Clock();
             acia.Clock(ips);
             if (sidEnabled) {
+                sid.SetClockRate(static_cast<double>(ips));
                 sid.Clock();
             }
         }

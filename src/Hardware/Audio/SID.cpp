@@ -16,8 +16,6 @@
 
 namespace Hardware {
 
-constexpr double SID_CLOCK = 1000000.0;
-
 constexpr std::array<uint16_t, 16> RATE_COUNTER_PERIODS = {
       9,     32,     63,     95,    149,    220,    267,    313,
     392,    977,   1954,   3126,   3907,  11720,  19532,  31251
@@ -46,6 +44,7 @@ void SID::Close() {
 
 void SID::Init(int sampleRate) {
     this->sampleRate = sampleRate;
+    resampler.SetRates(clockRate, static_cast<double>(sampleRate));
 
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
         std::cerr << "SDL Audio init failed: " << SDL_GetError() << '\n';
@@ -64,6 +63,17 @@ void SID::Init(int sampleRate) {
     } else {
         SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audioStream));
     }
+}
+
+void SID::SetClockRate(double newClockRate) {
+    if (newClockRate <= 0.0 || newClockRate == clockRate) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(sidMutex);
+    clockRate = newClockRate;
+    resampler.SetRates(clockRate, static_cast<double>(sampleRate));
+    filterCoefficientsDirty = true;
 }
 
 void SID::Reset() {
@@ -94,7 +104,6 @@ void SID::Reset() {
     dcBlockerState = 0.0;
     dcBlockerPrevIn = 0.0;
     clockCounter = 0;
-    fractionalCycles = 0.0;
     resampler.Clear();
     sampleBuffer.clear();
     
@@ -471,7 +480,7 @@ void SID::Clock() {
             filterQ = 2.0 - (1.8 * (res / 15.0));
         }
         cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
-        double w = 2.0 * 3.14159265358979323846 * cutoffHz / SID_CLOCK;
+        double w = 2.0 * 3.14159265358979323846 * cutoffHz / clockRate;
         filterG = std::tan(w / 2.0);
         filterR = 1.0 / filterQ;
         filterCoefficientsDirty = false;

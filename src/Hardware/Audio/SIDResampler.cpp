@@ -13,7 +13,7 @@ void SIDResampler::SetRates(double inRate, double outRate) {
     
     ringBufferSize = static_cast<std::size_t>(FILTER_TAPS * ratio) + 2;
     numInputTaps = static_cast<std::size_t>(FILTER_TAPS * ratio);
-    ringBuffer.assign(ringBufferSize, 0.0);
+    ringBuffer.assign(ringBufferSize * 2, 0.0);
     ringIndex = 0;
     fractionalTime = 0.0;
 
@@ -94,6 +94,7 @@ void SIDResampler::Clear() {
 
 void SIDResampler::PushSample(double sample) {
     ringBuffer[ringIndex] = sample;
+    ringBuffer[ringIndex + ringBufferSize] = sample;
     ++ringIndex;
     if (ringIndex == ringBufferSize) ringIndex = 0;
     
@@ -111,12 +112,11 @@ void SIDResampler::PushSample(double sample) {
         std::size_t readIdx = ringIndex + ringBufferSize - numInputTaps;
         if (readIdx >= ringBufferSize) readIdx -= ringBufferSize;
         
-        const double* tablePtr = &firTable[phaseIdx * numInputTaps];
+        const double* tablePtr = firTable.data() + phaseIdx * numInputTaps;
+        const double* samplePtr = ringBuffer.data() + readIdx;
         
         for (std::size_t i = 0; i < numInputTaps; ++i) {
-            outSample += ringBuffer[readIdx] * tablePtr[i];
-            readIdx++;
-            if (readIdx == ringBufferSize) readIdx = 0;
+            outSample += samplePtr[i] * tablePtr[i];
         }
         
         if (outputCount == outputBuffer.size()) {

@@ -95,6 +95,7 @@ class SID : public IBusDevice {
     SID& operator=(SID&&) = delete;
 
     void Init(int sampleRate = 48000);
+    void SetClockRate(double clockRate);
     void Close();
     void Reset() override;
     Byte Read(Word addr) override;
@@ -134,7 +135,7 @@ class SID : public IBusDevice {
     
     // Cycle accuracy
     uint64_t clockCounter = 0;
-    double fractionalCycles = 0.0;
+    double clockRate = 1000000.0;
     
     // Buffer for audio generated during Clock()
     std::vector<int16_t> sampleBuffer;
