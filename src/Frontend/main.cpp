@@ -211,6 +211,7 @@ struct Args {
     bool headless = false;
     bool profileSID = false;
     bool sidSound = false;
+    bool sidDevice = true;
     std::string scriptPath;
     std::string romPath;
     std::string dumpMemPath;
@@ -242,6 +243,7 @@ static void PrintHeadlessUsage(const char* exeName) {
               << "  --script <path>         Load and run Python script\n"
               << "  --run-cycles <N>        Run N cycles (N >= 0)\n"
               << "  --sid-sound <on|off>    Enable or disable SID audio processing\n"
+              << "  --sid-device <on|off>  Enable or disable the SID device\n"
               << "  --profile-sid           Print SID timing counters\n"
               << "  --dump-mem <file>       Dump 64KB memory to file\n"
               << "  --help                  Show this help\n";
@@ -274,6 +276,22 @@ static ParseArgsResult ParseArgs(std::span<const char* const> argv) {
             } else {
                 result.ok = false;
                 result.error = "Invalid value for --sid-sound: " + std::string(value);
+                return result;
+            }
+        } else if (arg == "--sid-device") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --sid-device";
+                return result;
+            }
+            std::string_view value = argv[++i];
+            if (value == "on") {
+                args.sidDevice = true;
+            } else if (value == "off") {
+                args.sidDevice = false;
+            } else {
+                result.ok = false;
+                result.error = "Invalid value for --sid-device: " + std::string(value);
                 return result;
             }
         } else if (arg == "--script") {
@@ -350,6 +368,7 @@ static int RunHeadless(const Args& args) {
     emulator.SetHeadless(true);
     emulator.SetRewindSnapshotsEnabled(false);
     emulator.GetSID().Init(sidSampleRate);
+    emulator.SetSIDEnabled(args.sidDevice);
     emulator.GetSID().EnableSound(args.sidSound);
     emulator.GetSID().SetProfilingEnabled(args.profileSID);
     emulator.GetSID().ClearProfilingStats();
