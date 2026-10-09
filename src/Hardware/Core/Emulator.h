@@ -75,6 +75,7 @@ class Emulator {
     GPU& GetGPU();
     void SetGPUEnabled(bool enabled);
     bool IsGPUEnabled() const;
+    void SetSIDEnabled(bool enabled);
 
     void SetESPEnabled(bool enabled);
     bool IsESPEnabled() const;
@@ -84,6 +85,7 @@ class Emulator {
 
     Hardware::SID& GetSID();
     const Hardware::SID& GetSID() const;
+    [[nodiscard]] bool IsSIDEnabled() const { return sidEnabled; }
     Hardware::VIA& GetVIA();
     Hardware::ROM& GetROM();
     Hardware::SDCard& GetSDCard();
@@ -200,6 +202,8 @@ class Emulator {
     std::atomic<bool> hasInput{false};
     int baudDelay = 0;
     bool gpuEnabled = false;
+    bool sidEnabled = true;
+    bool sidEnabledOverride = false;
     bool espEnabled = false;
     bool sdEnabled = false;
     bool headless = false;

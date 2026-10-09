@@ -166,7 +166,9 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
 
     via.Clock();
     acia.Clock(ips);
-    sid.Clock();
+    if (sidEnabled) {
+        sid.Clock();
+    }
     if (via.isIRQAsserted() || acia.HasIRQ()) {
         pendingInterruptAny.store(true, std::memory_order_relaxed);
     }
@@ -176,7 +178,9 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
         for (int i = 0; i < extraCycles; ++i) {
             via.Clock();
             acia.Clock(ips);
-            sid.Clock();
+            if (sidEnabled) {
+                sid.Clock();
+            }
         }
         if (via.isIRQAsserted() || acia.HasIRQ()) {
             pendingInterruptAny.store(true, std::memory_order_relaxed);
@@ -316,7 +320,10 @@ void Emulator::RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMa
     } else if (dev.name == "ESP8266" || dev.name == "ESP32") {
         bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
     } else if (dev.name == "SID") {
-        bus.RegisterDevice(dev.start, dev.end, &sid, cartridge.config.sidEnabled.value_or(true), true);
+        sidEnabled = sidEnabledOverride
+                         ? sidEnabled
+                         : cartridge.config.sidEnabled.value_or(true);
+        bus.RegisterDevice(dev.start, dev.end, &sid, sidEnabled, true);
     } else if (dev.name == "GPU") {
         bus.RegisterDevice(dev.start, dev.end, &gpu, cartridge.config.gpuEnabled.value_or(this->gpuEnabled), true);
     } else if (dev.name == "LCD") {
@@ -334,6 +341,9 @@ bool Emulator::RegisterCartridgeLayout() {
         return false;
     }
 
+    if (!sidEnabledOverride) {
+        sidEnabled = false;
+    }
     bool sdCustomMapped = false;
     for (const auto& dev : cartridge.busDevices) {
         RegisterCartridgeDevice(dev, sdCustomMapped);
@@ -355,7 +365,10 @@ void Emulator::RegisterDefaultLayout() {
     bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
     bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
     bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-    bus.RegisterDevice(0x4800, 0x481F, &sid, cartridge.config.sidEnabled.value_or(true), true);
+    if (!sidEnabledOverride) {
+        sidEnabled = cartridge.config.sidEnabled.value_or(true);
+    }
+    bus.RegisterDevice(0x4800, 0x481F, &sid, sidEnabled, true);
     bus.RegisterDevice(0x2000, 0x3FFF, &gpu, cartridge.config.gpuEnabled.value_or(this->gpuEnabled), true);
     bus.RegisterVirtualDevice(&lcd, true);
 }
@@ -433,6 +446,15 @@ void Emulator::SetupHardware() {
 
     via.SetPortBCallback([this](Byte val) { HandleVIAPortB(val); });
     EnsureWatchpointWriteHook();
+}
+
+void Emulator::SetSIDEnabled(bool enabled) {
+    if (sidEnabledOverride && sidEnabled == enabled) {
+        return;
+    }
+    sidEnabledOverride = true;
+    sidEnabled = enabled;
+    SetupHardware();
 }
 
 void Emulator::EnsureWatchpointWriteHook() {

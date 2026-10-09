@@ -3,7 +3,6 @@
 #include <SDL3/SDL.h>
 
 #include <array>
-#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -128,8 +127,8 @@ class SID : public IBusDevice {
     std::array<std::uint8_t, 0x20> registers{};
     std::array<Oscillator, MAX_SID_VOICES> voices{};
     std::uint8_t volumeRegister{0};
-    std::atomic<bool> soundEnabled{false};
-    std::atomic<bool> emulationPaused{true};
+    bool soundEnabled = false;
+    bool emulationPaused = true;
     
     SIDModel model = SIDModel::MOS8580;
     
@@ -180,9 +179,7 @@ class SID : public IBusDevice {
 }  // namespace Hardware
 
 inline std::string Hardware::SID::GetName() const { return "SID"; }
-inline bool Hardware::SID::IsSoundEnabled() const {
-    return soundEnabled.load(std::memory_order_relaxed);
-}
+inline bool Hardware::SID::IsSoundEnabled() const { return soundEnabled; }
 inline const Hardware::Oscillator& Hardware::SID::GetVoice(int index) const {
     return voices.at(index % MAX_SID_VOICES);
 }

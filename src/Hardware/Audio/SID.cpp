@@ -116,7 +116,7 @@ SIDModel SID::GetModel() const {
 void SID::EnableSound(bool enable) {
     std::lock_guard<std::mutex> lock(sidMutex);
     
-    if (!soundEnabled.load(std::memory_order_relaxed) && enable) {
+    if (!soundEnabled && enable) {
         // Clear old state before enabling
         resampler.Clear();
         dcBlockerState = 0.0;
@@ -127,11 +127,10 @@ void SID::EnableSound(bool enable) {
         }
     }
     
-    soundEnabled.store(enable, std::memory_order_relaxed);
+    soundEnabled = enable;
 
 #ifndef TARGET_WASM
-    if (soundEnabled.load(std::memory_order_relaxed) &&
-        !emulationPaused.load(std::memory_order_relaxed) && !pendingFilename.empty()) {
+    if (soundEnabled && !emulationPaused && !pendingFilename.empty()) {
         recorder = std::make_unique<AudioRecorder>();
         if (!recorder->Start(pendingFilename, sampleRate)) {
             recorder.reset();
@@ -146,11 +145,11 @@ void SID::EnableSound(bool enable) {
 void SID::SetEmulationPaused(bool paused) {
     std::lock_guard<std::mutex> lock(sidMutex);
 
-    if (emulationPaused.load(std::memory_order_relaxed) == paused) {
+    if (emulationPaused == paused) {
         return;
     }
     
-    if (emulationPaused.load(std::memory_order_relaxed) && !paused) {
+    if (emulationPaused && !paused) {
         // Resuming from pause: clear stale data to prevent audio pop
         resampler.Clear();
         dcBlockerState = 0.0;
@@ -160,10 +159,9 @@ void SID::SetEmulationPaused(bool paused) {
         }
     }
     
-    emulationPaused.store(paused, std::memory_order_relaxed);
+    emulationPaused = paused;
 #ifndef TARGET_WASM
-    if (!emulationPaused.load(std::memory_order_relaxed) &&
-        soundEnabled.load(std::memory_order_relaxed) && !pendingFilename.empty()) {
+    if (!emulationPaused && soundEnabled && !pendingFilename.empty()) {
         auto newRecorder = std::make_unique<AudioRecorder>();
         if (newRecorder->Start(pendingFilename, sampleRate)) {
             recorder = std::move(newRecorder);
@@ -177,8 +175,7 @@ void SID::SetEmulationPaused(bool paused) {
 void SID::UpdateAudioState() {
     if (audioStream != nullptr) {
         SDL_AudioDeviceID devId = SDL_GetAudioStreamDevice(audioStream);
-        if (!soundEnabled.load(std::memory_order_relaxed) ||
-            emulationPaused.load(std::memory_order_relaxed)) {
+        if (!soundEnabled || emulationPaused) {
             SDL_PauseAudioDevice(devId);
         } else {
             SDL_ResumeAudioDevice(devId);
@@ -450,7 +447,7 @@ void SID::Clock() {
     voice3OscOutput = (voices[2].oscOutput >> 4) & 0xFF;
     voice3EnvOutput = voices[2].env.level;
     
-    if (!soundEnabled.load(std::memory_order_relaxed)) return;
+    if (!soundEnabled) return;
     
     // Process audio generation
     double filteredInput = 0.0;
@@ -561,12 +558,11 @@ void SID::Clock() {
         
         if (sampleBuffer.size() >= 512) {
             std::lock_guard<std::mutex> lock(sidMutex);
-            if (audioStream != nullptr && !emulationPaused.load(std::memory_order_relaxed)) {
+            if (audioStream != nullptr && !emulationPaused) {
                 SDL_PutAudioStreamData(audioStream, sampleBuffer.data(), sampleBuffer.size() * sizeof(int16_t));
             }
 #ifndef TARGET_WASM
-            if (recorder && soundEnabled.load(std::memory_order_relaxed) &&
-                !emulationPaused.load(std::memory_order_relaxed)) {
+            if (recorder && soundEnabled && !emulationPaused) {
                 recorder->PushAudio(sampleBuffer.data(), sampleBuffer.size());
             }
 #endif
@@ -639,10 +635,8 @@ bool SID::SaveState(std::ostream& out) const {
         voice.SaveState(out);
     }
     ISerializable::Serialize(out, volumeRegister);
-    bool savedSoundEnabled = soundEnabled.load(std::memory_order_relaxed);
-    bool savedEmulationPaused = emulationPaused.load(std::memory_order_relaxed);
-    ISerializable::Serialize(out, savedSoundEnabled);
-    ISerializable::Serialize(out, savedEmulationPaused);
+    ISerializable::Serialize(out, soundEnabled);
+    ISerializable::Serialize(out, emulationPaused);
     ISerializable::Serialize(out, filterLow);
     ISerializable::Serialize(out, filterBand);
     ISerializable::Serialize(out, dcBlockerState);
@@ -660,12 +654,8 @@ bool SID::LoadState(std::istream& inStream) {
         voice.LoadState(inStream);
     }
     ISerializable::Deserialize(inStream, volumeRegister);
-    bool loadedSoundEnabled = false;
-    bool loadedEmulationPaused = true;
-    ISerializable::Deserialize(inStream, loadedSoundEnabled);
-    ISerializable::Deserialize(inStream, loadedEmulationPaused);
-    soundEnabled.store(loadedSoundEnabled, std::memory_order_relaxed);
-    emulationPaused.store(loadedEmulationPaused, std::memory_order_relaxed);
+    ISerializable::Deserialize(inStream, soundEnabled);
+    ISerializable::Deserialize(inStream, emulationPaused);
     ISerializable::Deserialize(inStream, filterLow);
     ISerializable::Deserialize(inStream, filterBand);
     ISerializable::Deserialize(inStream, dcBlockerState);
@@ -684,8 +674,7 @@ bool SID::LoadState(std::istream& inStream) {
 void SID::StartRecording(const std::string& filename) {
     std::lock_guard<std::mutex> lock(sidMutex);
 #ifndef TARGET_WASM
-    if (!emulationPaused.load(std::memory_order_relaxed) &&
-        soundEnabled.load(std::memory_order_relaxed)) {
+    if (!emulationPaused && soundEnabled) {
         recorder = std::make_unique<AudioRecorder>();
         if (!recorder->Start(filename, sampleRate)) {
             recorder.reset();
