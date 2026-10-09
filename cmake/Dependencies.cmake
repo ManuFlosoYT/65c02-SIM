@@ -85,6 +85,7 @@ FetchContent_Declare(
     SDL3
     GIT_REPOSITORY ${SDL3_REPO}
     GIT_TAG ${SDL3_TAG}
+    PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sdl3.cmake
 )
 set(CMAKE_WARN_DEPRECATED OFF)
 FetchContent_MakeAvailable(SDL3)
