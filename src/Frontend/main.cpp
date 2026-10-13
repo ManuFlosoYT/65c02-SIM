@@ -55,6 +55,15 @@ extern "C" {
 static constexpr int sidSampleRate = 48000;
 
 static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
+
+    #ifdef __linux__
+    // Si el usuario lanza la app con NVIDIA PRIME offload y no ha forzado un driver manual,
+    // usamos XWayland (x11) para evitar el crash de dmabuf entre NVIDIA e Intel en Wayland.
+    if (SDL_getenv("__NV_PRIME_RENDER_OFFLOAD") != nullptr && SDL_getenv("SDL_VIDEO_DRIVER") == nullptr) {
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+    }
+    #endif
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
         std::cerr << "Error: " << SDL_GetError() << '\n';
         return false;
@@ -74,7 +83,7 @@ static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
-    
+
     auto window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY |
                                           SDL_WINDOW_MAXIMIZED);
     window = SDL_CreateWindow("65C02 Simulator " PROJECT_VERSION, 1920, 1080, window_flags);
