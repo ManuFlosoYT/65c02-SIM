@@ -226,6 +226,15 @@ static void DrawActualIPS(AppState& state) {
     if (ImGui::IsItemHovered()) {
         if (ImGui::BeginItemTooltip()) {
             ImGui::Text("Cycles/s: %llu", static_cast<unsigned long long>(stats.cyclesPerSecond));
+            if (state.emulator.IsGPUEnabled()) {
+                const double gpuPercent = stats.cyclesPerSecond > 0
+                                              ? (static_cast<double>(stats.gpuCyclesPerSecond) * 100.0 /
+                                                 static_cast<double>(stats.cyclesPerSecond))
+                                              : 0.0;
+                ImGui::Text("CPU Cycles/s: %llu", static_cast<unsigned long long>(stats.cpuCyclesPerSecond));
+                ImGui::Text("GPU Cycles/s: %llu (%.2f%%)", static_cast<unsigned long long>(stats.gpuCyclesPerSecond),
+                            gpuPercent);
+            }
             ImGui::Text("Instructions/s: %llu", static_cast<unsigned long long>(stats.instructionsPerSecond));
             ImGui::Text("Slices/s: %llu", static_cast<unsigned long long>(stats.slicesPerSecond));
             ImGui::Text("Emulation: %.2f ms", static_cast<double>(stats.emulationNanoseconds) / 1'000'000.0);

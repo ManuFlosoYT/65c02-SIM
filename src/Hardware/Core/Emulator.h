@@ -38,6 +38,8 @@ class Emulator {
    public:
     struct RuntimeStats {
         uint64_t cyclesPerSecond = 0;
+        uint64_t cpuCyclesPerSecond = 0;
+        uint64_t gpuCyclesPerSecond = 0;
         uint64_t instructionsPerSecond = 0;
         uint64_t slicesPerSecond = 0;
         uint64_t emulationNanoseconds = 0;
@@ -177,12 +179,14 @@ class Emulator {
 
     struct SliceResult {
         uint64_t cycles = 0;
+        uint64_t cpuCycles = 0;
+        uint64_t gpuCycles = 0;
         uint64_t instructions = 0;
     };
 
     SliceResult EmulateSlice(int instructionsPerSlice);
     int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
-                     uint64_t& batchCycles, int& stopCode);
+                     uint64_t& batchCpuCycles, uint64_t& batchGpuCycles, int& stopCode);
     void handleStop(int code);
     void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
 
@@ -233,12 +237,16 @@ class Emulator {
     std::atomic<int> targetIPS{1000000};
     std::atomic<int> actualIPS{0};
     std::atomic<uint64_t> actualCyclesPerSecond{0};
+    std::atomic<uint64_t> actualCpuCyclesPerSecond{0};
+    std::atomic<uint64_t> actualGpuCyclesPerSecond{0};
     std::atomic<uint64_t> actualInstructionsPerSecond{0};
     std::atomic<uint64_t> slicesPerSecond{0};
     std::atomic<uint64_t> emulationNanoseconds{0};
     std::atomic<uint64_t> sleepNanoseconds{0};
     std::atomic<uint64_t> lateNanoseconds{0};
     uint64_t lastStepCycles = 0;
+    uint64_t lastStepCpuCycles = 0;
+    uint64_t lastStepGpuCycles = 0;
     std::thread emulatorThread;
     std::mutex threadMutex;
     std::condition_variable pauseCV;
@@ -317,6 +325,8 @@ inline int Core::Emulator::GetActualIPS() const { return actualIPS; }
 inline Core::Emulator::RuntimeStats Core::Emulator::GetRuntimeStats() const {
     return {
         .cyclesPerSecond = actualCyclesPerSecond.load(std::memory_order_relaxed),
+        .cpuCyclesPerSecond = actualCpuCyclesPerSecond.load(std::memory_order_relaxed),
+        .gpuCyclesPerSecond = actualGpuCyclesPerSecond.load(std::memory_order_relaxed),
         .instructionsPerSecond = actualInstructionsPerSecond.load(std::memory_order_relaxed),
         .slicesPerSecond = slicesPerSecond.load(std::memory_order_relaxed),
         .emulationNanoseconds = emulationNanoseconds.load(std::memory_order_relaxed),

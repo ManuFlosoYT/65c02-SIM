@@ -65,6 +65,8 @@ void Emulator::ThreadLoop() {
     using namespace std::chrono;
     auto nextSliceTime = high_resolution_clock::now();
     uint64_t cyclesThisSecond = 0;
+    uint64_t cpuCyclesThisSecond = 0;
+    uint64_t gpuCyclesThisSecond = 0;
     uint64_t instructionsThisSecond = 0;
     uint64_t slicesThisSecond = 0;
     auto lastSecondTime = high_resolution_clock::now();
@@ -107,16 +109,22 @@ void Emulator::ThreadLoop() {
             static_cast<uint64_t>(duration_cast<nanoseconds>(sliceEnd - sliceStart).count()),
             std::memory_order_relaxed);
         cyclesThisSecond += slice.cycles;
+        cpuCyclesThisSecond += slice.cpuCycles;
+        gpuCyclesThisSecond += slice.gpuCycles;
         instructionsThisSecond += slice.instructions;
         slicesThisSecond++;
 
         auto now = high_resolution_clock::now();
         if (duration_cast<seconds>(now - lastSecondTime).count() >= 1) {
             actualCyclesPerSecond.store(cyclesThisSecond, std::memory_order_relaxed);
+            actualCpuCyclesPerSecond.store(cpuCyclesThisSecond, std::memory_order_relaxed);
+            actualGpuCyclesPerSecond.store(gpuCyclesThisSecond, std::memory_order_relaxed);
             actualInstructionsPerSecond.store(instructionsThisSecond, std::memory_order_relaxed);
             actualIPS.store(static_cast<int>(instructionsThisSecond), std::memory_order_relaxed);
             slicesPerSecond.store(slicesThisSecond, std::memory_order_relaxed);
             cyclesThisSecond = 0;
+            cpuCyclesThisSecond = 0;
+            gpuCyclesThisSecond = 0;
             instructionsThisSecond = 0;
             slicesThisSecond = 0;
             lastSecondTime = now;
@@ -150,7 +158,8 @@ Emulator::SliceResult Emulator::EmulateSlice(int instructionsPerSlice) {
     static constexpr int MAX_BATCH_SIZE = 500000;
     static constexpr int NO_STOP = std::numeric_limits<int>::min();
     int remaining = instructionsPerSlice;
-    uint64_t localCycleDelta = 0;
+    uint64_t localCpuCycleDelta = 0;
+    uint64_t localGpuCycleDelta = 0;
     uint64_t localInstructionDelta = 0;
     bool totalsCommitted = false;
 
@@ -171,19 +180,21 @@ Emulator::SliceResult Emulator::EmulateSlice(int instructionsPerSlice) {
     while (remaining > 0) {
         int currentBatchSize = std::min(remaining, MAX_BATCH_SIZE);
         int batchInstructions = 0;
-        uint64_t batchCycles = 0;
+        uint64_t batchCpuCycles = 0;
+        uint64_t batchGpuCycles = 0;
         int stopCode = NO_STOP;
         int stepsInBatch = 0;
 
         stepsInBatch = this->ProcessBatch(
-            currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions, batchCycles, stopCode);
-        localCycleDelta += batchCycles;
+            currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions, batchCpuCycles, batchGpuCycles, stopCode);
+        localCpuCycleDelta += batchCpuCycles;
+        localGpuCycleDelta += batchGpuCycles;
         localInstructionDelta += static_cast<uint64_t>(batchInstructions);
 
         remaining -= stepsInBatch;
 
         if (stopCode != NO_STOP) {
-            totalCycles.fetch_add(localCycleDelta, std::memory_order_relaxed);
+            totalCycles.fetch_add(localCpuCycleDelta + localGpuCycleDelta, std::memory_order_relaxed);
             totalInstructions.fetch_add(localInstructionDelta, std::memory_order_relaxed);
             totalsCommitted = true;
             handleStop(stopCode);
@@ -195,18 +206,23 @@ Emulator::SliceResult Emulator::EmulateSlice(int instructionsPerSlice) {
         }
     }
 
-    if (!totalsCommitted && localCycleDelta > 0) {
-        totalCycles.fetch_add(localCycleDelta, std::memory_order_relaxed);
+    if (!totalsCommitted && (localCpuCycleDelta + localGpuCycleDelta) > 0) {
+        totalCycles.fetch_add(localCpuCycleDelta + localGpuCycleDelta, std::memory_order_relaxed);
     }
     if (!totalsCommitted && localInstructionDelta > 0) {
         totalInstructions.fetch_add(localInstructionDelta, std::memory_order_relaxed);
     }
 
-    return {.cycles = localCycleDelta, .instructions = localInstructionDelta};
+    return {
+        .cycles = localCpuCycleDelta + localGpuCycleDelta,
+        .cpuCycles = localCpuCycleDelta,
+        .gpuCycles = localGpuCycleDelta,
+        .instructions = localInstructionDelta,
+    };
 }
 
 int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
-                           uint64_t& batchCycles, int& stopCode) {
+                           uint64_t& batchCpuCycles, uint64_t& batchGpuCycles, int& stopCode) {
     stopCode = std::numeric_limits<int>::min();
     if (cpu.cycleAccurate) {
         for (int i = 0; i < count; ++i) {
@@ -219,10 +235,11 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
                 res = Step<false>();
             }
 
-            if (isNew) {
+            if (isNew && lastStepCpuCycles > 0) {
                 batchInstructions++;
             }
-            batchCycles += lastStepCycles;
+            batchCpuCycles += lastStepCpuCycles;
+            batchGpuCycles += lastStepGpuCycles;
 
             if (res != 0) {
                 stopCode = res;
@@ -248,8 +265,11 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
                 res = Step<false>();
             }
 
-            batchInstructions++;
-            batchCycles += lastStepCycles;
+            if (lastStepCpuCycles > 0) {
+                batchInstructions++;
+            }
+            batchCpuCycles += lastStepCpuCycles;
+            batchGpuCycles += lastStepGpuCycles;
 
             if (res != 0) {
                 stopCode = res;

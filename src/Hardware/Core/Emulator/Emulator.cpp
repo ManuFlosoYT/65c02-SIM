@@ -157,7 +157,9 @@ void Emulator::RunCPUTick(int& res, bool& cpuStepped) {
 }
 
 void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
-    lastStepCycles = cpuStepped ? 1 : 0;
+    lastStepCpuCycles = cpuStepped ? 1 : 0;
+    lastStepGpuCycles = (gpuEnabled && !cpuStepped) ? 1 : 0;
+    lastStepCycles = lastStepCpuCycles + lastStepGpuCycles;
     if (baudDelay > 0) {
         baudDelay--;
     }
@@ -177,6 +179,7 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
 
     if (cpuStepped && !cpu.cycleAccurate && isNewInstruction) {
         int extraCycles = cpu.remainingCycles;
+        lastStepCpuCycles += static_cast<uint64_t>(extraCycles);
         lastStepCycles += static_cast<uint64_t>(extraCycles);
         for (int i = 0; i < extraCycles; ++i) {
             via.Clock();
