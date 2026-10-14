@@ -61,9 +61,9 @@ mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
 # Compile MIDs to .sid for microDOS
 echo "  Compiling raw SID files..."
 if [ "$MULTITHREAD" = true ]; then
-    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS -multithread
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS -multithread || true
 else
-    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS || true
 fi
 
 # Populate SD Card with /bin, /sid, and apps

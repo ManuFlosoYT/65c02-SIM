@@ -1,252 +1,198 @@
-.setcpu "65C02"
-.debuginfo
-.export MONRDKEY, MONCOUT, LOAD, SAVE, INIT_BUFFER, IRQ_HANDLER, MONPEEK, MONGETCHAR_NB
-.export _MONRDKEY, _MONCOUT, _LOAD, _SAVE, _INIT_BUFFER, _MONGETCHAR_NB
+// microdos_bios.s — BIOS routines and ABI Jump Table for microDOS (LLVM-MOS / GNU Assembler)
 
-_MONRDKEY = MONRDKEY
-_MONGETCHAR_NB = MONGETCHAR_NB
-_MONCOUT = MONCOUT
-_LOAD = LOAD
-_SAVE = SAVE
-_INIT_BUFFER = INIT_BUFFER
+.globl MONRDKEY, MONCOUT, LOAD, SAVE, INIT_BUFFER, IRQ_HANDLER, MONPEEK, MONGETCHAR_NB
+.globl _MONRDKEY, _MONCOUT, _LOAD, _SAVE, _INIT_BUFFER, _MONGETCHAR_NB, _IRQ_HANDLER
+.globl bios_putchar, bios_getchar, bios_getchar_nb, BIOS_JUMPTABLE
 
-; configuration
-CONFIG_2A := 1
+MONRDKEY = MONRDKEY_IMPL
+_MONRDKEY = MONRDKEY_IMPL
+bios_getchar = MONRDKEY_IMPL
 
-CONFIG_SCRTCH_ORDER := 2
+MONGETCHAR_NB = MONGETCHAR_NB_IMPL
+_MONGETCHAR_NB = MONGETCHAR_NB_IMPL
+bios_getchar_nb = MONGETCHAR_NB_IMPL
 
-; zero page
-ZP_START0 = $00
-ZP_START1 = $02
-ZP_START2 = $0C
-ZP_START3 = $62
-ZP_START4 = $6D
+MONCOUT = MONCOUT_IMPL
+_MONCOUT = MONCOUT_IMPL
+bios_putchar = MONCOUT_IMPL
 
-; extra/override ZP variables
+LOAD = LOAD_IMPL
+_LOAD = LOAD_IMPL
 
-; constants
-STACK_TOP := $FA
-WIDTH := 40
-WIDTH2 := 30
-RAMSTART2 := $0400
+SAVE = SAVE_IMPL
+_SAVE = SAVE_IMPL
 
-.import _startup
+INIT_BUFFER = INIT_BUFFER_IMPL
+_INIT_BUFFER = INIT_BUFFER_IMPL
 
-; symbol aliases
-COLD_START = _startup
+IRQ_HANDLER = IRQ_HANDLER_IMPL
+_IRQ_HANDLER = IRQ_HANDLER_IMPL
 
-.segment "HEADER"
-jmp COLD_START
+// Constants
+CONFIG_2A = 1
+CONFIG_SCRTCH_ORDER = 2
+STACK_TOP = 0xFA
+WIDTH = 40
+WIDTH2 = 30
+RAMSTART2 = 0x0400
 
-.segment "CODE"
-ISCNTC:
-        jsr MONRDKEY
-        bcc not_cntc
-        cmp #3
-        bne not_cntc
-        jmp is_cntc
+READ_PTR  = 0xFC
+WRITE_PTR = 0xFD
 
-not_cntc:
-        rts
+ACIA_DATA   = 0x5000
+ACIA_STATUS = 0x5001
+ACIA_CMD    = 0x5002
+ACIA_CTRL   = 0x5003
+PORTA       = 0x6001
+DDRA        = 0x6003
 
-is_cntc:
-        ; Fall through
-;!!! runs into "STOP"
+.section .input_buffer, "aw", @nobits
+.globl INPUT_BUFFER
+INPUT_BUFFER: .fill 0x100
 
-; Variables moved out of linker arbitrary .zeropage to fixed locations
-READ_PTR  = $FC
-WRITE_PTR = $FD
+.section .text, "ax"
 
-.segment "INPUT_BUFFER"
-INPUT_BUFFER:   .res $100
+LOAD_IMPL:
+    rts
 
-.segment "BIOS"
+SAVE_IMPL:
+    rts
 
-ACIA_DATA       = $5000
-ACIA_STATUS     = $5001
-ACIA_CMD        = $5002
-ACIA_CTRL       = $5003
-PORTA           = $6001
-DDRA            = $6003
-
-LOAD:
-                rts
-
-SAVE:
-                rts
-
-
-; Input a character from the serial interface.
-; On return, carry flag indicates whether a key was pressed
-; If a key was pressed, the key value will be in the A register
-;
-MONRDKEY:
+MONRDKEY_IMPL:
+.globl CHRIN
 CHRIN:
-                phx
-@wait_key:
-                jsr     BUFFER_SIZE
-                beq     @wait_key
-                
-                jsr     READ_BUFFER
-                jsr     CHROUT                  ; echo
-                pha
-                jsr     BUFFER_SIZE
-                cmp     #$B0
-                bcs     @mostly_full
-                lda     #$fe
-                and     PORTA
-                sta     PORTA
-@mostly_full:
-                pla
-                plx
-                sec
-                rts
+    phx
+.Lwait_key:
+    jsr BUFFER_SIZE
+    beq .Lwait_key
+    jsr READ_BUFFER
+    jsr CHROUT
+    pha
+    jsr BUFFER_SIZE
+    cmp #0xB0
+    bcs .Lmostly_full
+    lda #0xFE
+    and PORTA
+    sta PORTA
+.Lmostly_full:
+    pla
+    plx
+    sec
+    rts
 
-MONGETCHAR_NB:
-                jsr     BUFFER_SIZE
-                beq     @empty
-                jmp     MONRDKEY
-@empty:
-                lda     #0
-                ldx     #0
-                clc
-                rts
+MONGETCHAR_NB_IMPL:
+    jsr BUFFER_SIZE
+    beq .Lempty
+    jmp MONRDKEY_IMPL
+.Lempty:
+    lda #0
+    ldx #0
+    clc
+    rts
 
-; Peek a character from input buffer without removing it
-; Modifies: flags, A, X
 MONPEEK:
-                phx
-                jsr BUFFER_SIZE
-                beq @no_keyp
-                ldx READ_PTR
-                lda INPUT_BUFFER,x
-                plx
-                sec
-                rts
-@no_keyp:
-                plx
-                clc
-                rts
+    phx
+    jsr BUFFER_SIZE
+    beq .Lno_keyp
+    ldx READ_PTR
+    lda INPUT_BUFFER,x
+    plx
+    sec
+    rts
+.Lno_keyp:
+    plx
+    clc
+    rts
 
-
-; Output a character (from the A register) to the serial interface.
-;
-; Modifies: flags
-MONCOUT:
+MONCOUT_IMPL:
+.globl CHROUT
 CHROUT:
-                pha
-                sta     ACIA_DATA
-                lda     #$FF
-@txdelay:       dec
-                bne     @txdelay
-                pla
-                rts
+    pha
+    sta ACIA_DATA
+    lda #0xFF
+.Ltxdelay:
+    dec
+    bne .Ltxdelay
+    pla
+    rts
 
-; Initialize the circular input buffer
-; Modifies: flags, A
-INIT_BUFFER:
-                lda READ_PTR
-                sta WRITE_PTR
-                lda #$01
-                sta DDRA
-                lda #$fe
-                and PORTA
-                sta PORTA
-                rts
+INIT_BUFFER_IMPL:
+    lda READ_PTR
+    sta WRITE_PTR
+    lda #0x01
+    sta DDRA
+    lda #0xFE
+    and PORTA
+    sta PORTA
+    rts
 
-; Write a character (from the A register) to the circular input buffer
-; Modifies: flags, X
 WRITE_BUFFER:
-                ldx WRITE_PTR
-                sta INPUT_BUFFER,x
-                inc WRITE_PTR
-                rts
+    ldx WRITE_PTR
+    sta INPUT_BUFFER,x
+    inc WRITE_PTR
+    rts
 
-; Read a character from the circular input buffer and put it in the A register
-; Modifies: flags, A, X
 READ_BUFFER:
-                ldx READ_PTR
-                lda INPUT_BUFFER,x
-                inc READ_PTR
-                rts
+    ldx READ_PTR
+    lda INPUT_BUFFER,x
+    inc READ_PTR
+    rts
 
-; Return (in A) the number of unread bytes in the circular input buffer
-; Modifies: flags, A
 BUFFER_SIZE:
-                lda WRITE_PTR
-                sec
-                sbc READ_PTR
-                rts
+    lda WRITE_PTR
+    sec
+    sbc READ_PTR
+    rts
 
+IRQ_HANDLER_IMPL:
+    pha
+    phx
+    lda ACIA_STATUS
+    lda ACIA_DATA
+    jsr WRITE_BUFFER
+    jsr BUFFER_SIZE
+    cmp #0xF0
+    bcc .Lnot_full
+    lda #0x01
+    ora PORTA
+    sta PORTA
+.Lnot_full:
+    plx
+    pla
+    rti
 
-; Interrupt request handler
-.export IRQ_HANDLER
-IRQ_HANDLER:
-                pha
-                phx
-                lda     ACIA_STATUS
-                ; For now, assume the only source of interrupts is incoming data
-                lda     ACIA_DATA
-                jsr     WRITE_BUFFER
-                jsr     BUFFER_SIZE
-                cmp     #$F0
-                bcc     @not_full
-                lda     #$01
-                ora     PORTA
-                sta     PORTA
-@not_full:
-                plx
-                pla
-                rti
-
-; ─────────────────────────────────────────────────────────────────
-; ABI Jump Table for microDOS apps  (address: $FF90+)
-; Apps link against app-bios.h which defines these as extern at
-; these fixed addresses. Never reorder or remove entries.
-; ─────────────────────────────────────────────────────────────────
-.import _print_str, _println, _print_num, _print_hex_byte
-.import _sd_open, _sd_read, _sd_write, _sd_close
-.import _sd_puts, _sd_getc, _sd_getcwd, _sd_chdir
-.import _net_send, _net_cmd, _net_send_num
-.import _os_load_app_page
-.import _sid_write, _sid_reset
-.import _sd_opendir, _sd_readdir, _sd_closedir
-.import _sd_mkdir, _sd_remove, _sd_exists
-.import _net_wifi
-.import _os_swap_save, _os_swap_load, _os_alloc, _os_free
-
-.export BIOS_JUMPTABLE
-.segment "JUMPTABLE"
+// ABI Jump Table for microDOS apps (at $FF90)
+.section .jumptable, "ax"
 BIOS_JUMPTABLE:
-    jmp _print_str      ; $FF90 — void print_str(const char*)
-    jmp _println        ; $FF93 — void println(const char*)
-    jmp _print_num      ; $FF96 — void print_num(unsigned int)
-    jmp _print_hex_byte ; $FF99 — void print_hex_byte(unsigned char)
-    jmp MONRDKEY        ; $FF9C — char bios_getchar(void)
-    jmp MONCOUT         ; $FF9F — void bios_putchar(char)
-    jmp _sd_open        ; $FFA2 — int sd_open(SD_FILE*,const char*,uint8_t)
-    jmp _sd_read        ; $FFA5 — int sd_read(SD_FILE*,void*,uint16_t)
-    jmp _sd_write       ; $FFA8 — int sd_write(SD_FILE*,const void*,uint16_t)
-    jmp _sd_close       ; $FFAB — int sd_close(SD_FILE*)
-    jmp _sd_puts        ; $FFAE — int sd_puts(SD_FILE*,const char*)
-    jmp _sd_getc        ; $FFB1 — int sd_getc(SD_FILE*)
-    jmp _sd_getcwd      ; $FFB4 — int sd_getcwd(char*,uint16_t)
-    jmp _sd_chdir       ; $FFB7 — int sd_chdir(const char*)
-    jmp _net_send       ; $FFBA — void net_send(const char*)
-    jmp _net_cmd        ; $FFBD — void net_cmd(const char*)
-    jmp _net_send_num   ; $FFC0 — void net_send_num(uint16_t)
-    jmp _os_load_app_page ; $FFC3 — void os_load_app_page(uint8_t)
-    jmp _sid_write      ; $FFC6 — void sid_write(uint8_t,uint8_t)
-    jmp _sid_reset      ; $FFC9 — void sid_reset(void)
-    jmp _sd_opendir     ; $FFCC — int sd_opendir(SD_DIR*, const char*)
-    jmp _sd_readdir     ; $FFCF — int sd_readdir(SD_DIR*, SD_INFO*)
-    jmp _sd_closedir    ; $FFD2 — void sd_closedir(SD_DIR*)
-    jmp _sd_mkdir       ; $FFD5 — uint8_t sd_mkdir(const char*)
-    jmp _sd_remove      ; $FFD8 — uint8_t sd_remove(const char*)
-    jmp _sd_exists      ; $FFDB — uint8_t sd_exists(const char*)
-    jmp _net_wifi       ; $FFDE — void net_wifi(const char*, const char*)
-    jmp _os_swap_save   ; $FFE1 — uint8_t os_swap_save(const char*, void*, uint16_t)
-    jmp _os_swap_load   ; $FFE4 — uint8_t os_swap_load(const char*, void*, uint16_t)
-    jmp _os_alloc       ; $FFE7 — void* os_alloc(uint16_t)
-    jmp _os_free        ; $FFEA — void os_free(void*)
-    jmp MONGETCHAR_NB   ; $FFED — char bios_getchar_nb(void)
+    jmp print_str       // $FF90
+    jmp println         // $FF93
+    jmp print_num       // $FF96
+    jmp print_hex_byte  // $FF99
+    jmp MONRDKEY        // $FF9C
+    jmp MONCOUT         // $FF9F
+    jmp sd_open         // $FFA2
+    jmp sd_read         // $FFA5
+    jmp sd_write        // $FFA8
+    jmp sd_close        // $FFAB
+    jmp sd_puts         // $FFAE
+    jmp sd_getc         // $FFB1
+    jmp sd_getcwd       // $FFB4
+    jmp sd_chdir        // $FFB7
+    jmp net_send        // $FFBA
+    jmp net_cmd         // $FFBD
+    jmp net_send_num    // $FFC0
+    jmp os_load_app_page // $FFC3
+    jmp sid_write       // $FFC6
+    jmp sid_reset       // $FFC9
+    jmp sd_opendir      // $FFCC
+    jmp sd_readdir      // $FFCF
+    jmp sd_closedir     // $FFD2
+    jmp sd_mkdir        // $FFD5
+    jmp sd_remove       // $FFD8
+    jmp sd_exists       // $FFDB
+    jmp net_wifi        // $FFDE
+    jmp os_swap_save    // $FFE1
+    jmp os_swap_load    // $FFE4
+    jmp os_alloc        // $FFE7
+    jmp os_free         // $FFEA
+    jmp MONGETCHAR_NB   // $FFED

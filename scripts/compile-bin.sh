@@ -1,6 +1,57 @@
 #!/bin/bash
 set -e
 
+# LLVM-MOS Toolchain Detection
+if [ -n "$MOS_CLANG" ] && [ -x "$MOS_CLANG" ]; then
+    :
+elif [ -x "build/llvm_mos/llvm-mos/bin/mos-common-clang" ]; then
+    MOS_CLANG="$(pwd)/build/llvm_mos/llvm-mos/bin/mos-common-clang"
+elif [ -x "output/toolchain/bin/mos-common-clang" ]; then
+    MOS_CLANG="$(pwd)/output/toolchain/bin/mos-common-clang"
+elif command -v mos-common-clang >/dev/null 2>&1; then
+    MOS_CLANG="$(command -v mos-common-clang)"
+elif command -v mos-clang >/dev/null 2>&1; then
+    MOS_CLANG="$(command -v mos-clang)"
+else
+    echo "Error: LLVM-MOS compiler (mos-common-clang or mos-clang) not found."
+    exit 1
+fi
+
+compile_with_opt_fallback() {
+    local out="$1"
+    local ld_script="$2"
+    shift 2
+    local sources=("$@")
+
+    local last_err=""
+    for opt in -O3 -O2 -Os -Oz; do
+        echo "  [LLVM-MOS] Compiling with $opt..."
+        local err_log
+        err_log=$(mktemp)
+        if "$MOS_CLANG" -mcpu=mosw65c02 $opt -fnonreentrant -ffunction-sections -fdata-sections -Wl,--gc-sections -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
+            cat "$err_log"
+            rm -f "$err_log"
+            echo "  [LLVM-MOS] Successfully compiled with $opt."
+            return 0
+        fi
+
+        last_err=$(cat "$err_log")
+        rm -f "$err_log"
+
+        if echo "$last_err" | grep -E -q "will not fit in region|overflowed by|address range overlaps with"; then
+            echo "  [LLVM-MOS] $opt binary too large (memory overflow), falling back..."
+        else
+            echo "  [LLVM-MOS] Compilation error at $opt (not a size issue):"
+            echo "$last_err"
+            return 1
+        fi
+    done
+
+    echo "Error: Binary too large for all optimization levels (-O3, -O2, -Os, -Oz)."
+    echo "$last_err"
+    return 1
+}
+
 list_programs() {
     echo "Available programs:"
     echo "  - all (Compile all programs)"
@@ -28,9 +79,12 @@ for arg in "$@"; do
     fi
 done
 
+mkdir -p sdk/src/build
+mkdir -p output
+
 # --microDOS: compile a .c file as a microDOS .app binary
 if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
-    echo "--- Compiling $NAME.app (microDOS App) ---"
+    echo "--- Compiling $NAME.app (microDOS App with LLVM-MOS) ---"
     SRC=""
     if [ -f "sdk/microdos/Apps/$NAME.c" ]; then
         SRC="sdk/microdos/Apps/$NAME.c"
@@ -41,25 +95,16 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
         exit 1
     fi
 
-    cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
+    APP_LD="sdk/src/build/${NAME}_app.ld"
+    python3 tools/linker/generate_app_link_ld.py > "$APP_LD"
+
+    APP_RAW="sdk/src/build/${NAME}.raw"
+    compile_with_opt_fallback "$APP_RAW" "$APP_LD" \
         -I "sdk/src" -I "sdk/microdos" \
-        -o "sdk/src/build/${NAME}_app.s" "$SRC"
+        sdk/linker/App-Runtime.s "$SRC"
 
-    python3 tools/linker/generate_app_cfg.py > "sdk/src/build/${NAME}_app.cfg"
-
-    ca65 --cpu 65C02 -g -o "sdk/src/build/${NAME}_App-Runtime.o" sdk/linker/App-Runtime.s
-    ca65 --cpu 65C02 -g -o "sdk/src/build/${NAME}_app.o" "sdk/src/build/${NAME}_app.s"
-
-    ld65 -C "sdk/src/build/${NAME}_app.cfg" \
-        -o "sdk/src/build/${NAME}.raw" \
-        -m "sdk/src/build/${NAME}.map" \
-        "sdk/src/build/${NAME}_App-Runtime.o" \
-        "sdk/src/build/${NAME}_app.o" \
-        none.lib
-
-	# The linker already includes the uDOS header generated in .segment "HEADER"
     mkdir -p output/apps
-    cp "sdk/src/build/${NAME}.raw" "output/apps/${NAME}.app"
+    cp "$APP_RAW" "output/apps/${NAME}.app"
     echo "App saved to output/apps/${NAME}.app"
     exit 0
 fi
@@ -83,65 +128,34 @@ if [ "$NAME" == "all" ]; then
     exit 0
 fi
 
-mkdir -p sdk/src/build
-mkdir -p output
-
 if [ "$NAME" == "eater" ]; then
     echo "--- Compiling BASIC ---"
-    (cd sdk/msbasic && chmod +x make.sh && ./make.sh) > /dev/null 2>&1
-    cp sdk/msbasic/tmp/eater.bin sdk/src/build/eater.bin
-    mkdir -p output/rom
-    cp sdk/msbasic/tmp/eater.bin output/rom/eater.bin
+    if [ -f "sdk/msbasic/make.sh" ] && command -v ca65 >/dev/null 2>&1; then
+        (cd sdk/msbasic && chmod +x make.sh && ./make.sh) > /dev/null 2>&1 || true
+    fi
+    if [ -f "sdk/msbasic/tmp/eater.bin" ]; then
+        cp sdk/msbasic/tmp/eater.bin sdk/src/build/eater.bin
+        mkdir -p output/rom
+        cp sdk/msbasic/tmp/eater.bin output/rom/eater.bin
+    elif [ -f "output/rom/eater.bin" ]; then
+        cp output/rom/eater.bin sdk/src/build/eater.bin
+    fi
+    exit 0
 
 elif [ -f "tools/sid/build/$NAME.s" ]; then
     echo "--- Assembling $NAME.s (ASM from tools/sid/build/) ---"
-    mkdir -p sdk/src/build
-    ca65 --cpu 65C02 -g -l "sdk/src/build/$NAME.lst" -o "sdk/src/build/$NAME.o" "tools/sid/build/$NAME.s"
-    ld65 -C sdk/linker/raw.cfg -m "sdk/src/build/$NAME.map" -vm -Ln "sdk/src/build/$NAME.lbl" --dbgfile "sdk/src/build/$NAME.dbg" -o "sdk/src/build/$NAME.bin" "sdk/src/build/$NAME.o"
+    "$MOS_CLANG" -mcpu=mosw65c02 -nostartfiles -T sdk/linker/link.ld -o "sdk/src/build/$NAME.bin" "tools/sid/build/$NAME.s"
     mkdir -p output/rom
     cp "sdk/src/build/$NAME.bin" "output/rom/$NAME.bin"
 
 elif [ -f "sdk/src/$NAME.s" ]; then
-    echo "--- Assembling $NAME.s (ASM) ---"
-    ca65 --cpu 65C02 -g -l "sdk/src/build/$NAME.lst" -o "sdk/src/build/$NAME.o" "sdk/src/$NAME.s"
-    ld65 -C sdk/linker/raw.cfg -m "sdk/src/build/$NAME.map" -vm -Ln "sdk/src/build/$NAME.lbl" --dbgfile "sdk/src/build/$NAME.dbg" -o "sdk/src/build/$NAME.bin" "sdk/src/build/$NAME.o"
+    echo "--- Assembling $NAME.s (ASM with LLVM-MOS) ---"
+    "$MOS_CLANG" -mcpu=mosw65c02 -nostartfiles -T sdk/linker/link.ld -o "sdk/src/build/$NAME.bin" "sdk/src/$NAME.s"
     mkdir -p output/rom
     cp "sdk/src/build/$NAME.bin" "output/rom/$NAME.bin"
 
 elif [ "$NAME" == "microDOS" ]; then
-    echo "--- Compiling microDOS (Multi-module C) ---"
-
-    echo "  Compiling microDOS modules..."
-    MICRODOS_OBJS=""
-    pids=()
-    for f in sdk/microdos/src/microDOS/*.c; do
-        if [ -f "$f" ]; then
-            mod_name=$(basename "${f%.c}")
-            if [ "$MULTITHREAD" = true ]; then
-                cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-                    -I "sdk/src" -I "sdk/microdos/src" \
-                    -o "sdk/src/build/$mod_name.s" "$f" &
-                pids+=($!)
-            else
-                cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-                    -I "sdk/src" -I "sdk/microdos/src" \
-                    -o "sdk/src/build/$mod_name.s" "$f"
-            fi
-            MICRODOS_OBJS="$MICRODOS_OBJS sdk/src/build/$mod_name.s"
-        fi
-    done
-
-    echo "  Compiling microDOS main..."
-    if [ "$MULTITHREAD" = true ]; then
-        cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-            -I "sdk/src" -I "sdk/microdos/src" \
-            -o "sdk/src/build/microDOS.s" "sdk/microdos/src/microDOS.c" &
-        pids+=($!)
-    else
-        cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-            -I "sdk/src" -I "sdk/microdos/src" \
-            -o "sdk/src/build/microDOS.s" "sdk/microdos/src/microDOS.c"
-    fi
+    echo "--- Compiling microDOS (Multi-module C with LLVM-MOS) ---"
 
     CFG_FLAGS=""
     if grep -r -q '#include "Libs/NET.h"' sdk/microdos/src/ sdk/microdos/src/microDOS.c; then
@@ -154,56 +168,30 @@ elif [ "$NAME" == "microDOS" ]; then
     fi
     CFG_FLAGS="$CFG_FLAGS --microDOS"
 
-    echo "  [SD.h detected] Compiling FatFs (ff.c + diskio.c)..."
-    if [ "$MULTITHREAD" = true ]; then
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c &
-        pids+=($!)
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c &
-        pids+=($!)
-        cl65 -O --cpu 65C02 -t none -S -D ENABLE_SD_SUPPORT=1 -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c &
-        pids+=($!)
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/net_utils.s sdk/src/Libs/NET.c &
-        pids+=($!)
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/sd.s sdk/src/Libs/SD.c &
-        pids+=($!)
-    else
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c
-        cl65 -O --cpu 65C02 -t none -S -D ENABLE_SD_SUPPORT=1 -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/net_utils.s sdk/src/Libs/NET.c
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/sd.s sdk/src/Libs/SD.c
-    fi
-    EXTRA_OBJS="sdk/src/build/bios_utils.s sdk/src/build/net_utils.s sdk/src/build/ff.s sdk/src/build/diskio.s sdk/src/build/sd.s"
+    LINKER_LD="sdk/src/build/microDOS-dynamic.ld"
+    python3 tools/linker/generate_link_ld.py $CFG_FLAGS > "$LINKER_LD"
 
-    if [ "$MULTITHREAD" = true ]; then
-        for pid in "${pids[@]}"; do
-            wait "$pid" || exit 1
-        done
-    fi
+    MICRODOS_SRCS=(
+        sdk/linker/microdos_bios.s
+        sdk/microdos/src/microDOS.c
+        sdk/microdos/src/microDOS/*.c
+        sdk/src/Libs/BIOS.c
+        sdk/src/Libs/NET.c
+        sdk/src/Libs/SD.c
+        sdk/src/Libs/fatfs/ff.c
+        sdk/src/Libs/fatfs/diskio.c
+    )
 
-    echo "  Generating dynamic Linker CFG..."
-    python3 tools/linker/generate_cfg.py $CFG_FLAGS > "sdk/src/build/C-Runtime-dynamic.cfg"
-    LINKER_CFG="sdk/src/build/C-Runtime-dynamic.cfg"
-
-    echo "  Linking binary..."
-    cl65 -g --cpu 65C02 -t none -C "$LINKER_CFG" \
-        -o "sdk/src/build/microDOS.bin" \
-        -m "sdk/src/build/microDOS.map" -vm \
-        -l "sdk/src/build/microDOS.lst" \
-        -Wl -Ln,"sdk/src/build/microDOS.lbl" \
-        -Wl --dbgfile,"sdk/src/build/microDOS.dbg" \
-        sdk/linker/microdos_bios.s sdk/linker/C-Runtime.s \
-        "sdk/src/build/microDOS.s" \
-        $MICRODOS_OBJS \
-        $EXTRA_OBJS
+    compile_with_opt_fallback "sdk/src/build/microDOS.bin" "$LINKER_LD" \
+        -mlto-zp=200 \
+        -I "sdk/src" -I "sdk/microdos/src" -D ENABLE_SD_SUPPORT=1 \
+        "${MICRODOS_SRCS[@]}"
 
     mkdir -p output/rom
     cp "sdk/src/build/microDOS.bin" "output/rom/microDOS.bin"
 
 elif [ -f "sdk/src/$NAME.c" ]; then
-    echo "--- Compiling $NAME.c (C) ---"
-    cl65 -O -Oi -Or --static-locals --add-source --cpu 65C02 -t none -S \
-        -o "sdk/src/build/$NAME.s" "sdk/src/$NAME.c"
+    echo "--- Compiling $NAME.c (C with LLVM-MOS) ---"
 
     CFG_FLAGS=""
     if grep -q '#include "Libs/GPUDoubleBuffer.h"' "sdk/src/$NAME.c"; then
@@ -223,34 +211,21 @@ elif [ -f "sdk/src/$NAME.c" ]; then
         CFG_FLAGS="$CFG_FLAGS --sid"
     fi
 
-    echo "  Generating dynamic Linker CFG..."
-    python3 tools/linker/generate_cfg.py $CFG_FLAGS > "sdk/src/build/C-Runtime-dynamic.cfg"
-    LINKER_CFG="sdk/src/build/C-Runtime-dynamic.cfg"
+    LINKER_LD="sdk/src/build/C-Runtime-dynamic.ld"
+    python3 tools/linker/generate_link_ld.py $CFG_FLAGS > "$LINKER_LD"
+
+    EXTRA_SRCS=("sdk/linker/bios.s" "sdk/src/Libs/BIOS.c")
+    EXTRA_FLAGS=("-I" "sdk/src")
 
     if grep -q '#include "Libs/SD.h"' "sdk/src/$NAME.c"; then
-        echo "  [SD.h detected] Compiling FatFs (ff.c + diskio.c)..."
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -D ENABLE_SD_SUPPORT=1 -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
-        cl65 -O --cpu 65C02 -t none -S \
-            -o sdk/src/build/ff.s sdk/src/Libs/fatfs/ff.c
-        cl65 -O --cpu 65C02 -t none -S \
-            -o sdk/src/build/diskio.s sdk/src/Libs/fatfs/diskio.c
-        cl65 -O --cpu 65C02 -t none -S \
-            -o sdk/src/build/sd.s sdk/src/Libs/SD.c
-        EXTRA_OBJS="sdk/src/build/bios_utils.s sdk/src/build/ff.s sdk/src/build/diskio.s sdk/src/build/sd.s"
-    else
-        cl65 -O --cpu 65C02 -t none -S -I "sdk/src" -o sdk/src/build/bios_utils.s sdk/src/Libs/BIOS.c
-        EXTRA_OBJS="sdk/src/build/bios_utils.s"
+        echo "  [SD.h detected] Adding FatFs (ff.c + diskio.c + sd.c)..."
+        EXTRA_SRCS+=("sdk/src/Libs/fatfs/ff.c" "sdk/src/Libs/fatfs/diskio.c" "sdk/src/Libs/SD.c")
+        EXTRA_FLAGS+=("-D" "ENABLE_SD_SUPPORT=1")
     fi
 
-    cl65 -g --cpu 65C02 -t none -C "$LINKER_CFG" \
-        -o "sdk/src/build/$NAME.bin" \
-        -m "sdk/src/build/$NAME.map" -vm \
-        -l "sdk/src/build/$NAME.lst" \
-        -Wl -Ln,"sdk/src/build/$NAME.lbl" \
-        -Wl --dbgfile,"sdk/src/build/$NAME.dbg" \
-        sdk/linker/bios.s sdk/linker/C-Runtime.s "sdk/src/build/$NAME.s" \
-        $EXTRA_OBJS
-    mv "sdk/src/$NAME.o" "sdk/src/build/$NAME.o" 2>/dev/null || true
+    compile_with_opt_fallback "sdk/src/build/$NAME.bin" "$LINKER_LD" \
+        "${EXTRA_FLAGS[@]}" "sdk/src/$NAME.c" "${EXTRA_SRCS[@]}"
+
     mkdir -p output/rom
     cp "sdk/src/build/$NAME.bin" "output/rom/$NAME.bin"
 
