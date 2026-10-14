@@ -156,7 +156,11 @@ for midi_file in "${files[@]}"; do
             fi
         else
             echo "   [X] Compilation FAILED for mode '$mode':"
-            grep -E "Error|Warning|overflows" "$compile_log" | sed 's/^/       /' || cat "$compile_log"
+            if grep -i -q -E "error|warning|overflow" "$compile_log"; then
+                grep -i -E "error|warning|overflow" "$compile_log" | sed 's/^/       /'
+            else
+                sed 's/^/       /' "$compile_log"
+            fi
         fi
         rm -f "$compile_log"
     done
