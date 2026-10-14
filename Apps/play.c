@@ -148,19 +148,28 @@ static uint16_t shadow_pw[3] = {0x0800, 0x0800, 0x0800};
 static uint8_t last_ctrl[3] = {0, 0, 0};
 
 static uint16_t last_timer;
+
+static inline uint16_t timer_read(void) {
+    uint8_t hi1, hi2, lo;
+    do {
+        hi1 = VIA_T1C_H;
+        lo = VIA_T1C_L;
+        hi2 = VIA_T1C_H;
+    } while (hi1 != hi2);
+    return ((uint16_t)hi1 << 8) | lo;
+}
+
 static void timer_init(void) {
-    VIA_ACR &= ~0x40;
+    VIA_ACR |= 0x40;
     VIA_T1L_L = 0xFF;
     VIA_T1L_H = 0xFF;
     VIA_T1C_L = 0xFF;
     VIA_T1C_H = 0xFF;
-    last_timer = (uint16_t)VIA_T1C_L | ((uint16_t)VIA_T1C_H << 8);
+    last_timer = timer_read();
 }
 
 static uint16_t timer_delta(void) {
-    uint8_t lo = VIA_T1C_L;
-    uint8_t hi = VIA_T1C_H;
-    uint16_t now = (uint16_t)lo | ((uint16_t)hi << 8);
+    uint16_t now = timer_read();
     uint16_t delta = last_timer - now;
     last_timer = now;
     return delta;
@@ -447,6 +456,7 @@ int main(void) {
                 for (i = 0; i < next_read_blocks; i++) {
                     if (!eof_reached && count < num_bufs) {
                         r = sd_read(&file, BUF_PTR(head), CHUNK_SIZE);
+                        delay_cycles_left -= timer_delta();
                         if (r > 0) {
                             head = (head + 1) % num_bufs;
                             count++;
