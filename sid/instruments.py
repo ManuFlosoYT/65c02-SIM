@@ -99,3 +99,15 @@ def get_instrument_params(program, channel, note, velocity, chip="8580"):
             wave = WAVE_NOISE # Fallback to pure noise to avoid 0V short
 
     return wave, attack_decay, sustain_release, pulse_width, features
+
+
+def get_percussion_config(note):
+    _load_instruments()
+    perc_map = _instruments_data.get("percussion", {})
+    for key, val in perc_map.items():
+        if key == "default":
+            continue
+        notes = [int(n) for n in key.split(",")]
+        if note in notes:
+            return val
+    return perc_map.get("default", {})

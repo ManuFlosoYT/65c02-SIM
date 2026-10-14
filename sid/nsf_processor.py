@@ -184,7 +184,18 @@ class NsfProcessor(MidiProcessor):
         print(f"   Generated {len(self.events)} raw events.")
         
         # Post-processing pipeline shared with MidiProcessor
+        self._pair_notes()
         self._analyze_channels()
+        for ev in self.events:
+            ch = ev.get('channel', 0)
+            if ch == self.melody_channel:
+                ev['role'] = 'melody'
+            elif ch == self.bass_channel:
+                ev['role'] = 'bass'
+            elif ch == self.noise_channel:
+                ev['role'] = 'percussion'
+            else:
+                ev['role'] = 'harmony'
         
         # We don't analyze density or key unless we want to
         self._filter_short_notes()

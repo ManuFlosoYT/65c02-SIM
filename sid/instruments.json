@@ -196,38 +196,68 @@
   "percussion": {
     "35,36": {
       "name": "Kick",
+      "drum_class": "kick",
+      "max_len": 0.15,
       "waves": ["TRI"],
       "attack_decay": "0x05",
       "sustain_release_base": "0x00",
       "pulse_width": "0x0800",
       "features": ["kick_slide", "pcm_sample"]
     },
-    "38,40": {
+    "37,38,40": {
       "name": "Snare",
+      "drum_class": "snare",
+      "max_len": 0.15,
       "waves": ["NOISE", "TRI"],
       "attack_decay": "0x05",
       "sustain_release_base": "0x00",
       "pulse_width": "0x0800",
       "features": ["snare_macro", "pcm_sample"]
     },
-    "42,44,46": {
-      "name": "HiHats",
-      "waves": ["NOISE"],
-      "attack_decay": "0x00",
-      "sustain_release_base": "0x04",
-      "pulse_width": "0x0800",
-      "features": []
-    },
-    "49,57": {
-      "name": "Crash",
+    "49,51,52,53,55,57,59": {
+      "name": "Crash & Cymbals",
+      "drum_class": "crash",
+      "max_len": 0.25,
       "waves": ["NOISE"],
       "attack_decay": "0x0F",
       "sustain_release_base": "0x08",
       "pulse_width": "0x0800",
       "features": []
     },
+    "41,43,45,47,48,50": {
+      "name": "Toms",
+      "drum_class": "tom",
+      "max_len": 0.15,
+      "waves": ["TRI"],
+      "attack_decay": "0x05",
+      "sustain_release_base": "0x00",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "46": {
+      "name": "Open Hi-Hat",
+      "drum_class": "open_hat",
+      "max_len": 0.12,
+      "waves": ["NOISE"],
+      "attack_decay": "0x00",
+      "sustain_release_base": "0x04",
+      "pulse_width": "0x0800",
+      "features": []
+    },
+    "42,44": {
+      "name": "Closed Hi-Hat",
+      "drum_class": "closed_hat",
+      "max_len": 0.06,
+      "waves": ["NOISE"],
+      "attack_decay": "0x00",
+      "sustain_release_base": "0x02",
+      "pulse_width": "0x0800",
+      "features": []
+    },
     "default": {
       "name": "Generic Percussion",
+      "drum_class": "default",
+      "max_len": 0.10,
       "waves": ["NOISE"],
       "attack_decay": "0x05",
       "sustain_release_base": "0x00",

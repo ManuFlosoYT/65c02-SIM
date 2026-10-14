@@ -19,6 +19,9 @@ def main():
                         help="Target clock system (NTSC=1MHz, PAL=985kHz)")
     parser.add_argument("--microDOS", action='store_true', help="Output raw execution bytes instead of ASM")
     parser.add_argument("--duration", type=int, default=180, help="Max duration in seconds for infinite NSF loops")
+    parser.add_argument("--sd-cost", type=int, default=49731, help="Cycles per 512B SD read")
+    parser.add_argument("--stream-bufs", type=int, default=16, help="Target buffer budget in microDOS play.c")
+    parser.add_argument("--no-verify", action='store_true', help="Skip formal lossless roundtrip verification")
 
     args = parser.parse_args()
 
@@ -34,9 +37,22 @@ def main():
     bytecode = generator.generate()
 
     if args.microDOS:
-        write_bin(bytecode, args.input)
+        write_bin(
+            bytecode,
+            args.input,
+            target_bufs=args.stream_bufs,
+            sd_cost=args.sd_cost,
+            system=args.system,
+            verify=not args.no_verify
+        )
     else:
-        write_asm(bytecode, args.input, args.mode)
+        write_asm(
+            bytecode,
+            args.input,
+            args.mode,
+            system=args.system,
+            verify=not args.no_verify
+        )
 
 
 if __name__ == "__main__":
