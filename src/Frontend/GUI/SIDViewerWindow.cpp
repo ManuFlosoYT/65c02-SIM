@@ -75,13 +75,42 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
     ImGui::EndGroup();
 }
 
+[[nodiscard]] static std::string GetWaveformText(uint8_t control) {
+    std::string wave;
+    if ((control & 0x10) != 0) {
+        wave += "TRI";
+    }
+    if ((control & 0x20) != 0) {
+        if (!wave.empty()) {
+            wave += " + ";
+        }
+        wave += "SAW";
+    }
+    if ((control & 0x40) != 0) {
+        if (!wave.empty()) {
+            wave += " + ";
+        }
+        wave += "PULSE";
+    }
+    if ((control & 0x80) != 0) {
+        if (!wave.empty()) {
+            wave += " + ";
+        }
+        wave += "NOISE";
+    }
+    if (wave.empty()) {
+        wave = "OFF";
+    }
+    return wave;
+}
+
 static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     const auto& voice = sid.GetVoice(voiceIndex);
 
     ImGui::BeginGroup();
     std::ostringstream freqOss;
     freqOss << "Freq: " << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << voice.frequency
-            << "  PW: " << std::setw(3) << voice.pulseWidth;
+            << "  PW: " << std::setw(3) << voice.pulseWidth << " (" << GetWaveformText(voice.control) << ")";
     ImGui::TextUnformatted(freqOss.str().c_str());
 
     std::ostringstream envOss;
