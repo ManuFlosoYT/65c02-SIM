@@ -39,7 +39,9 @@ compile_with_opt_fallback() {
         rm -f "$err_log"
 
         if echo "$last_err" | grep -E -q "will not fit in region|overflowed by|address range overlaps with"; then
-            echo "  [LLVM-MOS] $opt binary too large (memory overflow), falling back..."
+            echo "  [LLVM-MOS] $opt binary too large (memory overflow):"
+            echo "$last_err"
+            echo "  [LLVM-MOS] Falling back to next optimization level..."
         else
             echo "  [LLVM-MOS] Compilation error at $opt (not a size issue):"
             echo "$last_err"

@@ -124,6 +124,10 @@ INIT_BUFFER_IMPL:
     lda #0xFE
     and PORTA
     sta PORTA
+    lda #0x1F
+    sta ACIA_CTRL
+    lda #0x01
+    sta ACIA_CMD
     rts
 
 WRITE_BUFFER:
@@ -148,6 +152,9 @@ IRQ_HANDLER_IMPL:
     pha
     phx
     lda ACIA_STATUS
+    bpl .Lnot_acia
+    and #0x08
+    beq .Lnot_acia
     lda ACIA_DATA
     jsr WRITE_BUFFER
     jsr BUFFER_SIZE
@@ -157,9 +164,21 @@ IRQ_HANDLER_IMPL:
     ora PORTA
     sta PORTA
 .Lnot_full:
+.Lnot_acia:
     plx
     pla
     rti
+
+.section .init.50, "ax", @progbits
+    cld
+    ldx #0xff
+    txs
+    cli
+
+.section .after_main, "ax", @progbits
+.Lhang:
+    stp
+    jmp .Lhang
 
 // ABI Jump Table for microDOS apps (at $FF90)
 .section .jumptable, "ax"
