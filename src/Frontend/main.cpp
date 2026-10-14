@@ -28,7 +28,7 @@
 #include "IconPixels.h"
 #include <memory>
 #ifndef TARGET_WASM
-#include "Frontend/Compiler/CC65VFS.h"
+#include "Frontend/Compiler/CompilerVFS.h"
 #endif
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/UI/UIModules.h"
@@ -217,7 +217,7 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
     SDL_Quit();
     
 #ifndef TARGET_WASM
-    CC65VFS::Cleanup();
+    CompilerVFS::Cleanup();
 #endif
 }
 
@@ -535,13 +535,13 @@ int main(int argc, char* argv[]) {
     const Args args = parseResult.args;
 
 #ifndef TARGET_WASM
-    CC65VFS::Initialize();
+    CompilerVFS::Initialize();
 #endif
 
     if (args.headless) {
         int ret = RunHeadless(args);
 #ifndef TARGET_WASM
-        CC65VFS::Cleanup();
+        CompilerVFS::Cleanup();
 #endif
         return ret;
     }

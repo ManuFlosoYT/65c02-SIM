@@ -25,22 +25,26 @@ namespace {
         return initialized;
     }
 
-    TextEditor::LanguageDefinition GetCC65LanguageDefinition() {
+    TextEditor::LanguageDefinition GetMOSLanguageDefinition() {
         TextEditor::LanguageDefinition langDef = TextEditor::LanguageDefinition::CPlusPlus();
         langDef.mName = "6502 Assembly";
 
-        static const std::array<const char*, 64> opcodes = {{
+        static const std::array<const char*, 98> opcodes = {{
             "adc", "and", "asl", "bcc", "bcs", "beq", "bit", "bmi", "bne", "bpl", "brk", "bvc", "bvs", "clc",
             "cld", "cli", "clv", "cmp", "cpx", "cpy", "dec", "dex", "dey", "eor", "inc", "inx", "iny", "jmp",
             "jsr", "lda", "ldx", "ldy", "lsr", "nop", "ora", "pha", "php", "pla", "plp", "rol", "ror", "rti",
             "rts", "sbc", "sec", "sed", "sei", "sta", "stx", "sty", "tax", "tay", "tsx", "txa", "txs", "tya",
-            "bra", "phx", "phy", "plx", "ply", "stz", "trb", "tsb" // 65C02 instructions
+            "bra", "phx", "phy", "plx", "ply", "stz", "trb", "tsb", "wai", "stp",
+            "bbr0", "bbr1", "bbr2", "bbr3", "bbr4", "bbr5", "bbr6", "bbr7",
+            "bbs0", "bbs1", "bbs2", "bbs3", "bbs4", "bbs5", "bbs6", "bbs7",
+            "rmb0", "rmb1", "rmb2", "rmb3", "rmb4", "rmb5", "rmb6", "rmb7",
+            "smb0", "smb1", "smb2", "smb3", "smb4", "smb5", "smb6", "smb7"
         }};
 
-        static const std::array<const char*, 28> directives = {{
-            ".byte", ".word", ".dword", ".res", ".text", ".data", ".bss", ".rodata", ".org", ".include", ".incbin",
-            ".macpack", ".macro", ".endmacro", ".proc", ".endproc", ".scope", ".endscope", ".out", ".segment", ".export",
-            ".import", ".importzp", ".exportzp", ".global", ".globalzp", ".align", ".addr"
+        static const std::array<const char*, 38> directives = {{
+            ".byte", ".word", ".dword", ".short", ".fill", ".space", ".text", ".data", ".bss", ".rodata",
+            ".section", ".globl", ".global", ".set", ".equ", ".ascii", ".asciz", ".org", ".include", ".incbin",
+            ".macro", ".endm", ".endmacro", ".res", ".segment", ".export", ".import", ".align", ".addr"
         }};
 
         for (const auto& keyword : opcodes) {
@@ -63,7 +67,7 @@ namespace {
     void InitEditor(Control::AppState& state) {
         if (!IsEditorInitialized()) {
             GetTextEditor().SetPalette(TextEditor::GetDarkPalette());
-            GetTextEditor().SetLanguageDefinition(state.ide.isCMode ? TextEditor::LanguageDefinition::CPlusPlus() : GetCC65LanguageDefinition());
+            GetTextEditor().SetLanguageDefinition(state.ide.isCMode ? TextEditor::LanguageDefinition::CPlusPlus() : GetMOSLanguageDefinition());
             IsEditorInitialized() = true;
         }
     }
@@ -188,7 +192,7 @@ static void DrawCompilerToolbar(Control::AppState& state) {
     ImGui::SameLine();
     if (ImGui::RadioButton("Assembly", !state.ide.isCMode)) {
         state.ide.isCMode = false;
-        GetTextEditor().SetLanguageDefinition(GetCC65LanguageDefinition());
+        GetTextEditor().SetLanguageDefinition(GetMOSLanguageDefinition());
     }
 
     ImGui::SameLine();
@@ -229,7 +233,7 @@ static void HandleOpenFile(Control::AppState& state) {
                     GetTextEditor().SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
                 } else if (state.ide.currentFilePath.ends_with(".s") || state.ide.currentFilePath.ends_with(".asm")) {
                     state.ide.isCMode = false;
-                    GetTextEditor().SetLanguageDefinition(GetCC65LanguageDefinition());
+                    GetTextEditor().SetLanguageDefinition(GetMOSLanguageDefinition());
                 }
             } else {
                 state.ide.outputLog = "Failed to open " + state.ide.currentFilePath;
@@ -303,7 +307,7 @@ void DrawIDEWindow(Control::AppState& state) {
     return;
 #else
     ImGui::SetNextWindowSize(ImVec2(800.0F, 600.0F), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("CC65 Code Editor", &state.ide.open)) {
+    if (ImGui::Begin("65C02 Code Editor (LLVM-MOS)", &state.ide.open)) {
         DrawToolbar(state);
         ImGui::Separator();
 

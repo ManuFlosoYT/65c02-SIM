@@ -3,14 +3,17 @@
 
 #ifndef TARGET_WASM
 
-class CC65VFS {
+class CompilerVFS {
 public:
     static void Initialize();
     static void Cleanup();
     static std::string GetTempDir();
+    static std::string GetCompilerExecutable();
 
 private:
     static std::string tempDir;
+    static std::string compilerPath;
 };
 
 #endif
+

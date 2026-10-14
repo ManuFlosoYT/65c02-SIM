@@ -59,12 +59,15 @@ set(HTTPLIB_REPO "https://github.com/yhirose/cpp-httplib.git")
 set(HTTPLIB_TAG "v0.41.0")
 
 
-# cc65
-set(CC65_REPO "https://github.com/cc65/cc65.git")
-set(CC65_TAG "V2.19")
-
-# cc65 Snapshot (Windows)
-set(CC65_SNAPSHOT_URL "https://sourceforge.net/projects/cc65/files/cc65-snapshot-win32.zip/download")
+# LLVM-MOS SDK
+set(LLVM_MOS_TAG "v23.3.0")
+if(WIN32)
+    set(LLVM_MOS_URL "https://github.com/llvm-mos/llvm-mos-sdk/releases/download/${LLVM_MOS_TAG}/llvm-mos-windows.7z")
+elseif(APPLE)
+    set(LLVM_MOS_URL "https://github.com/llvm-mos/llvm-mos-sdk/releases/download/${LLVM_MOS_TAG}/llvm-mos-macos.tar.xz")
+else()
+    set(LLVM_MOS_URL "https://github.com/llvm-mos/llvm-mos-sdk/releases/download/${LLVM_MOS_TAG}/llvm-mos-linux.tar.xz")
+endif()
 
 # ==============================================================================
 
@@ -239,20 +242,25 @@ if(TARGET httplib AND NOT EMSCRIPTEN)
 endif()
 
 
-# cc65
+# LLVM-MOS SDK
 if(NOT EMSCRIPTEN)
-    FetchContent_Declare(
-        cc65
-        GIT_REPOSITORY ${CC65_REPO}
-        GIT_TAG ${CC65_TAG}
-    )
-    FetchContent_MakeAvailable(cc65)
+    find_program(SYSTEM_MOS_CLANG mos-common-clang HINTS ENV LLVM_MOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/llvm_mos/llvm-mos/bin")
+    if(NOT SYSTEM_MOS_CLANG)
+        find_program(SYSTEM_MOS_CLANG mos-clang HINTS ENV LLVM_MOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/llvm_mos/llvm-mos/bin")
+    endif()
 
-    FetchContent_Declare(
-        cc65_snapshot
-        URL ${CC65_SNAPSHOT_URL}
-    )
-    FetchContent_MakeAvailable(cc65_snapshot)
+    if(SYSTEM_MOS_CLANG)
+        message(STATUS "Found LLVM-MOS compiler: ${SYSTEM_MOS_CLANG}")
+        get_filename_component(MOS_BIN_DIR "${SYSTEM_MOS_CLANG}" DIRECTORY)
+        get_filename_component(LLVM_MOS_ROOT "${MOS_BIN_DIR}" DIRECTORY)
+    else()
+        FetchContent_Declare(
+            llvm_mos
+            URL ${LLVM_MOS_URL}
+        )
+        FetchContent_MakeAvailable(llvm_mos)
+        set(LLVM_MOS_ROOT "${llvm_mos_SOURCE_DIR}")
+    endif()
 endif()
 
 if(WIN32 AND NOT MSVC)

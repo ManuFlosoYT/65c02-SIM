@@ -1,66 +1,25 @@
-# CC65 Embedding
+# LLVM-MOS Toolchain & Resources Embedding
 if(NOT EMSCRIPTEN)
-	if(NOT TARGET cc65_common)
-		file(GLOB CC65_COMMON_SRC "${cc65_SOURCE_DIR}/src/common/*.c")
-		add_library(cc65_common STATIC ${CC65_COMMON_SRC})
-		target_include_directories(cc65_common PUBLIC "${cc65_SOURCE_DIR}/src/common")
+	set(EMBEDDED_LLVM_MOS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_llvm_mos.h")
 
-		file(GLOB CC65_CC65_SRC "${cc65_SOURCE_DIR}/src/cc65/*.c")
-		add_executable(cc65_bin ${CC65_CC65_SRC})
-		target_include_directories(cc65_bin PUBLIC "${cc65_SOURCE_DIR}/src/common")
-		target_link_libraries(cc65_bin PRIVATE cc65_common m)
+	add_custom_command(
+		OUTPUT "${EMBEDDED_LLVM_MOS_H}"
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+		COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedLLVMMOS.py" 
+				"${LLVM_MOS_ROOT}" 
+				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker" 
+				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/src/Libs" 
+				"${EMBEDDED_LLVM_MOS_H}"
+		DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedLLVMMOS.py"
+				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/link.ld"
+				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/bios.s"
+		COMMENT "Generating embedded LLVM-MOS VFS header (embedded_llvm_mos.h)"
+		VERBATIM
+	)
 
-		file(GLOB CC65_CA65_SRC "${cc65_SOURCE_DIR}/src/ca65/*.c")
-		add_executable(ca65_bin ${CC65_CA65_SRC})
-		target_include_directories(ca65_bin PUBLIC "${cc65_SOURCE_DIR}/src/common")
-		target_link_libraries(ca65_bin PRIVATE cc65_common m)
-
-		file(GLOB CC65_LD65_SRC "${cc65_SOURCE_DIR}/src/ld65/*.c")
-		add_executable(ld65_bin ${CC65_LD65_SRC})
-		target_include_directories(ld65_bin PUBLIC "${cc65_SOURCE_DIR}/src/common")
-		target_link_libraries(ld65_bin PRIVATE cc65_common m)
-
-		set_target_properties(cc65_bin ca65_bin ld65_bin PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
-
-		# Generate C++ headers containing the executable bytes
-		add_custom_command(
-												OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/cc65_exe.h"
-												COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-												COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "$<TARGET_FILE:cc65_bin>" "cc65_exe_data" "${CMAKE_CURRENT_BINARY_DIR}/generated/cc65_exe.h"
-												DEPENDS cc65_bin "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
-												COMMENT "Embedding cc65_bin executable"
-												VERBATIM
-								)
-		add_custom_command(
-												OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/ca65_exe.h"
-												COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "$<TARGET_FILE:ca65_bin>" "ca65_exe_data" "${CMAKE_CURRENT_BINARY_DIR}/generated/ca65_exe.h"
-												DEPENDS ca65_bin "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
-												COMMENT "Embedding ca65_bin executable"
-												VERBATIM
-								)
-		add_custom_command(
-												OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/ld65_exe.h"
-												COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py" "$<TARGET_FILE:ld65_bin>" "ld65_exe_data" "${CMAKE_CURRENT_BINARY_DIR}/generated/ld65_exe.h"
-												DEPENDS ld65_bin "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.py"
-												COMMENT "Embedding ld65_bin executable"
-												VERBATIM
-								)
-
-		add_custom_command(
-												OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
-												COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCC65.py" "${cc65_snapshot_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker" "${CMAKE_CURRENT_SOURCE_DIR}/sdk/src/Libs" "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
-												DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedCC65.py"
-												COMMENT "Embedding CC65 VFS contents (headers and none.lib)"
-												VERBATIM
-								)
-
-		add_custom_target(embedded_compilers DEPENDS
-												"${CMAKE_CURRENT_BINARY_DIR}/generated/cc65_exe.h"
-												"${CMAKE_CURRENT_BINARY_DIR}/generated/ca65_exe.h"
-												"${CMAKE_CURRENT_BINARY_DIR}/generated/ld65_exe.h"
-												"${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_cc65.h"
-								)
-	endif()
+	add_custom_target(embedded_compilers DEPENDS
+		"${EMBEDDED_LLVM_MOS_H}"
+	)
 endif()
 
 # CRT Shaders

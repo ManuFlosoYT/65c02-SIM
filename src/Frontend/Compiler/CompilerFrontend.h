@@ -22,7 +22,7 @@ public:
     static BuildResult Compile(BuildType type, const std::string& code, const std::string& sourceName = "test.c");
     
 private:
-    static std::string GenerateCFG(const std::string& code);
+    static std::string GenerateLinkerScript(const std::string& code);
 };
 
 #endif

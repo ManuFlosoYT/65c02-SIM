@@ -1,20 +1,24 @@
 #ifndef TARGET_WASM
 #include "CompilerFrontend.h"
-#include "CC65VFS.h"
-#include <fstream>
-#include <sstream>
-#include <iostream>
+#include "CompilerVFS.h"
 #include <algorithm>
 #include <array>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <unistd.h>
-#include <sys/wait.h>
 #include <fcntl.h>
 #include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #endif
+
+namespace fs = std::filesystem;
 
 static std::string ReadFile(const std::string& path) {
     std::ifstream fileIn(path, std::ios::binary);
@@ -52,7 +56,8 @@ static int PlatformRunCommand(const std::string& cmd, const std::string& logFile
     saAttr.bInheritHandle = TRUE;
     saAttr.lpSecurityDescriptor = nullptr;
 
-    HANDLE hLog = CreateFileA(logFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ, &saAttr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    HANDLE hLog = CreateFileA(logFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ, &saAttr, CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hLog == INVALID_HANDLE_VALUE) {
         return -1;
     }
@@ -84,7 +89,6 @@ static int PlatformRunCommand(const std::string& cmd, const std::string& logFile
 }
 #else
 static int PlatformRunCommand(const std::string& cmd, const std::string& logFile) {
-    // Basic argument splitter (respects spaces, no quotes needed for our current paths)
     std::vector<std::string> args;
     std::stringstream stringStream(cmd);
     std::string item;
@@ -132,36 +136,51 @@ static int PlatformRunCommand(const std::string& cmd, const std::string& logFile
 #endif
 
 static int RunSysCommand(const std::string& cmd, std::string& log) {
-    std::string tempLog = CC65VFS::GetTempDir() + "/temp.log";
+    std::string tempLog = CompilerVFS::GetTempDir() + "/temp.log";
     int result = PlatformRunCommand(cmd, tempLog);
     log += ReadFile(tempLog);
     return result;
 }
 
-std::string CompilerFrontend::GenerateCFG(const std::string& code) {
-    // Ported from Linker/generate_cfg.py
+static bool IsSizeOverflowError(const std::string& log) {
+    return log.find("will not fit in region") != std::string::npos ||
+           log.find("overflowed by") != std::string::npos ||
+           log.find("address range overlaps with") != std::string::npos;
+}
+
+std::string CompilerFrontend::GenerateLinkerScript(const std::string& code) {
     bool hasGpu = code.find("--gpu") != std::string::npos || code.find("Libs/GPU.h") != std::string::npos;
     bool hasDoubleBuffer = code.find("--double-buffer") != std::string::npos;
     bool hasNet = code.find("--net") != std::string::npos || code.find("Libs/NET.h") != std::string::npos;
+    bool hasSid = code.find("--sid") != std::string::npos || code.find("Libs/SID.h") != std::string::npos;
 
-    struct Block { uint32_t start, end; std::string name; };
+    struct Block {
+        uint32_t start;
+        uint32_t end;
+        std::string name;
+    };
     std::vector<Block> res = {
-        {0x4800, 0x481F, "SID"},
         {0x5000, 0x5003, "ACIA"},
-        {0x5004, 0x5007, "ESP8266"},
         {0x6000, 0x600F, "VIA"}
     };
 
+    if (hasSid) {
+        res.push_back({0x4800, 0x481F, "SID"});
+    }
+    if (hasNet) {
+        res.push_back({0x5004, 0x5007, "ESP8266"});
+    }
     if (hasGpu || hasDoubleBuffer) {
         res.push_back({0x2000, 0x3FFF, "GPU VRAM Front Buffer"});
     }
     if (hasDoubleBuffer) {
         res.push_back({0x6010, 0x790F, "GPU VRAM Back Buffer"});
     }
-    
+
     std::ranges::sort(res, [](const Block& first, const Block& second) {
         return first.start < second.start;
     });
+
     std::vector<Block> merged;
     for (const auto& block : res) {
         if (merged.empty()) {
@@ -178,131 +197,76 @@ std::string CompilerFrontend::GenerateCFG(const std::string& code) {
     }
 
     std::vector<Block> ram;
-    uint32_t current = 0x0400; // ram_start
-    uint32_t ram_end = 0x8000;
+    uint32_t current = 0x0400;
+    uint32_t ramEnd = 0x8000;
     for (const auto& block : merged) {
         if (current < block.start) {
             ram.push_back({current, block.start - 1, ""});
         }
         current = std::max(current, block.end + 1);
     }
-    if (current < ram_end) {
-        ram.push_back({current, ram_end - 1, ""});
+    if (current < ramEnd) {
+        ram.push_back({current, ramEnd - 1, ""});
     }
 
-    std::ostringstream cfg;
-    cfg << "MEMORY {\n";
-    cfg << "    ZP:           start = $0000, size = $0100, type = rw, define = yes, file = \"\";\n";
-    cfg << "    INPUT_BUFFER: start = $0300, size = $0100, type = rw, file = \"\";\n";
-    
+    std::ostringstream ld;
+    ld << "/* Auto-generated link.ld for 65c02-SIM with LLVM-MOS */\n\n";
+    ld << "__rc0 = 0x00;\n";
+    ld << "INCLUDE imag-regs.ld\n";
+    ld << "ASSERT(__rc0 == 0x00, \"Error en mapeo de Zero Page.\")\n";
+    ld << "ASSERT(__rc31 == 0x1f, \"Error en mapeo de Zero Page.\")\n\n";
+
+    ld << "MEMORY {\n";
+    ld << "    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x100 - (__rc31 + 1)\n";
+    ld << "    input_buffer (rw) : ORIGIN = 0x0300,     LENGTH = 0x0100\n";
+
     for (size_t i = 0; i < ram.size(); i++) {
         uint32_t size = ram.at(i).end - ram.at(i).start + 1;
-        std::string name = "RAM_" + std::to_string(i + 1);
-        cfg << "    " << name << ": start = $" << std::hex << ram.at(i).start << ", size = $" << size << ", type = rw, define = yes, file = \"\";\n";
+        std::string name = "ram_" + std::to_string(i + 1);
+        ld << "    " << name << " (rw) : ORIGIN = 0x" << std::hex << std::uppercase << ram.at(i).start
+           << ", LENGTH = 0x" << size << "\n";
     }
 
-    cfg << "    ROM:          start = $8000, size = $7FFA, type = ro, define = yes, file = %O, fill = yes, fillval = $FF;\n";
-    cfg << "    RESETVEC:     start = $FFFA, size = $0006, type = ro, define = yes, file = %O, fill = yes, fillval = $FF;\n";
-    cfg << "}\n\n";
+    ld << "    rom          (rx) : ORIGIN = 0x8000,     LENGTH = 0x8000\n";
+    ld << "}\n\n";
 
-    cfg << "SEGMENTS {\n";
-    cfg << "    ZEROPAGE:     load = ZP,  type = zp;\n";
-    cfg << "    INPUT_BUFFER: load = INPUT_BUFFER, type = rw;\n";
-    cfg << "    HEADER:       load = ROM, type = ro;\n";
-    
-    std::string main_ram = "RAM_1";
-    cfg << "    DATA:         load = ROM, run = " << main_ram << ", type = rw, define = yes;\n";
-    cfg << "    BSS:          load = " << main_ram << ", type = bss, define = yes;\n";
-    cfg << "    CODE:         load = ROM, type = ro;\n";
-    cfg << "    RODATA:       load = ROM, type = ro;\n";
-    cfg << "    BIOS:         load = ROM, type = ro;\n";
-    cfg << "    STARTUP:      load = ROM, type = ro, optional = yes;\n";
-    cfg << "    ONCE:         load = ROM, type = ro, optional = yes;\n";
-    cfg << "    RESETVEC:     load = RESETVEC, type = ro, optional = yes;\n";
-    cfg << "}\n\n";
+    std::string mainRam = "ram_1";
+    ld << "REGION_ALIAS(\"c_readonly\", rom)\n";
+    ld << "REGION_ALIAS(\"c_writeable\", " << mainRam << ")\n\n";
 
-    cfg << "FEATURES {\n";
-    cfg << "    CONDES: type = constructor, label = __CONSTRUCTOR_TABLE__, count = __CONSTRUCTOR_COUNT__, segment = ONCE;\n";
-    cfg << "    CONDES: type = destructor,  label = __DESTRUCTOR_TABLE__,  count = __DESTRUCTOR_COUNT__,  segment = RODATA;\n";
-    cfg << "}\n\n";
+    ld << "SECTIONS {\n";
+    ld << "    .input_buffer 0x0300 (NOLOAD) : {\n";
+    ld << "        KEEP(*(SORT_BY_NAME(.input_buffer*)))\n";
+    ld << "        *(.input_buffer)\n";
+    ld << "    } > input_buffer\n\n";
+    ld << "    INCLUDE c.ld\n\n";
+    ld << "    .vectors 0xFFFA : {\n";
+    ld << "        SHORT(DEFINED(_nmi) ? _nmi : 0x0F00)\n";
+    ld << "        SHORT(DEFINED(_start) ? _start : (DEFINED(_reset) ? _reset : 0x8000))\n";
+    ld << "        SHORT(DEFINED(IRQ_HANDLER) ? IRQ_HANDLER : (DEFINED(_irq) ? _irq : 0))\n";
+    ld << "    } > rom\n";
+    ld << "}\n\n";
 
-    cfg << "SYMBOLS {\n";
-    uint32_t stack_start = ram.back().end;
-    cfg << "    __STACKSTART__: type = weak, value = $" << std::hex << stack_start << ";\n";
-    cfg << "}\n";
+    uint32_t stackStart = ram.back().end;
+    ld << "__stack = 0x" << std::hex << std::uppercase << stackStart << ";\n\n";
+    ld << "OUTPUT_FORMAT {\n";
+    ld << "    FULL(rom)\n";
+    ld << "}\n";
 
-    return cfg.str();
+    return ld.str();
 }
 
-static int CompileCC65(const std::string& cc65, const std::string& tempDir, const std::string& srcFile, std::string& log) {
-    std::string cmd = cc65 + " -I " + tempDir + "/include -O --cpu 65C02 -g " + srcFile + " -o " + tempDir + "/test.s";
-    log += "> " + cmd + "\n";
-    return RunSysCommand(cmd, log);
-}
-
-static int AssembleFile(const std::string& ca65, const std::string& tempDir, const std::string& src, const std::string& obj, std::string& log) {
-    std::string cmd = ca65 + " --cpu 65C02 -g -t none -I " + tempDir + "/asminc " + src + " -o " + obj;
-    log += "> " + cmd + "\n";
-    return RunSysCommand(cmd, log);
-}
-
-static int CompileExtraLibs(const std::string& cc65, const std::string& ca65, const std::string& tempDir, const std::string& code, std::string& extraObjs, std::string& log) {
-    if (code.find("SD.h") != std::string::npos) {
-        const std::array<std::string, 3> files = { "Libs/SD.c", "Libs/fatfs/ff.c", "Libs/fatfs/diskio.c" };
-        const std::array<std::string, 3> objNames = { "sd", "ff", "diskio" };
-        for (size_t i = 0; i < files.size(); ++i) {
-            std::string s_cmd = cc65;
-            s_cmd += " -I ";
-            s_cmd += tempDir;
-            s_cmd += "/include -O --cpu 65C02 -t none ";
-            s_cmd += tempDir;
-            s_cmd += "/include/";
-            s_cmd += files.at(i);
-            s_cmd += " -o ";
-            s_cmd += tempDir;
-            s_cmd += "/";
-            s_cmd += objNames.at(i);
-            s_cmd += ".s";
-            
-            log += "> " + s_cmd + "\n";
-            if (RunSysCommand(s_cmd, log) != 0) {
-                return -1;
-            }
-
-            std::string o_cmd = ca65;
-            o_cmd += " --cpu 65C02 -g -t none -I ";
-            o_cmd += tempDir;
-            o_cmd += "/asminc ";
-            o_cmd += tempDir;
-            o_cmd += "/";
-            o_cmd += objNames.at(i);
-            o_cmd += ".s -o ";
-            o_cmd += tempDir;
-            o_cmd += "/";
-            o_cmd += objNames.at(i);
-            o_cmd += ".o";
-            
-            log += "> " + o_cmd + "\n";
-            if (RunSysCommand(o_cmd, log) != 0) {
-                return -1;
-            }
-
-            extraObjs += tempDir + "/" + objNames.at(i) + ".o ";
-        }
-    }
-    return 0;
-}
-
-CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const std::string& code, const std::string& sourceName) {
+CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const std::string& code,
+                                                        const std::string& sourceName) {
     BuildResult res;
     if (code.empty()) {
         res.log = "Error: Empty source code.\n";
         return res;
     }
 
-    std::string tempDir = CC65VFS::GetTempDir();
+    std::string tempDir = CompilerVFS::GetTempDir();
     if (tempDir.empty()) {
-        res.log = "Error: CC65 VFS not initialized.";
+        res.log = "Error: Compiler VFS not initialized.";
         return res;
     }
 
@@ -315,7 +279,6 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     if (lastSlash != std::string::npos) {
         baseName = baseName.substr(lastSlash + 1);
     }
-
     if (baseName.empty()) {
         baseName = "out";
     }
@@ -323,72 +286,57 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string srcFile = tempDir + "/" + baseName + (type == BuildType::C ? ".c" : ".s");
     WriteTextFile(srcFile, code);
 
-    std::string ext;
-#ifdef _WIN32
-    ext = ".exe";
-#endif
+    std::string linkScript = tempDir + "/link.ld";
+    WriteTextFile(linkScript, GenerateLinkerScript(code));
 
-    std::string cc65 = tempDir + "/cc65" + ext;
-    std::string ca65 = tempDir + "/ca65" + ext;
-    std::string ld65 = tempDir + "/ld65" + ext;
-    
-    std::string sFile = tempDir + "/" + baseName + ".s";
-    std::string oFile = tempDir + "/" + baseName + ".o";
+    std::string binFile = tempDir + "/out.bin";
+    std::string compiler = CompilerVFS::GetCompilerExecutable();
 
-    if (type == BuildType::C) {
-        // CompileCC65 needs to output to sFile
-        std::string cmd = cc65 + " -I " + tempDir + "/include -O -Oi -Or --static-locals --add-source --cpu 65C02 -g -t none " + srcFile + " -o " + sFile;
+    const std::array<const char*, 4> optLevels = {"-O3", "-O2", "-Os", "-Oz"};
+    bool buildOk = false;
+
+    for (const auto* opt : optLevels) {
+        std::error_code ec;
+        fs::remove(binFile, ec);
+
+        std::string cmd = compiler + " -mcpu=mosw65c02 " + opt + " -T " + linkScript + " -I " + tempDir + "/include";
+        if (type == BuildType::Assembly) {
+            cmd += " -nostartfiles " + srcFile + " -o " + binFile;
+        } else {
+            cmd += " -fnonreentrant -ffunction-sections -fdata-sections -Wl,--gc-sections -mlto-zp=200 " + srcFile +
+                   " " + tempDir + "/Linker/bios.s " + tempDir + "/include/Libs/BIOS.c";
+            if (code.find("SD.h") != std::string::npos) {
+                cmd += " " + tempDir + "/include/Libs/SD.c " + tempDir + "/include/Libs/fatfs/ff.c " + tempDir +
+                       "/include/Libs/fatfs/diskio.c -D ENABLE_SD_SUPPORT=1";
+            }
+            cmd += " -o " + binFile;
+        }
+
         res.log += "> " + cmd + "\n";
-        if (RunSysCommand(cmd, res.log) != 0) {
+        std::string stepLog;
+        int exitCode = RunSysCommand(cmd, stepLog);
+        res.log += stepLog;
+
+        if (exitCode == 0 && fs::exists(binFile) && fs::file_size(binFile) > 0) {
+            buildOk = true;
+            res.log += "Optimization " + std::string(opt) + " succeeded.\n";
+            break;
+        }
+
+        if (IsSizeOverflowError(stepLog)) {
+            res.log += "Optimization " + std::string(opt) + " exceeded memory. Falling back...\n";
+        } else {
+            res.log += "Compilation error at " + std::string(opt) + " (not a size issue). Aborting without fallback.\n";
             return res;
         }
     }
 
-    if (AssembleFile(ca65, tempDir, sFile, oFile, res.log) != 0) {
+    if (!buildOk) {
+        res.log += "Error: Compilation failed for all optimization levels (-O3, -O2, -Os, -Oz).\n";
         return res;
     }
 
-    if (AssembleFile(ca65, tempDir, tempDir + "/Linker/bios.s", tempDir + "/bios.o", res.log) != 0) {
-        return res;
-    }
-
-    if (type == BuildType::C) {
-        if (AssembleFile(ca65, tempDir, tempDir + "/Linker/C-Runtime.s", tempDir + "/cr.o", res.log) != 0) {
-            return res;
-        }
-    }
-
-    std::string extraObjs;
-    if (type == BuildType::C) {
-        if (CompileExtraLibs(cc65, ca65, tempDir, code, extraObjs, res.log) != 0) {
-            return res;
-        }
-    }
-
-    std::string cfgFile = tempDir + "/dynamic.cfg";
-    WriteTextFile(cfgFile, GenerateCFG(code));
-
-    std::string dbgFile = tempDir + "/out.dbg";
-
-    // Link
-    {
-        std::string objs = tempDir + "/bios.o ";
-        if (type == BuildType::C) {
-            objs += tempDir + "/cr.o ";
-        }
-        objs += oFile + " " + extraObjs;
-        
-        std::string cmd = ld65 + " -C " + cfgFile + " -o " + tempDir + "/out.bin " + objs + 
-                          (type == BuildType::C ? " " + tempDir + "/lib/none.lib" : "") + 
-                          " -m " + tempDir + "/out.map -vm -Ln " + tempDir + "/out.lbl --dbgfile " + dbgFile;
-        res.log += "> " + cmd + "\n";
-        if (RunSysCommand(cmd, res.log) != 0) {
-            return res;
-        }
-    }
-
-    res.binary = ReadBinaryFile(tempDir + "/out.bin");
-    res.dbgFile = dbgFile;
+    res.binary = ReadBinaryFile(binFile);
     if (res.binary.empty()) {
         res.log += "Error: Output binary is empty.\n";
         return res;
