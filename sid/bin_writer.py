@@ -7,6 +7,7 @@ if _SCRIPT_DIR not in sys.path:
 
 from sid_codec import encode_semantic_v2, compress_sidlz, extract_pause_events, verify_lossless
 from stream_scheduler import schedule_stream_reads, SD_DEFAULT_COST, DEFAULT_TARGET_BUFS
+from asm_writer import calculate_duration
 
 
 def write_bin(bytecode, input_path, target_bufs=DEFAULT_TARGET_BUFS, sd_cost=SD_DEFAULT_COST, system="NTSC", verify=True):
@@ -73,8 +74,15 @@ def write_bin(bytecode, input_path, target_bufs=DEFAULT_TARGET_BUFS, sd_cost=SD_
     orig_size = len(bytecode)
     final_size = len(container)
     ratio = (final_size / orig_size * 100.0) if orig_size > 0 else 0
+    mins, secs, total_sec = calculate_duration(bytecode, system)
+    dur_str = f"{mins}:{secs:02d}"
+
     print(f"Generated {output_file}")
-    print(f"IR size: {orig_size} bytes -> v2 size: {final_size} bytes ({ratio:.1f}% ratio)")
-    print(f"SD schedule: {stats['total_reads']} reads ({stats['pre_roll_blocks']} pre-roll, {stats['planned_read_events']} planned, {stats['forced_reads']} forced). Min bufs required: {stats['min_bufs_required']}")
+    print(f"Song Duration:   {dur_str} ({total_sec:.1f}s)")
+    print(f"IR bytecode:     {orig_size} bytes ({orig_size / 1024.0:.1f} KB)")
+    print(f"Semantic stream: {len(sem)} bytes ({len(sem) / 1024.0:.1f} KB)")
+    print(f"Compressed pkg:  {len(pkg)} bytes ({len(pkg) / 1024.0:.1f} KB)")
+    print(f"microDOS .sid:   {final_size} bytes ({final_size / 1024.0:.1f} KB) — {ratio:.1f}% of IR ({100.0 - ratio:.1f}% reduction)")
+    print(f"SD schedule:     {stats['total_reads']} reads ({stats['pre_roll_blocks']} pre-roll, {stats['planned_read_events']} planned, {stats['forced_reads']} forced). Buffer budget: {stats['min_bufs_required']} bufs")
 
     return output_file

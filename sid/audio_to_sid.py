@@ -46,13 +46,15 @@ def main():
             verify=not args.no_verify
         )
     else:
-        write_asm(
+        _out, fits = write_asm(
             bytecode,
             args.input,
             args.mode,
             system=args.system,
             verify=not args.no_verify
         )
+        if not fits:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
