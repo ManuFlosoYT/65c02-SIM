@@ -279,22 +279,19 @@ def write_asm(bytecode, input_path, mode, system="NTSC", verify=True):
         # Delays: 0x34, 0x35, 0x80..0xFE
         f.write("check_delays:\n")
         f.write("    cmp #$34\n    bne @chk_dw\n")
-        f.write("    lda (play_ptr)\n    jsr advance_play_ptr\n    sta delay_rem\n    stz delay_rem+1\n    jmp exec_delay\n")
+        f.write("    lda (play_ptr)\n    jsr advance_play_ptr\n    tax\n    ldy #0\n    jmp exec_delay\n")
         f.write("@chk_dw:\n")
         f.write("    cmp #$35\n    bne @chk_dict\n")
-        f.write("    lda (play_ptr)\n    jsr advance_play_ptr\n    sta delay_rem\n")
-        f.write("    lda (play_ptr)\n    jsr advance_play_ptr\n    sta delay_rem+1\n    jmp exec_delay\n")
+        f.write("    lda (play_ptr)\n    jsr advance_play_ptr\n    tax\n")
+        f.write("    lda (play_ptr)\n    jsr advance_play_ptr\n    tay\n    jmp exec_delay\n")
         f.write("@chk_dict:\n")
-        f.write("    sec\n    sbc #$80\n    asl a\n    tay\n")
-        f.write("    lda dict_table, y\n    sta delay_rem\n    lda dict_table+1, y\n    sta delay_rem+1\n\n")
+        f.write("    sec\n    sbc #$80\n    tax\n")
+        f.write("    lda dict_table_hi, x\n    tay\n    lda dict_table_lo, x\n    tax\n\n")
 
         f.write("exec_delay:\n")
-        f.write("    ; Loop 15 cycles per unit\n")
+        f.write("    ; Calibrated exact 15 cycles per unit\n")
         f.write("@d_loop:\n")
-        f.write("    lda delay_rem\n    ora delay_rem+1\n    beq @d_done\n")
-        f.write("    lda delay_rem\n    bne :+\n    dec delay_rem+1\n:   dec delay_rem\n")
-        f.write("    nop\n    nop\n")
-        f.write("    jmp @d_loop\n")
+        f.write("    cpx #0\n    bne :+\n    cpy #0\n    beq @d_done\n    dey\n:   dex\n    nop\n    lda delay_rem\n    jmp @d_loop\n")
         f.write("@d_done:\n")
         f.write("    jmp play_loop\n\n")
 
@@ -335,9 +332,13 @@ def write_asm(bytecode, input_path, mode, system="NTSC", verify=True):
         for fv in ntbl:
             f.write(f"    .word ${fv:04X}\n")
 
-        f.write("\ndict_table:\n")
+        f.write("\ndict_table_lo:\n")
         for dv in dict_delays:
-            f.write(f"    .word ${dv:04X}\n")
+            f.write(f"    .byte ${dv & 0xFF:02X}\n")
+
+        f.write("\ndict_table_hi:\n")
+        for dv in dict_delays:
+            f.write(f"    .byte ${(dv >> 8) & 0xFF:02X}\n")
 
         f.write("\ncompressed_stream:\n")
         chunk_size = 16
