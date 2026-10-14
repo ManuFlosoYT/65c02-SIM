@@ -31,8 +31,10 @@ for arg in "$@"; do
         SDK_MODE=true
     elif [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
         MULTITHREAD=true
-    elif [ "$arg" == "--chip" ] || [ "$arg" == "--system" ]; then
+    elif [ "$arg" == "--chip" ] || [ "$arg" == "--system" ] || [ "$arg" == "--sd-cost" ] || [ "$arg" == "--stream-bufs" ]; then
         prev_arg="$arg"
+    elif [ "$arg" == "--no-verify" ]; then
+        EXTRA_ARGS="$EXTRA_ARGS --no-verify"
     elif [[ "$arg" != -* ]]; then
         input_target="$arg"
     fi
