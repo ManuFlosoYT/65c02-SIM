@@ -142,19 +142,23 @@ for midi_file in "${files[@]}"; do
         # Ensure build directory exists
         mkdir -p tools/sid/build
 
-        if "$SCRIPT_DIR/compile-bin.sh" "$clean_name" > /dev/null 2>&1; then
+        compile_log=$(mktemp)
+        if "$SCRIPT_DIR/compile-bin.sh" "$clean_name" > "$compile_log" 2>&1; then
             mkdir -p "$out_dir"
             if [ -f "output/rom/$clean_name.bin" ]; then
                 mv "output/rom/$clean_name.bin" "$out_dir/$clean_name.bin"
                 echo "   [OK] Compilation SUCCESS with mode '$mode'! Moved to $out_dir/$clean_name.bin"
                 success=true
+                rm -f "$compile_log"
                 break # Exit mode loop, done with this file
             else
                 echo "   [X] Compilation reported success but file not found in output/rom/"
             fi
         else
-            echo "   [X] Compilation FAILED (Output too large?)"
+            echo "   [X] Compilation FAILED for mode '$mode':"
+            grep -E "Error|Warning|overflows" "$compile_log" | sed 's/^/       /' || cat "$compile_log"
         fi
+        rm -f "$compile_log"
     done
 
     if [ "$success" = false ]; then
