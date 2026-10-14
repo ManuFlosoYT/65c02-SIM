@@ -8,10 +8,11 @@ def generate_link_ld(flags):
     
     reserved_blocks = [
         (0x5000, 0x5003, "ACIA"),
+        (0x5008, 0x500B, "SD Card"),
         (0x6000, 0x600F, "VIA")
     ]
     
-    if '--sid' in flags:
+    if '--sid' in flags or '--microDOS' in flags:
         reserved_blocks.append((0x4800, 0x481F, "SID"))
 
     if '--microDOS' in flags:
