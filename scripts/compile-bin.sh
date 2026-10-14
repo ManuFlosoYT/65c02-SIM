@@ -86,7 +86,7 @@ mkdir -p output
 
 # --microDOS: compile a .c file as a microDOS .app binary
 if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
-    echo "--- Compiling $NAME.app (microDOS App with LLVM-MOS) ---"
+    echo "--- Compiling $NAME.app (microDOS App with LLVM-MOS -O3) ---"
     SRC=""
     if [ -f "sdk/microdos/Apps/$NAME.c" ]; then
         SRC="sdk/microdos/Apps/$NAME.c"

@@ -21,26 +21,42 @@ else
     "$SCRIPT_DIR/compile-bin.sh" microDOS
 fi
 
-# Compile all available microDOS apps
-echo "  Compiling microDOS apps..."
+# Compile all available microDOS apps with -O3
+echo "  Compiling microDOS apps with -O3..."
 mkdir -p output/apps
 pids=()
+logs=()
 for app_src in sdk/microdos/Apps/*.c; do
     if [ -f "$app_src" ]; then
         app_name=$(basename "${app_src%.c}")
-        echo "    Building $app_name.app..."
+        echo "    Building $app_name.app (-O3)..."
+        log=$(mktemp)
+        logs+=("$log")
         if [ "$MULTITHREAD" = true ]; then
-            "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > /dev/null 2>&1 &
+            "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > "$log" 2>&1 &
             pids+=($!)
         else
-            "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > /dev/null 2>&1
+            if ! "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > "$log" 2>&1; then
+                cat "$log"
+                rm -f "$log"
+                exit 1
+            fi
+            rm -f "$log"
         fi
     fi
 done
 if [ "$MULTITHREAD" = true ]; then
-    for pid in "${pids[@]}"; do
-        wait "$pid" || exit 1
+    failed=0
+    for i in "${!pids[@]}"; do
+        if ! wait "${pids[$i]}"; then
+            cat "${logs[$i]}"
+            failed=1
+        fi
+        rm -f "${logs[$i]}"
     done
+    if [ $failed -ne 0 ]; then
+        exit 1
+    fi
 fi
 
 # Create FAT16 SD Image (32MB)
