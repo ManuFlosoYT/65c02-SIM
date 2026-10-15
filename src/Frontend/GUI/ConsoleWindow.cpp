@@ -1,4 +1,5 @@
 #include "Frontend/GUI/ConsoleWindow.h"
+#include "Frontend/GUI/ConsoleView.h"
 
 #include "Frontend/UI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
@@ -309,68 +310,6 @@ static void DrawConsoleButtonBar(AppState& state) {
     ImGui::Separator();
 }
 
-static void HandleQueueCharacters(AppState& state, const ImGuiIO& imgui_io) {
-    for (int idx = 0; idx < imgui_io.InputQueueCharacters.Size; idx++) {
-        unsigned int chr = imgui_io.InputQueueCharacters[idx];
-        if (chr > 0 && chr < 0x80) {
-            if (chr == '\r' || chr == '\n') {
-                continue;
-            }
-            state.emulator.InjectKey(static_cast<char>(chr));
-        }
-    }
-}
-
-static void HandleSpecialKeys(AppState& state) {
-    if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-        state.emulator.InjectKey(0x1B);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_Tab)) {
-        state.emulator.InjectKey(0x09);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
-        state.emulator.InjectKey(0x7F);
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)) {
-        state.emulator.InjectKey('\r');
-    }
-}
-
-static void HandleCtrlKeys(AppState& state, const ImGuiIO& imgui_io) {
-    if (imgui_io.KeyCtrl) {
-        for (int key = ImGuiKey_A; key <= ImGuiKey_Z; key++) {
-            if (ImGui::IsKeyPressed(static_cast<ImGuiKey>(key))) {
-                state.emulator.InjectKey(static_cast<char>(1 + (key - static_cast<int>(ImGuiKey_A))));
-            }
-        }
-    }
-}
-
-static void HandleConsoleInput(AppState& state) {
-    const ImGuiIO& imgui_io = ImGui::GetIO();
-    if (ImGui::IsWindowFocused()) {
-        SDL_Window* sdl_window = SDL_GetKeyboardFocus();
-        if (sdl_window != nullptr) {
-            SDL_StartTextInput(sdl_window);
-        }
-
-        HandleQueueCharacters(state, imgui_io);
-        HandleSpecialKeys(state);
-        HandleCtrlKeys(state, imgui_io);
-    }
-}
-
-static void DrawConsoleText() {
-    for (const auto& line : Console::GetLines()) {
-        ImGui::TextUnformatted(line.c_str());
-    }
-    ImGui::TextUnformatted(Console::GetCurrentLine().c_str());
-
-    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 20) {
-        ImGui::SetScrollHereY(1.0F);
-    }
-}
-
 static void DrawCopyOutputModal() {
     if (ImGui::BeginPopupModal("CopyConsoleOutput", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         static std::string fullText;
@@ -408,8 +347,7 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     ImGui::Begin("Console", nullptr, window_flags);
 
     DrawConsoleButtonBar(state);
-    HandleConsoleInput(state);
-    DrawConsoleText();
+    DrawConsoleView(state);
     DrawCopyOutputModal();
 
     ImGui::End();

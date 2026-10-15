@@ -590,6 +590,7 @@ int main(int argc, char* argv[]) {
         }
     }
     state.emulator.SetOutputCallback(Console::OutputCallback);
+    Console::SetInputResponseCallback([](char c) { state.emulator.InjectKey(c); });
     state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
 
     static bool done = false;
