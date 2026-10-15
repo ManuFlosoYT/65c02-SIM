@@ -1,60 +1,62 @@
 #include "Libs/BIOS.h"
 
-/* Global variables definition */
-unsigned char i, j, k;
-unsigned int sum_temp;
-unsigned int sum_total;
+enum MatrixConfig {
+    MAT_DIM = 4,
+};
 
-/* Matrices designed with low values (0, 1, 2) to control growth.
-   Expected result of total sum: 31 (0x1F).
-*/
+static const uint8_t MAT_A[MAT_DIM][MAT_DIM] = {
+    {1, 2, 0, 1},
+    {0, 1, 0, 1},
+    {1, 0, 1, 0},
+    {0, 1, 0, 0},
+};
 
-unsigned char matA[4][4] = {
-    {1, 2, 0, 1}, {0, 1, 0, 1}, {1, 0, 1, 0}, {0, 1, 0, 0}};
+static const uint8_t MAT_B[MAT_DIM][MAT_DIM] = {
+    {0, 1, 0, 1},
+    {1, 0, 1, 0},
+    {0, 1, 1, 1},
+    {1, 0, 0, 0},
+};
 
-unsigned char matB[4][4] = {
-    {0, 1, 0, 1}, {1, 0, 1, 0}, {0, 1, 1, 1}, {1, 0, 0, 0}};
-
-unsigned char matC[4][4] = {
-    {1, 0, 1, 0}, {0, 1, 0, 0}, {1, 0, 0, 1}, {0, 1, 1, 0}};
-
-/* Matrices for intermediate and final results */
-unsigned int matTemp[4][4];
-unsigned int matFinal[4][4];
+static const uint8_t MAT_C[MAT_DIM][MAT_DIM] = {
+    {1, 0, 1, 0},
+    {0, 1, 0, 0},
+    {1, 0, 0, 1},
+    {0, 1, 1, 0},
+};
 
 int main(void) {
     INIT_BUFFER();
 
-    sum_total = 0;
+    uint16_t mat_temp[MAT_DIM][MAT_DIM];
+    uint16_t mat_final[MAT_DIM][MAT_DIM];
+    uint16_t sum_total = 0;
 
-    /* 1. Multiply MatA x MatB = MatTemp */
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            sum_temp = 0;
-            for (k = 0; k < 4; k++) {
-                sum_temp += matA[i][k] * matB[k][j];
+    for (uint16_t i = 0; i < MAT_DIM; i++) {
+        for (uint16_t j = 0; j < MAT_DIM; j++) {
+            uint16_t sum_temp = 0;
+            for (uint16_t k = 0; k < MAT_DIM; k++) {
+                sum_temp += (uint16_t)MAT_A[i][k] * (uint16_t)MAT_B[k][j];
             }
-            matTemp[i][j] = sum_temp;
+            mat_temp[i][j] = sum_temp;
         }
     }
 
-    /* 2. Multiply MatTemp x MatC = MatFinal */
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            sum_temp = 0;
-            for (k = 0; k < 4; k++) {
-                sum_temp += matTemp[i][k] * matC[k][j];
+    for (uint16_t i = 0; i < MAT_DIM; i++) {
+        for (uint16_t j = 0; j < MAT_DIM; j++) {
+            uint16_t sum_temp = 0;
+            for (uint16_t k = 0; k < MAT_DIM; k++) {
+                sum_temp += mat_temp[i][k] * (uint16_t)MAT_C[k][j];
             }
-            matFinal[i][j] = sum_temp;
+            mat_final[i][j] = sum_temp;
         }
     }
 
-    /* Print Final Matrix */
     print_str("Resulting Matrix:\n");
-    for (i = 0; i < 4; i++) {
+    for (uint16_t i = 0; i < MAT_DIM; i++) {
         bios_putchar('[');
-        for (j = 0; j < 4; j++) {
-            print_num(matFinal[i][j]);
+        for (uint16_t j = 0; j < MAT_DIM; j++) {
+            print_num(mat_final[i][j]);
             if (j < 3) {
                 print_str(", ");
             }
@@ -63,10 +65,9 @@ int main(void) {
     }
     print_str("\n");
 
-    /* 3. Sum all elements of the resulting matrix */
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            sum_total += matFinal[i][j];
+    for (uint16_t i = 0; i < MAT_DIM; i++) {
+        for (uint16_t j = 0; j < MAT_DIM; j++) {
+            sum_total += mat_final[i][j];
         }
     }
 

@@ -16,21 +16,20 @@ int main(void) {
     SD_FILE fp;
     SD_DIR dir;
     SD_INFO fno;
-    int c;
+    int c = 0;
 
     println("== SD Card Test ==");
 
-    // 1. Mount
     println("Mounting SD card...");
-    if (!sd_mount()) {
+    int res = sd_mount();
+    if (res != FR_OK) {
         println("ERROR: mount");
         return 1;
     }
     println("OK: mounted");
 
-    // 2. Write
     println("Writing TEST.TXT...");
-    if (!sd_open(&fp, "TEST.TXT", SD_WRITE | SD_CREATE_ALWAYS)) {
+    if (!sd_open(&fp, "TEST.TXT", (uint8_t)((uint8_t)SD_WRITE | (uint8_t)SD_CREATE_ALWAYS))) {
         println("ERROR: open for writing");
         sd_unmount();
         return 1;

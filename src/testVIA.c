@@ -1,44 +1,33 @@
-#include "Libs/VIA.h"
-#include "Libs/BIOS.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-// Simple wait loop
-void wait(long cycles) {
+#include "Libs/BIOS.h"
+#include "Libs/VIA.h"
+
+void wait(int32_t cycles) {
     while (cycles--) {
         asm("nop");
     }
 }
 
-int main() {
-    // 1. Configure VIA
-    // Disable all interrupts first
+int main(void) {
     asm("sei");
-    via_disable_interrupt(0x7F);
+    via_disable_interrupt(0x7FU);
 
-    // Set ACR to 0 (One-shot mode for T1)
-    VIA_ACR = 0x00;
+    VIA_ACR = 0x00U;
 
-    // Enable T1 Interrupt
-    via_enable_interrupt(0x40);
+    via_enable_interrupt(0x40U);
 
-    // 2. Start Timer 1 (e.g., 50000 cycles)
-    // If Clock is 1MHz, 50000 -> 50ms
     via_set_timer1(50000U);
 
-    // Output initial message
     print_str("Starting VIA Timer Test...\n");
 
-    while (1) {
-        if (VIA_IFR & 0x40) {
-            // Timer expired!
+    while (true) {
+        if ((VIA_IFR & 0x40U) != 0U) {
+            via_ack_interrupt(0x40U);
 
-            // Ack interrupt (read T1C_L or write to IFR)
-            // Reading T1C_L clears T1 interrupt usually
-            via_ack_interrupt(0x40);
-
-            // Output message
             print_str("Timer Fired!\n");
 
-            // Restart Timer
             via_set_timer1(50000U);
         }
     }

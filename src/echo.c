@@ -1,14 +1,11 @@
 #include "Libs/BIOS.h"
 
-#define BUFFER_SIZE 50
+enum EchoConfig {
+    BUFFER_SIZE = 50,
+};
 
 int main(void) {
-    char inputBuffer[BUFFER_SIZE];  // Space to store user input
-
-    int i = 0;
-    for (i = 0; i < BUFFER_SIZE; i++) {
-        inputBuffer[i] = 0;
-    }
+    char inputBuffer[BUFFER_SIZE] = {0};
 
     INIT_BUFFER();
 
