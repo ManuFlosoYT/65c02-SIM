@@ -102,6 +102,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
 
     APP_RAW="sdk/src/build/${NAME}.raw"
     compile_with_opt_fallback "$APP_RAW" "$APP_LD" \
+        -std=c23 \
         -I "sdk/src" -I "sdk/microdos" \
         sdk/linker/App-Runtime.s "$SRC"
 
