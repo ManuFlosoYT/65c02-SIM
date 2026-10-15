@@ -13,6 +13,9 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
 
     include(GoogleTest)
     if(NOT CMAKE_CROSSCOMPILING)
-        gtest_discover_tests(unit_tests)
+        gtest_discover_tests(unit_tests
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            PROPERTIES TIMEOUT 30
+        )
     endif()
 endif()
