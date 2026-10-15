@@ -345,6 +345,10 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     ImGui::SetNextWindowSize(ImVec2(state.emulation.gpuEnabled ? left_width : work_size.x, bottom_section_height),
                              ImGuiCond_Always);
     ImGui::Begin("Console", nullptr, window_flags);
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) &&
+        (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) {
+        ImGui::SetWindowFocus("Console");
+    }
 
     DrawConsoleButtonBar(state);
     DrawConsoleView(state);

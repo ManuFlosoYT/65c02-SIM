@@ -33,6 +33,9 @@ struct Cell {
 [[nodiscard]] int GetCursorX();
 [[nodiscard]] int GetCursorY();
 [[nodiscard]] bool IsCursorVisible();
+[[nodiscard]] size_t GetScrollbackCount();
+[[nodiscard]] const std::string& GetScrollbackLine(size_t index);
+[[nodiscard]] bool IsAlternateScreen();
 
 void Clear();
 void OutputCallback(char character);

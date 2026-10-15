@@ -366,6 +366,16 @@ const Cell& GetCell(int col, int row) {
 int GetCursorX() { return GetState().cursorX; }
 int GetCursorY() { return GetState().cursorY; }
 bool IsCursorVisible() { return GetState().cursorVisible; }
+size_t GetScrollbackCount() { return GetState().scrollbackLines.size(); }
+const std::string& GetScrollbackLine(size_t index) {
+    static const std::string emptyLine;
+    auto& lines = GetState().scrollbackLines;
+    if (index >= lines.size()) {
+        return emptyLine;
+    }
+    return lines[index];
+}
+bool IsAlternateScreen() { return GetState().useAltScreen; }
 
 void SetInputResponseCallback(std::function<void(char)> callback) { GetState().responseCallback = std::move(callback); }
 

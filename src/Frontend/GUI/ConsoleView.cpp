@@ -103,6 +103,11 @@ static void HandleCtrlKeys(Control::AppState& state, const ImGuiIO& imgui_io) {
 }
 
 void HandleConsoleInput(Control::AppState& state) {
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) &&
+        (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) {
+        ImGui::SetWindowFocus("Console");
+    }
+
     const ImGuiIO& imgui_io = ImGui::GetIO();
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
         SDL_Window* sdl_window = SDL_GetKeyboardFocus();
@@ -144,16 +149,33 @@ void DrawConsoleView(Control::AppState& state) {
     float charWidth = ImGui::CalcTextSize("A").x;
     float charHeight = ImGui::GetTextLineHeight();
 
+    size_t scrollbackCount = Console::IsAlternateScreen() ? 0 : Console::GetScrollbackCount();
     float totalWidth = charWidth * static_cast<float>(Console::TERMINAL_COLS);
-    float totalHeight = charHeight * static_cast<float>(Console::TERMINAL_ROWS);
+    float totalHeight = charHeight * static_cast<float>(scrollbackCount + Console::TERMINAL_ROWS);
 
     ImGui::BeginChild("TerminalRegion", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     ImVec2 origin = ImGui::GetCursorScreenPos();
-    ImGui::Dummy(ImVec2(totalWidth, totalHeight));
+    ImVec2 canvasSize(std::max(totalWidth, ImGui::GetContentRegionAvail().x),
+                      std::max(totalHeight, ImGui::GetContentRegionAvail().y));
+    ImGui::InvisibleButton("##TerminalCanvas", canvasSize);
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+        ImGui::SetWindowFocus("Console");
+    }
+
+    for (size_t i = 0; i < scrollbackCount; ++i) {
+        const std::string& line = Console::GetScrollbackLine(i);
+        if (!line.empty()) {
+            ImVec2 linePos(origin.x, origin.y + static_cast<float>(i) * charHeight);
+            drawList->AddText(font, fontSize, linePos, Console::DEFAULT_FG, line.c_str());
+        }
+    }
+
+    float gridYOffset = static_cast<float>(scrollbackCount) * charHeight;
 
     for (int row = 0; row < Console::TERMINAL_ROWS; ++row) {
+        float rowY = origin.y + gridYOffset + static_cast<float>(row) * charHeight;
         int col = 0;
         while (col < Console::TERMINAL_COLS) {
             const auto& firstCell = Console::GetCell(col, row);
@@ -176,10 +198,8 @@ void DrawConsoleView(Control::AppState& state) {
             }
 
             if ((bg & 0xFF000000) != 0) {
-                ImVec2 rectMin(origin.x + static_cast<float>(col) * charWidth,
-                               origin.y + static_cast<float>(row) * charHeight);
-                ImVec2 rectMax(origin.x + static_cast<float>(runEnd) * charWidth,
-                               origin.y + static_cast<float>(row + 1) * charHeight);
+                ImVec2 rectMin(origin.x + static_cast<float>(col) * charWidth, rowY);
+                ImVec2 rectMax(origin.x + static_cast<float>(runEnd) * charWidth, rowY + charHeight);
                 drawList->AddRectFilled(rectMin, rectMax, bg);
             }
 
@@ -200,8 +220,7 @@ void DrawConsoleView(Control::AppState& state) {
                 std::array<char, 5> utf8Buf = {0};
                 CodepointToUtf8(cell.codepoint, utf8Buf);
 
-                ImVec2 textPos(origin.x + static_cast<float>(col) * charWidth,
-                               origin.y + static_cast<float>(row) * charHeight);
+                ImVec2 textPos(origin.x + static_cast<float>(col) * charWidth, rowY);
                 drawList->AddText(font, fontSize, textPos, fg, utf8Buf.data());
 
                 if ((cell.attributes & Console::ATTR_UNDERLINE) != 0) {
@@ -212,19 +231,23 @@ void DrawConsoleView(Control::AppState& state) {
         }
     }
 
+    bool isEmuActive = state.emulator.IsRunning() && !state.emulator.IsPaused() && !state.emulator.IsHalted();
     if (Console::IsCursorVisible() && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
-        auto blinkState = static_cast<int>(ImGui::GetTime() * 2.0);
-        if ((blinkState % 2) == 0) {
+        bool showCursor = !isEmuActive || (static_cast<int>(ImGui::GetTime() * 2.0) % 2 == 0);
+        if (showCursor) {
             int cx = Console::GetCursorX();
             int cy = Console::GetCursorY();
             if (cx >= 0 && cx < Console::TERMINAL_COLS && cy >= 0 && cy < Console::TERMINAL_ROWS) {
-                ImVec2 cMin(origin.x + static_cast<float>(cx) * charWidth,
-                            origin.y + static_cast<float>(cy) * charHeight);
-                ImVec2 cMax(origin.x + static_cast<float>(cx + 1) * charWidth,
-                            origin.y + static_cast<float>(cy + 1) * charHeight);
+                float curY = origin.y + gridYOffset + static_cast<float>(cy) * charHeight;
+                ImVec2 cMin(origin.x + static_cast<float>(cx) * charWidth, curY);
+                ImVec2 cMax(origin.x + static_cast<float>(cx + 1) * charWidth, curY + charHeight);
                 drawList->AddRect(cMin, cMax, Console::DEFAULT_FG);
             }
         }
+    }
+
+    if (!Console::IsAlternateScreen() && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 25.0F) {
+        ImGui::SetScrollHereY(1.0F);
     }
 
     ImGui::EndChild();
