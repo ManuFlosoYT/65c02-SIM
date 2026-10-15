@@ -11,44 +11,44 @@
  *   Byte 12-13: Page Window Addr
  *   Byte 14-15: Reserved
  */
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
 #include "shell.h"
 #include "msg.h"
 #include "commands.h"
-#include <string.h>
 
 /* Shared area at a fixed ZP address; apps read their args from here.
    Layout: [arg_count : uint8] [arg_ptrs : char*[8]] */
 #define APP_ARGS_ZP  ((volatile uint8_t*)0x60)
 
 /* The app binary is loaded here */
-#define APP_LOAD_ADDR 0x0200
+enum {
+    APP_LOAD_ADDR = 0x0200
+};
 
 SD_FILE active_app_file;
 uint8_t app_hdr[16];
 
 /* Syscall expuesta por la BIOS (JUMPTABLE $FFC3) */
 void os_load_app_page(uint8_t page_id) {
-    uint16_t core_size = *(uint16_t*)&app_hdr[8];
-    uint16_t page_size = *(uint16_t*)&app_hdr[10];
-    uint16_t window_addr = *(uint16_t*)&app_hdr[12];
+    const uint16_t core_size = *(uint16_t*)&app_hdr[8];
+    const uint16_t page_size = *(uint16_t*)&app_hdr[10];
+    const uint16_t window_addr = *(uint16_t*)&app_hdr[12];
     
     /* El offset será el tamaño del core residente (que ya incluye offset 0-15 del header) + N páginas */
-    uint32_t file_offset = core_size + ((uint32_t)page_id * page_size);
+    const uint32_t file_offset = core_size + ((uint32_t)page_id * page_size);
     
     sd_seek(&active_app_file, file_offset);
     sd_read(&active_app_file, (void*)(uintptr_t)window_addr, page_size);
 }
 
 /* ---- Internal loader ---- */
-static int load_and_run(const char* path) {
-    uint16_t core_size;
-    uint16_t entry_point;
-    int ret_code;
-
+static bool load_and_run(const char* path) {
     if (!sd_open(&active_app_file, path, SD_READ)) {
-        return 0;
+        return false;
     }
 
     /* Read and validate 16-byte header */
@@ -60,30 +60,30 @@ static int load_and_run(const char* path) {
         bios_putchar((char)app_hdr[0]); bios_putchar((char)app_hdr[1]); 
         bios_putchar((char)app_hdr[2]); bios_putchar((char)app_hdr[3]);
         print_str(os_get_msg(21)); print_num(app_hdr[4]); println("");
-        return 1;
+        return true;
     }
 
-    core_size = *(uint16_t*)&app_hdr[8];
-    entry_point = *(uint16_t*)&app_hdr[6];
+    const uint16_t core_size = *(uint16_t*)&app_hdr[8];
+    const uint16_t entry_point = *(uint16_t*)&app_hdr[6];
 
     /* Rewind and load Resident Core into APP_LOAD_ADDR */
     sd_seek(&active_app_file, 0);
     if (sd_read(&active_app_file, (void*)APP_LOAD_ADDR, core_size) != core_size) {
         sd_close(&active_app_file);
         print_str(M_ERR); println(os_get_msg(22));
-        return 1;
+        return true;
     }
 
     /* Forward shell args via ZP[$60...$62] */
     {
-        uint16_t args_addr = (uint16_t)(uintptr_t)args;
+        const uint16_t args_addr = (uint16_t)(uintptr_t)args;
         APP_ARGS_ZP[0] = (uint8_t)arg_count;
         APP_ARGS_ZP[1] = (uint8_t)(args_addr & 0xFF);
         APP_ARGS_ZP[2] = (uint8_t)(args_addr >> 8);
     }
 
     /* JSR to loaded app via its absolute entry point and capture return code */
-    ret_code = ((int(*)(void))(uintptr_t)entry_point)();
+    const int ret_code = ((int(*)(void))(uintptr_t)entry_point)();
 
     /* We return here after app finishes. Close the virtual memory backend file */
     sd_close(&active_app_file);
@@ -94,7 +94,7 @@ static int load_and_run(const char* path) {
         println("[E] App exited with error. Swap tables preserved.");
     }
 
-    return 1;
+    return true;
 }
 
 /* ---- cmd_run: explicit `run <path>` command ---- */
@@ -121,12 +121,14 @@ void cmd_run(void) {
 }
 
 /* ---- try_run_app: fallback used by exec_command() ---- */
-int try_run_app(const char* name) {
+bool try_run_app(const char* name) {
     char path[32];
     strcpy(path, "/bin/");
     strncat(path, name, 24);
     strcat(path, ".app");
 
-    if (!sd_exists(path)) return 0;
+    if (!sd_exists(path)) {
+        return false;
+    }
     return load_and_run(path);
 }

@@ -1,8 +1,10 @@
 #ifndef SHELL_H
 #define SHELL_H
 
-#define MAX_LINE 64
-#define MAX_ARGS 4
+enum {
+    MAX_LINE = 64,
+    MAX_ARGS = 4
+};
 
 /* Variables globales exportadas */
 extern char line[MAX_LINE];

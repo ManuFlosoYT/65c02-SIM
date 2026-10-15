@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <string.h>
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
@@ -5,11 +6,8 @@
 #include "microDOS/commands.h"
 #include "microDOS/msg.h"
 
-extern void os_clear_swap_blocks(void);
-
 int main(void) {
     char cwd[64];
-    int res = -1;
     
     INIT_BUFFER();
 
@@ -21,7 +19,7 @@ int main(void) {
         return 1;
     }
 
-    res = sd_mount();
+    const int res = sd_mount();
     if (res != 0) {
         print_str(M_ERR); print_str("Mounting failed: ");
         println(sd_error_string(res));
@@ -33,8 +31,8 @@ int main(void) {
     println("[i] Initializing system...");
     os_clear_swap_blocks();
 
-    while (1) {
-        if (!sd_getcwd(cwd, 64)) {
+    while (true) {
+        if (!sd_getcwd(cwd, sizeof(cwd))) {
             strcpy(cwd, "?");
         }
         print_str(M_PROMPT);

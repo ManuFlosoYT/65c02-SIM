@@ -1,23 +1,22 @@
 #include "commands.h"
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
+#include <stddef.h>
 #include <string.h>
 
 static const command_t command_table[] = {
     {"run",   cmd_run},
     {"help",  cmd_help},
     {"exit",  cmd_exit},
-    {NULL,    NULL}
+    {nullptr, nullptr}
 };
 
 void exec_command(const char* name) {
-    int i = 0;
-    while (command_table[i].name != NULL) {
+    for (size_t i = 0; command_table[i].name != nullptr; ++i) {
         if (strcmp(command_table[i].name, name) == 0) {
             command_table[i].func();
             return;
         }
-        i++;
     }
 
     /* Transparent fallback: try /bin/<name>.app on the SD card */

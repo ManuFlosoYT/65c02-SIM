@@ -8,9 +8,11 @@ typedef struct {
     cmd_func_t func;
 } command_t;
 
+#include <stdbool.h>
+
 /* Registry */
 void exec_command(const char* name);
-int  try_run_app(const char* name);
+bool try_run_app(const char* name);
 
 /* Built-in commands (kept in ROM) */
 void cmd_run(void);
