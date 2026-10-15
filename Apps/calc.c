@@ -9,26 +9,28 @@ static uint16_t parse_val(const char *str) {
         str += 2;
         while (*str) {
             val <<= 4;
-            if (*str >= '0' && *str <= '9')
+            if (*str >= '0' && *str <= '9') {
                 val |= (*str - '0');
-            else if (*str >= 'A' && *str <= 'F')
+            } else if (*str >= 'A' && *str <= 'F') {
                 val |= (*str - 'A' + 10);
-            else if (*str >= 'a' && *str <= 'f')
+            } else if (*str >= 'a' && *str <= 'f') {
                 val |= (*str - 'a' + 10);
+            }
             str++;
         }
     } else if (str[0] == '0' && (str[1] == 'b' || str[1] == 'B')) {
         str += 2;
         while (*str) {
             val <<= 1;
-            if (*str == '1')
+            if (*str == '1') {
                 val |= 1;
+            }
             str++;
         }
     } else {
         while (*str) {
             if (*str >= '0' && *str <= '9') {
-                val = val * 10 + (*str - '0');
+                val = (val * 10) + (*str - '0');
             }
             str++;
         }
@@ -37,20 +39,16 @@ static uint16_t parse_val(const char *str) {
 }
 
 static void print_bin(uint16_t v) {
-    int i;
-    for (i = 15; i >= 0; i--) {
+    for (int i = 15; i >= 0; i--) {
         bios_putchar((v & (1 << i)) ? '1' : '0');
-        if (i == 8)
+        if (i == 8) {
             bios_putchar('_');
+        }
     }
 }
 
 int main(void) {
     char **args = _args_ptr;
-    uint16_t v1;
-    char op;
-    uint16_t v2;
-    uint16_t res = 0;
 
     if (arg_count < 4) {
         println("Usage: calc <val1> <op> <val2>");
@@ -58,30 +56,31 @@ int main(void) {
         return 1;
     }
 
-    v1 = parse_val(args[1]);
-    op = args[2][0];
-    v2 = parse_val(args[3]);
+    uint16_t v1 = parse_val(args[1]);
+    char op = args[2][0];
+    uint16_t v2 = parse_val(args[3]);
+    uint16_t res = 0;
 
-    if (op == '+')
+    if (op == '+') {
         res = v1 + v2;
-    else if (op == '-')
+    } else if (op == '-') {
         res = v1 - v2;
-    else if (op == '*')
+    } else if (op == '*') {
         res = v1 * v2;
-    else if (op == '/') {
-        if (v2 != 0)
+    } else if (op == '/') {
+        if (v2 != 0) {
             res = v1 / v2;
-        else {
+        } else {
             println("Div by zero");
             return 1;
         }
-    } else if (op == '&')
+    } else if (op == '&') {
         res = v1 & v2;
-    else if (op == '|')
+    } else if (op == '|') {
         res = v1 | v2;
-    else if (op == '^')
+    } else if (op == '^') {
         res = v1 ^ v2;
-    else {
+    } else {
         println("Unknown op");
         return 1;
     }

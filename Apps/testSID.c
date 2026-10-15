@@ -25,11 +25,11 @@ static void voice_pw(uint8_t voice, uint16_t pw) {
 }
 
 static void simple_delay(uint16_t count) {
-    volatile uint16_t i;
-    for (i = 0; i < count; i++);
+    for (volatile uint16_t i = 0; i < count; i++) {
+    }
 }
 
-int main() {
+int main(void) {
     uint16_t melody[] = {NOTE_C4, NOTE_E4, NOTE_G4, NOTE_C5,
                          NOTE_G4, NOTE_E4, NOTE_C4, 0};
     uint16_t bass[] = {NOTE_C3, NOTE_C3, NOTE_G3, NOTE_G3,
@@ -51,7 +51,7 @@ int main() {
     // Voice 3: Drums (Noise)
     voice_adsr(3, 0, 5, 0, 0);
 
-    while (1) {
+    while (true) {
         if (melody[step] != 0) {
             voice_freq(1, melody[step]);
             voice_control(1, WAVE_PULSE | WAVE_GATE);
@@ -79,7 +79,9 @@ int main() {
         simple_delay(1000);
 
         step++;
-        if (step >= 8) step = 0;
+        if (step >= 8) {
+            step = 0;
+        }
     }
 
     return 0;

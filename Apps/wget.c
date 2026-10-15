@@ -17,17 +17,17 @@ int main(void) {
     char protocol[6];
     char host[64];
     char path[128];
-    char* url;
-    char* p;
-    char* h;
+    char* url = nullptr;
+    char* p = nullptr;
+    char* h = nullptr;
     SD_FILE fp;
     uint32_t bytes_to_read = 0;
     uint8_t in_packet = 0;
     uint8_t header_finished = 0;
-    char chr;
+    char chr = 0;
     int state = 0;
     char** args = _args_ptr;
-    uint16_t req_len;
+    uint16_t req_len = 0;
     uint32_t wr_cnt = 0;
 
     if (arg_count < 3) {
@@ -49,7 +49,9 @@ int main(void) {
     }
 
     h = host;
-    while (*p && *p != '/' && (h - host < 63)) *h++ = *p++;
+    while (*p && *p != '/' && (h - host < 63)) {
+        *h++ = *p++;
+    }
     *h = '\0';
 
     if (*p == '/')  { strncpy(path, p, 127); path[127] = '\0'; }
@@ -62,23 +64,29 @@ int main(void) {
 
     println(host);
 
-    if (strcmp(protocol, "SSL") == 0) net_send("AT+CIPSTART=\"SSL\",\"");
-    else                              net_send("AT+CIPSTART=\"TCP\",\"");
+    if (strcmp(protocol, "SSL") == 0) {
+        net_send("AT+CIPSTART=\"SSL\",\"");
+    } else {
+        net_send("AT+CIPSTART=\"TCP\",\"");
+    }
     net_send(host);
-    if (strcmp(protocol, "SSL") == 0) net_cmd("\",443");
-    else                              net_cmd("\",80");
+    if (strcmp(protocol, "SSL") == 0) {
+        net_cmd("\",443");
+    } else {
+        net_cmd("\",80");
+    }
 
     while (1) {
         chr = get_net_char();
         if (chr == 'O') {
             if (get_net_char() == 'K') {
-                while (get_net_char() != '\n');
+                while (get_net_char() != '\n') {}
                 break;
             }
         }
         if (chr == 'E') {
             if (get_net_char() == 'R') {
-                while (get_net_char() != '\n');
+                while (get_net_char() != '\n') {}
                 print_str("Error: "); println("Connection failed"); 
                 return 1; 
             }
@@ -91,9 +99,13 @@ int main(void) {
     net_send("\r\n");
     while (1) {
         chr = get_net_char();
-        if (chr == '>') break;
+        if (chr == '>') {
+            break;
+        }
         if (chr == 'E') {
-            if (get_net_char() == 'R') break;
+            if (get_net_char() == 'R') {
+                break;
+            }
         }
     }
     net_send("GET "); net_send(path); net_send(" HTTP/1.1\r\n");
@@ -117,9 +129,12 @@ int main(void) {
                 bytes_to_read = 0;
                 while (1) {
                     chr = get_net_char();
-                    if (chr == ':') break;
-                    if (chr >= '0' && chr <= '9')
-                        bytes_to_read = bytes_to_read * 10 + (chr - '0');
+                    if (chr == ':') {
+                        break;
+                    }
+                    if (chr >= '0' && chr <= '9') {
+                        bytes_to_read = (bytes_to_read * 10) + (chr - '0');
+                    }
                 }
                 in_packet = 1;
                 continue;
@@ -128,25 +143,42 @@ int main(void) {
 
         if (in_packet) {
             if (header_finished) {
-                if (sd_write(&fp, &chr, 1) > 0) wr_cnt++;
+                if (sd_write(&fp, &chr, 1) > 0) {
+                    wr_cnt++;
+                }
             } else {
-                if      (state == 0 && chr == '\r') state = 1;
-                else if (state == 1 && chr == '\n') state = 2;
-                else if (state == 2 && chr == '\r') state = 3;
-                else if (state == 3 && chr == '\n') header_finished = 1;
-                else { state = 0; if (chr == '\r') state = 1; }
+                if (state == 0 && chr == '\r') {
+                    state = 1;
+                } else if (state == 1 && chr == '\n') {
+                    state = 2;
+                } else if (state == 2 && chr == '\r') {
+                    state = 3;
+                } else if (state == 3 && chr == '\n') {
+                    header_finished = 1;
+                } else {
+                    state = 0;
+                    if (chr == '\r') {
+                        state = 1;
+                    }
+                }
             }
             bytes_to_read--;
-            if (bytes_to_read == 0) in_packet = 0;
+            if (bytes_to_read == 0) {
+                in_packet = 0;
+            }
             continue;
         }
 
         /* Detect link closing - only then we break */
         if (chr == 'C') {
-            if (get_net_char() == 'L' && get_net_char() == 'O' && get_net_char() == 'S') break;
+            if (get_net_char() == 'L' && get_net_char() == 'O' && get_net_char() == 'S') {
+                break;
+            }
         }
         if (chr == 'R') {
-            if (get_net_char() == 'R') break; /* ERROR */
+            if (get_net_char() == 'R') {
+                break; /* ERROR */
+            }
         }
     }
 

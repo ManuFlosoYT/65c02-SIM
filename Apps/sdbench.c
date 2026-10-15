@@ -6,8 +6,10 @@
 #include <stdint.h>
 #include "Libs/app-bios.h"
 
-#define BUF_SIZE 512
-#define NUM_SAMPLES 16
+enum {
+    BUF_SIZE = 512,
+    NUM_SAMPLES = 16
+};
 
 static SD_FILE file;
 static uint8_t bench_buf[BUF_SIZE];
@@ -31,11 +33,14 @@ static uint16_t timer_elapsed(void) {
 
 int main(void) {
     char** args = (char**)(uintptr_t)_args_ptr;
-    uint16_t cycles, min_c, max_c;
-    uint32_t total_c;
-    uint16_t avg;
-    uint16_t i, count;
-    int bytes_read;
+    uint16_t cycles = 0;
+    uint16_t min_c = 0;
+    uint16_t max_c = 0;
+    uint32_t total_c = 0;
+    uint16_t avg = 0;
+    uint16_t i = 0;
+    uint16_t count = 0;
+    int bytes_read = 0;
 
     println("== SD Benchmark ==");
     println("");
@@ -75,12 +80,14 @@ int main(void) {
     total_c = 0;
     count = 0;
 
-    for (i = 0; i < NUM_SAMPLES; i++) {
+    for (i = 0; i < (uint16_t)NUM_SAMPLES; i++) {
         timer_start();
         bytes_read = sd_read(&file, bench_buf, BUF_SIZE);
         cycles = timer_elapsed();
 
-        if (bytes_read <= 0) break;
+        if (bytes_read <= 0) {
+            break;
+        }
 
         print_str("  #");
         print_num(i);
@@ -89,8 +96,12 @@ int main(void) {
         println(" cyc");
 
         total_c += cycles;
-        if (cycles < min_c) min_c = cycles;
-        if (cycles > max_c) max_c = cycles;
+        if (cycles < min_c) {
+            min_c = cycles;
+        }
+        if (cycles > max_c) {
+            max_c = cycles;
+        }
         count++;
     }
 
@@ -116,17 +127,20 @@ int main(void) {
 
     {
         static const uint16_t sizes[] = {64, 128, 256, 512};
-        uint8_t s;
 
-        for (s = 0; s < 4; s++) {
-            if (!sd_open(&file, args[1], SD_READ)) break;
+        for (uint8_t s = 0; s < 4; s++) {
+            if (!sd_open(&file, args[1], SD_READ)) {
+                break;
+            }
 
             total_c = 0;
             for (i = 0; i < 8; i++) {
                 timer_start();
                 bytes_read = sd_read(&file, bench_buf, sizes[s]);
                 cycles = timer_elapsed();
-                if (bytes_read <= 0) break;
+                if (bytes_read <= 0) {
+                    break;
+                }
                 total_c += cycles;
             }
             sd_close(&file);
@@ -156,7 +170,9 @@ int main(void) {
     timer_start();
     while (count < 64) {
         bytes_read = sd_read(&file, bench_buf, BUF_SIZE);
-        if (bytes_read <= 0) break;
+        if (bytes_read <= 0) {
+            break;
+        }
         count++;
     }
     cycles = timer_elapsed();
@@ -177,7 +193,7 @@ int main(void) {
     println("");
     println("[5] Loop calibration");
     {
-        volatile uint16_t j;
+        volatile uint16_t j = 0;
 
         timer_start();
         for (j = 0; j < 500; j++) {}
@@ -208,11 +224,13 @@ int main(void) {
 
     total_c = 0;
     count = 0;
-    for (i = 0; i < NUM_SAMPLES; i++) {
+    for (i = 0; i < (uint16_t)NUM_SAMPLES; i++) {
         timer_start();
         bytes_read = sd_read(&file, bench_buf, BUF_SIZE);
         cycles = timer_elapsed();
-        if (bytes_read <= 0) break;
+        if (bytes_read <= 0) {
+            break;
+        }
         total_c += cycles;
         count++;
     }

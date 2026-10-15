@@ -7,14 +7,16 @@
 
 #include "Libs/app-bios.h"
 
-#define CHUNK_SIZE 512
-#define LZ_WINDOW_SIZE 2048
-#define LZ_WINDOW_MASK 0x07FF
+enum {
+    CHUNK_SIZE = 512,
+    LZ_WINDOW_SIZE = 2048,
+    LZ_WINDOW_MASK = 0x07FF
+};
 
 #define SID_BASE 0x4800
 #define SID_WRITE_REG(r, v) (*(volatile uint8_t*)(SID_BASE + (r)) = (v))
 
-extern char _CORE_SIZE__[];
+extern char app_core_size[] __asm__("_CORE_SIZE__");
 
 static SD_FILE file;
 static uint8_t* buffer_pool;
@@ -28,14 +30,16 @@ static uint16_t b_idx = 0;
 static uint8_t eof_reached = 0;
 
 static uint8_t next_byte(void) {
-    int16_t r;
+    int16_t r = 0;
     if (b_idx >= CHUNK_SIZE) {
         tail = (tail + 1) % num_bufs;
         count--;
         b_idx = 0;
     }
     if (count == 0) {
-        if (eof_reached) return 0xFF;
+        if (eof_reached) {
+            return 0xFF;
+        }
         r = sd_read(&file, BUF_PTR(head), CHUNK_SIZE);
         if (r <= 0) {
             eof_reached = 1;
@@ -51,7 +55,7 @@ static uint8_t bit_buf = 0;
 static uint8_t bit_mask = 0;
 
 static uint8_t read_bit(void) {
-    uint8_t b;
+    uint8_t b = 0;
     if (bit_mask == 0) {
         bit_buf = next_byte();
         bit_mask = 0x80;
@@ -66,7 +70,9 @@ static uint16_t read_gamma(void) {
     uint16_t val = 1;
     while (read_bit() == 0) {
         zeros++;
-        if (zeros > 16) return 1;
+        if (zeros > 16) {
+            return 1;
+        }
     }
     while (zeros--) {
         val = (val << 1) | read_bit();
@@ -82,12 +88,12 @@ static uint16_t lz_match_rem = 0;
 static uint16_t lz_match_offset = 0;
 
 static uint8_t next_semantic_byte(void) {
-    uint8_t b;
-    uint8_t tag;
-    uint8_t sub;
-    uint16_t src;
-    uint16_t off_hi;
-    uint8_t off_lo;
+    uint8_t b = 0;
+    uint8_t tag = 0;
+    uint8_t sub = 0;
+    uint16_t src = 0;
+    uint16_t off_hi = 0;
+    uint8_t off_lo = 0;
 
     if (lz_lit_rem > 0) {
         b = next_byte();
@@ -113,25 +119,25 @@ static uint8_t next_semantic_byte(void) {
         lz_window[lz_head] = b;
         lz_head = (lz_head + 1) & LZ_WINDOW_MASK;
         return b;
-    } else {
-        sub = read_bit();
-        if (sub == 0) {
-            off_hi = read_gamma() - 1;
-            off_lo = next_byte();
-            lz_match_offset = ((off_hi << 8) | off_lo) + 1;
-            lz_match_rem = read_gamma() + 1;
-            lz_last_offset = lz_match_offset;
-        } else {
-            lz_match_offset = lz_last_offset;
-            lz_match_rem = read_gamma() + 1;
-        }
-        src = (lz_head - lz_match_offset) & LZ_WINDOW_MASK;
-        b = lz_window[src];
-        lz_match_rem--;
-        lz_window[lz_head] = b;
-        lz_head = (lz_head + 1) & LZ_WINDOW_MASK;
-        return b;
     }
+
+    sub = read_bit();
+    if (sub == 0) {
+        off_hi = read_gamma() - 1;
+        off_lo = next_byte();
+        lz_match_offset = ((off_hi << 8) | off_lo) + 1;
+        lz_match_rem = read_gamma() + 1;
+        lz_last_offset = lz_match_offset;
+    } else {
+        lz_match_offset = lz_last_offset;
+        lz_match_rem = read_gamma() + 1;
+    }
+    src = (lz_head - lz_match_offset) & LZ_WINDOW_MASK;
+    b = lz_window[src];
+    lz_match_rem--;
+    lz_window[lz_head] = b;
+    lz_head = (lz_head + 1) & LZ_WINDOW_MASK;
+    return b;
 }
 
 static uint8_t pw_step = 128;
@@ -147,10 +153,12 @@ static uint8_t shadow_regs[25];
 static uint16_t shadow_pw[3] = {0x0800, 0x0800, 0x0800};
 static uint8_t last_ctrl[3] = {0, 0, 0};
 
-static uint16_t last_timer;
+static uint16_t last_timer = 0;
 
 static inline uint16_t timer_read(void) {
-    uint8_t hi1, hi2, lo;
+    uint8_t hi1 = 0;
+    uint8_t hi2 = 0;
+    uint8_t lo = 0;
     do {
         hi1 = VIA_T1C_H;
         lo = VIA_T1C_L;
@@ -184,29 +192,38 @@ static uint16_t get_note_freq(uint8_t note) {
 }
 
 int main(void) {
-    uint8_t cmd, i, v, b, b2, b3;
+    uint8_t cmd = 0;
+    uint8_t i = 0;
+    uint8_t v = 0;
+    uint8_t b = 0;
+    uint8_t b2 = 0;
+    uint8_t b3 = 0;
     char path[32];
     char** args = _args_ptr;
-    uint8_t pathp, argp;
-    uint16_t loops;
+    uint8_t pathp = 0;
+    uint8_t argp = 0;
+    uint16_t loops = 0;
     uint16_t sched_idx = 0;
     uint16_t pause_counter = 0;
     uint16_t next_read_pause = 0;
     uint8_t next_read_blocks = 0;
     int32_t delay_cycles_left = 0;
-    uint16_t core_size;
-    uint8_t initial_fill;
-    uint8_t min_bufs;
-    uint8_t flo, fhi;
-    uint8_t dlo, dhi;
-    uint8_t slo, shi;
-    uint8_t note, ctrl;
-    uint16_t freq, pw;
-    uint8_t base;
-    uint8_t e;
-    int16_t r;
-
-    core_size = (uint16_t)_CORE_SIZE__;
+    uint16_t core_size = (uint16_t)app_core_size;
+    uint8_t initial_fill = 0;
+    uint8_t min_bufs = 0;
+    uint8_t flo = 0;
+    uint8_t fhi = 0;
+    uint8_t dlo = 0;
+    uint8_t dhi = 0;
+    uint8_t slo = 0;
+    uint8_t shi = 0;
+    uint8_t note = 0;
+    uint8_t ctrl = 0;
+    uint16_t freq = 0;
+    uint16_t pw = 0;
+    uint8_t base = 0;
+    uint8_t e = 0;
+    int16_t r = 0;
 
     println("microDOS SID Player v2");
 
@@ -260,7 +277,9 @@ int main(void) {
 
     initial_fill = num_bufs;
     for (i = 0; i < initial_fill; i++) {
-        if (sd_read(&file, BUF_PTR(head), CHUNK_SIZE) <= 0) break;
+        if (sd_read(&file, BUF_PTR(head), CHUNK_SIZE) <= 0) {
+            break;
+        }
         head = (head + 1) % num_bufs;
         count++;
     }
@@ -306,7 +325,9 @@ int main(void) {
     for (; loops < sched_len; loops++) {
         next_byte();
     }
-    if (sched_len > 512) sched_len = 512;
+    if (sched_len > 512) {
+        sched_len = 512;
+    }
 
     sched_idx = 0;
     next_read_pause = 0;
@@ -320,7 +341,9 @@ int main(void) {
         next_read_blocks = ((e >> 6) & 0x03) + 1;
     }
 
-    for (i = 0; i < 25; i++) shadow_regs[i] = 0;
+    for (i = 0; i < 25; i++) {
+        shadow_regs[i] = 0;
+    }
     for (i = 0; i < 3; i++) {
         shadow_pw[i] = 0x0800;
         last_ctrl[i] = 0;
@@ -337,7 +360,9 @@ int main(void) {
 
     while (1) {
         cmd = next_semantic_byte();
-        if (cmd == 0xFF) break;
+        if (cmd == 0xFF) {
+            break;
+        }
 
         if (cmd <= 0x18) {
             b = next_semantic_byte();

@@ -11,7 +11,6 @@
 
 int main(void) {
     SD_FILE fp;
-    char c;
     static char buf[4096];
     int len = 0;
     char** args = _args_ptr;
@@ -28,9 +27,11 @@ int main(void) {
 
     println("NANO  ESC=save");
 
-    while (1) {
-        c = bios_getchar();
-        if (c == 27) break;
+    while (true) {
+        char c = bios_getchar();
+        if (c == 27) {
+            break;
+        }
 
         if (c == '\b' || c == 8 || c == 127) {
             if (len > 0) {

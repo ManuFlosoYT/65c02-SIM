@@ -23,18 +23,14 @@ static uint16_t parse_hex(const char *str) {
 
 int main(void) {
     char **args = _args_ptr;
-    uint16_t addr;
-    uint8_t val;
-    uint8_t *ptr;
-
     if (arg_count < 3) {
         println("Usage: poke <hex_addr> <hex_val>");
         return 1;
     }
 
-    addr = parse_hex(args[1]);
-    val = (uint8_t)parse_hex(args[2]);
-    ptr = (uint8_t *)addr;
+    uint16_t addr = parse_hex(args[1]);
+    uint8_t val = (uint8_t)parse_hex(args[2]);
+    uint8_t *ptr = (uint8_t *)addr;
 
     *ptr = val;
 

@@ -4,11 +4,15 @@
 #include <string.h>
 
 static int str_match(const char *text, const char *pattern) {
-    int i, j;
-    if (*pattern == '\0') return 1;
-    for (i = 0; text[i] != '\0'; i++) {
-        for (j = 0; pattern[j] != '\0' && text[i+j] == pattern[j]; j++) {}
-        if (pattern[j] == '\0') return 1;
+    if (*pattern == '\0') {
+        return 1;
+    }
+    for (int i = 0; text[i] != '\0'; i++) {
+        int j = 0;
+        for (; pattern[j] != '\0' && text[i+j] == pattern[j]; j++) {}
+        if (pattern[j] == '\0') {
+            return 1;
+        }
     }
     return 0;
 }
@@ -16,18 +20,17 @@ static int str_match(const char *text, const char *pattern) {
 int main(void) {
     char **args = _args_ptr;
     SD_FILE fp;
-    int16_t c;
+    int16_t c = 0;
     char line[128];
     int line_idx = 0;
     int line_num = 1;
-    char *search_str;
 
     if (arg_count < 3) {
         println("Usage: grep <str> <file>");
         return 1;
     }
 
-    search_str = args[1];
+    char *search_str = args[1];
 
     if (!sd_open(&fp, args[2], SD_READ)) {
         println("Error: File not found.");

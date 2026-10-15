@@ -1,15 +1,13 @@
 #include "../Libs/app-bios.h"
 
 static void fill_data(uint8_t* ptr, uint16_t size, uint8_t seed) {
-    uint16_t i;
-    for(i = 0; i < size; i++) {
+    for (uint16_t i = 0; i < size; i++) {
         ptr[i] = (uint8_t)(seed + (i & 0xFF));
     }
 }
 
 static uint8_t verify_data(uint8_t* ptr, uint16_t size, uint8_t seed) {
-    uint16_t i;
-    for(i = 0; i < size; i++) {
+    for (uint16_t i = 0; i < size; i++) {
         if (ptr[i] != (uint8_t)(seed + (i & 0xFF))) {
             print_str("Mismatch at ");
             print_num(i);
@@ -25,13 +23,10 @@ static uint8_t verify_data(uint8_t* ptr, uint16_t size, uint8_t seed) {
 }
 
 int main(void) {
-    uint8_t* p1;
-    uint8_t* p2;
-
     println("--- testmem ---");
 
-    p1 = (uint8_t*)os_alloc(4000);
-    p2 = (uint8_t*)os_alloc(4000);
+    uint8_t* p1 = (uint8_t*)os_alloc(4000);
+    uint8_t* p2 = (uint8_t*)os_alloc(4000);
 
     if (!p1 || !p2) {
         println("Alloc failed.");

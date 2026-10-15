@@ -23,9 +23,11 @@ static uint16_t timer_elapsed(void) {
 }
 
 // Safe RAM region for testing (avoiding Code $1000, GPU $2000, BSS $6010)
-#define MEM_START 0x4000
-#define MEM_END   0x5000
-#define STACK_RESERVE 512
+enum {
+    MEM_START = 0x4000,
+    MEM_END   = 0x5000,
+    STACK_RESERVE = 512
+};
 
 static uint8_t canary_ok(uint16_t addr) {
     volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)addr;
@@ -39,11 +41,7 @@ static uint8_t canary_ok(uint16_t addr) {
 }
 
 int main(void) {
-    uint16_t cycles;
-    uint16_t addr, end_addr;
-    uint16_t usable_bytes;
-    volatile uint8_t* ptr;
-    uint16_t i;
+    uint16_t cycles = 0;
 
     println("== Memory Benchmark ==");
     println("");
@@ -58,13 +56,15 @@ int main(void) {
     print_hex_byte((uint8_t)(MEM_END & 0xFF));
     println("");
 
-    end_addr = MEM_START;
-    for (addr = MEM_START; addr < MEM_END; addr++) {
-        if (!canary_ok(addr)) break;
+    uint16_t end_addr = MEM_START;
+    for (uint16_t addr = MEM_START; addr < (uint16_t)MEM_END; addr++) {
+        if (!canary_ok(addr)) {
+            break;
+        }
         end_addr = addr + 1;
     }
 
-    usable_bytes = end_addr - MEM_START;
+    uint16_t usable_bytes = end_addr - MEM_START;
     print_str("  Usable: ");
     print_num(usable_bytes);
     println(" bytes");
@@ -73,9 +73,9 @@ int main(void) {
     println("");
     println("[2] Write speed (256B)");
 
-    ptr = (volatile uint8_t*)MEM_START;
+    volatile uint8_t* ptr = (volatile uint8_t*)MEM_START;
     timer_start();
-    for (i = 0; i < 256; i++) {
+    for (uint16_t i = 0; i < 256; i++) {
         ptr[i] = (uint8_t)i;
     }
     cycles = timer_elapsed();
@@ -92,9 +92,8 @@ int main(void) {
     println("[3] Read speed (256B)");
 
     {
-        uint8_t j;
         timer_start();
-        for (j = 0; j < 255; j++) {
+        for (uint16_t j = 0; j < 255; j++) {
             benchmark_sink = ptr[j];
         }
         benchmark_sink = ptr[255]; // Use full 256B
@@ -114,7 +113,7 @@ int main(void) {
 
     ptr = (volatile uint8_t*)MEM_START;
     timer_start();
-    for (i = 0; i < 1024; i++) {
+    for (uint16_t i = 0; i < 1024; i++) {
         ptr[i] = 0xAA;
     }
     cycles = timer_elapsed();
@@ -128,7 +127,7 @@ int main(void) {
 
     {
         timer_start();
-        for (i = 0; i < 1024; i++) {
+        for (uint16_t i = 0; i < 1024; i++) {
             benchmark_sink = ptr[i];
         }
         cycles = timer_elapsed();
@@ -143,14 +142,13 @@ int main(void) {
 
     {
         static const uint16_t buf_sizes[] = {64, 128, 256};
-        uint8_t s;
         uint16_t avail = usable_bytes - STACK_RESERVE;
 
         print_str("  Available: ");
         print_num(avail);
         println(" bytes");
 
-        for (s = 0; s < 3; s++) {
+        for (uint8_t s = 0; s < 3; s++) {
             uint16_t count = avail / buf_sizes[s];
             print_str("  ");
             print_num(buf_sizes[s]);
@@ -175,7 +173,7 @@ int main(void) {
     // Window usability and speed
     ptr = (volatile uint8_t*)0x2000;
     timer_start();
-    for (i = 0; i < 1024; i++) {
+    for (uint16_t i = 0; i < 1024; i++) {
         ptr[i] = 0x55;
     }
     cycles = timer_elapsed();
@@ -184,7 +182,7 @@ int main(void) {
     println(" cyc (1KB)");
 
     timer_start();
-    for (i = 0; i < 1024; i++) {
+    for (uint16_t i = 0; i < 1024; i++) {
         benchmark_sink = ptr[i];
     }
     cycles = timer_elapsed();

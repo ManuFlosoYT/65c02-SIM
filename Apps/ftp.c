@@ -21,34 +21,42 @@ static char get_net_char(void) {
 
 uint8_t link_state[5] = {0};
 
-static void resolve_path(const char* cwd, const char* path, char* out) {
-    if (strcmp(path, "..") == 0) {
-        int i;
-        strcpy(out, cwd);
-        i = strlen(out) - 1;
-        while (i > 0 && out[i] != '/') i--;
-        if (i > 0) out[i] = '\0';
-        else { out[0] = '/'; out[1] = '\0'; }
+static void resolve_path(const char* cwd, const char* target, char* abs_path) {
+    if (strcmp(target, "..") == 0) {
+        int i = 0;
+        strcpy(abs_path, cwd);
+        i = (int)strlen(abs_path) - 1;
+        while (i > 0 && abs_path[i] != '/') {
+            i--;
+        }
+        if (i > 0) {
+            abs_path[i] = '\0';
+        } else {
+            abs_path[0] = '/';
+            abs_path[1] = '\0';
+        }
         return;
     }
-    if (path[0] == '/') {
-        strcpy(out, path);
+    if (target[0] == '/') {
+        strcpy(abs_path, target);
     } else {
-        strcpy(out, cwd);
+        strcpy(abs_path, cwd);
         if (strcmp(cwd, "/") != 0) {
-            strcat(out, "/");
+            strcat(abs_path, "/");
         }
-        strcat(out, path);
+        strcat(abs_path, target);
     }
 }
 
-#define TYPE_NONE 0
-#define TYPE_DATA 1
-#define TYPE_CONNECT 2
-#define TYPE_CLOSED 3
-#define TYPE_OK 4
-#define TYPE_ERROR 5
-#define TYPE_PROMPT 6
+enum {
+    TYPE_NONE = 0,
+    TYPE_DATA = 1,
+    TYPE_CONNECT = 2,
+    TYPE_CLOSED = 3,
+    TYPE_OK = 4,
+    TYPE_ERROR = 5,
+    TYPE_PROMPT = 6
+};
 
 typedef struct {
     uint8_t type;
@@ -60,23 +68,25 @@ static void next_event(NetEvent* ev) {
     static uint8_t in_ipd = 0;
     static uint8_t cur_ipd_link = 0;
     static uint16_t cur_ipd_len = 0;
-    char c;
+    char c = 0;
     char last_c = 0;
 
     ev->type = 0;
     ev->link = 0;
     ev->c = 0;
 
-    ev->c = 0;
-
     while (1) {
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         if (in_ipd && cur_ipd_len > 0) {
             ev->type = TYPE_DATA;
             ev->link = cur_ipd_link;
             ev->c = get_net_char();
             cur_ipd_len--;
-            if (cur_ipd_len == 0) in_ipd = 0;
+            if (cur_ipd_len == 0) {
+                in_ipd = 0;
+            }
             return;
         }
 
@@ -89,9 +99,13 @@ static void next_event(NetEvent* ev) {
                 cur_ipd_len = 0;
                 while (1) {
                     char d = get_net_char();
-                    if (ftp_abort) return;
-                    if (d == ':') break;
-                    cur_ipd_len = cur_ipd_len * 10 + (d - '0');
+                    if (ftp_abort) {
+                        return;
+                    }
+                    if (d == ':') {
+                        break;
+                    }
+                    cur_ipd_len = (cur_ipd_len * 10) + (d - '0');
                 }
                 in_ipd = 1;
             } else {
@@ -105,15 +119,18 @@ static void next_event(NetEvent* ev) {
                 if (e == 'C') {
                     char f = get_net_char();
                     if (f == 'O') {
-                        int i;
-                        for (i = 0; i < 5; i++) get_net_char();
+                        for (int i = 0; i < 5; i++) {
+                            get_net_char();
+                        }
                         ev->type = TYPE_CONNECT;
                         ev->link = link;
                         link_state[link] = 1;
                         return;
-                    } else if (f == 'L') {
-                        int i;
-                        for (i = 0; i < 4; i++) get_net_char();
+                    }
+                    if (f == 'L') {
+                        for (int i = 0; i < 4; i++) {
+                            get_net_char();
+                        }
                         ev->type = TYPE_CLOSED;
                         ev->link = link;
                         link_state[link] = 0;
@@ -124,14 +141,14 @@ static void next_event(NetEvent* ev) {
             last_c = 0;
         } else if (c == 'O' && (last_c == '\n' || last_c == ' ')) {
             if (get_net_char() == 'K') {
-                while (get_net_char() != '\n');
+                while (get_net_char() != '\n') {}
                 ev->type = TYPE_OK;
                 return;
             }
             last_c = 'K';
         } else if ((c == 'E' && last_c == '\n') || (c == 'F' && last_c == ' ')) {
             if (get_net_char() == (c == 'E' ? 'R' : 'A')) {
-                while (get_net_char() != '\n');
+                while (get_net_char() != '\n') {}
                 ev->type = TYPE_ERROR;
                 return;
             }
@@ -174,11 +191,18 @@ static void read_line(uint8_t link, char* buf, int max_len) {
     int pos = 0;
     while (pos < max_len - 1) {
         NetEvent ev;
-        if (ftp_abort) { buf[0] = '\0'; return; }
+        if (ftp_abort) {
+            buf[0] = '\0';
+            return;
+        }
         next_event(&ev);
         if (ev.type == TYPE_DATA && ev.link == link) {
-            if (ev.c == '\n') break;
-            if (ev.c != '\r') buf[pos++] = ev.c;
+            if (ev.c == '\n') {
+                break;
+            }
+            if (ev.c != '\r') {
+                buf[pos++] = ev.c;
+            }
         } else if (ev.type == TYPE_DATA && ev.link == 1) {
             push_early_data(ev.c);
         } else if (ev.type == TYPE_CLOSED && ev.link == 1) {
@@ -192,11 +216,15 @@ static void read_line(uint8_t link, char* buf, int max_len) {
 
 static int read_ftp_code(uint8_t link, char* buf, int max_len) {
     while (1) {
-        if (ftp_abort) return -1;
+        if (ftp_abort) {
+            return -1;
+        }
         read_line(link, buf, max_len);
-        if (ftp_abort) return -1;
+        if (ftp_abort) {
+            return -1;
+        }
         if (strlen(buf) >= 3 && buf[3] == ' ') {
-            return (buf[0] - '0') * 100 + (buf[1] - '0') * 10 + (buf[2] - '0');
+            return ((buf[0] - '0') * 100) + ((buf[1] - '0') * 10) + (buf[2] - '0');
         }
     }
 }
@@ -214,10 +242,16 @@ static void send_link(uint8_t link, const char* str) {
 
     while (1) {
         NetEvent ev;
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         next_event(&ev);
-        if (ev.type == TYPE_PROMPT) break;
-        if (ev.type == TYPE_ERROR) return;
+        if (ev.type == TYPE_PROMPT) {
+            break;
+        }
+        if (ev.type == TYPE_ERROR) {
+            return;
+        }
         if (ev.type == TYPE_DATA && ev.link == 1) {
             push_early_data(ev.c);
         } else if (ev.type == TYPE_CLOSED && ev.link == 1) {
@@ -229,8 +263,8 @@ static void send_link(uint8_t link, const char* str) {
 
 static void send_link_bin(uint8_t link, const void* data, uint16_t len) {
     char num[2];
-    const uint8_t* p;
-    uint16_t i;
+    const uint8_t* p = nullptr;
+    uint16_t i = 0;
 
     net_send("AT+CIPSEND=");
     num[0] = '0' + link;
@@ -242,10 +276,16 @@ static void send_link_bin(uint8_t link, const void* data, uint16_t len) {
 
     while (1) {
         NetEvent ev;
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         next_event(&ev);
-        if (ev.type == TYPE_PROMPT) break;
-        if (ev.type == TYPE_ERROR) return;
+        if (ev.type == TYPE_PROMPT) {
+            break;
+        }
+        if (ev.type == TYPE_ERROR) {
+            return;
+        }
         if (ev.type == TYPE_DATA && ev.link == 1) {
             push_early_data(ev.c);
         } else if (ev.type == TYPE_CLOSED && ev.link == 1) {
@@ -295,8 +335,14 @@ static void append_u32(uint32_t val, char* str) {
 
 static void run_client(const char* server, const char* user, const char* pass, const char* remote, const char* local) {
     char buf[128];
-    char* p;
-    int h1, h2, h3, h4, p1, p2, port;
+    char* p = nullptr;
+    int h1 = 0;
+    int h2 = 0;
+    int h3 = 0;
+    int h4 = 0;
+    int p1 = 0;
+    int p2 = 0;
+    int port = 0;
     char ip[32];
     SD_FILE fp;
     uint32_t wr_cnt = 0;
@@ -305,7 +351,9 @@ static void run_client(const char* server, const char* user, const char* pass, c
     net_send("AT+CIPMUX=1\r\n");
     next_event(&ev);
     while (ev.type != TYPE_OK) {
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         next_event(&ev);
     }
 
@@ -314,9 +362,13 @@ static void run_client(const char* server, const char* user, const char* pass, c
     net_send("\",21\r\n");
 
     while (1) {
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         next_event(&ev);
-        if (ev.type == TYPE_CONNECT && ev.link == 0) break;
+        if (ev.type == TYPE_CONNECT && ev.link == 0) {
+            break;
+        }
         if (ev.type == TYPE_ERROR) {
             print_str("Error: ");
             println("Connection failed");
@@ -330,57 +382,67 @@ static void run_client(const char* server, const char* user, const char* pass, c
     strcat(buf, user);
     strcat(buf, "\r\n");
     send_link(0, buf);
-    if (read_ftp_code(0, buf, sizeof(buf)) != 331) return;
+    if (read_ftp_code(0, buf, sizeof(buf)) != 331) {
+        return;
+    }
 
     strcpy(buf, "PASS ");
     strcat(buf, pass);
     strcat(buf, "\r\n");
     send_link(0, buf);
-    if (read_ftp_code(0, buf, sizeof(buf)) != 230) return;
+    if (read_ftp_code(0, buf, sizeof(buf)) != 230) {
+        return;
+    }
 
     send_link(0, "TYPE I\r\n");
     read_ftp_code(0, buf, sizeof(buf));
 
     send_link(0, "PASV\r\n");
-    if (read_ftp_code(0, buf, sizeof(buf)) != 227) return;
+    if (read_ftp_code(0, buf, sizeof(buf)) != 227) {
+        return;
+    }
 
     p = buf;
-    while (*p && *p != '(') p++;
-    if (!*p) return;
+    while (*p && *p != '(') {
+        p++;
+    }
+    if (!*p) {
+        return;
+    }
     p++;
     h1 = 0;
     while (*p != ',') {
-        h1 = h1 * 10 + (*p - '0');
+        h1 = (h1 * 10) + (*p - '0');
         p++;
     }
     p++;
     h2 = 0;
     while (*p != ',') {
-        h2 = h2 * 10 + (*p - '0');
+        h2 = (h2 * 10) + (*p - '0');
         p++;
     }
     p++;
     h3 = 0;
     while (*p != ',') {
-        h3 = h3 * 10 + (*p - '0');
+        h3 = (h3 * 10) + (*p - '0');
         p++;
     }
     p++;
     h4 = 0;
     while (*p != ',') {
-        h4 = h4 * 10 + (*p - '0');
+        h4 = (h4 * 10) + (*p - '0');
         p++;
     }
     p++;
     p1 = 0;
     while (*p != ',') {
-        p1 = p1 * 10 + (*p - '0');
+        p1 = (p1 * 10) + (*p - '0');
         p++;
     }
     p++;
     p2 = 0;
     while (*p != ')') {
-        p2 = p2 * 10 + (*p - '0');
+        p2 = (p2 * 10) + (*p - '0');
         p++;
     }
 
@@ -393,7 +455,7 @@ static void run_client(const char* server, const char* user, const char* pass, c
     strcat(ip, ".");
     append_num(h4, ip);
 
-    port = p1 * 256 + p2;
+    port = (p1 * 256) + p2;
 
     net_send("AT+CIPSTART=1,\"TCP\",\"");
     net_send(ip);
@@ -401,9 +463,13 @@ static void run_client(const char* server, const char* user, const char* pass, c
     net_send_num(port);
     net_send("\r\n");
     while (1) {
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         next_event(&ev);
-        if (ev.type == TYPE_CONNECT && ev.link == 1) break;
+        if (ev.type == TYPE_CONNECT && ev.link == 1) {
+            break;
+        }
         if (ev.type == TYPE_ERROR) {
             print_str("Error: ");
             println("Data connection failed");
@@ -423,7 +489,9 @@ static void run_client(const char* server, const char* user, const char* pass, c
     }
 
     while (1) {
-        if (ftp_abort) break;
+        if (ftp_abort) {
+            break;
+        }
         next_event(&ev);
         if (ev.type == TYPE_DATA && ev.link == 1) {
             sd_write(&fp, &ev.c, 1);
@@ -453,7 +521,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     if (port_str) {
         port = 0;
         while (*port_str >= '0' && *port_str <= '9') {
-            port = port * 10 + (*port_str - '0');
+            port = (port * 10) + (*port_str - '0');
             port_str++;
         }
     }
@@ -462,21 +530,31 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     print_str("Listening on IP: ");
     while (1) {
         char c = get_net_char();
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         if (c == 'O') {
             if (get_net_char() == 'K') {
-                if (quotes == 0) print_str("Unknown");
+                if (quotes == 0) {
+                    print_str("Unknown");
+                }
                 break;
             }
         } else if (c == 'E') {
             if (get_net_char() == 'R') {
-                if (quotes == 0) print_str("Disconnected");
+                if (quotes == 0) {
+                    print_str("Disconnected");
+                }
                 break;
             }
         } else if (c == '"') {
             quotes++;
-            if (quotes == 1) continue;
-            if (quotes == 2) break;
+            if (quotes == 1) {
+                continue;
+            }
+            if (quotes == 2) {
+                break;
+            }
         } else if (quotes == 1) {
             bios_putchar(c);
         }
@@ -488,15 +566,17 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     if (quotes == 2) {
         while (1) {
             char c = get_net_char();
-            if (ftp_abort) return;
+            if (ftp_abort) {
+                return;
+            }
             if (c == 'O') {
                 if (get_net_char() == 'K') {
-                    while (get_net_char() != '\n');
+                    while (get_net_char() != '\n') {}
                     break;
                 }
             } else if (c == 'E') {
                 if (get_net_char() == 'R') {
-                    while (get_net_char() != '\n');
+                    while (get_net_char() != '\n') {}
                     break;
                 }
             }
@@ -506,7 +586,9 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     net_send("AT+CIPMUX=1\r\n");
     next_event(&ev);
     while (ev.type != TYPE_OK) {
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         if (ev.type == TYPE_ERROR) {
             println("Failed to set MUX");
             return;
@@ -519,7 +601,9 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     net_send("\r\n");
     next_event(&ev);
     while (ev.type != TYPE_OK) {
-        if (ftp_abort) return;
+        if (ftp_abort) {
+            return;
+        }
         if (ev.type == TYPE_ERROR) {
             print_str("Failed to start server on port ");
             print_num((uint16_t)port);
@@ -530,17 +614,25 @@ static void run_server(const char* user, const char* pass, const char* port_str)
     }
 
     while (1) {
-        if (ftp_abort) break;
+        if (ftp_abort) {
+            break;
+        }
         next_event(&ev);
         if (ev.type == TYPE_CONNECT && ev.link == 0) {
             println("Client connected");
             send_link(0, "220 microDOS FTP Server Ready\r\n");
 
             while (link_state[0]) {
-                if (ftp_abort) break;
+                if (ftp_abort) {
+                    break;
+                }
                 read_line(0, buf, sizeof(buf));
-                if (ftp_abort) break;
-                if (buf[0] == '\0') continue;
+                if (ftp_abort) {
+                    break;
+                }
+                if (buf[0] == '\0') {
+                    continue;
+                }
 
                 print_str(">> ");
                 println(buf);
@@ -548,17 +640,19 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                 if (strncmp(buf, "USER ", 5) == 0) {
                     char* u = buf + 5;
                     print_str("[LOGIN] User attempt: "); println(u);
-                    if (strcmp(u, user) == 0)
+                    if (strcmp(u, user) == 0) {
                         send_link(0, "331 \r\n");
-                    else
+                    } else {
                         send_link(0, "530 Invalid user\r\n");
+                    }
                 } else if (strncmp(buf, "PASS ", 5) == 0) {
                     char* p_pass = buf + 5;
                     print_str("[LOGIN] Password attempt: "); println(p_pass);
-                    if (strcmp(p_pass, pass) == 0)
+                    if (strcmp(p_pass, pass) == 0) {
                         send_link(0, "230 \r\n");
-                    else
+                    } else {
                         send_link(0, "530 Invalid password\r\n");
+                    }
                 } else if (strncmp(buf, "SYST", 4) == 0) {
                     send_link(0, "215 UNIX Type: L8\r\n");
                 } else if (strncmp(buf, "FEAT", 4) == 0) {
@@ -570,7 +664,9 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     send_link(0, resp);
                 } else if (strncmp(buf, "CWD", 3) == 0) {
                     char* target = buf + 4;
-                    if (*target == ' ') target++;
+                    if (*target == ' ') {
+                        target++;
+                    }
                     print_str("[DIR] Change directory request to: "); println(target);
                     resolve_path(current_dir, target, current_dir);
                     send_link(0, "250 CWD command successful\r\n");
@@ -583,10 +679,14 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     static SD_INFO fno;
                     static char target_dir[128];
                     char* target = buf + 4;
-                    if (*target == ' ') target++;
-                    if (*target == '-' && *(target+1) == 'a') {
+                    if (*target == ' ') {
+                        target++;
+                    }
+                    if (*target == '-' && *(target + 1) == 'a') {
                         target += 2;
-                        if (*target == ' ') target++;
+                        if (*target == ' ') {
+                            target++;
+                        }
                     }
                     if (*target == '\0') {
                         strcpy(target_dir, current_dir);
@@ -598,8 +698,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     if (sd_opendir(&dp, target_dir)) {
                         while (sd_readdir(&dp, &fno) && fno.fname[0] != 0) {
                             static char line[128];
-                            int is_dir;
-                            is_dir = fno.fattrib & AM_DIR;
+                            int is_dir = fno.fattrib & AM_DIR;
                             line[0] = '\0';
                             if (is_dir) {
                                 strcat(line, "drwxr-xr-x 1 root root ");
@@ -620,7 +719,13 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     send_link(0, "200 Type set to I\r\n");
                 } else if (strncmp(buf, "PORT", 4) == 0) {
                     char* p = buf + 5;
-                    int h1, h2, h3, h4, p1, p2, port;
+                    int h1 = 0;
+                    int h2 = 0;
+                    int h3 = 0;
+                    int h4 = 0;
+                    int p1 = 0;
+                    int p2 = 0;
+                    int port = 0;
                     char ip[32];
                     uint8_t ok = 0;
                     NetEvent ev2;
@@ -634,37 +739,37 @@ static void run_server(const char* user, const char* pass, const char* port_str)
 
                     h1 = 0;
                     while (*p != ',') {
-                        h1 = h1 * 10 + (*p - '0');
+                        h1 = (h1 * 10) + (*p - '0');
                         p++;
                     }
                     p++;
                     h2 = 0;
                     while (*p != ',') {
-                        h2 = h2 * 10 + (*p - '0');
+                        h2 = (h2 * 10) + (*p - '0');
                         p++;
                     }
                     p++;
                     h3 = 0;
                     while (*p != ',') {
-                        h3 = h3 * 10 + (*p - '0');
+                        h3 = (h3 * 10) + (*p - '0');
                         p++;
                     }
                     p++;
                     h4 = 0;
                     while (*p != ',') {
-                        h4 = h4 * 10 + (*p - '0');
+                        h4 = (h4 * 10) + (*p - '0');
                         p++;
                     }
                     p++;
                     p1 = 0;
                     while (*p != ',') {
-                        p1 = p1 * 10 + (*p - '0');
+                        p1 = (p1 * 10) + (*p - '0');
                         p++;
                     }
                     p++;
                     p2 = 0;
                     while (*p >= '0' && *p <= '9') {
-                        p2 = p2 * 10 + (*p - '0');
+                        p2 = (p2 * 10) + (*p - '0');
                         p++;
                     }
 
@@ -676,7 +781,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     append_num(h3, ip);
                     strcat(ip, ".");
                     append_num(h4, ip);
-                    port = p1 * 256 + p2;
+                    port = (p1 * 256) + p2;
 
                     net_send("AT+CIPSTART=1,\"TCP\",\"");
                     net_send(ip);
@@ -685,7 +790,9 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     net_send("\r\n");
 
                     while (1) {
-                        if (ftp_abort) break;
+                        if (ftp_abort) {
+                            break;
+                        }
                         next_event(&ev2);
                         if (ev2.type == TYPE_CONNECT && ev2.link == 1) {
                             ok = 1;
@@ -695,10 +802,11 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                             break;
                         }
                     }
-                    if (ok)
+                    if (ok) {
                         send_link(0, "200 PORT command successful\r\n");
-                    else
+                    } else {
                         send_link(0, "500 PORT failed\r\n");
+                    }
                 } else if (strncmp(buf, "RETR", 4) == 0) {
                     char* file = buf + 5;
                     static char abs_path[128];
@@ -708,7 +816,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     send_link(0, "150 Opening data connection\r\n");
                     if (sd_open(&fp, abs_path, SD_READ)) {
                         static char fbuf[2048];
-                        int16_t r;
+                        int16_t r = 0;
                         while ((r = sd_read(&fp, fbuf, sizeof(fbuf))) > 0) {
                             send_link_bin(1, fbuf, r);
                         }
@@ -727,7 +835,9 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                     if (!early_closed) {
                         while (1) {
                             NetEvent ev2;
-                            if (ftp_abort) break;
+                            if (ftp_abort) {
+                                break;
+                            }
                             next_event(&ev2);
                             if (ev2.type == TYPE_DATA && ev2.link == 1) {
                                 push_early_data(ev2.c);
@@ -755,7 +865,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
                             static SD_FILE tfp;
                             if (sd_open(&tfp, "/TEMP.DAT", SD_READ)) {
                                 static char fbuf[2048];
-                                int16_t r;
+                                int16_t r = 0;
                                 while ((r = sd_read(&tfp, fbuf, sizeof(fbuf))) > 0) {
                                     sd_write(&fp, fbuf, r);
                                 }
@@ -792,7 +902,7 @@ static void run_server(const char* user, const char* pass, const char* port_str)
 int main(void) {
     char** args = _args_ptr;
     if (arg_count == 3) {
-        run_server(args[1], args[2], NULL);
+        run_server(args[1], args[2], nullptr);
     } else if (arg_count == 4) {
         run_server(args[1], args[2], args[3]);
     } else if (arg_count >= 6) {

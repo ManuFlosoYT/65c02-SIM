@@ -23,17 +23,14 @@ static uint16_t parse_hex(const char *str) {
 
 int main(void) {
     char **args = _args_ptr;
-    uint8_t reg;
-    uint8_t val;
-
     if (arg_count < 3) {
         println("Usage: sidreg <reg_hex> <val_hex>");
         println("Example: sidreg 0x18 0x0F");
         return 1;
     }
 
-    reg = (uint8_t)parse_hex(args[1]);
-    val = (uint8_t)parse_hex(args[2]);
+    uint8_t reg = (uint8_t)parse_hex(args[1]);
+    uint8_t val = (uint8_t)parse_hex(args[2]);
 
     if (reg > 28) {
         println("Error: SID reg 0x00 to 0x1C");

@@ -6,11 +6,10 @@
 int main(void) {
     char **args = _args_ptr;
     SD_FILE fp;
-    int16_t bytes_read;
+    int16_t bytes_read = 0;
     uint8_t buf[64];
     int lines = 0;
-    int i;
-    int quit = 0;
+    bool quit = false;
 
     if (arg_count < 2) {
         println("Usage: more <file>");
@@ -23,16 +22,15 @@ int main(void) {
     }
 
     while (!quit && (bytes_read = sd_read(&fp, buf, sizeof(buf))) > 0) {
-        for (i = 0; i < bytes_read; i++) {
+        for (int i = 0; i < bytes_read; i++) {
             bios_putchar(buf[i]);
             if (buf[i] == '\n') {
                 lines++;
                 if (lines >= 20) {
-                    char c;
                     print_str("--More--");
-                    c = bios_getchar();
+                    char c = bios_getchar();
                     if (c == 'q' || c == 'Q' || c == 3) {
-                        quit = 1;
+                        quit = true;
                         break;
                     }
                     /* Clear the more prompt */

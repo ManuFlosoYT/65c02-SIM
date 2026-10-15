@@ -24,25 +24,23 @@ int main(void) {
 
     println("Connected. Type to send, Ctrl+C to exit.");
 
-    while (1) {
-        char c, k;
-        uint16_t d;
-
+    while (true) {
         if (net_has_data()) {
-            c = net_getc();
+            char c = (char)net_getc();
             bios_putchar(c);
         }
 
-        k = bios_getchar();
+        char k = bios_getchar();
         if (k != 0) {
             if (k == 3) { /* Ctrl+C */
                 println("");
                 break;
             }
             net_send("AT+CIPSEND=1\r\n");
-            d = 0x0FFF;
-            while (d--)
-                ; /* Delay to let ESP process AT+CIPSEND */
+            uint16_t d = 0x0FFF;
+            while (d--) {
+                /* Delay to let ESP process AT+CIPSEND */
+            }
             net_putc(k);
             bios_putchar(k);
         }

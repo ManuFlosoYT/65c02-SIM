@@ -5,10 +5,12 @@
 #define SPI_PORT VIA_ORA
 #define SPI_DDR  VIA_DDRA
 
-#define SPI_CLK  0x01
-#define SPI_MOSI 0x02
-#define SPI_MISO 0x04
-#define SPI_CS   0x08
+enum {
+    SPI_CLK  = 0x01,
+    SPI_MOSI = 0x02,
+    SPI_MISO = 0x04,
+    SPI_CS   = 0x08
+};
 
 static uint16_t parse_hex(const char *str) {
     uint16_t val = 0;
@@ -30,12 +32,11 @@ static uint16_t parse_hex(const char *str) {
 }
 
 static uint8_t spi_transfer(uint8_t data) {
-    uint8_t i;
     uint8_t rx = 0;
     
     SPI_PORT &= ~SPI_CS; /* Select */
     
-    for (i = 0; i < 8; i++) {
+    for (uint8_t i = 0; i < 8; i++) {
         if (data & 0x80) {
             SPI_PORT |= SPI_MOSI;
         } else {
@@ -60,8 +61,6 @@ static uint8_t spi_transfer(uint8_t data) {
 
 int main(void) {
     char **args = _args_ptr;
-    uint8_t tx_val;
-    uint8_t rx_val;
     
     if (arg_count < 2) {
         println("Usage: spi <hex_val>");
@@ -76,8 +75,8 @@ int main(void) {
     SPI_PORT |= SPI_CS;  /* CS high */
     SPI_PORT &= ~SPI_CLK; /* CLK low */
     
-    tx_val = (uint8_t)parse_hex(args[1]);
-    rx_val = spi_transfer(tx_val);
+    uint8_t tx_val = (uint8_t)parse_hex(args[1]);
+    uint8_t rx_val = spi_transfer(tx_val);
     
     print_str("TX: 0x");
     print_hex_byte(tx_val);

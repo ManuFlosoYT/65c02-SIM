@@ -23,18 +23,14 @@ static uint16_t parse_hex(const char *str) {
 
 int main(void) {
     char **args = _args_ptr;
-    uint16_t addr;
-    uint8_t *ptr;
-    uint8_t val;
-
     if (arg_count < 2) {
         println("Usage: peek <hex_addr>");
         return 1;
     }
 
-    addr = parse_hex(args[1]);
-    ptr = (uint8_t *)addr;
-    val = *ptr;
+    uint16_t addr = parse_hex(args[1]);
+    uint8_t *ptr = (uint8_t *)addr;
+    uint8_t val = *ptr;
 
     print_str("0x");
     print_hex_byte((addr >> 8) & 0xFF);

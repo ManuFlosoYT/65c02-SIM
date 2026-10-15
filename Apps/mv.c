@@ -8,8 +8,8 @@ int main(void) {
     SD_FILE fp_dst;
     char **args = _args_ptr;
     uint8_t buf[512];
-    int16_t bytes_read;
-    int16_t bytes_written;
+    int16_t bytes_read = 0;
+    int16_t bytes_written = 0;
     uint8_t error = 0;
 
     if (arg_count < 3) {

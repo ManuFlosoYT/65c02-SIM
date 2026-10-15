@@ -9,11 +9,10 @@
 
 
 int main(void) {
-    uint8_t i;
-    uint16_t min_ping = 65535U, max_ping = 0, total_ping = 0;
+    uint16_t min_ping = 65535U;
+    uint16_t max_ping = 0;
+    uint16_t total_ping = 0;
     uint8_t lost = 0;
-    uint16_t current;
-    char chr;
     char** args = _args_ptr;
 
     if (arg_count < 2) {
@@ -25,25 +24,28 @@ int main(void) {
     print_str(args[1]);
     println(":");
 
-    for (i = 0; i < 10; ++i) {
+    for (uint8_t i = 0; i < 10; ++i) {
         net_send("AT+PING=\"");
         net_send(args[1]);
         net_cmd("\"");
 
-        while (1) {
+        while (true) {
             if (net_has_data()) {
-                chr = (char)net_getc();
+                char chr = (char)net_getc();
                 if (chr == '+') {
-                    while (!net_has_data());
+                    while (!net_has_data()) {
+                    }
                     chr = (char)net_getc();
                     if (chr >= '0' && chr <= '9') {
-                        current = (uint16_t)(chr - '0');
-                        while (1) {
+                        uint16_t current = (uint16_t)(chr - '0');
+                        while (true) {
                             if (net_has_data()) {
                                 chr = (char)net_getc();
-                                if (chr >= '0' && chr <= '9')
-                                    current = current * 10 + (uint16_t)(chr - '0');
-                                else break;
+                                if (chr >= '0' && chr <= '9') {
+                                    current = (current * 10) + (uint16_t)(chr - '0');
+                                } else {
+                                    break;
+                                }
                             }
                         }
                         print_str("From ");
@@ -51,8 +53,12 @@ int main(void) {
                         print_str(": ");
                         print_num(current);
                         println("ms");
-                        if (current < min_ping) min_ping = current;
-                        if (current > max_ping) max_ping = current;
+                        if (current < min_ping) {
+                            min_ping = current;
+                        }
+                        if (current > max_ping) {
+                            max_ping = current;
+                        }
                         total_ping += current;
                         goto next_ping;
                     } else if (chr == 't') {
@@ -72,10 +78,12 @@ int main(void) {
             }
         }
     next_ping:
-        while (1) {
+        while (true) {
             if (net_has_data()) {
-                chr = (char)net_getc();
-                if (chr == 'K' || chr == 'R') break;
+                char chr = (char)net_getc();
+                if (chr == 'K' || chr == 'R') {
+                    break;
+                }
             }
         }
     }

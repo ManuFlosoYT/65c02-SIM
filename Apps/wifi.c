@@ -6,19 +6,25 @@
 
 
 int main(void) {
-    char chr;
+    char chr = 0;
     char** args = _args_ptr;
     
     if (arg_count == 1) {
         println("Scanning for networks...");
         net_cmd("AT+CWLAP");
-        while (1) {
+        while (true) {
             if (net_has_data()) {
                 chr = (char)net_getc();
-                if (chr == '\r') continue;
+                if (chr == '\r') {
+                    continue;
+                }
                 bios_putchar(chr);
-                if (chr == 'K') break; /* OK */
-                if (chr == 'R') break; /* ERROR */
+                if (chr == 'K') {
+                    break; /* OK */
+                }
+                if (chr == 'R') {
+                    break; /* ERROR */
+                }
             }
         }
         return 0;
@@ -36,10 +42,12 @@ int main(void) {
 
     net_wifi(args[1], args[2]);
 
-    while (1) {
+    while (true) {
         if (net_has_data()) {
             chr = (char)net_getc();
-            if (chr == '\r') continue;
+            if (chr == '\r') {
+                continue;
+            }
             bios_putchar(chr);
             if (chr == 'K') { 
                 println(""); 

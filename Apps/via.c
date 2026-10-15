@@ -5,8 +5,11 @@
 
 static int str_eq(const char *a, const char *b) {
     while (*a && *b) {
-        if (*a != *b) return 0;
-        a++; b++;
+        if (*a != *b) {
+            return 0;
+        }
+        a++;
+        b++;
     }
     return (*a == *b);
 }
@@ -18,44 +21,45 @@ static uint16_t parse_hex(const char *str) {
     }
     while (*str) {
         val <<= 4;
-        if (*str >= '0' && *str <= '9') val |= (*str - '0');
-        else if (*str >= 'A' && *str <= 'F') val |= (*str - 'A' + 10);
-        else if (*str >= 'a' && *str <= 'f') val |= (*str - 'a' + 10);
+        if (*str >= '0' && *str <= '9') {
+            val |= (*str - '0');
+        } else if (*str >= 'A' && *str <= 'F') {
+            val |= (*str - 'A' + 10);
+        } else if (*str >= 'a' && *str <= 'f') {
+            val |= (*str - 'a' + 10);
+        }
         str++;
     }
     return val;
 }
 
 static volatile uint8_t* get_via_reg(const char *name) {
-    if (str_eq(name, "ORB")) return &VIA_ORB;
-    if (str_eq(name, "ORA")) return &VIA_ORA;
-    if (str_eq(name, "DDRB")) return &VIA_DDRB;
-    if (str_eq(name, "DDRA")) return &VIA_DDRA;
-    if (str_eq(name, "T1C_L")) return &VIA_T1C_L;
-    if (str_eq(name, "T1C_H")) return &VIA_T1C_H;
-    if (str_eq(name, "T1L_L")) return &VIA_T1L_L;
-    if (str_eq(name, "T1L_H")) return &VIA_T1L_H;
-    if (str_eq(name, "T2C_L")) return &VIA_T2C_L;
-    if (str_eq(name, "T2C_H")) return &VIA_T2C_H;
-    if (str_eq(name, "SR")) return (volatile uint8_t*)0x600A; /* Offset for VIA_SR */
-    if (str_eq(name, "ACR")) return &VIA_ACR;
-    if (str_eq(name, "PCR")) return &VIA_PCR;
-    if (str_eq(name, "IFR")) return &VIA_IFR;
-    if (str_eq(name, "IER")) return &VIA_IER;
-    return 0;
+    if (str_eq(name, "ORB")) { return &VIA_ORB; }
+    if (str_eq(name, "ORA")) { return &VIA_ORA; }
+    if (str_eq(name, "DDRB")) { return &VIA_DDRB; }
+    if (str_eq(name, "DDRA")) { return &VIA_DDRA; }
+    if (str_eq(name, "T1C_L")) { return &VIA_T1C_L; }
+    if (str_eq(name, "T1C_H")) { return &VIA_T1C_H; }
+    if (str_eq(name, "T1L_L")) { return &VIA_T1L_L; }
+    if (str_eq(name, "T1L_H")) { return &VIA_T1L_H; }
+    if (str_eq(name, "T2C_L")) { return &VIA_T2C_L; }
+    if (str_eq(name, "T2C_H")) { return &VIA_T2C_H; }
+    if (str_eq(name, "SR")) { return (volatile uint8_t*)0x600A; } /* Offset for VIA_SR */
+    if (str_eq(name, "ACR")) { return &VIA_ACR; }
+    if (str_eq(name, "PCR")) { return &VIA_PCR; }
+    if (str_eq(name, "IFR")) { return &VIA_IFR; }
+    if (str_eq(name, "IER")) { return &VIA_IER; }
+    return nullptr;
 }
 
 static void print_bin(uint8_t v) {
-    int i;
-    for (i = 7; i >= 0; i--) {
+    for (int i = 7; i >= 0; i--) {
         bios_putchar((v & (1 << i)) ? '1' : '0');
     }
 }
 
 int main(void) {
     char **args = _args_ptr;
-    volatile uint8_t *reg;
-    uint8_t val;
     
     if (arg_count < 3) {
         println("Usage: via read <REG>");
@@ -63,7 +67,8 @@ int main(void) {
         return 1;
     }
     
-    reg = get_via_reg(args[2]);
+    volatile uint8_t *reg = get_via_reg(args[2]);
+    uint8_t val = 0;
     if (!reg) {
         println("Error: Unknown VIA register.");
         return 1;

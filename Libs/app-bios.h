@@ -10,14 +10,17 @@
 #ifndef APP_BIOS_H
 #define APP_BIOS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* ========================================================================= */
 /*                              APP MEMORY                                   */
 /* ========================================================================= */
 
-#define APP_SAFE_RAM_START 0x0200
-#define APP_SAFE_RAM_END   0x47FF
+enum {
+    APP_SAFE_RAM_START = 0x0200,
+    APP_SAFE_RAM_END   = 0x47FF
+};
 
 /* ========================================================================= */
 /*                           APP ARGUMENTS                                   */
@@ -56,13 +59,17 @@ typedef struct {
     char     fname[13];
 } SD_INFO;
 
-#define AM_DIR           0x10
+enum {
+    AM_DIR           = 0x10
+};
 
-#define SD_READ          0x01
-#define SD_WRITE         0x02
-#define SD_CREATE_NEW    0x04
-#define SD_CREATE_ALWAYS 0x08
-#define SD_OPEN_ALWAYS   0x10
+enum {
+    SD_READ          = 0x01,
+    SD_WRITE         = 0x02,
+    SD_CREATE_NEW    = 0x04,
+    SD_CREATE_ALWAYS = 0x08,
+    SD_OPEN_ALWAYS   = 0x10
+};
 
 uint8_t  sd_open(SD_FILE* fp, const char* path, uint8_t mode);
 int16_t  sd_read(SD_FILE* fp, void* buf, uint16_t len);
@@ -115,7 +122,7 @@ void net_wifi(const char* ssid, const char* pass);
 #define VIA_T1L_H  (*(volatile uint8_t*)0x6007)
 #define VIA_T2C_L  (*(volatile uint8_t*)0x6008)
 #define VIA_T2C_H  (*(volatile uint8_t*)0x6009)
-#define VIA_SR     (*(voslatile uint8_t*)0x600A)
+#define VIA_SR     (*(volatile uint8_t*)0x600A)
 #define VIA_ACR    (*(volatile uint8_t*)0x600B)
 #define VIA_PCR    (*(volatile uint8_t*)0x600C)
 #define VIA_IFR    (*(volatile uint8_t*)0x600D)
@@ -129,68 +136,73 @@ void net_wifi(const char* ssid, const char* pass);
 /* ========================================================================= */
 
 // SID Register Offsets
-#define FREQ_LO_1 0x00
-#define FREQ_HI_1 0x01
-#define PW_LO_1   0x02
-#define PW_HI_1   0x03
-#define CTRL_1    0x04
-#define AD_1      0x05
-#define SR_1      0x06
+enum {
+    FREQ_LO_1 = 0x00,
+    FREQ_HI_1 = 0x01,
+    PW_LO_1   = 0x02,
+    PW_HI_1   = 0x03,
+    CTRL_1    = 0x04,
+    AD_1      = 0x05,
+    SR_1      = 0x06,
 
-#define FREQ_LO_2 0x07
-#define FREQ_HI_2 0x08
-#define PW_LO_2   0x09
-#define PW_HI_2   0x0A
-#define CTRL_2    0x0B
-#define AD_2      0x0C
-#define SR_2      0x0D
+    FREQ_LO_2 = 0x07,
+    FREQ_HI_2 = 0x08,
+    PW_LO_2   = 0x09,
+    PW_HI_2   = 0x0A,
+    CTRL_2    = 0x0B,
+    AD_2      = 0x0C,
+    SR_2      = 0x0D,
 
-#define FREQ_LO_3 0x0E
-#define FREQ_HI_3 0x0F
-#define PW_LO_3   0x10
-#define PW_HI_3   0x11
-#define CTRL_3    0x12
-#define AD_3      0x13
-#define SR_3      0x14
+    FREQ_LO_3 = 0x0E,
+    FREQ_HI_3 = 0x0F,
+    PW_LO_3   = 0x10,
+    PW_HI_3   = 0x11,
+    CTRL_3    = 0x12,
+    AD_3      = 0x13,
+    SR_3      = 0x14,
 
-#define FC_LO     0x15
-#define FC_HI     0x16
-#define RES_FILT  0x17
-#define MODE_VOL  0x18
+    FC_LO     = 0x15,
+    FC_HI     = 0x16,
+    RES_FILT  = 0x17,
+    MODE_VOL  = 0x18
+};
 
 // Waveforms & Features
-#define WAVE_GATE  0x01
-#define WAVE_SYNC  0x02
-#define WAVE_RING  0x04
-#define WAVE_TEST  0x08
-#define WAVE_TRI   0x10
-#define WAVE_SAW   0x20
-#define WAVE_PULSE 0x40
-#define WAVE_NOISE 0x80
+enum {
+    WAVE_GATE  = 0x01,
+    WAVE_SYNC  = 0x02,
+    WAVE_RING  = 0x04,
+    WAVE_TEST  = 0x08,
+    WAVE_TRI   = 0x10,
+    WAVE_SAW   = 0x20,
+    WAVE_PULSE = 0x40,
+    WAVE_NOISE = 0x80,
 
-// Mixed Waveforms
-#define WAVE_TRI_SAW       (WAVE_TRI | WAVE_SAW)
-#define WAVE_TRI_PULSE     (WAVE_TRI | WAVE_PULSE)
-#define WAVE_SAW_PULSE     (WAVE_SAW | WAVE_PULSE)
-#define WAVE_TRI_SAW_PULSE (WAVE_TRI | WAVE_SAW | WAVE_PULSE)
+    WAVE_TRI_SAW       = (WAVE_TRI | WAVE_SAW),
+    WAVE_TRI_PULSE     = (WAVE_TRI | WAVE_PULSE),
+    WAVE_SAW_PULSE     = (WAVE_SAW | WAVE_PULSE),
+    WAVE_TRI_SAW_PULSE = (WAVE_TRI | WAVE_SAW | WAVE_PULSE)
+};
 
 // Common Notes
-#define NOTE_C3  0x0892
-#define NOTE_Cs3 0x0914
-#define NOTE_D3  0x099E
-#define NOTE_Ds3 0x0A32
-#define NOTE_E3  0x0ACC
-#define NOTE_F3  0x0B71
-#define NOTE_Fs3 0x0C1F
-#define NOTE_G3  0x0CD8
-#define NOTE_Gs3 0x0D9C
-#define NOTE_A3  0x0E6A
-#define NOTE_As3 0x0F47
-#define NOTE_B3  0x102F
-#define NOTE_C4  0x1124
-#define NOTE_E4  0x1599
-#define NOTE_G4  0x19B0
-#define NOTE_C5  0x2249
+enum {
+    NOTE_C3  = 0x0892,
+    NOTE_Cs3 = 0x0914,
+    NOTE_D3  = 0x099E,
+    NOTE_Ds3 = 0x0A32,
+    NOTE_E3  = 0x0ACC,
+    NOTE_F3  = 0x0B71,
+    NOTE_Fs3 = 0x0C1F,
+    NOTE_G3  = 0x0CD8,
+    NOTE_Gs3 = 0x0D9C,
+    NOTE_A3  = 0x0E6A,
+    NOTE_As3 = 0x0F47,
+    NOTE_B3  = 0x102F,
+    NOTE_C4  = 0x1124,
+    NOTE_E4  = 0x1599,
+    NOTE_G4  = 0x19B0,
+    NOTE_C5  = 0x2249
+};
 
 /* SID BIOS API */
 void sid_write(uint8_t reg, uint8_t val);
@@ -242,7 +254,9 @@ void sid_reset(void);
 void os_load_app_page(uint8_t page_id);
 
 #define SWAP_WINDOW_ADDR ((void*)0x2800)
-#define SWAP_WINDOW_SIZE 0x2000
+enum {
+    SWAP_WINDOW_SIZE = 0x2000
+};
 
 uint8_t os_swap_save(const char* name, void* addr, uint16_t size);
 uint8_t os_swap_load(const char* name, void* addr, uint16_t size);

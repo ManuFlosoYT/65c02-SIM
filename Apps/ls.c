@@ -9,12 +9,10 @@ int main(void) {
     SD_DIR dir;
     SD_INFO fno;
     char** args = _args_ptr;
-    char* path;
+    char* path = (arg_count > 1) ? args[1] : ".";
     char size_str[11];
-    unsigned long sz;
-    int i;
-
-    path = (arg_count > 1) ? args[1] : ".";
+    unsigned long sz = 0;
+    int i = 0;
 
     if (sd_opendir(&dir, path)) {
         while (sd_readdir(&dir, &fno)) {

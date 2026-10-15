@@ -5,7 +5,7 @@
 
 int main(void) {
     SD_FILE fp;
-    int c;
+    int c = 0;
     char** args = _args_ptr;
 
     if (arg_count < 2) {
