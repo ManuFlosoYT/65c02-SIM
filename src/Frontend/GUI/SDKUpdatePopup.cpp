@@ -7,12 +7,9 @@
 namespace GUI {
 
 void DrawSDKUpdatePopup(AppState& state) {
-    if (!state.sdk.showUpdatePopup) {
-        return;
-    }
-
-    if (!ImGui::IsPopupOpen("SDK Update Available")) {
+    if (state.sdk.showUpdatePopup) {
         ImGui::OpenPopup("SDK Update Available");
+        state.sdk.showUpdatePopup = false;
     }
 
     // Always center the modal
