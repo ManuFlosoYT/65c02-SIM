@@ -169,7 +169,7 @@ else
     if command -v ccache >/dev/null 2>&1; then ccache -s; fi
 
     echo "Running unit tests (Linux)..."
-    "./$BUILD_DIR/unit_tests"
+    ctest --test-dir "$BUILD_DIR" -j $(nproc) --output-on-failure
 
     mkdir -p output
     cp "$BUILD_DIR/SIM_65C02" output/ 2>/dev/null || true
