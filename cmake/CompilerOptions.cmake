@@ -12,6 +12,17 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
+
+if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+    find_program(MOLD_PATH mold REQUIRED)
+    add_link_options("-fuse-ld=mold")
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 		set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -ffunction-sections -fdata-sections")
