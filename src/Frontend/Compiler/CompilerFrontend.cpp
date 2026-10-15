@@ -292,7 +292,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string binFile = tempDir + "/out.bin";
     std::string compiler = CompilerVFS::GetCompilerExecutable();
 
-    const std::array<const char*, 4> optLevels = {"-O3", "-O2", "-Os", "-Oz"};
+    const std::array<const char*, 2> optLevels = {"-Os", "-Oz"};
     bool buildOk = false;
 
     for (const auto* opt : optLevels) {
@@ -303,8 +303,15 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
         if (type == BuildType::Assembly) {
             cmd += " -nostartfiles " + srcFile + " -o " + binFile;
         } else {
-            cmd += " -fnonreentrant -ffunction-sections -fdata-sections -Wl,--gc-sections -mlto-zp=200 " + srcFile +
-                   " " + tempDir + "/Linker/bios.s " + tempDir + "/include/Libs/BIOS.c";
+            cmd +=
+                " -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections "
+                "-Wl,--lto-O2 -mlto-zp=200 ";
+            cmd += srcFile;
+            cmd += " ";
+            cmd += tempDir;
+            cmd += "/Linker/bios.s ";
+            cmd += tempDir;
+            cmd += "/include/Libs/BIOS.c";
             if (code.find("SD.h") != std::string::npos) {
                 cmd += " " + tempDir + "/include/Libs/SD.c " + tempDir + "/include/Libs/fatfs/ff.c " + tempDir +
                        "/include/Libs/fatfs/diskio.c -D ENABLE_SD_SUPPORT=1";
@@ -332,7 +339,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     }
 
     if (!buildOk) {
-        res.log += "Error: Compilation failed for all optimization levels (-O3, -O2, -Os, -Oz).\n";
+        res.log += "Error: Compilation failed for all optimization levels (-Os, -Oz).\n";
         return res;
     }
 
