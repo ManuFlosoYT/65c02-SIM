@@ -1,43 +1,31 @@
-#ifndef BIOS_H
-#define BIOS_H
+#pragma once
 
-#ifndef __fastcall__
-#define __fastcall__
-#endif
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
-// Introduces a character from the serial port.
-// Returns the character in A.
-extern char __fastcall__ MONRDKEY(void);
-#define bios_getchar MONRDKEY
+char bios_getchar(void);
+void bios_putchar(char c);
+char bios_getchar_nb(void);
+void INIT_BUFFER(void);
 
-// Outputs a character to the serial port.
-// Expects the character in A.
-extern void __fastcall__ MONCOUT(char c);
-#define bios_putchar MONCOUT
-
-// Reads a character without blocking (returns 0 if no key)
-extern char __fastcall__ MONGETCHAR_NB(void);
-#define bios_getchar_nb MONGETCHAR_NB
-
-// Initializes the buffer.
-extern void __fastcall__ INIT_BUFFER(void);
+#define MONRDKEY bios_getchar
+#define MONCOUT bios_putchar
+#define MONGETCHAR_NB bios_getchar_nb
 
 void print_str(const char* s);
 void println(const char* s);
-void read_line(char* buffer, int max_len);
-void print_hex_byte(unsigned char v);
-void print_hex(unsigned int n);
-void print_num(unsigned int n);
-void delay(unsigned int ms);
+void read_line(char* buffer, size_t max_len);
+void print_hex_byte(uint8_t v);
+void print_hex(uint16_t n);
+void print_num(uint16_t n);
+void delay(uint16_t ms);
 
-// Paginated Virtual Memory
-void os_load_app_page(unsigned char page_id);
-unsigned char os_swap_save(const char* name, void* addr, unsigned int size);
-unsigned char os_swap_load(const char* name, void* addr, unsigned int size);
-void* os_alloc(unsigned int size);
+void os_load_app_page(uint8_t page_id);
+uint8_t os_swap_save(const char* name, void* addr, uint16_t size);
+uint8_t os_swap_load(const char* name, void* addr, uint16_t size);
+void* os_alloc(uint16_t size);
 void os_free(void* ptr);
 void os_clear_swap_blocks(void);
 
-const char* os_get_msg(unsigned char msg_id);
-
-#endif
+const char* os_get_msg(uint8_t msg_id);
