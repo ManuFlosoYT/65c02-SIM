@@ -5,6 +5,8 @@
 #include <random>
 #include <sstream>
 
+#include "Hardware/Audio/SIDWaveTables.h"
+
 using namespace Control;
 using namespace Core;
 using namespace Hardware;
@@ -45,22 +47,63 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
         phase -= std::floor(phase);
 
         float val = 0.0F;
-        if (voice.frequency > 0 && envLevel > 0.0F) {
-            if ((voice.control & 0x10) != 0) {  // Triangle
-                val = (phase < 0.5F) ? (-1.0F + (4.0F * phase)) : (3.0F - (4.0F * phase));
-            } else if ((voice.control & 0x20) != 0) {  // Sawtooth
-                val = (2.0F * phase) - 1.0F;
-            } else if ((voice.control & 0x40) != 0) {  // Pulse
-                float pulseWidthRatio = (float)(voice.pulseWidth & 0xFFF) / 4095.0F;
-                if (pulseWidthRatio == 0.0F) {
-                    pulseWidthRatio = 0.5F;
-                }
-                val = (phase < pulseWidthRatio) ? 1.0F : -1.0F;
-            } else if ((voice.control & 0x80) != 0) {  // Noise
+        if (voice.frequency > 0 && envLevel > 0.0F && (voice.control & 0x08) == 0) {
+            uint8_t waveControl = (voice.control >> 4) & 0x0F;
+            bool noiseOn = (waveControl & 0x08) != 0;
+            bool pulseOn = (waveControl & 0x04) != 0;
+            bool sawOn = (waveControl & 0x02) != 0;
+            bool triOn = (waveControl & 0x01) != 0;
+
+            if (waveControl == 0) {
+                val = 0.0F;
+            } else if (noiseOn) {
                 if (should_update) {
                     noise_buffer.at(static_cast<size_t>(voiceIndex)).at(nIdx) = dist(randomGenerator);
                 }
-                val = noise_buffer.at(static_cast<size_t>(voiceIndex)).at(nIdx);
+                if (sid.GetModel() == SIDModel::MOS6581 && waveControl != 0x08) {
+                    val = 0.0F;
+                } else {
+                    val = noise_buffer.at(static_cast<size_t>(voiceIndex)).at(nIdx);
+                }
+            } else {
+                auto acc = static_cast<uint32_t>(phase * 16777216.0F) & 0xFFFFFF;
+                auto ix = static_cast<uint16_t>(acc >> 12);
+                uint16_t pulseOutput = (ix >= (voice.pulseWidth & 0xFFF)) ? 0xFFF : 0;
+                uint32_t msb = acc & 0x800000;
+                uint16_t tri = ((acc ^ (msb != 0 ? 0xFFFFFF : 0)) >> 11) & 0xFFF;
+                uint16_t saw = ix;
+                uint16_t out = 0;
+
+                if (sid.GetModel() == SIDModel::MOS6581) {
+                    if (waveControl == 0x01) {
+                        out = tri;
+                    } else if (waveControl == 0x02) {
+                        out = saw;
+                    } else if (waveControl == 0x04) {
+                        out = pulseOutput;
+                    } else if (waveControl == 0x03) {
+                        out = wave6581__ST[ix];
+                    } else if (waveControl == 0x05) {
+                        out = wave6581_P_T[ix] & pulseOutput;
+                    } else if (waveControl == 0x06) {
+                        out = wave6581_PS_[ix] & pulseOutput;
+                    } else if (waveControl == 0x07) {
+                        out = wave6581_PST[ix] & pulseOutput;
+                    }
+                } else {
+                    out = 0xFFF;
+                    if (triOn) {
+                        out &= tri;
+                    }
+                    if (sawOn) {
+                        out &= saw;
+                    }
+                    if (pulseOn) {
+                        out &= pulseOutput;
+                    }
+                }
+
+                val = (static_cast<float>(out) / 2047.5F) - 1.0F;
             }
             val *= envLevel;
         }
