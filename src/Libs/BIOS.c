@@ -18,6 +18,7 @@ void print_str(const char* s) {
 
 void println(const char* s) {
     print_str(s);
+    bios_putchar('\r');
     bios_putchar('\n');
 }
 
