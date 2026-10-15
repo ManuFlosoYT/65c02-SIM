@@ -3,6 +3,23 @@ file(GLOB_RECURSE TEST_SOURCES "src/UnitTests/*.cpp")
 
 if(TEST_SOURCES AND NOT EMSCRIPTEN)
     add_executable(unit_tests ${TEST_SOURCES})
+    set_target_properties(unit_tests PROPERTIES
+        UNITY_BUILD ON
+        UNITY_BUILD_BATCH_SIZE 16
+        UNITY_BUILD_MODE BATCH
+    )
+    target_precompile_headers(unit_tests PRIVATE
+        <gtest/gtest.h>
+        <cstdint>
+        <vector>
+        <string>
+        <memory>
+        <algorithm>
+        "${CMAKE_SOURCE_DIR}/src/Hardware/CPU/CPU.h"
+        "${CMAKE_SOURCE_DIR}/src/Hardware/Core/Bus.h"
+        "${CMAKE_SOURCE_DIR}/src/Hardware/Memory/RAM.h"
+        "${CMAKE_SOURCE_DIR}/src/Hardware/CPU/Instructions/InstructionSet.h"
+    )
     target_link_libraries(unit_tests PRIVATE 65c02_core_test GTest::gtest_main)
 
     if(WIN32)
