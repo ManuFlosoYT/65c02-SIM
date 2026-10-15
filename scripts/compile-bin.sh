@@ -24,11 +24,11 @@ compile_with_opt_fallback() {
     local sources=("$@")
 
     local last_err=""
-    for opt in -O3 -O2 -Os -Oz; do
+    for opt in -Os -Oz; do
         echo "  [LLVM-MOS] Compiling with $opt..."
         local err_log
         err_log=$(mktemp)
-        if "$MOS_CLANG" -mcpu=mosw65c02 $opt -fnonreentrant -ffunction-sections -fdata-sections -Wl,--gc-sections -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
+        if "$MOS_CLANG" -mcpu=mosw65c02 $opt -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
             cat "$err_log"
             rm -f "$err_log"
             echo "  [LLVM-MOS] Successfully compiled with $opt."
@@ -49,7 +49,7 @@ compile_with_opt_fallback() {
         fi
     done
 
-    echo "Error: Binary too large for all optimization levels (-O3, -O2, -Os, -Oz)."
+    echo "Error: Binary too large for all optimization levels (-Os, -Oz)."
     echo "$last_err"
     return 1
 }
@@ -86,7 +86,7 @@ mkdir -p output
 
 # --microDOS: compile a .c file as a microDOS .app binary
 if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
-    echo "--- Compiling $NAME.app (microDOS App with LLVM-MOS -O3) ---"
+    echo "--- Compiling $NAME.app (microDOS App with LLVM-MOS -Os) ---"
     SRC=""
     if [ -f "sdk/microdos/Apps/$NAME.c" ]; then
         SRC="sdk/microdos/Apps/$NAME.c"

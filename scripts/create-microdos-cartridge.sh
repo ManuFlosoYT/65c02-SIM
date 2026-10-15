@@ -21,15 +21,15 @@ else
     "$SCRIPT_DIR/compile-bin.sh" microDOS
 fi
 
-# Compile all available microDOS apps with -O3
-echo "  Compiling microDOS apps with -O3..."
+# Compile all available microDOS apps with -Os
+echo "  Compiling microDOS apps with -Os..."
 mkdir -p output/apps
 pids=()
 logs=()
 for app_src in sdk/microdos/Apps/*.c; do
     if [ -f "$app_src" ]; then
         app_name=$(basename "${app_src%.c}")
-        echo "    Building $app_name.app (-O3)..."
+        echo "    Building $app_name.app (-Os)..."
         log=$(mktemp)
         logs+=("$log")
         if [ "$MULTITHREAD" = true ]; then
