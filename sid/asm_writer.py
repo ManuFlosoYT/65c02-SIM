@@ -367,7 +367,7 @@ def _compile_and_report(asm_file, limit_bytes):
         "-mcpu=mosw65c02",
         "-nostartfiles",
         "-T", linker_ld,
-        f"-Wl,-Map={map_file}",
+        "-Xlinker", f"-Map={map_file}",
         "-o", bin_file,
         asm_file
     ]
