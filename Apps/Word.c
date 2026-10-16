@@ -38,6 +38,10 @@ enum : uint8_t {
 
 static char page_buf[PAGE_CAP];
 static char cache_buf[PAGE_CAP];
+static char screen_cache[TEXT_ROWS][TEXT_COLS];
+static uint8_t screen_row_len[TEXT_ROWS];
+static uint8_t prev_row_len[TEXT_ROWS];
+
 static uint16_t page_lens[MAX_PAGES];
 static uint32_t page_file_offsets[MAX_PAGES];
 static uint8_t page_in_swap[MAX_PAGES];
@@ -48,12 +52,27 @@ static uint8_t cur_page = 0U;
 static uint16_t cur_len = 0U;
 static uint16_t cursor_idx = 0U;
 static uint16_t scroll_row = 0U;
+static uint16_t prev_scroll_row = 0xFFFFU;
 static bool page_dirty = false;
 static bool doc_modified = false;
 static bool has_source_file = false;
+static bool status_dirty = true;
+static bool force_full_redraw = true;
 static uint8_t ram_cache_page = 0xFFU;
 static char current_file[FILENAME_MAX_LEN] = "UNTITLED.TXT";
 static char status_msg[40] = "Ready";
+
+static void invalidate_screen(void) {
+    for (uint8_t r = 0U; r < TEXT_ROWS; ++r) {
+        for (uint8_t c = 0U; c < TEXT_COLS; ++c) {
+            screen_cache[r][c] = ' ';
+        }
+        screen_row_len[r] = 0U;
+        prev_row_len[r] = TEXT_COLS;
+    }
+    force_full_redraw = true;
+    status_dirty = true;
+}
 
 static void make_page_swap_name(uint8_t page, char* out_name) {
     out_name[0] = 'W';
@@ -82,6 +101,7 @@ static void cleanup_swap_files(void) {
 static void set_status(const char* msg) {
     strncpy(status_msg, msg, sizeof(status_msg) - 1U);
     status_msg[sizeof(status_msg) - 1U] = '\0';
+    status_dirty = true;
 }
 
 static bool save_page_to_storage(uint8_t page, char* buf, uint16_t len) {
@@ -260,6 +280,7 @@ static void reset_document(void) {
     page_dirty = false;
     doc_modified = false;
     has_source_file = false;
+    status_dirty = true;
 }
 
 static bool load_file_streaming(const char* filename) {
@@ -407,8 +428,9 @@ static void adjust_scroll(uint16_t cur_r) {
 }
 
 static void draw_chrome(void) {
+    print_str("\x1b[?25l");
     tui_set_color(TUI_COLOR_WHITE, TUI_COLOR_BLUE);
-    tui_fill_rect(1U, 1U, 80U, 25U, ' ');
+    tui_fill_rect(1U, 1U, 80U, 24U, ' ');
 
     tui_set_cursor(1U, 1U);
     print_str("\x1b[30;46m MicroWord   [ESC: Menu]  [^O: Open]  [^S: Save]  [^N/^P: Page]                 \x1b[0m");
@@ -417,38 +439,35 @@ static void draw_chrome(void) {
 
     tui_set_cursor(WIN_ROW + 1U, TEXT_COL);
     print_str("\x1b[34;47m[----1----2----3----4----5----6----7-]\x1b[0m");
+
+    invalidate_screen();
+    print_str("\x1b[?25h");
 }
 
-static void draw_status_bar(uint16_t cur_r, uint16_t cur_c) {
+static void draw_status_bar(void) {
+    print_str("\x1b[?25l");
     tui_set_cursor(25U, 1U);
     print_str("\x1b[30;47m ");
     print_str(current_file);
-    if (doc_modified) {
-        bios_putchar('*');
-    } else {
-        bios_putchar(' ');
-    }
+    bios_putchar(doc_modified ? '*' : ' ');
     print_str(" | Pg:");
     print_num(cur_page + 1U);
     bios_putchar('/');
     print_num(total_pages);
-    print_str(" Ln:");
-    print_num(cur_r + 1U);
-    print_str(" Col:");
-    print_num(cur_c + 1U);
-    print_str(" (");
+    print_str(" | ");
     print_num(cur_len);
-    print_str("B) | ");
+    print_str("B | ");
     uint8_t msg_len = 0U;
-    while (status_msg[msg_len] != '\0' && msg_len < 22U) {
+    while (status_msg[msg_len] != '\0' && msg_len < 34U) {
         bios_putchar(status_msg[msg_len]);
         ++msg_len;
     }
-    while (msg_len < 22U) {
+    while (msg_len < 34U) {
         bios_putchar(' ');
         ++msg_len;
     }
-    print_str("\x1b[0m");
+    print_str("\x1b[0m\x1b[?25h");
+    status_dirty = false;
 }
 
 static void render_editor(void) {
@@ -456,6 +475,11 @@ static void render_editor(void) {
     uint16_t cur_c = 0U;
     compute_cursor_row_col(&cur_r, &cur_c);
     adjust_scroll(cur_r);
+
+    if (scroll_row != prev_scroll_row) {
+        force_full_redraw = true;
+        prev_scroll_row = scroll_row;
+    }
 
     uint16_t doc_r = 0U;
     uint16_t doc_c = 0U;
@@ -475,70 +499,67 @@ static void render_editor(void) {
         ++i;
     }
 
+    bool color_set = false;
     for (uint8_t vis_r = 0U; vis_r < TEXT_ROWS; ++vis_r) {
-        uint16_t target_doc_r = (uint16_t)(scroll_row + vis_r);
-        tui_set_cursor((uint8_t)(TEXT_ROW + vis_r), TEXT_COL);
-        tui_set_color(TUI_COLOR_BLACK, TUI_COLOR_WHITE);
+        char row_text[TEXT_COLS];
+        uint8_t col_len = 0U;
 
-        uint8_t col_drawn = 0U;
-        while (col_drawn < TEXT_COLS && i <= cur_len) {
-            bool is_cursor = (i == cursor_idx && target_doc_r == cur_r && col_drawn == cur_c);
-
-            if (i == cur_len) {
-                if (is_cursor) {
-                    tui_set_color(TUI_COLOR_WHITE, TUI_COLOR_BLACK);
-                    bios_putchar(' ');
-                    tui_set_color(TUI_COLOR_BLACK, TUI_COLOR_WHITE);
-                    ++col_drawn;
-                }
-                ++i;
-                break;
-            }
-
+        while (col_len < TEXT_COLS && i < cur_len) {
             char ch = page_buf[i];
+            ++i;
             if (ch == '\n') {
-                if (is_cursor) {
-                    tui_set_color(TUI_COLOR_WHITE, TUI_COLOR_BLACK);
-                    bios_putchar(' ');
-                    tui_set_color(TUI_COLOR_BLACK, TUI_COLOR_WHITE);
-                    ++col_drawn;
-                }
-                ++i;
                 break;
             }
+            row_text[col_len] = (ch >= 32 && ch <= 126) ? ch : ' ';
+            ++col_len;
+        }
+        for (uint8_t c = col_len; c < TEXT_COLS; ++c) {
+            row_text[c] = ' ';
+        }
 
-            if (is_cursor) {
-                tui_set_color(TUI_COLOR_WHITE, TUI_COLOR_BLACK);
+        uint8_t max_check = (col_len > prev_row_len[vis_r]) ? col_len : prev_row_len[vis_r];
+        if (force_full_redraw && max_check < prev_row_len[vis_r]) {
+            max_check = prev_row_len[vis_r];
+        }
+
+        uint8_t first_diff = 0xFFU;
+        uint8_t last_diff = 0U;
+        for (uint8_t c = 0U; c < max_check; ++c) {
+            if (force_full_redraw || screen_cache[vis_r][c] != row_text[c]) {
+                if (first_diff == 0xFFU) {
+                    first_diff = c;
+                }
+                last_diff = c;
             }
-            if (ch >= 32 && ch <= 126) {
-                bios_putchar(ch);
-            } else {
-                bios_putchar(' ');
-            }
-            if (is_cursor) {
+            screen_cache[vis_r][c] = row_text[c];
+        }
+        prev_row_len[vis_r] = col_len;
+        screen_row_len[vis_r] = col_len;
+
+        if (first_diff != 0xFFU) {
+            if (!color_set) {
+                print_str("\x1b[?25l");
                 tui_set_color(TUI_COLOR_BLACK, TUI_COLOR_WHITE);
+                color_set = true;
             }
-
-            ++i;
-            ++col_drawn;
-        }
-
-        while (col_drawn < TEXT_COLS) {
-            bios_putchar(' ');
-            ++col_drawn;
+            tui_set_cursor((uint8_t)(TEXT_ROW + vis_r), (uint8_t)(TEXT_COL + first_diff));
+            for (uint8_t c = first_diff; c <= last_diff; ++c) {
+                bios_putchar(row_text[c]);
+            }
         }
     }
 
-    tui_set_color(TUI_COLOR_BLACK, TUI_COLOR_WHITE);
-    print_str("\x1b(0");
-    for (uint8_t r = 0U; r < TEXT_ROWS; ++r) {
-        tui_set_cursor((uint8_t)(TEXT_ROW + r), (uint8_t)(WIN_COL + WIN_WIDTH - 1U));
-        bios_putchar('x');
-    }
-    print_str("\x1b(B");
+    force_full_redraw = false;
 
-    draw_status_bar(cur_r, cur_c);
-    tui_set_cursor(25U, 79U);
+    if (status_dirty) {
+        draw_status_bar();
+    } else if (color_set) {
+        print_str("\x1b[?25h");
+    }
+
+    uint8_t screen_cur_r = (uint8_t)(TEXT_ROW + (cur_r - scroll_row));
+    uint8_t screen_cur_c = (uint8_t)(TEXT_COL + cur_c);
+    tui_set_cursor(screen_cur_r, screen_cur_c);
 }
 
 static void insert_char(char c) {
@@ -547,6 +568,25 @@ static void insert_char(char c) {
             return;
         }
     }
+
+    uint16_t cur_r = 0U;
+    uint16_t cur_c = 0U;
+    compute_cursor_row_col(&cur_r, &cur_c);
+    uint8_t vis_r = (uint8_t)(cur_r - scroll_row);
+
+    /* bios_getchar echoed `c` at (TEXT_ROW + vis_r, TEXT_COL + cur_c) if printable;
+       mark that cell in screen_cache as `c` or 0 so diff engine repairs or skips it */
+    if (vis_r < TEXT_ROWS && cur_c < TEXT_COLS) {
+        if (c >= 32 && c <= 126) {
+            screen_cache[vis_r][cur_c] = c;
+            if ((uint8_t)(cur_c + 1U) > prev_row_len[vis_r]) {
+                prev_row_len[vis_r] = (uint8_t)(cur_c + 1U);
+            }
+        } else {
+            screen_cache[vis_r][cur_c] = 0;
+        }
+    }
+
     if (cursor_idx < cur_len) {
         memmove(&page_buf[cursor_idx + 1U], &page_buf[cursor_idx], (size_t)(cur_len - cursor_idx));
     }
@@ -555,7 +595,10 @@ static void insert_char(char c) {
     ++cursor_idx;
     page_lens[cur_page] = cur_len;
     page_dirty = true;
-    doc_modified = true;
+    if (!doc_modified) {
+        doc_modified = true;
+        status_dirty = true;
+    }
 }
 
 static void delete_char_before(void) {
@@ -567,7 +610,10 @@ static void delete_char_before(void) {
         --cursor_idx;
         page_lens[cur_page] = cur_len;
         page_dirty = true;
-        doc_modified = true;
+        if (!doc_modified) {
+            doc_modified = true;
+            status_dirty = true;
+        }
     } else if (cur_page > 0U) {
         if (switch_to_page((uint8_t)(cur_page - 1U))) {
             cursor_idx = cur_len;
@@ -583,7 +629,10 @@ static void delete_char_at(void) {
         --cur_len;
         page_lens[cur_page] = cur_len;
         page_dirty = true;
-        doc_modified = true;
+        if (!doc_modified) {
+            doc_modified = true;
+            status_dirty = true;
+        }
     }
 }
 
@@ -668,6 +717,7 @@ static bool prompt_filename_dialog(const char* title, char* out_buf) {
     input[FILENAME_MAX_LEN - 1U] = '\0';
     uint8_t len = (uint8_t)strlen(input);
 
+    print_str("\x1b[?25l");
     tui_draw_window(d_row, d_col, d_width, d_height, title);
     tui_set_color(TUI_COLOR_BLACK, TUI_COLOR_WHITE);
     tui_set_cursor(d_row + 2U, d_col + 3U);
@@ -682,23 +732,32 @@ static bool prompt_filename_dialog(const char* title, char* out_buf) {
     print_str("\x1b(B");
 
     uint8_t focus = 0U;
-    while (true) {
-        tui_set_cursor(d_row + 4U, d_col + 3U);
-        print_str(focus == 0U ? "\x1b[37;44;1m" : "\x1b[30;46m");
-        for (uint8_t i = 0U; i < 36U; ++i) {
-            if (i < len) {
-                bios_putchar(input[i]);
-            } else if (i == len && focus == 0U) {
-                bios_putchar('_');
-            } else {
-                bios_putchar(' ');
-            }
-        }
-        print_str("\x1b[0m");
+    uint8_t prev_focus = 0xFFU;
+    uint8_t prev_len = 0xFFU;
 
-        tui_draw_button(d_row + 7U, d_col + 8U, "OK", focus == 1U);
-        tui_draw_button(d_row + 7U, d_col + 22U, "Cancel", focus == 2U);
-        tui_set_cursor(25U, 79U);
+    while (true) {
+        if (focus != prev_focus || len != prev_len) {
+            tui_set_cursor(d_row + 4U, d_col + 3U);
+            print_str(focus == 0U ? "\x1b[37;44;1m" : "\x1b[30;46m");
+            for (uint8_t i = 0U; i < 36U; ++i) {
+                if (i < len) {
+                    bios_putchar(input[i]);
+                } else if (i == len && focus == 0U) {
+                    bios_putchar('_');
+                } else {
+                    bios_putchar(' ');
+                }
+            }
+            print_str("\x1b[0m");
+            prev_len = len;
+        }
+
+        if (focus != prev_focus) {
+            tui_draw_button(d_row + 7U, d_col + 8U, "OK", focus == 1U);
+            tui_draw_button(d_row + 7U, d_col + 22U, "Cancel", focus == 2U);
+            prev_focus = focus;
+        }
+        tui_set_cursor(d_row + 4U, (uint8_t)(d_col + 3U + len));
 
         uint16_t key = tui_get_key();
         if (key == TUI_KEY_ESC) {
@@ -740,6 +799,7 @@ static bool show_main_menu_dialog(void) {
     const uint8_t w_width = 52U;
     const uint8_t w_height = 12U;
 
+    print_str("\x1b[?25l");
     tui_draw_window(w_row, w_col, w_width, w_height, "MicroWord Menu");
     tui_set_color(TUI_COLOR_BLACK, TUI_COLOR_WHITE);
     tui_set_cursor(w_row + 2U, w_col + 3U);
@@ -758,13 +818,17 @@ static bool show_main_menu_dialog(void) {
     print_str("\x1b(B");
 
     uint8_t selected = 0U;
+    uint8_t prev_selected = 0xFFU;
     while (true) {
-        tui_draw_button(w_row + 9U, w_col + 3U, "Resume", selected == 0U);
-        tui_draw_button(w_row + 9U, w_col + 15U, "Save", selected == 1U);
-        tui_draw_button(w_row + 9U, w_col + 25U, "Open", selected == 2U);
-        tui_draw_button(w_row + 9U, w_col + 35U, "New", selected == 3U);
-        tui_draw_button(w_row + 9U, w_col + 43U, "Exit", selected == 4U);
-        tui_set_cursor(25U, 79U);
+        if (selected != prev_selected) {
+            tui_draw_button(w_row + 9U, w_col + 3U, "Resume", selected == 0U);
+            tui_draw_button(w_row + 9U, w_col + 15U, "Save", selected == 1U);
+            tui_draw_button(w_row + 9U, w_col + 25U, "Open", selected == 2U);
+            tui_draw_button(w_row + 9U, w_col + 35U, "New", selected == 3U);
+            tui_draw_button(w_row + 9U, w_col + 43U, "Exit", selected == 4U);
+            prev_selected = selected;
+        }
+        tui_set_cursor(w_row + 2U, w_col + 2U);
 
         uint16_t key = tui_get_key();
         switch (key) {
@@ -781,8 +845,8 @@ static bool show_main_menu_dialog(void) {
                 return true;
             case TUI_KEY_ENTER:
             case ' ': {
-                draw_chrome();
                 if (selected == 0U) {
+                    draw_chrome();
                     return true;
                 }
                 if (selected == 1U) {
@@ -915,13 +979,31 @@ int main(void) {
             case TUI_KEY_DELETE:
                 delete_char_at();
                 break;
-            case TUI_KEY_ENTER:
+            case TUI_KEY_ENTER: {
+                uint16_t cur_r = 0U;
+                uint16_t cur_c = 0U;
+                compute_cursor_row_col(&cur_r, &cur_c);
+                uint8_t vis_r = (uint8_t)(cur_r - scroll_row);
+                if ((uint8_t)(vis_r + 1U) < TEXT_ROWS) {
+                    screen_cache[vis_r + 1U][0] = 0;
+                }
                 insert_char('\n');
                 break;
-            case TUI_KEY_TAB:
+            }
+            case TUI_KEY_TAB: {
+                uint16_t cur_r = 0U;
+                uint16_t cur_c = 0U;
+                compute_cursor_row_col(&cur_r, &cur_c);
+                uint8_t vis_r = (uint8_t)(cur_r - scroll_row);
+                if (vis_r < TEXT_ROWS) {
+                    for (uint8_t c = (uint8_t)cur_c; c < TEXT_COLS && c < (uint8_t)(cur_c + 8U); ++c) {
+                        screen_cache[vis_r][c] = 0;
+                    }
+                }
                 insert_char(' ');
                 insert_char(' ');
                 break;
+            }
             default:
                 if (key >= 32U && key <= 126U) {
                     insert_char((char)key);
@@ -934,4 +1016,3 @@ int main(void) {
     tui_shutdown();
     return 0;
 }
-
