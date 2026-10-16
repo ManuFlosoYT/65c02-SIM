@@ -344,6 +344,20 @@ static bool load_file_streaming(const char* filename) {
     return true;
 }
 
+static void ensure_parent_dirs(const char* path) {
+    char dir[FILENAME_MAX_LEN];
+    uint8_t i = 0U;
+    while (path[i] != '\0' && i < (FILENAME_MAX_LEN - 1U)) {
+        dir[i] = path[i];
+        if (i > 0U && (path[i] == '/' || path[i] == '\\') && path[i - 1U] != '/' && path[i - 1U] != '\\') {
+            dir[i] = '\0';
+            sd_mkdir(dir);
+            dir[i] = path[i];
+        }
+        ++i;
+    }
+}
+
 static bool save_file_streaming(const char* filename) {
     if (page_dirty || (total_pages > 1U && page_in_swap[cur_page] == 0U && ram_cache_page != cur_page)) {
         if (!save_page_to_storage(cur_page, page_buf, cur_len)) {
@@ -365,6 +379,8 @@ static bool save_file_streaming(const char* filename) {
             }
         }
     }
+
+    ensure_parent_dirs(filename);
 
     SD_FILE fp;
     if (sd_open(&fp, filename, SD_WRITE | SD_CREATE_ALWAYS) == 0U) {
@@ -777,10 +793,10 @@ static bool prompt_filename_dialog(const char* title, char* out_buf) {
 }
 
 static bool show_main_menu_dialog(void) {
-    const uint8_t w_row = 6U;
+    const uint8_t w_row = 5U;
     const uint8_t w_col = 14U;
     const uint8_t w_width = 52U;
-    const uint8_t w_height = 12U;
+    const uint8_t w_height = 14U;
 
     print_str("\x1b[?25l");
     tui_draw_window(w_row, w_col, w_width, w_height, "MicroWord Menu");
@@ -792,7 +808,7 @@ static bool show_main_menu_dialog(void) {
     tui_set_cursor(w_row + 4U, w_col + 3U);
     print_str("Select an action:");
 
-    tui_set_cursor(w_row + 8U, w_col);
+    tui_set_cursor(w_row + 7U, w_col);
     print_str("\x1b[30;47m\x1b(0t");
     for (uint8_t i = 0U; i < w_width - 2U; ++i) {
         bios_putchar('q');
@@ -804,11 +820,11 @@ static bool show_main_menu_dialog(void) {
     uint8_t prev_selected = 0xFFU;
     while (true) {
         if (selected != prev_selected) {
-            tui_draw_button(w_row + 9U, w_col + 3U, "Resume", selected == 0U);
-            tui_draw_button(w_row + 9U, w_col + 14U, "Save", selected == 1U);
-            tui_draw_button(w_row + 9U, w_col + 23U, "Open", selected == 2U);
-            tui_draw_button(w_row + 9U, w_col + 32U, "New", selected == 3U);
-            tui_draw_button(w_row + 9U, w_col + 40U, "Exit", selected == 4U);
+            tui_draw_button(w_row + 9U, w_col + 6U, "Resume", selected == 0U);
+            tui_draw_button(w_row + 9U, w_col + 22U, "Save", selected == 1U);
+            tui_draw_button(w_row + 9U, w_col + 36U, "Open", selected == 2U);
+            tui_draw_button(w_row + 11U, w_col + 13U, "New", selected == 3U);
+            tui_draw_button(w_row + 11U, w_col + 31U, "Exit", selected == 4U);
             prev_selected = selected;
         }
         tui_set_cursor(w_row + 2U, w_col + 2U);
@@ -822,6 +838,16 @@ static bool show_main_menu_dialog(void) {
             case TUI_KEY_LEFT:
             case TUI_KEY_SHIFT_TAB:
                 selected = (uint8_t)((selected + 4U) % 5U);
+                break;
+            case TUI_KEY_DOWN:
+                if (selected < 3U) {
+                    selected = (selected == 2U) ? 4U : (uint8_t)(selected + 3U);
+                }
+                break;
+            case TUI_KEY_UP:
+                if (selected >= 3U) {
+                    selected = (uint8_t)(selected - 3U);
+                }
                 break;
             case TUI_KEY_ESC:
                 draw_chrome();
