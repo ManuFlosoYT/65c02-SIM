@@ -668,18 +668,10 @@ void SDCard::ReadBlockFromImage() {
         data_buffer.fill(0xFFU);
         return;
     }
-    
-#ifndef TARGET_WASM
-    io_future = std::async(std::launch::async, [this]() {
-        imageFile.clear();  // Clear any EOF flags
-        imageFile.seekg(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
-        ISerializable::Deserialize(imageFile, data_buffer);
-    });
-#else
+
     imageFile.clear();  // Clear any EOF flags
     imageFile.seekg(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
     ISerializable::Deserialize(imageFile, data_buffer);
-#endif
 }
 
 void SDCard::WriteBlockToImage() {
@@ -687,19 +679,10 @@ void SDCard::WriteBlockToImage() {
         return;
     }
 
-#ifndef TARGET_WASM
-    io_future = std::async(std::launch::async, [this]() {
-        imageFile.clear();
-        imageFile.seekp(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
-        ISerializable::Serialize(imageFile, data_buffer);
-        imageFile.flush();
-    });
-#else
     imageFile.clear();
     imageFile.seekp(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
     ISerializable::Serialize(imageFile, data_buffer);
     imageFile.flush();
-#endif
 }
 
 bool SDCard::SaveState(std::ostream& out) const {
