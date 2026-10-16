@@ -41,6 +41,7 @@ void read_line(char* buffer, size_t max_len) {
         if (c == '\b' || c == 8 || c == 127) {
             if (i > 0) {
                 --i;
+                bios_putchar('\b');
                 bios_putchar(' ');
                 bios_putchar('\b');
             }

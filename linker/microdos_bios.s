@@ -66,8 +66,13 @@ CHRIN:
     jsr BUFFER_SIZE
     beq .Lwait_key
     jsr READ_BUFFER
-    jsr CHROUT
     pha
+    cmp #8
+    beq .Lskip_echo
+    cmp #127
+    beq .Lskip_echo
+    jsr CHROUT
+.Lskip_echo:
     jsr BUFFER_SIZE
     cmp #0xB0
     bcs .Lmostly_full
