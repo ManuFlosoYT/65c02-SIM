@@ -120,9 +120,9 @@ if [[ "$TARGET_OS" == "web" ]]; then
 
     if command -v jq >/dev/null 2>&1; then
         echo "Generating structured roms.json..."
-        ROMS_JSON=$(ls output/cartridge/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
-        MIDIS_JSON=$(ls output/midi/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
-        VRAMS_JSON=$(ls output/vram/*.65c 2>/dev/null | xargs -n 1 basename | jq -R . | jq -s . || echo "[]")
+        ROMS_JSON=$(ls output/cartridge/*.65c 2>/dev/null | xargs -d '\n' -n 1 basename | jq -R . | jq -s . || echo "[]")
+        MIDIS_JSON=$(ls output/midi/*.65c 2>/dev/null | xargs -d '\n' -n 1 basename | jq -R . | jq -s . || echo "[]")
+        VRAMS_JSON=$(ls output/vram/*.65c 2>/dev/null | xargs -d '\n' -n 1 basename | jq -R . | jq -s . || echo "[]")
         jq -n --argjson r "$ROMS_JSON" --argjson m "$MIDIS_JSON" --argjson v "$VRAMS_JSON" \
             '{roms: $r, midis: $m, vrams: $v}' > output/web/roms/roms.json
     fi
