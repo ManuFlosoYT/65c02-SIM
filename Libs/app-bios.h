@@ -85,6 +85,7 @@ void     sd_closedir(SD_DIR* dp);
 uint8_t  sd_mkdir(const char* path);
 uint8_t  sd_remove(const char* path);
 uint8_t  sd_exists(const char* path);
+int      sd_seek(SD_FILE* fp, uint32_t pos);
 
 
 /* ========================================================================= */
