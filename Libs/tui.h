@@ -33,7 +33,7 @@ typedef enum {
     TUI_KEY_DELETE
 } tui_key_t;
 
-static inline void tui_init(void) { print_str("\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H\x1b[0m"); }
+static inline void tui_init(void) { print_str("\x1b[0m\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H"); }
 
 static inline void tui_shutdown(void) { print_str("\x1b[0m\x1b[?25h\x1b[?1049l"); }
 
@@ -145,11 +145,11 @@ static inline void tui_draw_button(uint8_t row, uint8_t col, const char* label, 
     if (focused) {
         print_str("\x1b[37;44;1m< ");
         print_str(label);
-        print_str(" >\x1b[0m");
+        print_str(" >\x1b[0m\x1b[30;47m");
     } else {
-        print_str("\x1b[30;47m < ");
+        print_str("\x1b[30;47m  ");
         print_str(label);
-        print_str(" > \x1b[0m");
+        print_str("  \x1b[0m\x1b[30;47m");
     }
 }
 
