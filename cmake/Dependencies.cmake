@@ -1,5 +1,5 @@
 include(FetchContent)
-set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Disable network updates for FetchContent dependencies")
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Disable network updates for FetchContent dependencies" FORCE)
 
 if(WIN32 AND NOT MSVC)
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
