@@ -79,6 +79,9 @@ FetchContent_Declare(
 )
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
+if(WIN32)
+    target_compile_definitions(gtest PUBLIC GTEST_API_=)
+endif()
 
 # SDL3
 set(SDL_SHARED OFF CACHE BOOL "Build shared SDL3" FORCE)
