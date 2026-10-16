@@ -37,7 +37,7 @@ struct Cell {
 [[nodiscard]] size_t GetScrollbackCount();
 [[nodiscard]] const std::string& GetScrollbackLine(size_t index);
 [[nodiscard]] bool IsAlternateScreen();
-[[nodiscard]] std::recursive_mutex& GetMutex();
+[[nodiscard]] std::mutex& GetMutex();
 
 void Clear();
 void OutputCallback(char character);

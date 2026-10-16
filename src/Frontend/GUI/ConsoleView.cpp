@@ -147,7 +147,7 @@ static void CodepointToUtf8(uint32_t cp, std::array<char, 5>& out) {
 void DrawConsoleView(Control::AppState& state) {
     HandleConsoleInput(state);
 
-    std::lock_guard<std::recursive_mutex> lock(Console::GetMutex());
+    std::lock_guard<std::mutex> lock(Console::GetMutex());
 
     ImFont* font = ImGui::GetFont();
     float fontSize = ImGui::GetFontSize();

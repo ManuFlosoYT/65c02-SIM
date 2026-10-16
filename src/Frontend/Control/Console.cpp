@@ -354,13 +354,12 @@ static ConsoleState& GetState() {
     return instance;
 }
 
-std::recursive_mutex& GetMutex() {
-    static std::recursive_mutex s_consoleMutex;
+std::mutex& GetMutex() {
+    static std::mutex s_consoleMutex;
     return s_consoleMutex;
 }
 
 const Cell& GetCell(int col, int row) {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
     static const Cell emptyCell{' ', DEFAULT_FG, DEFAULT_BG, 0};
     auto& state = GetState();
     const auto& grid = state.ActiveScreen();
@@ -370,24 +369,11 @@ const Cell& GetCell(int col, int row) {
     return grid[row][col];
 }
 
-int GetCursorX() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
-    return GetState().cursorX;
-}
-int GetCursorY() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
-    return GetState().cursorY;
-}
-bool IsCursorVisible() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
-    return GetState().cursorVisible;
-}
-size_t GetScrollbackCount() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
-    return GetState().scrollbackLines.size();
-}
+int GetCursorX() { return GetState().cursorX; }
+int GetCursorY() { return GetState().cursorY; }
+bool IsCursorVisible() { return GetState().cursorVisible; }
+size_t GetScrollbackCount() { return GetState().scrollbackLines.size(); }
 const std::string& GetScrollbackLine(size_t index) {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
     static const std::string emptyLine;
     auto& lines = GetState().scrollbackLines;
     if (index >= lines.size()) {
@@ -395,18 +381,14 @@ const std::string& GetScrollbackLine(size_t index) {
     }
     return lines[index];
 }
-bool IsAlternateScreen() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
-    return GetState().useAltScreen;
-}
+bool IsAlternateScreen() { return GetState().useAltScreen; }
 
 void SetInputResponseCallback(std::function<void(char)> callback) {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
+    std::lock_guard<std::mutex> lock(GetMutex());
     GetState().responseCallback = std::move(callback);
 }
 
-const std::vector<std::string>& GetLines() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
+static const std::vector<std::string>& GetLinesUnlocked() {
     auto& state = GetState();
     state.cachedLines = state.scrollbackLines;
     const auto& grid = state.ActiveScreen();
@@ -431,8 +413,7 @@ const std::vector<std::string>& GetLines() {
     return state.cachedLines;
 }
 
-const std::string& GetCurrentLine() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
+static const std::string& GetCurrentLineUnlocked() {
     auto& state = GetState();
     state.cachedCurrentLine.clear();
     const auto& grid = state.ActiveScreen();
@@ -447,13 +428,22 @@ const std::string& GetCurrentLine() {
     return state.cachedCurrentLine;
 }
 
+const std::vector<std::string>& GetLines() {
+    std::lock_guard<std::mutex> lock(GetMutex());
+    return GetLinesUnlocked();
+}
+
+const std::string& GetCurrentLine() {
+    std::lock_guard<std::mutex> lock(GetMutex());
+    return GetCurrentLineUnlocked();
+}
+
 void Clear() {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
+    std::lock_guard<std::mutex> lock(GetMutex());
     GetState().ResetBuffer();
 }
 
-void OutputCallback(char character) {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
+static void ProcessCharUnlocked(char character) {
     auto& state = GetState();
     auto byteVal = static_cast<uint8_t>(character);
 
@@ -574,17 +564,23 @@ void OutputCallback(char character) {
     }
 }
 
+void OutputCallback(char character) {
+    std::lock_guard<std::mutex> lock(GetMutex());
+    ProcessCharUnlocked(character);
+}
+
 void Print(const std::string& message) {
+    std::lock_guard<std::mutex> lock(GetMutex());
     for (char character : message) {
-        OutputCallback(character);
+        ProcessCharUnlocked(character);
     }
-    OutputCallback('\n');
+    ProcessCharUnlocked('\n');
 }
 
 bool SaveState(std::ostream& out) {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
+    std::lock_guard<std::mutex> lock(GetMutex());
     auto& state = GetState();
-    auto lines = GetLines();
+    const auto& lines = GetLinesUnlocked();
     auto linesCount = static_cast<uint32_t>(lines.size());
     Hardware::ISerializable::Serialize(out, linesCount);
     for (const auto& line : lines) {
@@ -593,7 +589,7 @@ bool SaveState(std::ostream& out) {
         out.write(line.c_str(), static_cast<std::streamsize>(len));
     }
 
-    const auto& currentLine = GetCurrentLine();
+    const auto& currentLine = GetCurrentLineUnlocked();
     auto currentLen = static_cast<uint32_t>(currentLine.size());
     Hardware::ISerializable::Serialize(out, currentLen);
     out.write(currentLine.c_str(), static_cast<std::streamsize>(currentLen));
@@ -605,7 +601,7 @@ bool SaveState(std::ostream& out) {
 }
 
 bool LoadState(std::istream& inputStream) {
-    std::lock_guard<std::recursive_mutex> lock(GetMutex());
+    std::lock_guard<std::mutex> lock(GetMutex());
     auto& state = GetState();
     state.ResetBuffer();
 
