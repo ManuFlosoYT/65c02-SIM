@@ -116,12 +116,12 @@ MONCOUT_IMPL:
 .globl CHROUT
 CHROUT:
     pha
-    sta ACIA_DATA
-    lda #0xFF
-.Ltxdelay:
-    dec
-    bne .Ltxdelay
+.Lwait_tdre:
+    lda ACIA_STATUS
+    and #0x10
+    beq .Lwait_tdre
     pla
+    sta ACIA_DATA
     rts
 
 INIT_BUFFER_IMPL:
