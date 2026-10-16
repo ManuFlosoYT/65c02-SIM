@@ -1,4 +1,5 @@
 #include "Hardware/Core/CartridgeLoader.h"
+#include "Hardware/Core/Emulator.h"
 #include "Hardware/Comm/SDCard.h"
 #include <filesystem>
 #include <fstream>
@@ -89,4 +90,42 @@ TEST(System_Cartridge_Test, SDCardModifiedTracking) {
     sd.Unmount();
     EXPECT_FALSE(sd.IsModified());
     std::filesystem::remove(tempPath);
+}
+
+TEST(System_Cartridge_Test, ParseBus_VirtualLCD_NoOverlapError) {
+    Cartridge cart;
+    nlohmann::json manifest = {{"bus",
+                                {{{"name", "RAM"}, {"start", 0x0000}, {"end", 0x7FFF}},
+                                 {{"name", "ROM"}, {"start", 0x8000}, {"end", 0xFFFF}},
+                                 {{"name", "VIA"}, {"start", 0x6000}, {"end", 0x600F}},
+                                 {{"name", "LCD"}}}}};
+
+    EXPECT_NO_THROW({ CartridgeLoader::ParseBus(manifest, cart); });
+
+    EXPECT_EQ(cart.busDevices.size(), 4);
+}
+
+TEST(System_Cartridge_Test, CartridgeLayout_LCDRegisteredByDefault) {
+    Emulator emulator;
+    Cartridge cart;
+    cart.loaded = true;
+    cart.busDevices = {{"RAM", 0x0000, 0x7FFF}, {"ROM", 0x8000, 0xFFFF}, {"VIA", 0x6000, 0x600F}};
+    cart.romData.resize(0x8000, 0xEA);
+
+    emulator.SetCartridge(cart);
+    emulator.Reset();
+
+    bool foundLcd = false;
+    for (const auto& dev : emulator.GetMem().GetRegisteredDevices()) {
+        if (dev.device == &emulator.GetLCD() && dev.enabled) {
+            foundLcd = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundLcd);
+
+    emulator.GetMem().Write(0x6002, 0xFF);
+    emulator.GetMem().Write(0x6000, 0x02 | 0x40);
+    emulator.GetMem().Write(0x6000, 0x02);
+    EXPECT_TRUE(emulator.GetLCD().IsInitialized());
 }
