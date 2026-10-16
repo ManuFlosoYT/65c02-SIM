@@ -89,7 +89,7 @@ static void cleanup_swap_files(void) {
     for (uint8_t p = 0U; p < MAX_PAGES; ++p) {
         if (page_in_swap[p] != 0U) {
             make_page_swap_name(p, sname);
-            strcpy(path, "SYSTEM/SWAP/");
+            strcpy(path, "/SYSTEM/SWAP/");
             strcat(path, sname);
             strcat(path, ".SWP");
             sd_remove(path);
@@ -569,23 +569,6 @@ static void insert_char(char c) {
         }
     }
 
-    uint16_t cur_r = 0U;
-    uint16_t cur_c = 0U;
-    compute_cursor_row_col(&cur_r, &cur_c);
-    uint8_t vis_r = (uint8_t)(cur_r - scroll_row);
-
-    /* bios_getchar echoed `c` at (TEXT_ROW + vis_r, TEXT_COL + cur_c) if printable;
-       mark that cell in screen_cache as `c` or 0 so diff engine repairs or skips it */
-    if (vis_r < TEXT_ROWS && cur_c < TEXT_COLS) {
-        if (c >= 32 && c <= 126) {
-            screen_cache[vis_r][cur_c] = c;
-            if ((uint8_t)(cur_c + 1U) > prev_row_len[vis_r]) {
-                prev_row_len[vis_r] = (uint8_t)(cur_c + 1U);
-            }
-        } else {
-            screen_cache[vis_r][cur_c] = 0;
-        }
-    }
 
     if (cursor_idx < cur_len) {
         memmove(&page_buf[cursor_idx + 1U], &page_buf[cursor_idx], (size_t)(cur_len - cursor_idx));
@@ -883,8 +866,8 @@ static bool show_main_menu_dialog(void) {
 }
 
 int main(void) {
-    sd_mkdir("SYSTEM");
-    sd_mkdir("SYSTEM/SWAP");
+    sd_mkdir("/SYSTEM");
+    sd_mkdir("/SYSTEM/SWAP");
 
     reset_document();
     if (arg_count >= 2U && _args_ptr[1] != NULL && _args_ptr[1][0] != '\0') {
@@ -979,31 +962,13 @@ int main(void) {
             case TUI_KEY_DELETE:
                 delete_char_at();
                 break;
-            case TUI_KEY_ENTER: {
-                uint16_t cur_r = 0U;
-                uint16_t cur_c = 0U;
-                compute_cursor_row_col(&cur_r, &cur_c);
-                uint8_t vis_r = (uint8_t)(cur_r - scroll_row);
-                if ((uint8_t)(vis_r + 1U) < TEXT_ROWS) {
-                    screen_cache[vis_r + 1U][0] = 0;
-                }
+            case TUI_KEY_ENTER:
                 insert_char('\n');
                 break;
-            }
-            case TUI_KEY_TAB: {
-                uint16_t cur_r = 0U;
-                uint16_t cur_c = 0U;
-                compute_cursor_row_col(&cur_r, &cur_c);
-                uint8_t vis_r = (uint8_t)(cur_r - scroll_row);
-                if (vis_r < TEXT_ROWS) {
-                    for (uint8_t c = (uint8_t)cur_c; c < TEXT_COLS && c < (uint8_t)(cur_c + 8U); ++c) {
-                        screen_cache[vis_r][c] = 0;
-                    }
-                }
+            case TUI_KEY_TAB:
                 insert_char(' ');
                 insert_char(' ');
                 break;
-            }
             default:
                 if (key >= 32U && key <= 126U) {
                     insert_char((char)key);
