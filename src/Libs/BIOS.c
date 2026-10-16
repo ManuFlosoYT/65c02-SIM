@@ -115,7 +115,7 @@ typedef struct {
 
 static SwapBlock swap_blocks[MAX_SWAP_BLOCKS];
 
-static const char* const SWP_PFX = "SYSTEM/SWAP/";
+static const char* const SWP_PFX = "/SYSTEM/SWAP/";
 
 void os_clear_swap_blocks(void) {
     swap_blocks[0].start = SWAP_WINDOW_ADDR;
@@ -244,7 +244,7 @@ const char* os_get_msg(uint8_t msg_id) {
     uint16_t offset = 0U;
     uint16_t len = 0U;
 
-    if (!sd_open(&f, "SYSTEM/uDOS.sys", SD_READ)) {
+    if (!sd_open(&f, "/SYSTEM/uDOS.sys", SD_READ)) {
         return "ResErr";
     }
 
