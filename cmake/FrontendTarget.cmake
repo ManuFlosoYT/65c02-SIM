@@ -112,7 +112,7 @@ if(EMSCRIPTEN)
         "-sMAXIMUM_MEMORY=4294967296"
         "-sSTACK_SIZE=8388608"
         "-sMAX_WEBGL_VERSION=2"
-        "-sUSE_PTHREADS=1"
+        "-pthread"
         "-sPTHREAD_POOL_SIZE=8"
         "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main','_Wasm_OnFilePicked']"
         "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString','stringToUTF8','lengthBytesUTF8','HEAPU8','ccall','cwrap']"
