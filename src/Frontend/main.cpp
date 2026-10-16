@@ -31,6 +31,7 @@
 #include "Frontend/Compiler/CompilerVFS.h"
 #endif
 #include "Hardware/Core/CartridgeLoader.h"
+#include "Frontend/Control/CartridgeUtils.h"
 #include "Frontend/UI/UIModules.h"
 #include "Frontend/Control/SDKManager.h"
 
@@ -183,15 +184,19 @@ static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const 
     ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
-static void HandleSDLEvents(bool& done, SDL_Window* window) {
+static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
-        if (event.type == SDL_EVENT_QUIT) {
-            done = true;
-        }
-        if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window)) {
-            done = true;
+        if (event.type == SDL_EVENT_QUIT ||
+            (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))) {
+            if (Control::ShouldPromptCartridgeSDSave(state)) {
+                state.emulator.Pause();
+                state.popups.showCartridgeSavePrompt = true;
+                state.popups.pendingCartridgeAction = Control::PendingCartridgeAction::Exit;
+            } else {
+                done = true;
+            }
         }
     }
 }
@@ -199,9 +204,6 @@ static void HandleSDLEvents(bool& done, SDL_Window* window) {
 // --- Media Recording Logic moved to Frontend/UI/RecordingManager.cpp ---
 
 static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
-    if (state.emulator.GetCartridge().loaded && !state.emulator.GetCartridge().sdCardPath.empty()) {
-        Core::CartridgeLoader::SaveSDToZip(state.emulator.GetCartridge());
-    }
     state.emulator.Stop();
     state.emulator.GetSID().Close();
     state.crtFilter.Destroy();
@@ -469,7 +471,11 @@ static void MainLoop(void* arg) {
     auto& done = *args->done;
     auto* window = args->window;
 
-    HandleSDLEvents(done, window);
+    HandleSDLEvents(done, window, state);
+
+    if (state.requestExit) {
+        done = true;
+    }
 
     if (!state.emulator.IsPaused()) {
         state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();

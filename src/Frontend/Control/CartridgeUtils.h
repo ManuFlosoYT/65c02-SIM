@@ -11,4 +11,10 @@ namespace Control {
  */
 void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart);
 
+bool ShouldPromptCartridgeSDSave(const AppState& state);
+void ExecuteReset(AppState& state);
+void ExecuteEjectCartridge(AppState& state);
+void PromptOrExecuteCartridgeAction(AppState& state, PendingCartridgeAction action);
+void ConfirmCartridgeAction(AppState& state, bool saveChanges);
+
 } // namespace Control

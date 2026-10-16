@@ -5,6 +5,7 @@
 
 #include <array>
 
+#include "Frontend/Control/CartridgeUtils.h"
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebuggerWindow.h"
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
@@ -89,35 +90,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     // Reset
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button("Reset", ImVec2(adjustedWidth, 0))) {
-        bool wasRunning = !state.emulator.IsPaused();
-        if (wasRunning) {
-            state.emulator.Pause();
-        }
-        Console::Clear();
-        state.emulator.GetGPU().Reset();
-        state.emulator.ClearProfiler();
-        if (state.emulator.GetCartridge().loaded) {
-            state.emulator.SetupHardware();
-        } else if (state.rom.loaded) {
-            std::string errorMsg;
-            bool initSuccess = false;
-            if (!state.rom.data.empty()) {
-                initSuccess = state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg);
-            } else {
-                initSuccess = state.emulator.Init(state.rom.bin, errorMsg);
-            }
-            
-            if (!initSuccess) {
-                state.rom.loaded = false;
-                Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
-            } else {
-                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-            }
-        }
-        if (wasRunning) {
-            state.emulator.Resume();
-            state.emulator.GetSID().SetEmulationPaused(false);
-        }
+        Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Reset);
     }
 
     ImGui::Spacing();

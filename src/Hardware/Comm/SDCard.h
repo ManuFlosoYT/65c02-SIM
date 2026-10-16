@@ -44,6 +44,8 @@ class SDCard : public IBusDevice {
 
     void SetReadLatencyEnabled(bool enabled) { read_latency_enabled = enabled; }
     [[nodiscard]] bool IsReadLatencyEnabled() const { return read_latency_enabled; }
+    [[nodiscard]] bool IsModified() const { return is_modified; }
+    void SetModified(bool modified) { is_modified = modified; }
 
     // State management
     bool SaveState(std::ostream& out) const override;
@@ -54,6 +56,7 @@ class SDCard : public IBusDevice {
     bool mounted = false;
     std::string currentPath;
 
+    bool is_modified = false;
     bool is_read_only = false;
     bool cs_active = false;  // Active low
 

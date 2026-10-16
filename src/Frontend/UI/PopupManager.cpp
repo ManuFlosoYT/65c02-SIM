@@ -3,6 +3,7 @@
 #include <format>
 #include <imgui.h>
 #include "Frontend/Control/AppState.h"
+#include "Frontend/Control/CartridgeUtils.h"
 #include "Frontend/GUI/ConsoleWindow.h"
 #include "Frontend/GUI/ControlWindow.h"
 #include "Frontend/GUI/LCDWindow.h"
@@ -138,6 +139,37 @@ static void DrawCartridgePopups(AppState& state) {
         }
         ImGui::Separator();
         if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (state.popups.showCartridgeSavePrompt) {
+        ImGui::OpenPopup("Save SD Card Changes?###CartridgeSDSavePrompt");
+        state.popups.showCartridgeSavePrompt = false;
+    }
+
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("Save SD Card Changes?###CartridgeSDSavePrompt", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::TextUnformatted("The SD card data in the cartridge has been modified.");
+        ImGui::TextUnformatted("Do you want to save changes back to the cartridge (.65c)?");
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::Button("Save", ImVec2(100, 0))) {
+            Control::ConfirmCartridgeAction(state, true);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Don't Save", ImVec2(100, 0))) {
+            Control::ConfirmCartridgeAction(state, false);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(100, 0))) {
+            state.popups.pendingCartridgeAction = Control::PendingCartridgeAction::None;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

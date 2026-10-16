@@ -63,6 +63,7 @@ bool SDCard::Mount(const std::string& imagePath) {
         total_blocks = static_cast<uint32_t>(imageFile.tellg() / 512);
         imageFile.seekg(0, std::ios::beg);
         
+        is_modified = false;
         Reset();
         return true;
     }
@@ -74,6 +75,7 @@ void SDCard::Unmount() {
         imageFile.close();
     }
     mounted = false;
+    is_modified = false;
 }
 
 void SDCard::SetCS(bool csVal) {
@@ -683,6 +685,7 @@ void SDCard::WriteBlockToImage() {
     imageFile.seekp(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
     ISerializable::Serialize(imageFile, data_buffer);
     imageFile.flush();
+    is_modified = true;
 }
 
 bool SDCard::SaveState(std::ostream& out) const {

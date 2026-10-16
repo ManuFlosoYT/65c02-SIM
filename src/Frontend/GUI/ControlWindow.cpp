@@ -20,63 +20,7 @@ using namespace Hardware;
 
 namespace GUI {
 
-static void HandleReset(AppState& state) {
-    bool wasRunning = !state.emulator.IsPaused();
-    if (wasRunning) {
-        state.emulator.Pause();
-    }
 
-    Console::Clear();
-    state.emulator.GetGPU().Reset();
-    state.emulator.ClearProfiler();
-
-    if (state.emulator.GetCartridge().loaded) {
-        // Reset cartridge state (reload from disk if possible)
-        std::string path = state.emulator.GetCartridge().sourceZipPath;
-#ifndef TARGET_WASM
-        if (!path.empty()) {
-            std::string errorMsg;
-            Core::Cartridge cart;
-            if (Core::CartridgeLoader::Load(path, cart, errorMsg)) {
-                Control::ApplyCartridgeConfig(state, cart);
-                state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg);
-            } else {
-                std::cerr << "Failed to reload cartridge from " << path << ": " << errorMsg << "\n";
-                state.emulator.SetupHardware();
-            }
-        } else {
-            state.emulator.SetupHardware();
-        }
-#else
-        state.emulator.SetupHardware();
-#endif
-    } else if (state.rom.loaded) {
-        std::string errorMsg;
-#ifdef TARGET_WASM
-        if (!state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg)) {
-#else
-        bool initSuccess = false;
-        if (!state.rom.data.empty()) {
-            initSuccess = state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg);
-        } else {
-            initSuccess = state.emulator.Init(state.rom.bin, errorMsg);
-        }
-        if (!initSuccess) {
-#endif
-            std::cerr << "Error resetting ROM: " << errorMsg << '\n';
-            state.rom.loaded = false;
-#ifndef TARGET_WASM
-            CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
-#endif
-        } else {
-            state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-        }
-    }
-
-    if (wasRunning) {
-        state.emulator.Resume();
-    }
-}
 
 static void DrawPlaybackControls(AppState& state) {
     ImGui::BeginDisabled((!state.rom.loaded && !state.script.loaded) || state.emulator.IsHalted());
@@ -170,7 +114,7 @@ static void DrawControlButtonBar(AppState& state) {
     }
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
-        HandleReset(state);
+        Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Reset);
     }
 
     ImGui::SameLine();

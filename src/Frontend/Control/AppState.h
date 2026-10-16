@@ -117,9 +117,18 @@ struct RenderState {
     std::array<float, 2> sidWindowSize = {0.0F, 0.0F};
 };
 
+enum class PendingCartridgeAction : std::uint8_t {
+    None,
+    Reset,
+    Eject,
+    Exit
+};
+
 struct PopupState {
     bool sdCardDisabled = false;
     bool sdCardWebWarning = false;
+    bool showCartridgeSavePrompt = false;
+    PendingCartridgeAction pendingCartridgeAction = PendingCartridgeAction::None;
 };
 
 struct SDKState {
@@ -157,6 +166,7 @@ struct AppState {
     PopupState popups;
     SDKState sdk;
     IDEState ide;
+    bool requestExit = false;
 
     GUI::CRTFilter crtFilter;
 };

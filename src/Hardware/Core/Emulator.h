@@ -100,6 +100,7 @@ class Emulator {
     Hardware::VIA& GetVIA();
     Hardware::ROM& GetROM();
     Hardware::SDCard& GetSDCard();
+    const Hardware::SDCard& GetSDCard() const;
     Hardware::ESP8266& GetESP8266();
     Hardware::ScriptEngine& GetScriptEngine();
     Hardware::BreakpointManager& GetBreakpointManager();
@@ -308,6 +309,7 @@ inline const Hardware::SID& Core::Emulator::GetSID() const { return sid; }
 inline Hardware::VIA& Core::Emulator::GetVIA() { return via; }
 inline Hardware::ROM& Core::Emulator::GetROM() { return rom; }
 inline Hardware::SDCard& Core::Emulator::GetSDCard() { return sdcard; }
+inline const Hardware::SDCard& Core::Emulator::GetSDCard() const { return sdcard; }
 inline Hardware::ESP8266& Core::Emulator::GetESP8266() { return esp8266; }
 inline Hardware::ScriptEngine& Core::Emulator::GetScriptEngine() { return scriptEngine; }
 inline Hardware::BreakpointManager& Core::Emulator::GetBreakpointManager() { return breakpointManager; }

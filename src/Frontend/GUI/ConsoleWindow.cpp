@@ -199,11 +199,7 @@ static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
     const char* cartBtnText = cartLoaded ? "Eject Cartridge" : "Load Cartridge (.65c)";
     if (ImGui::Button(cartBtnText)) {
         if (cartLoaded) {
-            state.emulator.ClearCartridge();
-            state.rom.loaded = false;
-            state.rom.bin = "";
-            state.emulator.Reset();
-            state.emulator.Pause();
+            Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Eject);
         } else {
 #ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
