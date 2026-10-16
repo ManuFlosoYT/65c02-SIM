@@ -20,13 +20,6 @@ protected:
 };
 
 TEST_F(JMP_AbsoluteX_Test, JMP_AbsoluteX) {
-    // 0xFFFC: JMP (0x8000, X)
-    // 0xFFFD: 0x00 (Low Byte)
-    // 0xFFFE: 0x80 (High Byte)
-    // X = 4
-    // Target = 0x8000 + 4 = 0x8004
-    // 0x8004: 0xFF (Stop)
-
     cpu.X = 0x04;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -35,9 +28,11 @@ TEST_F(JMP_AbsoluteX_Test, JMP_AbsoluteX) {
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x80);
 
-    bus.WriteDirect(0x8004, INS_STP);
+    bus.WriteDirect(0x8004, 0x20);
+    bus.WriteDirect(0x8005, 0x90);
+    bus.WriteDirect(0x9020, INS_STP);
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.PC, 0x8005);
+    EXPECT_EQ(cpu.PC, 0x9021);
 }

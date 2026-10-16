@@ -16,7 +16,8 @@ template <bool Debug>
 void JMP::ExecuteABSX(CPU& cpu, Bus& bus) {
     Word dir = cpu.FetchWord<Debug>(bus);
     dir += cpu.X;
-    cpu.PC = dir;
+    Word target = cpu.ReadWord<Debug>(dir, bus);
+    cpu.PC = target;
     cpu.UpdatePagePtr(bus);
 }
 
