@@ -104,6 +104,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
     compile_with_opt_fallback "$APP_RAW" "$APP_LD" \
         -std=c23 \
         -I "sdk/src" -I "sdk/microdos" \
+        -linit-stack -lcopy-data -lzero-bss \
         sdk/linker/App-Runtime.s "$SRC"
 
     mkdir -p output/apps
