@@ -67,10 +67,10 @@ CHRIN:
     beq .Lwait_key
     jsr READ_BUFFER
     pha
-    cmp #8
-    beq .Lskip_echo
+    cmp #32
+    bcc .Lskip_echo
     cmp #127
-    beq .Lskip_echo
+    bcs .Lskip_echo
     jsr CHROUT
 .Lskip_echo:
     jsr BUFFER_SIZE
@@ -88,7 +88,10 @@ CHRIN:
 MONGETCHAR_NB_IMPL:
     jsr BUFFER_SIZE
     beq .Lempty
-    jmp MONRDKEY_IMPL
+    phx
+    jsr READ_BUFFER
+    pha
+    bra .Lskip_echo
 .Lempty:
     lda #0
     ldx #0
@@ -220,3 +223,4 @@ BIOS_JUMPTABLE:
     jmp os_alloc        // $FFE7
     jmp os_free         // $FFEA
     jmp MONGETCHAR_NB   // $FFED
+    jmp sd_seek         // $FFF0

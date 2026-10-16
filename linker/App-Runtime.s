@@ -20,6 +20,11 @@ _app_startup:
     lda 0x1F
     sta 0x71
 
+    lda #<__stack
+    sta 0x1E
+    lda #>__stack
+    sta 0x1F
+
     jsr _start
 
     sta 0x72
