@@ -352,13 +352,21 @@ bool Emulator::RegisterCartridgeLayout() {
         sidEnabled = false;
     }
     bool sdCustomMapped = false;
+    bool lcdCustomMapped = false;
     for (const auto& dev : cartridge.busDevices) {
+        if (dev.name == "LCD") {
+            lcdCustomMapped = true;
+        }
         RegisterCartridgeDevice(dev, sdCustomMapped);
     }
 
     // MMIO SD device default if not mapped manually
     if (!sdCustomMapped) {
         bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
+    }
+
+    if (!lcdCustomMapped) {
+        bus.RegisterVirtualDevice(&lcd, true);
     }
 
     return true;
