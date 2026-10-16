@@ -158,17 +158,21 @@ static void DrawCartridgePopups(AppState& state) {
         ImGui::Separator();
         ImGui::Spacing();
 
-        if (ImGui::Button("Save", ImVec2(100, 0))) {
+        float availWidth = ImGui::GetContentRegionAvail().x;
+        float spacing = ImGui::GetStyle().ItemSpacing.x;
+        float btnWidth = (availWidth - spacing * 2.0F) / 3.0F;
+
+        if (ImGui::Button("Save", ImVec2(btnWidth, 0))) {
             Control::ConfirmCartridgeAction(state, true);
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Don't Save", ImVec2(100, 0))) {
+        if (ImGui::Button("Don't Save", ImVec2(btnWidth, 0))) {
             Control::ConfirmCartridgeAction(state, false);
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(100, 0))) {
+        if (ImGui::Button("Cancel", ImVec2(btnWidth, 0))) {
             state.popups.pendingCartridgeAction = Control::PendingCartridgeAction::None;
             ImGui::CloseCurrentPopup();
         }
