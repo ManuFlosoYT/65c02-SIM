@@ -805,10 +805,10 @@ static bool show_main_menu_dialog(void) {
     while (true) {
         if (selected != prev_selected) {
             tui_draw_button(w_row + 9U, w_col + 3U, "Resume", selected == 0U);
-            tui_draw_button(w_row + 9U, w_col + 15U, "Save", selected == 1U);
-            tui_draw_button(w_row + 9U, w_col + 25U, "Open", selected == 2U);
-            tui_draw_button(w_row + 9U, w_col + 35U, "New", selected == 3U);
-            tui_draw_button(w_row + 9U, w_col + 43U, "Exit", selected == 4U);
+            tui_draw_button(w_row + 9U, w_col + 14U, "Save", selected == 1U);
+            tui_draw_button(w_row + 9U, w_col + 23U, "Open", selected == 2U);
+            tui_draw_button(w_row + 9U, w_col + 32U, "New", selected == 3U);
+            tui_draw_button(w_row + 9U, w_col + 40U, "Exit", selected == 4U);
             prev_selected = selected;
         }
         tui_set_cursor(w_row + 2U, w_col + 2U);
