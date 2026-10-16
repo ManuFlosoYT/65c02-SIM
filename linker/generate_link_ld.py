@@ -61,8 +61,9 @@ def generate_link_ld(flags):
     ld.append("ASSERT(__rc31 == 0x1f, \"Error en mapeo de Zero Page.\")")
     ld.append("")
     ld.append("MEMORY {")
-    ld.append("    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x100 - (__rc31 + 1)")
-    ld.append("    input_buffer (rw) : ORIGIN = 0x0300,     LENGTH = 0x0100")
+    ld.append("    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0xFC - (__rc31 + 1)")
+    if '--microDOS' not in flags:
+        ld.append("    input_buffer (rw) : ORIGIN = 0x0300,     LENGTH = 0x0100")
     
     ram_names = []
     for i, (start, end) in enumerate(ram_blocks):
@@ -83,10 +84,16 @@ def generate_link_ld(flags):
     ld.append(f"REGION_ALIAS(\"c_writeable\", {main_ram})")
     ld.append("")
     ld.append("SECTIONS {")
-    ld.append("    .input_buffer 0x0300 (NOLOAD) : {")
-    ld.append("        KEEP(*(SORT_BY_NAME(.input_buffer*)))")
-    ld.append("        *(.input_buffer)")
-    ld.append("    } > input_buffer")
+    if '--microDOS' in flags:
+        ld.append("    .input_buffer (NOLOAD) : {")
+        ld.append("        KEEP(*(SORT_BY_NAME(.input_buffer*)))")
+        ld.append("        *(.input_buffer)")
+        ld.append(f"    }} > {main_ram}")
+    else:
+        ld.append("    .input_buffer 0x0300 (NOLOAD) : {")
+        ld.append("        KEEP(*(SORT_BY_NAME(.input_buffer*)))")
+        ld.append("        *(.input_buffer)")
+        ld.append("    } > input_buffer")
     ld.append("")
     ld.append("    INCLUDE c.ld")
     ld.append("")
