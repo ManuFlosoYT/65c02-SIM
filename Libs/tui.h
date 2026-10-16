@@ -164,7 +164,10 @@ static inline void tui_draw_header(const char* title) {
 }
 
 static inline uint16_t tui_get_key(void) {
-    char c = bios_getchar();
+    char c = 0;
+    while (c == 0) {
+        c = bios_getchar_nb();
+    }
     if (c == 27) {
         char next = 0;
         for (volatile int i = 0; i < 2000; ++i) {
