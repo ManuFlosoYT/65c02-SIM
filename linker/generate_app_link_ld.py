@@ -31,6 +31,11 @@ def generate_app_link_ld():
     ld.append("")
     ld.append("REGION_ALIAS(\"c_readonly\", core)")
     ld.append("REGION_ALIAS(\"c_writeable\", bss)")
+    ld.append("EXTERN(__do_init_stack)")
+    ld.append("EXTERN(__do_copy_data)")
+    ld.append("EXTERN(__do_copy_zp_data)")
+    ld.append("EXTERN(__do_zero_bss)")
+    ld.append("EXTERN(__do_zero_zp_bss)")
     ld.append("")
     ld.append("SECTIONS {")
     ld.append(f"    .header 0x{APP_BASE:04X} : {{")
@@ -79,7 +84,8 @@ def generate_app_link_ld():
         ("os_swap_load", 0x54),
         ("os_alloc", 0x57),
         ("os_free", 0x5A),
-        ("bios_getchar_nb", 0x5D)
+        ("bios_getchar_nb", 0x5D),
+        ("sd_seek", 0x60)
     ]
     
     for sym, offset in symbols:
