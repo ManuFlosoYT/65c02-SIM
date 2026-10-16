@@ -258,6 +258,12 @@ DeviceConfig CartridgeLoader::ParseDeviceConfig(const nlohmann::json& devJson) {
         throw std::runtime_error("Unknown device name: " + dev.name);
     }
 
+    if (dev.name == "LCD") {
+        dev.start = devJson.contains("start") ? ParseAddress(devJson, "start") : 0;
+        dev.end = devJson.contains("end") ? ParseAddress(devJson, "end") : 0;
+        return dev;
+    }
+
     dev.start = ParseAddress(devJson, "start");
     dev.end = ParseAddress(devJson, "end");
 
@@ -295,6 +301,10 @@ void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& b
     ranges.reserve(busDevices.size());
 
     for (const auto& dev : busDevices) {
+        if (dev.name == "LCD") {
+            continue;
+        }
+
         uint32_t rangeSize = static_cast<uint32_t>(dev.end) - static_cast<uint32_t>(dev.start) + 1;
 
         if (rangeSize == 0) {
