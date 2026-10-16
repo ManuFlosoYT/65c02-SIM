@@ -10,8 +10,11 @@ if _SCRIPT_DIR not in sys.path:
 from sid_codec import encode_semantic_v2, decode_semantic_v2, compress_sidlz, decompress_sidlz
 
 
-def calculate_duration(bytecode, system="NTSC"):
-    clock_freq = 1000000.0 if system == "NTSC" else 985248.0
+def calculate_duration(bytecode, system="NTSC", clock=None):
+    if clock is not None:
+        clock_freq = float(clock)
+    else:
+        clock_freq = 985248.0 if system == "PAL" else 1000000.0
     total_cycles = 0.0
     i = 0
     n = len(bytecode)
@@ -42,7 +45,10 @@ def calculate_duration(bytecode, system="NTSC"):
     return mins, secs, total_sec
 
 
-def write_asm(bytecode, input_path, mode, system="NTSC", verify=True):
+def write_asm(bytecode, input_path, mode, system="NTSC", clock=None, verify=True):
+    if clock is None:
+        clock = 985248.0 if system == "PAL" else 1000000.0
+
     filename_only = os.path.splitext(os.path.basename(input_path))[0].replace(" ", "") + ".s"
     output_dir = os.path.join(_SCRIPT_DIR, "build")
     if not os.path.exists(output_dir):
@@ -51,13 +57,13 @@ def write_asm(bytecode, input_path, mode, system="NTSC", verify=True):
 
     print(f"Writing streaming compressed Native ASM to {output_file}...")
 
-    hdr, sem = encode_semantic_v2(bytecode)
+    hdr, sem = encode_semantic_v2(bytecode, clock=clock)
     pkg = compress_sidlz(sem, window_size=2048)
 
     if verify:
         sem_rec = decompress_sidlz(pkg, expected_uncompressed_len=len(sem))
         assert sem_rec == sem, "Semantic stream mismatch in SIDLZ roundtrip"
-        ir_rec = decode_semantic_v2(hdr, sem_rec)
+        ir_rec = decode_semantic_v2(hdr, sem_rec, clock=clock)
         assert ir_rec == bytecode, "Lossless IR mismatch in SIDLZ roundtrip"
 
     ntbl_first = hdr['ntbl_first']
@@ -65,7 +71,7 @@ def write_asm(bytecode, input_path, mode, system="NTSC", verify=True):
     dict_delays = hdr['dict']
     pw_step = hdr['pw_step']
 
-    mins, secs, total_sec = calculate_duration(bytecode, system)
+    mins, secs, total_sec = calculate_duration(bytecode, system, clock=clock)
     dur_str = f"{mins}:{secs:02d}"
 
     with open(output_file, "w") as f:

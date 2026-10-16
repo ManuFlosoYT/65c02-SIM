@@ -1,9 +1,7 @@
 import sys
 import argparse
 
-from sid_constants import ALL_MODES, MODE_MAX_QUALITY
-from midi_processor import MidiProcessor
-from nsf_processor import NsfProcessor
+from sid_constants import ALL_MODES, MODE_MAX_QUALITY, CLOCK_NTSC, CLOCK_PAL
 from bytecode_generator import BytecodeGenerator
 from asm_writer import write_asm
 from bin_writer import write_bin
@@ -17,6 +15,8 @@ def main():
                         help="Target SID Chip model (6581 or 8580)")
     parser.add_argument("--system", choices=["NTSC", "PAL"], default="NTSC",
                         help="Target clock system (NTSC=1MHz, PAL=985kHz)")
+    parser.add_argument("--clock", type=float, default=None,
+                        help="Target clock frequency in Hz (e.g. 10000000)")
     parser.add_argument("--microDOS", action='store_true', help="Output raw execution bytes instead of ASM")
     parser.add_argument("--duration", type=int, default=180, help="Max duration in seconds for infinite NSF loops")
     parser.add_argument("--sd-cost", type=int, default=49731, help="Cycles per 512B SD read")
@@ -25,15 +25,24 @@ def main():
 
     args = parser.parse_args()
 
+    if args.clock is not None:
+        clock = args.clock
+    elif args.system == "PAL":
+        clock = CLOCK_PAL
+    else:
+        clock = CLOCK_NTSC
+
     ext = args.input.lower().split('.')[-1]
     if ext == 'nsf':
+        from nsf_processor import NsfProcessor
         processor = NsfProcessor(args.input, args.mode, duration=args.duration)
     else:
+        from midi_processor import MidiProcessor
         processor = MidiProcessor(args.input, args.mode)
     events = processor.process()
 
     noise_channel = getattr(processor, 'noise_channel', -1)
-    generator = BytecodeGenerator(events, args.mode, args.chip, args.system, processor.bass_channel, processor.melody_channel, noise_channel)
+    generator = BytecodeGenerator(events, args.mode, args.chip, args.system, processor.bass_channel, processor.melody_channel, noise_channel, clock=clock)
     bytecode = generator.generate()
 
     if args.microDOS:
@@ -43,6 +52,7 @@ def main():
             target_bufs=args.stream_bufs,
             sd_cost=args.sd_cost,
             system=args.system,
+            clock=clock,
             verify=not args.no_verify
         )
     else:
@@ -51,6 +61,7 @@ def main():
             args.input,
             args.mode,
             system=args.system,
+            clock=clock,
             verify=not args.no_verify
         )
         if not fits:

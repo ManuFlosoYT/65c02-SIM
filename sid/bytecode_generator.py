@@ -57,7 +57,7 @@ class Voice:
 
 
 class BytecodeGenerator:
-    def __init__(self, events, mode, chip="8580", system="NTSC", bass_channel=-1, melody_channel=-1, noise_channel=-1):
+    def __init__(self, events, mode, chip="8580", system="NTSC", bass_channel=-1, melody_channel=-1, noise_channel=-1, clock=None):
         self.events = events
         self.mode = mode
         self.chip = chip
@@ -67,7 +67,10 @@ class BytecodeGenerator:
         self.noise_channel = noise_channel
         self.voices = [Voice(i) for i in range(1, 4)]
         self.sid_state = [-1] * 25
-        self.sid_clock = CLOCK_NTSC if system == "NTSC" else CLOCK_PAL
+        if clock is not None:
+            self.sid_clock = float(clock)
+        else:
+            self.sid_clock = CLOCK_NTSC if system == "NTSC" else CLOCK_PAL
 
     def _freq_to_cutoff_dac(self, hz):
         if self.chip == "6581":
@@ -220,7 +223,7 @@ class BytecodeGenerator:
                         vib_semitones = round(vib_semitones * 16.0) / 16.0
 
                     if semitones_shift != 0.0 or vib_semitones != 0.0 or is_arp:
-                        freq = freq_for_note(note + semitones_shift + vib_semitones)
+                        freq = freq_for_note(note + semitones_shift + vib_semitones, self.sid_clock)
                         if freq < 0: freq = 0
                         if freq > 0xFFFF: freq = 0xFFFF
                         self._emit_reg(bytecode, base + FREQ_LO_1, int(freq) & 0xFF)
@@ -350,7 +353,7 @@ class BytecodeGenerator:
                     v.pwm_counter = 0
 
                     base = get_voice_offset(v.index)
-                    freq = freq_for_note(notes[0])
+                    freq = freq_for_note(notes[0], self.sid_clock)
                     if freq > 0xFFFF: freq = 0xFFFF
                     v.wave = wave
                     v.features = features
@@ -419,7 +422,7 @@ class BytecodeGenerator:
                             bytecode.extend([0x82, 0x10]) # micro delay
                         self._emit_reg(bytecode, MODE_VOL, (curr & 0xF0) | 0x0F)
                     elif "kick_slide" in features:
-                        start_freq = freq_for_note(note_val + 12)
+                        start_freq = freq_for_note(note_val + 12, self.sid_clock)
                         self._emit_reg(bytecode, base + FREQ_LO_1, start_freq & 0xFF)
                         self._emit_reg(bytecode, base + FREQ_HI_1, (start_freq >> 8) & 0xFF)
                         self._emit_reg(bytecode, base + CTRL_1, wave | WAVE_GATE)
