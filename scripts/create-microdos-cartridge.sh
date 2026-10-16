@@ -4,10 +4,21 @@ set -e
 # Automation script for microDOS Cartridge version 3.0
 # Requires: dosfstools (mkfs.fat), mtools (mformat, mcopy)
 
+IPS=10000000
 MULTITHREAD=false
+prev_arg=""
 for arg in "$@"; do
+    if [ -n "$prev_arg" ]; then
+        if [ "$prev_arg" == "--ips" ] || [ "$prev_arg" == "--clock" ]; then
+            IPS="$arg"
+        fi
+        prev_arg=""
+        continue
+    fi
     if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
         MULTITHREAD=true
+    elif [ "$arg" == "--ips" ] || [ "$arg" == "--clock" ]; then
+        prev_arg="$arg"
     fi
 done
 
@@ -77,9 +88,9 @@ mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
 # Compile MIDs to .sid for microDOS
 echo "  Compiling raw SID files..."
 if [ "$MULTITHREAD" = true ]; then
-    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS -multithread || true
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --clock "$IPS" -multithread || true
 else
-    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS || true
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --clock "$IPS" || true
 fi
 
 # Populate SD Card with /bin, /sid, and apps
@@ -112,7 +123,7 @@ echo "  Packaging Cartridge..."
     --author "ManuFloso" \
     --desc "microDOS Operating System with pre-loaded apps" \
     --version "6.0" \
-    --ips 1000000 \
+    --ips "$IPS" \
     --sid true \
     --sd true \
     --esp true \
