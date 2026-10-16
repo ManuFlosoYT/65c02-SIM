@@ -86,6 +86,8 @@ struct ConsoleState {
     int cursorY = 0;
     int savedCursorX = 0;
     int savedCursorY = 0;
+    int altSavedCursorX = 0;
+    int altSavedCursorY = 0;
     bool cursorVisible = true;
 
     uint32_t currentFg = DEFAULT_FG;
@@ -121,6 +123,8 @@ struct ConsoleState {
         cursorY = 0;
         savedCursorX = 0;
         savedCursorY = 0;
+        altSavedCursorX = 0;
+        altSavedCursorY = 0;
         cursorVisible = true;
         currentFg = DEFAULT_FG;
         currentBg = DEFAULT_BG;
@@ -305,7 +309,18 @@ struct ConsoleState {
                     for (int param : csiParams) {
                         if (param == 25) {
                             cursorVisible = true;
-                        } else if (param == 47 || param == 1049) {
+                        } else if (param == 1049) {
+                            if (!useAltScreen) {
+                                altSavedCursorX = cursorX;
+                                altSavedCursorY = cursorY;
+                            }
+                            useAltScreen = true;
+                            for (auto& row : altScreen) {
+                                row.assign(TERMINAL_COLS, Cell{' ', DEFAULT_FG, DEFAULT_BG, 0});
+                            }
+                            cursorX = 0;
+                            cursorY = 0;
+                        } else if (param == 47) {
                             useAltScreen = true;
                         }
                     }
@@ -317,7 +332,13 @@ struct ConsoleState {
                     for (int param : csiParams) {
                         if (param == 25) {
                             cursorVisible = false;
-                        } else if (param == 47 || param == 1049) {
+                        } else if (param == 1049) {
+                            if (useAltScreen) {
+                                useAltScreen = false;
+                                cursorX = altSavedCursorX;
+                                cursorY = altSavedCursorY;
+                            }
+                        } else if (param == 47) {
                             useAltScreen = false;
                         }
                     }
