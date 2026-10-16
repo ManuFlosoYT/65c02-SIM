@@ -447,6 +447,17 @@ static void ProcessCharUnlocked(char character) {
     auto& state = GetState();
     auto byteVal = static_cast<uint8_t>(character);
 
+    if (character == 0x1B) {
+        state.utf8Remaining = 0;
+        state.parserState = ParserState::Escape;
+        return;
+    }
+    if (character == 0x18 || character == 0x1A) {
+        state.utf8Remaining = 0;
+        state.parserState = ParserState::Ground;
+        return;
+    }
+
     if (state.parserState == ParserState::Ground) {
         if (state.utf8Remaining > 0) {
             if ((byteVal & 0xC0) == 0x80) {
@@ -472,11 +483,6 @@ static void ProcessCharUnlocked(char character) {
                 state.utf8Codepoint = byteVal & 0x07;
                 state.utf8Remaining = 3;
             }
-            return;
-        }
-
-        if (character == 0x1B) {
-            state.parserState = ParserState::Escape;
             return;
         }
         if (character == '\r') {
