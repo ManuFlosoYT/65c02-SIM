@@ -36,6 +36,7 @@ int main(void) {
         if (c == '\b' || c == 8 || c == 127) {
             if (len > 0) {
                 len--;
+                bios_putchar('\b');
                 bios_putchar(' ');
                 bios_putchar('\b');
             }
