@@ -8,6 +8,11 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
         UNITY_BUILD_BATCH_SIZE 16
         UNITY_BUILD_MODE BATCH
     )
+    set_source_files_properties(
+        "src/UnitTests/System_Savestate_Test.cpp"
+        "src/UnitTests/System_WAI_Threading_Test.cpp"
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
     target_precompile_headers(unit_tests PRIVATE
         <gtest/gtest.h>
         <cstdint>
