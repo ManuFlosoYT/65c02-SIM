@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <mutex>
 #include <string_view>
 
 #include "Frontend/Control/Console.h"
@@ -103,13 +104,15 @@ static void HandleCtrlKeys(Control::AppState& state, const ImGuiIO& imgui_io) {
 }
 
 void HandleConsoleInput(Control::AppState& state) {
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) &&
+    if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup) &&
+        ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) &&
         (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) {
         ImGui::SetWindowFocus("Console");
     }
 
     const ImGuiIO& imgui_io = ImGui::GetIO();
-    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
+    if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup) && !imgui_io.WantTextInput &&
+        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
         SDL_Window* sdl_window = SDL_GetKeyboardFocus();
         if (sdl_window != nullptr) {
             SDL_StartTextInput(sdl_window);
@@ -144,6 +147,8 @@ static void CodepointToUtf8(uint32_t cp, std::array<char, 5>& out) {
 void DrawConsoleView(Control::AppState& state) {
     HandleConsoleInput(state);
 
+    std::lock_guard<std::recursive_mutex> lock(Console::GetMutex());
+
     ImFont* font = ImGui::GetFont();
     float fontSize = ImGui::GetFontSize();
     float charWidth = ImGui::CalcTextSize("A").x;
@@ -160,7 +165,8 @@ void DrawConsoleView(Control::AppState& state) {
     ImVec2 canvasSize(std::max(totalWidth, ImGui::GetContentRegionAvail().x),
                       std::max(totalHeight, ImGui::GetContentRegionAvail().y));
     ImGui::InvisibleButton("##TerminalCanvas", canvasSize);
-    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+    if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup) &&
+        (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right))) {
         ImGui::SetWindowFocus("Console");
     }
 
@@ -246,7 +252,26 @@ void DrawConsoleView(Control::AppState& state) {
         }
     }
 
-    if (!Console::IsAlternateScreen() && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 25.0F) {
+    static float lastScrollY = -1.0F;
+    static bool autoScroll = true;
+    float currentScrollY = ImGui::GetScrollY();
+    float currentMaxY = ImGui::GetScrollMaxY();
+
+    if (scrollbackCount == 0) {
+        autoScroll = true;
+    } else {
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::GetIO().MouseWheel > 0.0F) {
+            autoScroll = false;
+        } else if (lastScrollY >= 0.0F && currentScrollY < lastScrollY && currentScrollY < currentMaxY - 10.0F) {
+            autoScroll = false;
+        }
+        if (currentScrollY >= currentMaxY - 10.0F) {
+            autoScroll = true;
+        }
+    }
+    lastScrollY = currentScrollY;
+
+    if (!Console::IsAlternateScreen() && autoScroll) {
         ImGui::SetScrollHereY(1.0F);
     }
 

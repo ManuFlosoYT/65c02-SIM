@@ -10,6 +10,7 @@
 #include "Frontend/GUI/ScriptConsoleWindow.h"
 #include "Frontend/GUI/SIDViewerWindow.h"
 #include "Frontend/GUI/UpdatePopup.h"
+#include "Frontend/GUI/SDKUpdatePopup.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #include "Frontend/GUI/IDEWindow.h"
 
@@ -151,6 +152,9 @@ void DrawPopups(AppState& state) {
 
 void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2& work_size, float top_section_height, unsigned int windowFlags) {
     GUI::DrawUpdatePopup(state);
+#ifndef TARGET_WASM
+    GUI::DrawSDKUpdatePopup(state);
+#endif
     GUI::DrawControlWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);

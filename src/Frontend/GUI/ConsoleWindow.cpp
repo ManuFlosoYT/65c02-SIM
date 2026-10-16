@@ -21,7 +21,6 @@ using namespace Hardware;
 #include "Frontend/Control/CartridgeUtils.h"
 #else
 #include "Hardware/Core/CartridgeLoader.h"
-#include "Frontend/GUI/SDKUpdatePopup.h"
 #include "Frontend/Control/SDKManager.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #endif
@@ -293,9 +292,6 @@ static void DrawConsoleButtonBar(AppState& state) {
     ImGui::SameLine();
     DrawSDKButton(state);
     DrawSDKPopup(state);
-#ifndef TARGET_WASM
-    DrawSDKUpdatePopup(state);
-#endif
 
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {
@@ -313,7 +309,7 @@ static void DrawConsoleButtonBar(AppState& state) {
 static void DrawCopyOutputModal() {
     if (ImGui::BeginPopupModal("CopyConsoleOutput", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         static std::string fullText;
-        if (fullText.empty() || fullText.length() < 10) {
+        if (ImGui::IsWindowAppearing()) {
             fullText.clear();
             for (const auto& line : Console::GetLines()) {
                 fullText += line;
@@ -322,10 +318,7 @@ static void DrawCopyOutputModal() {
             fullText += Console::GetCurrentLine();
         }
 
-        std::vector<char> buffer(fullText.begin(), fullText.end());
-        buffer.push_back(0);
-
-        ImGui::InputTextMultiline("##CopySource", buffer.data(), buffer.size(), ImVec2(800, 600),
+        ImGui::InputTextMultiline("##CopySource", fullText.data(), fullText.size() + 1, ImVec2(800, 600),
                                   ImGuiInputTextFlags_ReadOnly);
 
         if (ImGui::Button("Close", ImVec2(120, 0))) {
@@ -345,7 +338,8 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     ImGui::SetNextWindowSize(ImVec2(state.emulation.gpuEnabled ? left_width : work_size.x, bottom_section_height),
                              ImGuiCond_Always);
     ImGui::Begin("Console", nullptr, window_flags);
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) &&
+    if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup) &&
+        ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) &&
         (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) {
         ImGui::SetWindowFocus("Console");
     }

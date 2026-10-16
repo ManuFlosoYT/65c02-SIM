@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,7 @@ struct Cell {
 [[nodiscard]] size_t GetScrollbackCount();
 [[nodiscard]] const std::string& GetScrollbackLine(size_t index);
 [[nodiscard]] bool IsAlternateScreen();
+[[nodiscard]] std::recursive_mutex& GetMutex();
 
 void Clear();
 void OutputCallback(char character);
