@@ -195,38 +195,32 @@ DSTATUS disk_status(BYTE pdrv) {
 }
 
 DRESULT disk_read(BYTE pdrv, BYTE* buff, LBA_t sector, UINT count) {
-    UINT i;
     if (pdrv != 0 || (Stat & STA_NOINIT)) return RES_NOTRDY;
     if (count == 0) return RES_PARERR;
 
-    for (i = 0; i < count; i++) {
+    for (UINT i = 0; i < count; i++) {
         spi_cs_low();
-        if (sd_send_cmd(17, (uint32_t)(sector + i)) == 0x00) {
-            if (sd_recv_block(buff, 512u)) {
-                buff += 512;
-            }
-        }
+        const bool ok = (sd_send_cmd(17, (uint32_t)(sector + i)) == 0x00 && sd_recv_block(buff, 512u));
         spi_cs_high();
         spi_xfer(0xFF);
+        if (!ok) return RES_ERROR;
+        buff += 512;
     }
     return RES_OK;
 }
 
 DRESULT disk_write(BYTE pdrv, const BYTE* buff, LBA_t sector, UINT count) {
-    UINT i;
     if (pdrv != 0 || (Stat & STA_NOINIT)) return RES_NOTRDY;
     if (Stat & STA_PROTECT) return RES_WRPRT;
     if (count == 0) return RES_PARERR;
 
-    for (i = 0; i < count; i++) {
+    for (UINT i = 0; i < count; i++) {
         spi_cs_low();
-        if (sd_send_cmd(24, (uint32_t)(sector + i)) == 0x00) {
-            if (sd_send_block(buff, 0xFE)) {
-                buff += 512;
-            }
-        }
+        const bool ok = (sd_send_cmd(24, (uint32_t)(sector + i)) == 0x00 && sd_send_block(buff, 0xFE));
         spi_cs_high();
         spi_xfer(0xFF);
+        if (!ok) return RES_ERROR;
+        buff += 512;
     }
     return RES_OK;
 }
