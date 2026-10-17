@@ -11,6 +11,7 @@
 
 #include "diskio.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* MMIO SD register addresses */
