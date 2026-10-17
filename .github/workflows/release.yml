@@ -223,7 +223,7 @@ jobs:
       - name: Install dependencies
         run: |
           dnf -y update
-          dnf -y install cc65 python3-pip zip git dosfstools mtools
+          dnf -y install cc65 python3-pip zip git dosfstools mtools curl tar xz
           pip3 install pillow mido py65
 
       - name: Checkout master
@@ -267,6 +267,24 @@ jobs:
 
       - name: Fix Git Trust
         run: git config --global --add safe.directory $GITHUB_WORKSPACE
+
+      - name: Cache LLVM-MOS
+        id: cache-llvm-mos
+        uses: actions/cache@v5
+        with:
+          path: build/llvm_mos
+          key: llvm-mos-linux-v23.3.0
+
+      - name: Download LLVM-MOS SDK
+        if: steps.cache-llvm-mos.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p build/llvm_mos
+          curl -sSL https://github.com/llvm-mos/llvm-mos-sdk/releases/download/v23.3.0/llvm-mos-linux.tar.xz | tar -xJ -C build/llvm_mos
+
+      - name: Setup LLVM-MOS Environment
+        run: |
+          echo "$GITHUB_WORKSPACE/build/llvm_mos/llvm-mos/bin" >> $GITHUB_PATH
+          echo "MOS_CLANG=$GITHUB_WORKSPACE/build/llvm_mos/llvm-mos/bin/mos-common-clang" >> $GITHUB_ENV
 
       - name: Create SDK
         run: |
@@ -337,12 +355,6 @@ jobs:
       - name: Extract SDK
         run: |
           unzip -o SDK.zip
-          chmod +x sdk/scripts/compile-bin.sh sdk/scripts/image-to-bin.sh sdk/scripts/midi-to-bin.sh
-
-      - name: Compile SDK ROMs and Assets
-        run: |
-          chmod +x sdk/scripts/create-sdk.sh
-          ./sdk/scripts/create-sdk.sh
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
