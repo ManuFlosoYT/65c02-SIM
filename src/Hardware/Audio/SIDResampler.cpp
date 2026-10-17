@@ -7,7 +7,12 @@ SIDResampler::SIDResampler(double inRate, double outRate) {
 }
 
 void SIDResampler::SetRates(double inRate, double outRate) {
-    inputRate = inRate;
+    decimFactor = (inRate >= 2000000.0) ? static_cast<std::size_t>(inRate / 1000000.0) : 1;
+    decimCount = 0;
+    decimInv = 1.0 / static_cast<double>(decimFactor);
+    decimAccum = 0.0;
+
+    inputRate = inRate / static_cast<double>(decimFactor);
     outputRate = outRate;
     ratio = inputRate / outputRate;
     
@@ -87,67 +92,50 @@ void SIDResampler::Clear() {
     std::fill(ringBuffer.begin(), ringBuffer.end(), 0.0);
     ringIndex = 0;
     fractionalTime = 0.0;
+    decimCount = 0;
+    decimAccum = 0.0;
     outputReadIndex = 0;
     outputWriteIndex = 0;
     outputCount = 0;
 }
 
-void SIDResampler::PushSample(double sample) {
-    double* ringData = ringBuffer.data();
-    ringData[ringIndex] = sample;
-    ringData[ringIndex + ringBufferSize] = sample;
-    ++ringIndex;
-    if (ringIndex == ringBufferSize) ringIndex = 0;
-    
-    fractionalTime += 1.0;
-    
-    if (fractionalTime >= ratio) {
-        fractionalTime -= ratio;
+void SIDResampler::ProduceOutputSample() {
+    fractionalTime -= ratio;
 
-        double phase = fractionalTime / ratio;
-        int phaseIdx = static_cast<int>(phase * PHASES);
-        if (phaseIdx >= PHASES) phaseIdx = PHASES - 1;
-        if (phaseIdx < 0) phaseIdx = 0;
-        
-        double outSample = 0.0;
-        std::size_t readIdx = ringIndex + ringBufferSize - numInputTaps;
-        if (readIdx >= ringBufferSize) readIdx -= ringBufferSize;
-        
-        const double* tablePtr = firTable.data() + phaseIdx * numInputTaps;
-        const double* samplePtr = ringData + readIdx;
-        const double* const tableEnd = tablePtr + numInputTaps;
-        
-        while (tablePtr != tableEnd) {
-            outSample += *samplePtr++ * *tablePtr++;
-        }
-        
-        if (outputCount == outputBuffer.size()) {
-            const std::size_t outputBufferCapacity = outputBuffer.size();
-            std::vector<double> expandedBuffer(outputBufferCapacity * 2);
-            for (std::size_t i = 0; i < outputCount; ++i) {
-                expandedBuffer[i] = outputBuffer[(outputReadIndex + i) % outputBufferCapacity];
-            }
-            outputBuffer = std::move(expandedBuffer);
-            outputReadIndex = 0;
-            outputWriteIndex = outputCount;
-        }
-        const std::size_t outputBufferCapacity = outputBuffer.size();
-        outputBuffer[outputWriteIndex] = outSample;
-        outputWriteIndex = (outputWriteIndex + 1) % outputBufferCapacity;
-        ++outputCount;
+    double phase = fractionalTime / ratio;
+    int phaseIdx = std::clamp(static_cast<int>(phase * PHASES), 0, PHASES - 1);
+
+    double outSample = 0.0;
+    std::size_t readIdx = ringIndex + ringBufferSize - numInputTaps;
+    if (readIdx >= ringBufferSize) {
+        readIdx -= ringBufferSize;
     }
-}
 
-bool SIDResampler::HasOutput() const {
-    return outputCount != 0;
-}
+    const double* tablePtr = firTable.data() + (static_cast<std::size_t>(phaseIdx) * numInputTaps);
+    const double* samplePtr = ringBuffer.data() + readIdx;
+    const double* const tableEnd = tablePtr + numInputTaps;
 
-double SIDResampler::GetOutput() {
-    if (outputCount == 0) return 0.0;
-    double val = outputBuffer[outputReadIndex];
-    outputReadIndex = (outputReadIndex + 1) % outputBuffer.size();
-    --outputCount;
-    return val;
+    while (tablePtr != tableEnd) {
+        outSample += *samplePtr++ * *tablePtr++;
+    }
+
+    if (outputCount == outputBuffer.size()) [[unlikely]] {
+        const std::size_t outputBufferCapacity = outputBuffer.size();
+        const std::size_t mask = outputBufferCapacity - 1;
+        std::vector<double> expandedBuffer(outputBufferCapacity * 2);
+        double* const expData = expandedBuffer.data();
+        const double* const outData = outputBuffer.data();
+        for (std::size_t i = 0; i < outputCount; ++i) {
+            *(expData + i) = *(outData + ((outputReadIndex + i) & mask));
+        }
+        outputBuffer = std::move(expandedBuffer);
+        outputReadIndex = 0;
+        outputWriteIndex = outputCount;
+    }
+    const std::size_t mask = outputBuffer.size() - 1;
+    *(outputBuffer.data() + outputWriteIndex) = outSample;
+    outputWriteIndex = (outputWriteIndex + 1) & mask;
+    ++outputCount;
 }
 
 } // namespace Hardware

@@ -68,41 +68,43 @@ void ACIA::SetDSR(bool active) {
     UpdateIRQ();
 }
 
-void ACIA::Clock(int ips) {
+void ACIA::ClockSlow(int ips) {
     if (isShifting) {
-        if (shiftRegisterTicks > 0) {
-            shiftRegisterTicks--;
-            if (shiftRegisterTicks == 0) {
-                if (outputCallback) {
-                    outputCallback((char)shiftRegisterData);
-                }
-                isShifting = false;
+        if (shiftRegisterTicks <= 0) {
+            if (outputCallback) {
+                outputCallback(static_cast<char>(shiftRegisterData));
             }
+            isShifting = false;
         }
     }
 
     if (!isShifting) {
-        // Echo has highest priority for the TSR
         if (echoPending) {
             shiftRegisterData = echoByte;
             echoPending = false;
             isShifting = true;
-            
+
             int baud = GetBaudRate();
-            if (baud <= 0) baud = 115200;
+            if (baud <= 0) {
+                baud = 115200;
+            }
             shiftRegisterTicks = (ips * GetFrameBits()) / baud;
-            if (shiftRegisterTicks <= 0) shiftRegisterTicks = 1;
-        } 
-        // If transmitter is on and not in echo mode, check TDRE
-        else if ((CMD & ACIA_CMD_ECHO) == 0 && (CMD & ACIA_CMD_DTR) != 0) {
+            if (shiftRegisterTicks <= 0) {
+                shiftRegisterTicks = 1;
+            }
+        } else if ((CMD & ACIA_CMD_ECHO) == 0 && (CMD & ACIA_CMD_DTR) != 0) {
             if ((STATUS & ACIA_STATUS_TDRE) == 0) {
                 shiftRegisterData = txData;
                 isShifting = true;
-                
+
                 int baud = GetBaudRate();
-                if (baud <= 0) baud = 115200;
+                if (baud <= 0) {
+                    baud = 115200;
+                }
                 shiftRegisterTicks = (ips * GetFrameBits()) / baud;
-                if (shiftRegisterTicks <= 0) shiftRegisterTicks = 1;
+                if (shiftRegisterTicks <= 0) {
+                    shiftRegisterTicks = 1;
+                }
 
                 STATUS |= ACIA_STATUS_TDRE;
                 UpdateIRQ();

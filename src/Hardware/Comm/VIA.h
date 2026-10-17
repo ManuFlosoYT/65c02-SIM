@@ -206,7 +206,7 @@ inline Byte VIA::GetEffectiveORB() const {
 
 inline void VIA::HandleTimer1() {
     t1c--;
-    if (t1c == 0xFFFF) {  // Underflow from 0 to -1 (0xFFFF)
+    if (t1c == 0xFFFF) [[unlikely]] {  // Underflow from 0 to -1 (0xFFFF)
         // Interrupt Logic
         if (t1_interrupt_armed) {
             ifr |= 0x40;  // Set T1 interrupt
@@ -249,7 +249,7 @@ inline bool VIA::HandleTimer2() {
     // If (acr & 0x20) == 1 -> Pulse Counting (handled in SetInputB)
     if ((acr & 0x20) == 0) {
         t2c--;
-        if (t2c == 0xFFFF) {
+        if (t2c == 0xFFFF) [[unlikely]] {
             underflowed = true;
             if (t2_interrupt_armed) {
                 ifr |= 0x20;
@@ -330,26 +330,30 @@ inline void VIA::HandleShiftRegister(bool timer2_underflowed) {
 }
 
 inline void VIA::Clock() {
-    if (ca2_pulse_pending) {
-        UpdateCA2Output(true);
-        ca2_pulse_pending = false;
-    }
-    if (cb1_pulse_pending) {
-        UpdateCB1Output(true);
-        cb1_pulse_pending = false;
-    }
-    if (cb2_pulse_pending) {
-        UpdateCB2Output(true);
-        cb2_pulse_pending = false;
+    if (ca2_pulse_pending || cb1_pulse_pending || cb2_pulse_pending) [[unlikely]] {
+        if (ca2_pulse_pending) {
+            UpdateCA2Output(true);
+            ca2_pulse_pending = false;
+        }
+        if (cb1_pulse_pending) {
+            UpdateCB1Output(true);
+            cb1_pulse_pending = false;
+        }
+        if (cb2_pulse_pending) {
+            UpdateCB2Output(true);
+            cb2_pulse_pending = false;
+        }
     }
 
-    if (!anyActive) {
+    if (!anyActive) [[unlikely]] {
         return;
     }
 
     HandleTimer1();
     bool t2_underflowed = HandleTimer2();
-    HandleShiftRegister(t2_underflowed);
+    if (sr_active) [[unlikely]] {
+        HandleShiftRegister(t2_underflowed);
+    }
 }
 
 }  // namespace Hardware

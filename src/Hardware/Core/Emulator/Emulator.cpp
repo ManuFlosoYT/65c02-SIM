@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <ranges>
 #include <stdexcept>
 
 
@@ -156,24 +157,20 @@ void Emulator::RunCPUTick(int& res, bool& cpuStepped) {
     }
 }
 
-void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
+void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction, int ips) {
     lastStepCpuCycles = cpuStepped ? 1 : 0;
     lastStepGpuCycles = (gpuEnabled && !cpuStepped) ? 1 : 0;
     lastStepCycles = lastStepCpuCycles + lastStepGpuCycles;
-    if (baudDelay > 0) {
+    if (baudDelay > 0) [[unlikely]] {
         baudDelay--;
     }
-
-    int ips = targetIPS.load(std::memory_order_relaxed);
-    if (ips <= 0) ips = 1000000;
 
     via.Clock();
     acia.Clock(ips);
     if (sidEnabled) {
-        sid.SetClockRate(static_cast<double>(ips));
         sid.Clock();
     }
-    if (via.isIRQAsserted() || acia.HasIRQ()) {
+    if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {
         pendingInterruptAny.store(true, std::memory_order_relaxed);
     }
 
@@ -185,11 +182,10 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction) {
             via.Clock();
             acia.Clock(ips);
             if (sidEnabled) {
-                sid.SetClockRate(static_cast<double>(ips));
                 sid.Clock();
             }
         }
-        if (via.isIRQAsserted() || acia.HasIRQ()) {
+        if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {
             pendingInterruptAny.store(true, std::memory_order_relaxed);
         }
         cpu.remainingCycles = 0;
@@ -263,31 +259,54 @@ void Emulator::HandleSerialInput() {
     }
 }
 
-template <bool Debug>
-int Emulator::Step() {
+template <bool Debug, bool CycleAccurateMode>
+int Emulator::StepInternal(int ips) {
     int res = 0;
     bool cpuStepped = false;
     bool isNewInstruction = true;
 
-    if (cpu.cycleAccurate) {
+    if constexpr (CycleAccurateMode) {
         isNewInstruction = (cpu.remainingCycles == 0);
         RunCPUTick<Debug, true>(res, cpuStepped);
     } else {
         RunCPUTick<Debug, false>(res, cpuStepped);
     }
-    SyncHardwareCycles(cpuStepped, isNewInstruction);
-    HandleInterrupts<Debug>();
+    SyncHardwareCycles(cpuStepped, isNewInstruction, ips);
+    if (pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
+        HandleInterrupts<Debug>();
+    }
 
-    if (cpu.waiting && cpu.remainingCycles == 0) {
+    if (cpu.waiting && cpu.remainingCycles == 0) [[unlikely]] {
         return 0;
     }
 
-    HandleSerialInput<Debug>();
+    if (hasInput.load(std::memory_order_relaxed)) [[unlikely]] {
+        HandleSerialInput<Debug>();
+    }
 
     return res;
 }
+
+template <bool Debug>
+int Emulator::Step() {
+    int ips = targetIPS.load(std::memory_order_relaxed);
+    if (ips <= 0) {
+        ips = 1000000;
+    }
+    if (sidEnabled) {
+        sid.SetClockRate(static_cast<double>(ips));
+    }
+    if (cpu.cycleAccurate) {
+        return StepInternal<Debug, true>(ips);
+    }
+    return StepInternal<Debug, false>(ips);
+}
 template int Emulator::Step<true>();
 template int Emulator::Step<false>();
+template int Emulator::StepInternal<true, true>(int);
+template int Emulator::StepInternal<false, true>(int);
+template int Emulator::StepInternal<true, false>(int);
+template int Emulator::StepInternal<false, false>(int);
 
 void Emulator::InjectKey(char key) {
     if (key == '\n') {
@@ -488,16 +507,14 @@ void Emulator::EnsureWatchpointWriteHook() {
 }
 
 void Emulator::HandleVIAPortB(Byte val) {
-    bool is_lcd_enabled = false;
-    for (const auto& dev : bus.GetRegisteredDevices()) {
-        if (dev.device == &lcd && dev.enabled) {
-            is_lcd_enabled = true;
-            break;
+    const auto& devices = bus.GetRegisteredDevices();
+    for (const auto& dev : std::views::reverse(devices)) {
+        if (dev.device == &lcd) {
+            if (dev.enabled) {
+                lcd.Update(val);
+            }
+            return;
         }
-    }
-
-    if (is_lcd_enabled) {
-        lcd.Update(val);
     }
 }
 

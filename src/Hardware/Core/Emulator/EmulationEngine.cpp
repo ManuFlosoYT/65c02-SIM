@@ -224,16 +224,34 @@ Emulator::SliceResult Emulator::EmulateSlice(int instructionsPerSlice) {
 int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
                            uint64_t& batchCpuCycles, uint64_t& batchGpuCycles, int& stopCode) {
     stopCode = std::numeric_limits<int>::min();
+    int ips = targetIPS.load(std::memory_order_relaxed);
+    if (ips <= 0) {
+        ips = 1000000;
+    }
+    if (sidEnabled) {
+        sid.SetClockRate(static_cast<double>(ips));
+    }
+
     if (cpu.cycleAccurate) {
+        if (!hooks && !hasBreakpoints) [[likely]] {
+            for (int i = 0; i < count; ++i) {
+                bool isNew = (cpu.remainingCycles == 0);
+                int res = StepInternal<false, true>(ips);
+                if (isNew && lastStepCpuCycles > 0) {
+                    batchInstructions++;
+                }
+                batchCpuCycles += lastStepCpuCycles;
+                batchGpuCycles += lastStepGpuCycles;
+                if (res != 0) [[unlikely]] {
+                    stopCode = res;
+                    return i + 1;
+                }
+            }
+            return count;
+        }
         for (int i = 0; i < count; ++i) {
             bool isNew = (cpu.remainingCycles == 0);
-            int res = 0;
-
-            if (hooks) [[unlikely]] {
-                res = Step<true>();
-            } else {
-                res = Step<false>();
-            }
+            int res = hooks ? StepInternal<true, true>(ips) : StepInternal<false, true>(ips);
 
             if (isNew && lastStepCpuCycles > 0) {
                 batchInstructions++;
@@ -241,12 +259,12 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             batchCpuCycles += lastStepCpuCycles;
             batchGpuCycles += lastStepGpuCycles;
 
-            if (res != 0) {
+            if (res != 0) [[unlikely]] {
                 stopCode = res;
                 return i + 1;
             }
 
-            if (hasBreakpoints) [[unlikely]] {
+            if (hasBreakpoints) {
                 if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
                     if (breakpointManager.Evaluate(cpu, bus) > 0) {
                         stopCode = 0;
@@ -256,14 +274,23 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             }
         }
     } else {
-        for (int i = 0; i < count; ++i) {
-            int res = 0;
-
-            if (hooks) [[unlikely]] {
-                res = Step<true>();
-            } else {
-                res = Step<false>();
+        if (!hooks && !hasBreakpoints) [[likely]] {
+            for (int i = 0; i < count; ++i) {
+                int res = StepInternal<false, false>(ips);
+                if (lastStepCpuCycles > 0) {
+                    batchInstructions++;
+                }
+                batchCpuCycles += lastStepCpuCycles;
+                batchGpuCycles += lastStepGpuCycles;
+                if (res != 0) [[unlikely]] {
+                    stopCode = res;
+                    return i + 1;
+                }
             }
+            return count;
+        }
+        for (int i = 0; i < count; ++i) {
+            int res = hooks ? StepInternal<true, false>(ips) : StepInternal<false, false>(ips);
 
             if (lastStepCpuCycles > 0) {
                 batchInstructions++;
@@ -271,12 +298,12 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             batchCpuCycles += lastStepCpuCycles;
             batchGpuCycles += lastStepGpuCycles;
 
-            if (res != 0) {
+            if (res != 0) [[unlikely]] {
                 stopCode = res;
                 return i + 1;
             }
 
-            if (hasBreakpoints) [[unlikely]] {
+            if (hasBreakpoints) {
                 if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
                     if (breakpointManager.Evaluate(cpu, bus) > 0) {
                         stopCode = 0;

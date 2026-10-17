@@ -392,6 +392,16 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     X(INS_LDA_INDX, hot_lda_indx, LDA::ExecuteINDX, CYC_INS_LDA_INDX)                                                 \
     X(INS_LDA_INDY, hot_lda_indy, LDA::ExecuteINDY, CYC_INS_LDA_INDY)                                                 \
     X(INS_LDA_IND_ZP, hot_lda_ind_zp, LDA::ExecuteIND_ZP, CYC_INS_LDA_IND_ZP)                                        \
+    X(INS_LDX_IM, hot_ldx_im, LDX::ExecuteImmediate, CYC_INS_LDX_IM)                                                  \
+    X(INS_LDX_ZP, hot_ldx_zp, LDX::ExecuteZP, CYC_INS_LDX_ZP)                                                         \
+    X(INS_LDX_ZPY, hot_ldx_zpy, LDX::ExecuteZPY, CYC_INS_LDX_ZPY)                                                     \
+    X(INS_LDX_ABS, hot_ldx_abs, LDX::ExecuteABS, CYC_INS_LDX_ABS)                                                     \
+    X(INS_LDX_ABSY, hot_ldx_absy, LDX::ExecuteABSY, CYC_INS_LDX_ABSY)                                                 \
+    X(INS_LDY_IM, hot_ldy_im, LDY::ExecuteImmediate, CYC_INS_LDY_IM)                                                  \
+    X(INS_LDY_ZP, hot_ldy_zp, LDY::ExecuteZP, CYC_INS_LDY_ZP)                                                         \
+    X(INS_LDY_ZPX, hot_ldy_zpx, LDY::ExecuteZPX, CYC_INS_LDY_ZPX)                                                     \
+    X(INS_LDY_ABS, hot_ldy_abs, LDY::ExecuteABS, CYC_INS_LDY_ABS)                                                     \
+    X(INS_LDY_ABSX, hot_ldy_absx, LDY::ExecuteABSX, CYC_INS_LDY_ABSX)                                                 \
     X(INS_STA_ZP, hot_sta_zp, STA::ExecuteZP, CYC_INS_STA_ZP)                                                         \
     X(INS_STA_ZPX, hot_sta_zpx, STA::ExecuteZPX, CYC_INS_STA_ZPX)                                                     \
     X(INS_STA_ABS, hot_sta_abs, STA::ExecuteABS, CYC_INS_STA_ABS)                                                     \
@@ -400,6 +410,16 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     X(INS_STA_INDX, hot_sta_indx, STA::ExecuteINDX, CYC_INS_STA_INDX)                                                 \
     X(INS_STA_INDY, hot_sta_indy, STA::ExecuteINDY, CYC_INS_STA_INDY)                                                 \
     X(INS_STA_IND_ZP, hot_sta_ind_zp, STA::ExecuteINDZP, CYC_INS_STA_IND_ZP)                                         \
+    X(INS_STX_ZP, hot_stx_zp, STX::ExecuteZP, CYC_INS_STX_ZP)                                                         \
+    X(INS_STX_ZPY, hot_stx_zpy, STX::ExecuteZPY, CYC_INS_STX_ZPY)                                                     \
+    X(INS_STX_ABS, hot_stx_abs, STX::ExecuteABS, CYC_INS_STX_ABS)                                                     \
+    X(INS_STY_ZP, hot_sty_zp, STY::ExecuteZP, CYC_INS_STY_ZP)                                                         \
+    X(INS_STY_ZPX, hot_sty_zpx, STY::ExecuteZPX, CYC_INS_STY_ZPX)                                                     \
+    X(INS_STY_ABS, hot_sty_abs, STY::ExecuteABS, CYC_INS_STY_ABS)                                                     \
+    X(INS_STZ_ZP, hot_stz_zp, STZ::ExecuteZP, CYC_INS_STZ_ZP)                                                         \
+    X(INS_STZ_ZPX, hot_stz_zpx, STZ::ExecuteZPX, CYC_INS_STZ_ZPX)                                                     \
+    X(INS_STZ_ABS, hot_stz_abs, STZ::ExecuteABS, CYC_INS_STZ_ABS)                                                     \
+    X(INS_STZ_ABSX, hot_stz_absx, STZ::ExecuteABSX, CYC_INS_STZ_ABSX)                                                 \
     X(INS_ADC_IM, hot_adc_im, ADC::ExecuteImmediate, CYC_INS_ADC_IM)                                                  \
     X(INS_ADC_ZP, hot_adc_zp, ADC::ExecuteZP, CYC_INS_ADC_ZP)                                                         \
     X(INS_ADC_ZPX, hot_adc_zpx, ADC::ExecuteZPX, CYC_INS_ADC_ZPX)                                                     \
@@ -418,6 +438,86 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     X(INS_SBC_INDX, hot_sbc_indx, SBC::ExecuteINDX, CYC_INS_SBC_INDX)                                                 \
     X(INS_SBC_INDY, hot_sbc_indy, SBC::ExecuteINDY, CYC_INS_SBC_INDY)                                                 \
     X(INS_SBC_IND_ZP, hot_sbc_ind_zp, SBC::ExecuteIND_ZP, CYC_INS_SBC_IND_ZP)                                        \
+    X(INS_AND_IM, hot_and_im, AND::ExecuteImmediate, CYC_INS_AND_IM)                                                  \
+    X(INS_AND_ZP, hot_and_zp, AND::ExecuteZP, CYC_INS_AND_ZP)                                                         \
+    X(INS_AND_ZPX, hot_and_zpx, AND::ExecuteZPX, CYC_INS_AND_ZPX)                                                     \
+    X(INS_AND_ABS, hot_and_abs, AND::ExecuteABS, CYC_INS_AND_ABS)                                                     \
+    X(INS_AND_ABSX, hot_and_absx, AND::ExecuteABSX, CYC_INS_AND_ABSX)                                                 \
+    X(INS_AND_ABSY, hot_and_absy, AND::ExecuteABSY, CYC_INS_AND_ABSY)                                                 \
+    X(INS_AND_INDX, hot_and_indx, AND::ExecuteINDX, CYC_INS_AND_INDX)                                                 \
+    X(INS_AND_INDY, hot_and_indy, AND::ExecuteINDY, CYC_INS_AND_INDY)                                                 \
+    X(INS_AND_IND_ZP, hot_and_ind_zp, AND::ExecuteIND_ZP, CYC_INS_AND_IND_ZP)                                        \
+    X(INS_ORA_IM, hot_ora_im, ORA::ExecuteImmediate, CYC_INS_ORA_IM)                                                  \
+    X(INS_ORA_ZP, hot_ora_zp, ORA::ExecuteZP, CYC_INS_ORA_ZP)                                                         \
+    X(INS_ORA_ZPX, hot_ora_zpx, ORA::ExecuteZPX, CYC_INS_ORA_ZPX)                                                     \
+    X(INS_ORA_ABS, hot_ora_abs, ORA::ExecuteABS, CYC_INS_ORA_ABS)                                                     \
+    X(INS_ORA_ABSX, hot_ora_absx, ORA::ExecuteABSX, CYC_INS_ORA_ABSX)                                                 \
+    X(INS_ORA_ABSY, hot_ora_absy, ORA::ExecuteABSY, CYC_INS_ORA_ABSY)                                                 \
+    X(INS_ORA_INDX, hot_ora_indx, ORA::ExecuteINDX, CYC_INS_ORA_INDX)                                                 \
+    X(INS_ORA_INDY, hot_ora_indy, ORA::ExecuteINDY, CYC_INS_ORA_INDY)                                                 \
+    X(INS_ORA_IND_ZP, hot_ora_ind_zp, ORA::ExecuteIND_ZP, CYC_INS_ORA_IND_ZP)                                        \
+    X(INS_EOR_IM, hot_eor_im, EOR::ExecuteImmediate, CYC_INS_EOR_IM)                                                  \
+    X(INS_EOR_ZP, hot_eor_zp, EOR::ExecuteZP, CYC_INS_EOR_ZP)                                                         \
+    X(INS_EOR_ZPX, hot_eor_zpx, EOR::ExecuteZPX, CYC_INS_EOR_ZPX)                                                     \
+    X(INS_EOR_ABS, hot_eor_abs, EOR::ExecuteABS, CYC_INS_EOR_ABS)                                                     \
+    X(INS_EOR_ABSX, hot_eor_absx, EOR::ExecuteABSX, CYC_INS_EOR_ABSX)                                                 \
+    X(INS_EOR_ABSY, hot_eor_absy, EOR::ExecuteABSY, CYC_INS_EOR_ABSY)                                                 \
+    X(INS_EOR_INDX, hot_eor_indx, EOR::ExecuteINDX, CYC_INS_EOR_INDX)                                                 \
+    X(INS_EOR_INDY, hot_eor_indy, EOR::ExecuteINDY, CYC_INS_EOR_INDY)                                                 \
+    X(INS_EOR_IND_ZP, hot_eor_ind_zp, EOR::ExecuteIND_ZP, CYC_INS_EOR_IND_ZP)                                        \
+    X(INS_BIT_IM, hot_bit_im, BIT::ExecuteImmediate, CYC_INS_BIT_IM)                                                  \
+    X(INS_BIT_ZP, hot_bit_zp, BIT::ExecuteZP, CYC_INS_BIT_ZP)                                                         \
+    X(INS_BIT_ZPX, hot_bit_zpx, BIT::ExecuteZPX, CYC_INS_BIT_ZPX)                                                     \
+    X(INS_BIT_ABS, hot_bit_abs, BIT::ExecuteABS, CYC_INS_BIT_ABS)                                                     \
+    X(INS_BIT_ABSX, hot_bit_absx, BIT::ExecuteABSX, CYC_INS_BIT_ABSX)                                                 \
+    X(INS_CMP_IM, hot_cmp_im, CMP::ExecuteImmediate, CYC_INS_CMP_IM)                                                  \
+    X(INS_CMP_ZP, hot_cmp_zp, CMP::ExecuteZP, CYC_INS_CMP_ZP)                                                         \
+    X(INS_CMP_ZPX, hot_cmp_zpx, CMP::ExecuteZPX, CYC_INS_CMP_ZPX)                                                     \
+    X(INS_CMP_ABS, hot_cmp_abs, CMP::ExecuteABS, CYC_INS_CMP_ABS)                                                     \
+    X(INS_CMP_ABSX, hot_cmp_absx, CMP::ExecuteABSX, CYC_INS_CMP_ABSX)                                                 \
+    X(INS_CMP_ABSY, hot_cmp_absy, CMP::ExecuteABSY, CYC_INS_CMP_ABSY)                                                 \
+    X(INS_CMP_INDX, hot_cmp_indx, CMP::ExecuteINDX, CYC_INS_CMP_INDX)                                                 \
+    X(INS_CMP_INDY, hot_cmp_indy, CMP::ExecuteINDY, CYC_INS_CMP_INDY)                                                 \
+    X(INS_CMP_IND_ZP, hot_cmp_ind_zp, CMP::ExecuteIND_ZP, CYC_INS_CMP_IND_ZP)                                        \
+    X(INS_CPX_IM, hot_cpx_im, CPX::ExecuteImmediate, CYC_INS_CPX_IM)                                                  \
+    X(INS_CPX_ZP, hot_cpx_zp, CPX::ExecuteZP, CYC_INS_CPX_ZP)                                                         \
+    X(INS_CPX_ABS, hot_cpx_abs, CPX::ExecuteABS, CYC_INS_CPX_ABS)                                                     \
+    X(INS_CPY_IM, hot_cpy_im, CPY::ExecuteImmediate, CYC_INS_CPY_IM)                                                  \
+    X(INS_CPY_ZP, hot_cpy_zp, CPY::ExecuteZP, CYC_INS_CPY_ZP)                                                         \
+    X(INS_CPY_ABS, hot_cpy_abs, CPY::ExecuteABS, CYC_INS_CPY_ABS)                                                     \
+    X(INS_INC_A, hot_inc_a, INC::ExecuteAccumulator, CYC_INS_INC_A)                                                   \
+    X(INS_INC_ZP, hot_inc_zp, INC::ExecuteZP, CYC_INS_INC_ZP)                                                         \
+    X(INS_INC_ZPX, hot_inc_zpx, INC::ExecuteZPX, CYC_INS_INC_ZPX)                                                     \
+    X(INS_INC_ABS, hot_inc_abs, INC::ExecuteABS, CYC_INS_INC_ABS)                                                     \
+    X(INS_INC_ABSX, hot_inc_absx, INC::ExecuteABSX, CYC_INS_INC_ABSX)                                                 \
+    X(INS_DEC_A, hot_dec_a, DEC::ExecuteAccumulator, CYC_INS_DEC_A)                                                   \
+    X(INS_DEC_ZP, hot_dec_zp, DEC::ExecuteZP, CYC_INS_DEC_ZP)                                                         \
+    X(INS_DEC_ZPX, hot_dec_zpx, DEC::ExecuteZPX, CYC_INS_DEC_ZPX)                                                     \
+    X(INS_DEC_ABS, hot_dec_abs, DEC::ExecuteABS, CYC_INS_DEC_ABS)                                                     \
+    X(INS_DEC_ABSX, hot_dec_absx, DEC::ExecuteABSX, CYC_INS_DEC_ABSX)                                                 \
+    X(INS_INX, hot_inx, INX::Execute, CYC_INS_INX)                                                                    \
+    X(INS_INY, hot_iny, INY::Execute, CYC_INS_INY)                                                                    \
+    X(INS_DEX, hot_dex, DEX::Execute, CYC_INS_DEX)                                                                    \
+    X(INS_DEY, hot_dey, DEY::Execute, CYC_INS_DEY)                                                                    \
+    X(INS_TAX, hot_tax, TAX::Execute, CYC_INS_TAX)                                                                    \
+    X(INS_TAY, hot_tay, TAY::Execute, CYC_INS_TAY)                                                                    \
+    X(INS_TXA, hot_txa, TXA::Execute, CYC_INS_TXA)                                                                    \
+    X(INS_TYA, hot_tya, TYA::Execute, CYC_INS_TYA)                                                                    \
+    X(INS_TSX, hot_tsx, TSX::Execute, CYC_INS_TSX)                                                                    \
+    X(INS_TXS, hot_txs, TXS::Execute, CYC_INS_TXS)                                                                    \
+    X(INS_PHA, hot_pha, PHA::Execute, CYC_INS_PHA)                                                                    \
+    X(INS_PLA, hot_pla, PLA::Execute, CYC_INS_PLA)                                                                    \
+    X(INS_PHX, hot_phx, PHX::Execute, CYC_INS_PHX)                                                                    \
+    X(INS_PLX, hot_plx, PLX::Execute, CYC_INS_PLX)                                                                    \
+    X(INS_PHY, hot_phy, PHY::Execute, CYC_INS_PHY)                                                                    \
+    X(INS_PLY, hot_ply, PLY::Execute, CYC_INS_PLY)                                                                    \
+    X(INS_CLC, hot_clc, CLC::Execute, CYC_INS_CLC)                                                                    \
+    X(INS_SEC, hot_sec, SEC::Execute, CYC_INS_SEC)                                                                    \
+    X(INS_CLD, hot_cld, CLD::Execute, CYC_INS_CLD)                                                                    \
+    X(INS_SED, hot_sed, SED::Execute, CYC_INS_SED)                                                                    \
+    X(INS_CLI, hot_cli, CLI::Execute, CYC_INS_CLI)                                                                    \
+    X(INS_SEI, hot_sei, SEI::Execute, CYC_INS_SEI)                                                                    \
+    X(INS_CLV, hot_clv, CLV::Execute, CYC_INS_CLV)                                                                    \
     X(INS_BRA, hot_bra, BRA::Execute, CYC_INS_BRA)                                                                    \
     X(INS_BCC, hot_bcc, BCC::Execute, CYC_INS_BCC)                                                                    \
     X(INS_BCS, hot_bcs, BCS::Execute, CYC_INS_BCS)                                                                    \
@@ -432,30 +532,6 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     X(INS_RTS, hot_rts, RTS::Execute, CYC_INS_RTS)                                                                    \
     X(INS_NOP, hot_nop, NOP::Execute, CYC_INS_NOP)
 
-#if defined(__GNUC__) || defined(__clang__)
-    // GNU/Clang fast path: direct-threaded jump table for common opcodes.
-    static std::array<const void*, 256> hotTargets{};
-    static bool hotTargetsInitialized = false;
-    if (!hotTargetsInitialized) {
-        hotTargets.fill(&&hot_slow_path);
-#define SET_HOT_TARGET(opcodeValue, labelName, executor, cycles) hotTargets[opcodeValue] = &&labelName;
-        HOT_OPCODE_LIST(SET_HOT_TARGET)
-#undef SET_HOT_TARGET
-        hotTargetsInitialized = true;
-    }
-
-    goto *hotTargets[opcode];
-
-#define HOT_LABEL(opcodeValue, labelName, executor, cycles)                                                            \
-    labelName:                                                                                                         \
-        executor<Debug>(cpu, bus);                                                                                     \
-        cpu.remainingCycles += cycles - 1;                                                                             \
-        return 0;
-    HOT_OPCODE_LIST(HOT_LABEL)
-#undef HOT_LABEL
-hot_slow_path:
-#else
-    // Portable fallback: fast switch for the same hot opcodes.
     switch (opcode) {
 #define HOT_CASE(opcodeValue, labelName, executor, cycles)                                                             \
     case opcodeValue:                                                                                                  \
@@ -467,7 +543,6 @@ hot_slow_path:
         default:
             break;
     }
-#endif
 
     const OpcodeEntry<Debug>& entry = dispatchTable<Debug>[opcode];
 

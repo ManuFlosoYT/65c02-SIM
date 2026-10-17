@@ -156,6 +156,8 @@ class SID : public IBusDevice {
     bool filterCoefficientsDirty = true;
     double filterG = 0.0;
     double filterR = 1.0;
+    double filterRPlusG = 1.0;
+    double filterDenomInv = 1.0;
     
     SIDResampler resampler;
 
@@ -175,6 +177,9 @@ class SID : public IBusDevice {
                                int total_amount);
     void GenerateAudio(int16_t* buffer, int length);
     void UpdateAudioState();
+    void ClockProfiled();
+    void UpdateFilterCoefficients();
+    void FlushAvailableOutput();
 };
 
 }  // namespace Hardware

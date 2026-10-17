@@ -10,26 +10,65 @@ public:
     SIDResampler(double inputRate = 1000000.0, double outputRate = 48000.0);
     ~SIDResampler() = default;
 
-    void SetRates(double inputRate, double outputRate);
+    void SetRates(double inRate, double outRate);
     
     // Add a sample at the input rate
-    void PushSample(double sample);
+    void PushSample(double sample) {
+        if (decimFactor > 1) {
+            decimAccum += sample;
+            if (++decimCount < decimFactor) [[likely]] {
+                return;
+            }
+            sample = decimAccum * decimInv;
+            decimAccum = 0.0;
+            decimCount = 0;
+        }
+
+        double* ringData = ringBuffer.data();
+        *(ringData + ringIndex) = sample;
+        *(ringData + ringIndex + ringBufferSize) = sample;
+        ++ringIndex;
+        if (ringIndex == ringBufferSize) [[unlikely]] {
+            ringIndex = 0;
+        }
+
+        fractionalTime += 1.0;
+        if (fractionalTime >= ratio) [[unlikely]] {
+            ProduceOutputSample();
+        }
+    }
     
     // Check if we have an output sample ready
-    bool HasOutput() const;
+    [[nodiscard]] bool HasOutput() const {
+        return outputCount != 0;
+    }
     
     // Get the next output sample and consume it
-    double GetOutput();
+    double GetOutput() {
+        if (outputCount == 0) {
+            return 0.0;
+        }
+        double val = *(outputBuffer.data() + outputReadIndex);
+        outputReadIndex = (outputReadIndex + 1) & (outputBuffer.size() - 1);
+        --outputCount;
+        return val;
+    }
 
     void Clear();
 
 private:
     void BuildPolyphaseTable();
+    void ProduceOutputSample();
     double BesselI0(double x);
 
-    double inputRate;
-    double outputRate;
-    double ratio;
+    double inputRate = 1000000.0;
+    double outputRate = 48000.0;
+    double ratio = 1000000.0 / 48000.0;
+
+    std::size_t decimFactor = 1;
+    std::size_t decimCount = 0;
+    double decimInv = 1.0;
+    double decimAccum = 0.0;
 
     // FIR Filter state
     std::vector<double> firTable;

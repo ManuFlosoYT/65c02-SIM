@@ -295,6 +295,12 @@ inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
 
 template <bool Debug>
 inline Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
+    if (current_page_ptr != nullptr && (PC & 0xFF) < 0xFE) [[likely]] {
+        Word dato = static_cast<Word>(current_page_ptr[0]) | (static_cast<Word>(current_page_ptr[1]) << 8);
+        current_page_ptr += 2;
+        PC += 2;
+        return dato;
+    }
     Word dato = FetchByte<Debug>(bus);
     dato |= (FetchByte<Debug>(bus) << 8);
     return dato;
@@ -307,6 +313,14 @@ inline Hardware::Byte Hardware::CPU::ReadByte(Word addr, Bus& bus) {
 
 template <bool Debug>
 inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
+    if constexpr (!Debug) {
+        if ((addr & 0xFF) != 0xFF) [[likely]] {
+            if (const Byte* page = bus.GetPageReadPtr(addr >> 8)) [[likely]] {
+                const Word offset = addr & 0xFF;
+                return static_cast<Word>(page[offset]) | (static_cast<Word>(page[offset + 1]) << 8);
+            }
+        }
+    }
     Word dato = bus.Read<Debug>(addr);
     dato |= (bus.Read<Debug>(addr + 1) << 8);
     return dato;
@@ -314,6 +328,13 @@ inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
 
 template <bool Debug>
 inline Hardware::Word Hardware::CPU::ReadWordZP(Byte zpAddr, Bus& bus) {
+    if constexpr (!Debug) {
+        if (zpAddr != 0xFF) [[likely]] {
+            if (const Byte* page0 = bus.GetPageReadPtr(0)) [[likely]] {
+                return static_cast<Word>(page0[zpAddr]) | (static_cast<Word>(page0[zpAddr + 1]) << 8);
+            }
+        }
+    }
     Word low = bus.Read<Debug>(zpAddr);
     Word high = bus.Read<Debug>(static_cast<Byte>(zpAddr + 1));
     return low | (high << 8);

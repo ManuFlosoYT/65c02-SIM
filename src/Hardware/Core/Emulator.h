@@ -168,7 +168,9 @@ class Emulator {
     
     template <bool Debug, bool CycleAccurateMode>
     void RunCPUTick(int& res, bool& cpuStepped);
-    void SyncHardwareCycles(bool cpuStepped, bool isNewInstruction);
+    void SyncHardwareCycles(bool cpuStepped, bool isNewInstruction, int ips);
+    template <bool Debug, bool CycleAccurateMode>
+    int StepInternal(int ips);
     template <bool Debug>
     void HandleInterrupts();
     template <bool Debug>

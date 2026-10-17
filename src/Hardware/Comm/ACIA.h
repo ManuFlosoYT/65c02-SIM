@@ -43,11 +43,12 @@ class ACIA : public IBusDevice {
     [[nodiscard]] int GetBaudRate() const;
     [[nodiscard]] int GetFrameBits() const;
 
-    void Clock(int ips = 1000000);
+    inline void Clock(int ips = 1000000);
     void SetDCD(bool active);
     void SetDSR(bool active);
 
    private:
+    void ClockSlow(int ips);
     void UpdateIRQ();
 
     Byte txData;
@@ -100,6 +101,20 @@ inline Byte ACIA::Read(Word address) {
         default:
             return 0;
     }
+}
+
+inline void ACIA::Clock(int ips) {
+    if (!isShifting) [[likely]] {
+        if (!echoPending && ((STATUS & ACIA_STATUS_TDRE) != 0 || (CMD & ACIA_CMD_DTR) == 0 || (CMD & ACIA_CMD_ECHO) != 0)) [[likely]] {
+            return;
+        }
+        ClockSlow(ips);
+        return;
+    }
+    if (--shiftRegisterTicks > 0) [[likely]] {
+        return;
+    }
+    ClockSlow(ips);
 }
 
 }  // namespace Hardware
