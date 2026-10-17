@@ -11,6 +11,7 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
     set_source_files_properties(
         "src/UnitTests/System_Savestate_Test.cpp"
         "src/UnitTests/System_WAI_Threading_Test.cpp"
+        "src/UnitTests/System_Cartridge_Test.cpp"
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
     )
     target_precompile_headers(unit_tests PRIVATE
