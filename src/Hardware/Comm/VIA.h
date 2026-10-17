@@ -81,7 +81,9 @@ class VIA : public IBusDevice {
     void SetCB2(bool val);
 
     inline void Clock();
+    inline void Clock(uint32_t cycles);
     [[nodiscard]] inline bool isIRQAsserted() const;
+    [[nodiscard]] bool IsIdle() const { return !anyActive; }
 
    private:
     Byte orb;     // 0x00 Output Register B
@@ -135,8 +137,14 @@ class VIA : public IBusDevice {
     bool sr_out_cb2;  // State of CB2 output for SR modes
 
     bool anyActive = false;
-    void UpdateAnyActive() { anyActive = true; } // Always active now
+    void UpdateAnyActive() {
+        Byte sr_mode = (acr >> 2) & 0x07;
+        bool t2_sr_reload = (sr_mode == 1 || sr_mode == 4 || sr_mode == 5);
+        anyActive = t1_interrupt_armed || ((acr & 0xC0) != 0) || t2_interrupt_armed || t2_sr_reload ||
+                    sr_active || ca2_pulse_pending || cb1_pulse_pending || cb2_pulse_pending;
+    }
 
+    void ClockSlow();
     void UpdateIRQ();
     void HandleTimer1();
     bool HandleTimer2();
@@ -330,29 +338,26 @@ inline void VIA::HandleShiftRegister(bool timer2_underflowed) {
 }
 
 inline void VIA::Clock() {
-    if (ca2_pulse_pending || cb1_pulse_pending || cb2_pulse_pending) [[unlikely]] {
-        if (ca2_pulse_pending) {
-            UpdateCA2Output(true);
-            ca2_pulse_pending = false;
+    if (!anyActive) [[likely]] {
+        t1c--;
+        if ((acr & 0x20) == 0) {
+            t2c--;
         }
-        if (cb1_pulse_pending) {
-            UpdateCB1Output(true);
-            cb1_pulse_pending = false;
-        }
-        if (cb2_pulse_pending) {
-            UpdateCB2Output(true);
-            cb2_pulse_pending = false;
-        }
-    }
-
-    if (!anyActive) [[unlikely]] {
         return;
     }
+    ClockSlow();
+}
 
-    HandleTimer1();
-    bool t2_underflowed = HandleTimer2();
-    if (sr_active) [[unlikely]] {
-        HandleShiftRegister(t2_underflowed);
+inline void VIA::Clock(uint32_t cycles) {
+    if (!anyActive) [[likely]] {
+        t1c = static_cast<Word>(t1c - cycles);
+        if ((acr & 0x20) == 0) {
+            t2c = static_cast<Word>(t2c - cycles);
+        }
+        return;
+    }
+    for (uint32_t i = 0; i < cycles; ++i) {
+        ClockSlow();
     }
 }
 

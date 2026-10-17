@@ -234,19 +234,86 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
 
     if (cpu.cycleAccurate) {
         if (!hooks && !hasBreakpoints) [[likely]] {
-            for (int i = 0; i < count; ++i) {
-                bool isNew = (cpu.remainingCycles == 0);
-                int res = StepInternal<false, true>(ips);
-                if (isNew && lastStepCpuCycles > 0) {
-                    batchInstructions++;
+            uint64_t localCpuCycles = 0;
+            uint64_t localGpuCycles = 0;
+            int localInstructions = 0;
+            int i = 0;
+            while (i < count) {
+                if (gpuEnabled && !gpu.IsInBlankingInterval()) {
+                    const uint32_t waitCycles = gpu.GetDrawingWaitCycles();
+                    if (waitCycles > 0 && (!sidEnabled || sid.IsDormant()) && via.IsIdle() && acia.IsIdle() &&
+                        baudDelay == 0 && !pendingInterruptAny.load(std::memory_order_relaxed) &&
+                        !hasInput.load(std::memory_order_relaxed)) [[likely]] {
+                        const auto rem = static_cast<uint32_t>(count - i);
+                        const uint32_t skip = (rem < waitCycles) ? rem : waitCycles;
+                        gpu.SkipDrawingCycles(skip);
+                        via.Clock(skip);
+                        if (sidEnabled) {
+                            sid.Clock(skip);
+                        }
+                        localGpuCycles += skip;
+                        i += static_cast<int>(skip);
+                        continue;
+                    }
                 }
-                batchCpuCycles += lastStepCpuCycles;
-                batchGpuCycles += lastStepGpuCycles;
+
+                const bool isNew = (cpu.remainingCycles == 0);
+                bool cpuStepped = false;
+                int res = 0;
+                if (gpuEnabled) {
+                    gpu.Clock();
+                    if (gpu.IsInBlankingInterval()) {
+                        res = cpu.StepCycleAccurate<false>(bus);
+                        cpuStepped = true;
+                    }
+                } else {
+                    res = cpu.StepCycleAccurate<false>(bus);
+                    cpuStepped = true;
+                }
+
+                if (cpuStepped) {
+                    localCpuCycles++;
+                    if (isNew) {
+                        localInstructions++;
+                    }
+                } else {
+                    localGpuCycles++;
+                }
+
+                if (baudDelay > 0) [[unlikely]] {
+                    baudDelay--;
+                }
+                via.Clock();
+                acia.Clock(ips);
+                if (sidEnabled) {
+                    sid.Clock();
+                }
+                if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {
+                    pendingInterruptAny.store(true, std::memory_order_relaxed);
+                }
+                if (pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
+                    HandleInterrupts<false>();
+                }
+                if (hasInput.load(std::memory_order_relaxed)) [[unlikely]] {
+                    HandleSerialInput<false>();
+                }
+
+                ++i;
                 if (res != 0) [[unlikely]] {
+                    batchInstructions += localInstructions;
+                    batchCpuCycles += localCpuCycles;
+                    batchGpuCycles += localGpuCycles;
+                    lastStepCpuCycles = cpuStepped ? 1 : 0;
+                    lastStepGpuCycles = (gpuEnabled && !cpuStepped) ? 1 : 0;
+                    lastStepCycles = 1;
                     stopCode = res;
-                    return i + 1;
+                    return i;
                 }
             }
+            batchInstructions += localInstructions;
+            batchCpuCycles += localCpuCycles;
+            batchGpuCycles += localGpuCycles;
+            lastStepCycles = 1;
             return count;
         }
         for (int i = 0; i < count; ++i) {

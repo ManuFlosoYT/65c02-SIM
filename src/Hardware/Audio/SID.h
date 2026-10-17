@@ -113,7 +113,25 @@ class SID : public IBusDevice {
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
-    void Clock();
+    void Clock() {
+        if (isDormant) [[likely]] {
+            clockCounter++;
+            return;
+        }
+        ClockSlow();
+    }
+
+    void Clock(uint32_t cycles) {
+        if (isDormant) [[likely]] {
+            clockCounter += cycles;
+            return;
+        }
+        for (uint32_t i = 0; i < cycles; ++i) {
+            ClockSlow();
+        }
+    }
+
+    [[nodiscard]] bool IsDormant() const { return isDormant; }
 
     void StartRecording(const std::string& filename);
     void StopRecording();
@@ -135,6 +153,8 @@ class SID : public IBusDevice {
     
     // Cycle accuracy
     uint64_t clockCounter = 0;
+    uint64_t dormantClockAnchor = 0;
+    bool isDormant = true;
     double clockRate = 1000000.0;
     
     // Buffer for audio generated during Clock()
@@ -177,6 +197,9 @@ class SID : public IBusDevice {
                                int total_amount);
     void GenerateAudio(int16_t* buffer, int length);
     void UpdateAudioState();
+    void ClockSlow();
+    void UpdateDormantState();
+    void SyncDormantEnvelopes();
     void ClockProfiled();
     void UpdateFilterCoefficients();
     void FlushAvailableOutput();

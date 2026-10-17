@@ -139,6 +139,7 @@ Byte VIA::Read(Word address) {
             } else if (ca2_mode == 5) {
                 UpdateCA2Output(false);
                 ca2_pulse_pending = true;
+                UpdateAnyActive();
             }
             
             Byte val = (ira & ~ddra) | (ora & ddra);
@@ -216,6 +217,7 @@ void VIA::Write(Word address, Byte data) {
             } else if (cb2_mode == 5) {
                 UpdateCB2Output(false);
                 cb2_pulse_pending = true;
+                UpdateAnyActive();
             }
             break;
         }
@@ -239,6 +241,7 @@ void VIA::Write(Word address, Byte data) {
             } else if (ca2_mode == 5) {
                 UpdateCA2Output(false);
                 ca2_pulse_pending = true;
+                UpdateAnyActive();
             }
             break;
         }
@@ -270,6 +273,7 @@ void VIA::Write(Word address, Byte data) {
             t1c = t1l;  // Load counter with latch
             ifr &= ~0x40;
             t1_interrupt_armed = true;
+            UpdateAnyActive();
             t1_pb7_output = false; // Drop PB7 on start (both one-shot and continuous)
             if (((acr & 0x80) != 0) && ((ddrb & 0x80) != 0)) {
                 if (port_b_callback) {
@@ -298,6 +302,7 @@ void VIA::Write(Word address, Byte data) {
             t2c = t2l;
             ifr &= ~0x20;
             t2_interrupt_armed = true;
+            UpdateAnyActive();
             UpdateIRQ();
             break;
         case VIA_SR & 0x0F:
@@ -311,6 +316,7 @@ void VIA::Write(Word address, Byte data) {
         case ACR & 0x0F: {
             Byte old_acr = acr;
             acr = data;
+            UpdateAnyActive();
             if ((old_acr & 0x01) != 0 && (acr & 0x01) == 0) {
                 ira_latch_full = false;
             }
@@ -356,6 +362,30 @@ void VIA::Write(Word address, Byte data) {
         default:
             break;
     }
+}
+
+void VIA::ClockSlow() {
+    if (ca2_pulse_pending || cb1_pulse_pending || cb2_pulse_pending) [[unlikely]] {
+        if (ca2_pulse_pending) {
+            UpdateCA2Output(true);
+            ca2_pulse_pending = false;
+        }
+        if (cb1_pulse_pending) {
+            UpdateCB1Output(true);
+            cb1_pulse_pending = false;
+        }
+        if (cb2_pulse_pending) {
+            UpdateCB2Output(true);
+            cb2_pulse_pending = false;
+        }
+    }
+
+    HandleTimer1();
+    bool t2_underflowed = HandleTimer2();
+    if (sr_active) [[unlikely]] {
+        HandleShiftRegister(t2_underflowed);
+    }
+    UpdateAnyActive();
 }
 
 void VIA::UpdateIRQ() {
@@ -435,6 +465,7 @@ void VIA::SetInputB(Byte val) {
                 if (t2_interrupt_armed) {
                     ifr |= 0x20;
                     t2_interrupt_armed = false;
+                    UpdateAnyActive();
                     UpdateIRQ();
                 }
                 

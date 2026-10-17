@@ -77,6 +77,45 @@ void SID::SetClockRate(double newClockRate) {
     filterCoefficientsDirty = true;
 }
 
+void SID::SyncDormantEnvelopes() {
+    if (!isDormant) {
+        return;
+    }
+    const uint64_t elapsed = clockCounter - dormantClockAnchor;
+    if (elapsed > 0) {
+        for (auto& voice : voices) {
+            if (voice.env.ratePeriod > 0) {
+                voice.env.rateCounter = static_cast<uint16_t>(
+                    (static_cast<uint64_t>(voice.env.rateCounter) + elapsed) % voice.env.ratePeriod);
+            }
+        }
+    }
+    dormantClockAnchor = clockCounter;
+}
+
+void SID::UpdateDormantState() {
+    const Oscillator* const v = voices.data();
+    const bool voicesSilent =
+        (v[0].frequency == 0 && (v[0].control & 0x01) == 0 && v[0].env.holdZero && v[0].env.level == 0) &&
+        (v[1].frequency == 0 && (v[1].control & 0x01) == 0 && v[1].env.holdZero && v[1].env.level == 0) &&
+        (v[2].frequency == 0 && (v[2].control & 0x01) == 0 && v[2].env.holdZero && v[2].env.level == 0);
+#ifndef TARGET_WASM
+    const bool recording = (recorder != nullptr) || !pendingFilename.empty();
+#else
+    const bool recording = !pendingFilename.empty();
+#endif
+    const bool canBeDormant = voicesSilent && !profilingEnabled && !recording && !audioCallback &&
+                              (model != SIDModel::MOS6581 || (volumeRegister & 0x0F) == 0) &&
+                              filterLow == 0.0 && filterBand == 0.0 &&
+                              dcBlockerState == 0.0 && dcBlockerPrevIn == 0.0;
+    if (canBeDormant && !isDormant) {
+        dormantClockAnchor = clockCounter;
+    } else if (!canBeDormant && isDormant) {
+        SyncDormantEnvelopes();
+    }
+    isDormant = canBeDormant;
+}
+
 void SID::Reset() {
     std::lock_guard<std::mutex> lock(sidMutex);
     registers.fill(0);
@@ -105,18 +144,22 @@ void SID::Reset() {
     dcBlockerState = 0.0;
     dcBlockerPrevIn = 0.0;
     clockCounter = 0;
+    dormantClockAnchor = 0;
+    isDormant = false;
     resampler.Clear();
     sampleBuffer.clear();
     
     if (audioStream != nullptr) {
         SDL_ClearAudioStream(audioStream);
     }
+    UpdateDormantState();
 }
 
 void SID::SetModel(SIDModel newModel) {
     std::lock_guard<std::mutex> lock(sidMutex);
     this->model = newModel;
     filterCoefficientsDirty = true;
+    UpdateDormantState();
 }
 
 SIDModel SID::GetModel() const {
@@ -202,6 +245,7 @@ Byte SID::Read(Word addr) {
 }
 
 void SID::Write(Word addr, Byte data) {
+    SyncDormantEnvelopes();
     uint8_t reg = addr & 0x1F;
     uint8_t* const regs = registers.data();
     regs[reg] = data;
@@ -222,6 +266,7 @@ void SID::Write(Word addr, Byte data) {
         osc.env.targetDecayRate = attackDecay & 0xF;
         osc.env.targetSustainLevel = (sustainRelease >> 4) & 0xF;
         osc.env.targetReleaseRate = sustainRelease & 0xF;
+        UpdateDormantState();
         return;
     }
 
@@ -235,6 +280,7 @@ void SID::Write(Word addr, Byte data) {
     } else if (reg == 0x15 || reg == 0x16) {
         filterCoefficientsDirty = true;
     }
+    UpdateDormantState();
 }
 
 void ADSREnvelope::Update(bool newGate) {
@@ -610,7 +656,7 @@ void SID::ClockProfiled() {
             .count());
 }
 
-void SID::Clock() {
+void SID::ClockSlow() {
     if (profilingEnabled) [[unlikely]] {
         ClockProfiled();
         return;
@@ -642,6 +688,7 @@ void SID::Clock() {
     const uint16_t envOr = v[0].env.level | v[1].env.level | v[2].env.level;
     if (envOr == 0 && (model != SIDModel::MOS6581 || currentVolume == 0) &&
         filterLow == 0.0 && filterBand == 0.0 && dcBlockerState == 0.0 && dcBlockerPrevIn == 0.0) [[likely]] {
+        UpdateDormantState();
         resampler.PushSample(0.0);
         if (resampler.HasOutput()) [[unlikely]] {
             FlushAvailableOutput();
@@ -710,6 +757,7 @@ void SID::Clock() {
         filteredMix = 0.0;
         filterLow = 0.0;
         filterBand = 0.0;
+        UpdateDormantState();
     }
     dcBlockerState = filteredMix;
     dcBlockerPrevIn = mix;
@@ -770,6 +818,7 @@ bool Oscillator::LoadState(std::istream& inStream) {
 
 bool SID::SaveState(std::ostream& out) const {
     std::lock_guard<std::mutex> lock(sidMutex);
+    const_cast<SID*>(this)->SyncDormantEnvelopes();
     ISerializable::Serialize(out, registers);
     for (const auto& voice : voices) {
         voice.SaveState(out);
@@ -807,6 +856,8 @@ bool SID::LoadState(std::istream& inStream) {
         ISerializable::Deserialize(inStream, mod);
         model = static_cast<SIDModel>(mod);
     }
+    isDormant = false;
+    UpdateDormantState();
     UpdateAudioState();
     return inStream.good();
 }
@@ -825,6 +876,7 @@ void SID::StartRecording(const std::string& filename) {
 #else
     (void)filename;
 #endif
+    UpdateDormantState();
 }
 
 void SID::StopRecording() {
@@ -836,6 +888,7 @@ void SID::StopRecording() {
         recorder.reset();
     }
 #endif
+    UpdateDormantState();
 }
 
 bool SID::IsRecording() const {
@@ -850,15 +903,18 @@ bool SID::IsRecording() const {
 void SID::SetAudioCallback(std::function<void(const int16_t*, int)> callback) {
     std::lock_guard<std::mutex> lock(sidMutex);
     audioCallback = std::move(callback);
+    UpdateDormantState();
 }
 
 void SID::ClearAudioCallback() {
     std::lock_guard<std::mutex> lock(sidMutex);
     audioCallback = nullptr;
+    UpdateDormantState();
 }
 
 void SID::SetProfilingEnabled(bool enabled) {
     profilingEnabled = enabled;
+    UpdateDormantState();
 }
 
 void SID::ClearProfilingStats() {

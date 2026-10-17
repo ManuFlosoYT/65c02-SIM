@@ -176,17 +176,22 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction, int ip
 
     if (cpuStepped && !cpu.cycleAccurate && isNewInstruction) {
         int extraCycles = cpu.remainingCycles;
-        lastStepCpuCycles += static_cast<uint64_t>(extraCycles);
-        lastStepCycles += static_cast<uint64_t>(extraCycles);
-        for (int i = 0; i < extraCycles; ++i) {
-            via.Clock();
-            acia.Clock(ips);
-            if (sidEnabled) {
-                sid.Clock();
+        if (extraCycles > 0) {
+            const auto extra = static_cast<uint32_t>(extraCycles);
+            lastStepCpuCycles += extra;
+            lastStepCycles += extra;
+            via.Clock(extra);
+            if (!acia.IsIdle()) [[unlikely]] {
+                for (int i = 0; i < extraCycles; ++i) {
+                    acia.Clock(ips);
+                }
             }
-        }
-        if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {
-            pendingInterruptAny.store(true, std::memory_order_relaxed);
+            if (sidEnabled) {
+                sid.Clock(extra);
+            }
+            if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {
+                pendingInterruptAny.store(true, std::memory_order_relaxed);
+            }
         }
         cpu.remainingCycles = 0;
     }
@@ -307,6 +312,10 @@ template int Emulator::StepInternal<true, true>(int);
 template int Emulator::StepInternal<false, true>(int);
 template int Emulator::StepInternal<true, false>(int);
 template int Emulator::StepInternal<false, false>(int);
+template void Emulator::HandleInterrupts<true>();
+template void Emulator::HandleInterrupts<false>();
+template void Emulator::HandleSerialInput<true>();
+template void Emulator::HandleSerialInput<false>();
 
 void Emulator::InjectKey(char key) {
     if (key == '\n') {

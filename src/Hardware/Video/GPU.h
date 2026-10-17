@@ -39,6 +39,16 @@ class GPU : public IBusDevice {
     // Bus control status
     [[nodiscard]] inline bool IsInDrawingInterval() const;
     [[nodiscard]] inline bool IsInBlankingInterval() const;
+    [[nodiscard]] uint32_t GetDrawingWaitCycles() const {
+        return (!isBlanking && ticksToNextEvent > 1) ? (ticksToNextEvent - 1) : 0;
+    }
+    [[nodiscard]] uint32_t GetBlankingWaitCycles() const {
+        return (isBlanking && ticksToNextEvent > 1) ? (ticksToNextEvent - 1) : 0;
+    }
+    void SkipDrawingCycles(uint32_t cycles) {
+        pixelX += cycles;
+        ticksToNextEvent -= cycles;
+    }
 
     // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
     inline Byte operator[](Word addr) const;

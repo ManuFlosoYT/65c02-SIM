@@ -44,6 +44,7 @@ class ACIA : public IBusDevice {
     [[nodiscard]] int GetFrameBits() const;
 
     inline void Clock(int ips = 1000000);
+    [[nodiscard]] bool IsIdle() const;
     void SetDCD(bool active);
     void SetDSR(bool active);
 
@@ -101,6 +102,11 @@ inline Byte ACIA::Read(Word address) {
         default:
             return 0;
     }
+}
+
+inline bool ACIA::IsIdle() const {
+    return !isShifting && !echoPending &&
+           ((STATUS & ACIA_STATUS_TDRE) != 0 || (CMD & ACIA_CMD_DTR) == 0 || (CMD & ACIA_CMD_ECHO) != 0);
 }
 
 inline void ACIA::Clock(int ips) {
