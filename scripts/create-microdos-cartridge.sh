@@ -9,7 +9,7 @@ MULTITHREAD=false
 prev_arg=""
 for arg in "$@"; do
     if [ -n "$prev_arg" ]; then
-        if [ "$prev_arg" == "--ips" ] || [ "$prev_arg" == "--clock" ]; then
+        if [ "$prev_arg" == "--ips" ] || [ "$prev_arg" == "--clock" ] || [ "$prev_arg" == "--cpu-clock" ]; then
             IPS="$arg"
         fi
         prev_arg=""
@@ -17,7 +17,7 @@ for arg in "$@"; do
     fi
     if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
         MULTITHREAD=true
-    elif [ "$arg" == "--ips" ] || [ "$arg" == "--clock" ]; then
+    elif [ "$arg" == "--ips" ] || [ "$arg" == "--clock" ] || [ "$arg" == "--cpu-clock" ]; then
         prev_arg="$arg"
     fi
 done
@@ -88,9 +88,9 @@ mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
 # Compile MIDs to .sid for microDOS
 echo "  Compiling raw SID files..."
 if [ "$MULTITHREAD" = true ]; then
-    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --clock "$IPS" -multithread || true
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --cpu-clock "$IPS" -multithread || true
 else
-    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --clock "$IPS" || true
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --cpu-clock "$IPS" || true
 fi
 
 # Populate SD Card with /bin, /sid, and apps
