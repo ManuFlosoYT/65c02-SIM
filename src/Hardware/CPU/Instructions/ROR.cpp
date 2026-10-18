@@ -2,7 +2,6 @@
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
-#include "InstructionSet.h"
 
 namespace Hardware::Instructions {
 
@@ -64,7 +63,7 @@ void ROR::ExecuteABSX(CPU& cpu, Bus& bus) {
     Byte oldCarry = cpu.C ? 0x80 : 0;
     dato = (dato >> 1) | oldCarry;
     bus.Write<Debug>(Dir, dato);
-    SetFlags(cpu, cpu.A, oldA);
+    SetFlags(cpu, dato, oldA);
 }
 
 template void ROR::ExecuteAccumulator<true>(CPU&, Bus&);

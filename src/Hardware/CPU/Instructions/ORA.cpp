@@ -2,7 +2,6 @@
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
-#include "InstructionSet.h"
 
 namespace Hardware::Instructions {
 
@@ -85,16 +84,7 @@ template <bool Debug>
 void ORA::ExecuteINDY(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
 
-    Word baseAddr = 0;
-
-    if (ZP_Dir != 0xFF) {
-        baseAddr = cpu.ReadWord<Debug>(ZP_Dir, bus);
-    } else {
-        Byte low = cpu.ReadByte<Debug>(0xFF, bus);
-        Byte high = cpu.ReadByte<Debug>(0x00, bus);
-        baseAddr = (high << 8) | low;
-    }
-
+    Word baseAddr = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
     Word effectiveAddr = baseAddr + cpu.Y;
 
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
@@ -107,15 +97,7 @@ template <bool Debug>
 void ORA::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
 
-    Word dir = 0;
-
-    if (ZP_Dir != 0xFF) {
-        dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
-    } else {
-        Byte low = cpu.ReadByte<Debug>(0xFF, bus);
-        Byte high = cpu.ReadByte<Debug>(0x00, bus);
-        dir = (high << 8) | low;
-    }
+    Word dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
 
     cpu.A = cpu.ReadByte<Debug>(dir, bus) | cpu.A;
     SetFlags(cpu);

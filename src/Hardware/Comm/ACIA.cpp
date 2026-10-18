@@ -4,7 +4,7 @@
 
 namespace Hardware {
 
-ACIA::ACIA() : txData(0), rxData(0), STATUS(0), CMD(0), CTRL(0) { Reset(); }
+ACIA::ACIA() { Reset(); }
 
 void ACIA::UpdateIRQ() {
     bool irq = false;
@@ -44,30 +44,6 @@ void ACIA::Reset() {
     dsrInterrupt = false;
 }
 
-void ACIA::SetDCD(bool active) {
-    bool prevState = dcdState;
-    dcdState = active;
-    if (active) {
-        STATUS &= ~ACIA_STATUS_DCD; // Carrier present (active low pin)
-    } else {
-        STATUS |= ACIA_STATUS_DCD;  // Carrier lost
-        if (prevState) dcdInterrupt = true;
-    }
-    UpdateIRQ();
-}
-
-void ACIA::SetDSR(bool active) {
-    bool prevState = dsrState;
-    dsrState = active;
-    if (active) {
-        STATUS &= ~ACIA_STATUS_DSR;
-    } else {
-        STATUS |= ACIA_STATUS_DSR;
-        if (prevState) dsrInterrupt = true;
-    }
-    UpdateIRQ();
-}
-
 void ACIA::ClockSlow(int ips) {
     if (isShifting) {
         if (shiftRegisterTicks <= 0) {
@@ -79,35 +55,29 @@ void ACIA::ClockSlow(int ips) {
     }
 
     if (!isShifting) {
+        bool startShift = false;
         if (echoPending) {
             shiftRegisterData = echoByte;
             echoPending = false;
-            isShifting = true;
+            startShift = true;
+        } else if ((CMD & ACIA_CMD_ECHO) == 0 && (CMD & ACIA_CMD_DTR) != 0) {
+            if ((STATUS & ACIA_STATUS_TDRE) == 0) {
+                shiftRegisterData = txData;
+                startShift = true;
+                STATUS |= ACIA_STATUS_TDRE;
+                UpdateIRQ();
+            }
+        }
 
+        if (startShift) {
+            isShifting = true;
             int baud = GetBaudRate();
             if (baud <= 0) {
                 baud = 115200;
             }
-            shiftRegisterTicks = (ips * GetFrameBits()) / baud;
+            shiftRegisterTicks = static_cast<int>((static_cast<int64_t>(ips) * GetFrameBits()) / baud);
             if (shiftRegisterTicks <= 0) {
                 shiftRegisterTicks = 1;
-            }
-        } else if ((CMD & ACIA_CMD_ECHO) == 0 && (CMD & ACIA_CMD_DTR) != 0) {
-            if ((STATUS & ACIA_STATUS_TDRE) == 0) {
-                shiftRegisterData = txData;
-                isShifting = true;
-
-                int baud = GetBaudRate();
-                if (baud <= 0) {
-                    baud = 115200;
-                }
-                shiftRegisterTicks = (ips * GetFrameBits()) / baud;
-                if (shiftRegisterTicks <= 0) {
-                    shiftRegisterTicks = 1;
-                }
-
-                STATUS |= ACIA_STATUS_TDRE;
-                UpdateIRQ();
             }
         }
     }

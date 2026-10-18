@@ -4,8 +4,6 @@
 #include <cstdint>
 
 namespace Hardware {
-class CPU;
-class Bus;
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -17,7 +15,6 @@ constexpr static Byte INS_NOP = 0xEA;  // NOP
 constexpr static Byte INS_BRK = 0x00;  // BRK
 constexpr static Byte INS_RTI = 0x40;  // RTI
 constexpr static Byte INS_NOP_IM_02 = 0x02;  // NOP Immediate (65C02)
-constexpr static Byte INS_JAM = INS_NOP_IM_02;  // Legacy alias
 
 constexpr static Byte INS_LDA_IM = 0xA9;      // LDA Immediate
 constexpr static Byte INS_LDA_ZP = 0xA5;      // LDA ZP
@@ -269,8 +266,6 @@ constexpr static Byte INS_TSB_ABS = 0x0C;  // TSB ABS
 constexpr static Byte INS_TSB_ZP = 0x04;   // TSB ZP
 
 // Cycle counts for each instruction
-constexpr static Byte CYC_INS_WAI = 3;
-constexpr static Byte CYC_INS_STP = 3;
 constexpr static Byte CYC_INS_NOP = 2;
 constexpr static Byte CYC_INS_NOP_IM = 2;
 constexpr static Byte CYC_INS_NOP_ZP = 3;
@@ -279,7 +274,6 @@ constexpr static Byte CYC_INS_NOP_ABS = 4;
 constexpr static Byte CYC_INS_NOP_ABSX = 4;
 constexpr static Byte CYC_INS_BRK = 7;
 constexpr static Byte CYC_INS_RTI = 6;
-constexpr static Byte CYC_INS_JAM = CYC_INS_NOP_IM;
 
 constexpr static Byte CYC_INS_LDA_IM = 2;
 constexpr static Byte CYC_INS_LDA_ZP = 3;

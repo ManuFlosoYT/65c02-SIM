@@ -1,7 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <iostream>
 
 #include "Hardware/Core/IBusDevice.h"
 
@@ -30,6 +29,7 @@ class ACIA : public IBusDevice {
 
     // IBusDevice implementation
     inline Byte Read(Word address) override;
+    inline Byte ReadDirect(Word address) override;
     void Write(Word address, Byte data) override;
     [[nodiscard]] inline std::string GetName() const override;
 
@@ -45,8 +45,6 @@ class ACIA : public IBusDevice {
 
     inline void Clock(int ips = 1000000);
     [[nodiscard]] bool IsIdle() const;
-    void SetDCD(bool active);
-    void SetDSR(bool active);
 
    private:
     void ClockSlow(int ips);
@@ -95,6 +93,21 @@ inline Byte ACIA::Read(Word address) {
             UpdateIRQ();
             return ret;
         }
+        case ACIA_CMD & 0x03:
+            return CMD;
+        case ACIA_CTRL & 0x03:
+            return CTRL;
+        default:
+            return 0;
+    }
+}
+
+inline Byte ACIA::ReadDirect(Word address) {
+    switch (address & 0x03) {
+        case ACIA_DATA & 0x03:
+            return rxData;
+        case ACIA_STATUS & 0x03:
+            return STATUS;
         case ACIA_CMD & 0x03:
             return CMD;
         case ACIA_CTRL & 0x03:

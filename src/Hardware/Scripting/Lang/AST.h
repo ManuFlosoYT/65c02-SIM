@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <variant>
 
 namespace System::Hardware::Scripting::Lang {
 
@@ -50,7 +51,6 @@ struct LiteralExpr : public Expr {
     explicit LiteralExpr(int64_t v) : value(v) {}
     explicit LiteralExpr(std::string v) : value(std::move(v)) {}
     explicit LiteralExpr(bool v) : value(v) {}
-    LiteralExpr() : value(std::monostate{}) {}
 };
 
 struct VariableExpr : public Expr {
@@ -133,13 +133,11 @@ struct WhileStmt : public Stmt {
 };
 
 struct BreakStmt : public Stmt {
-    Token keyword;
-    explicit BreakStmt(Token keyword) : keyword(std::move(keyword)) {}
+    BreakStmt() = default;
 };
 
 struct ContinueStmt : public Stmt {
-    Token keyword;
-    explicit ContinueStmt(Token keyword) : keyword(std::move(keyword)) {}
+    ContinueStmt() = default;
 };
 
 } // namespace System::Hardware::Scripting::Lang

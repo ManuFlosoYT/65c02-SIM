@@ -8,16 +8,16 @@
 
 namespace Core {
 
-bool Emulator::SaveState(const std::string& filename) {
-    WaitUntilSafeToMutate();
-
-    std::stringstream stateStream;
+bool Emulator::SaveComponentsState(std::ostream& stateStream) {
     for (auto* component : components) {
         if (!component->SaveState(stateStream)) {
             return false;
         }
     }
+    return true;
+}
 
+void Emulator::SaveInternalState(std::ostream& stateStream) {
     Hardware::ISerializable::Serialize(stateStream, baudDelay);
 
     bool gpuE = gpuEnabled;
@@ -35,13 +35,22 @@ bool Emulator::SaveState(const std::string& filename) {
         }
     }
 
-
     auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
     Hardware::ISerializable::Serialize(stateStream, binPathLen);
-    stateStream.write(currentBinPath.c_str(), static_cast<std::streamsize>(binPathLen));
+    stateStream.write(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
 
     bool autoReload = autoReloadRequested.load();
     Hardware::ISerializable::Serialize(stateStream, autoReload);
+}
+
+bool Emulator::SaveState(const std::string& filename) {
+    WaitUntilSafeToMutate();
+
+    std::stringstream stateStream;
+    if (!SaveComponentsState(stateStream)) {
+        return false;
+    }
+    SaveInternalState(stateStream);
 
     std::string payload = stateStream.str();
     std::string payloadHash = picosha2::hash256_hex_string(payload);
@@ -80,13 +89,16 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     }
 
     std::streamsize size = inFile.tellg();
+    if (size < 0) {
+        return false;
+    }
     inFile.seekg(0, std::ios::beg);
 
     std::array<char, 12> magic{"SIM65C02SST"};
     size_t magicLen = magic.size() - 1;
     size_t hashLen = 64;
 
-    if (size < (std::streamsize)(magicLen + sizeof(uint32_t) + (hashLen * 2))) {
+    if (size < static_cast<std::streamsize>(magicLen + sizeof(uint32_t) + (hashLen * 2))) {
         return false;
     }
 
@@ -108,7 +120,11 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     std::string metadata = std::string(magic.data()) + lastLoadVersion;
     std::string computedMetadataHash = picosha2::hash256_hex_string(metadata);
 
-    size_t payloadSize = size - (magicLen + sizeof(versionLen) + versionLen + (hashLen * 2));
+    const size_t headerFooterSize = magicLen + sizeof(versionLen) + versionLen + (hashLen * 2);
+    if (static_cast<size_t>(size) < headerFooterSize) {
+        return false;
+    }
+    size_t payloadSize = static_cast<size_t>(size) - headerFooterSize;
     std::string payload(payloadSize, '\0');
     inFile.read(payload.data(), static_cast<std::streamsize>(payloadSize));
 
@@ -161,6 +177,7 @@ bool Emulator::LoadState(const std::string& filename, bool forceLoad) {
     }
 
     halted = false;
+    pendingInterruptAny.store(pendingIRQ.load() || pendingNMI.load() || via.isIRQAsserted() || acia.HasIRQ(), std::memory_order_relaxed);
     return true;
 }
 
@@ -177,6 +194,7 @@ void Emulator::Rewind() {
     if (LoadComponentsState(stateStream)) {
         LoadInternalState(stateStream);
     }
+    pendingInterruptAny.store(pendingIRQ.load() || pendingNMI.load() || via.isIRQAsserted() || acia.HasIRQ(), std::memory_order_relaxed);
 }
 
 bool Emulator::CanRewind() const { 
@@ -230,32 +248,10 @@ bool Emulator::LoadInternalState(std::istream& stateStream) {
 
 void Emulator::SaveStateToBuffer() {
     std::stringstream stateStream;
-    for (auto* component : components) {
-        if (!component->SaveState(stateStream)) {
-            return;
-        }
+    if (!SaveComponentsState(stateStream)) {
+        return;
     }
-
-    Hardware::ISerializable::Serialize(stateStream, baudDelay);
-    bool gpuE = gpuEnabled;
-    Hardware::ISerializable::Serialize(stateStream, gpuE);
-    int tIPS = targetIPS.load();
-    Hardware::ISerializable::Serialize(stateStream, tIPS);
-
-    {
-        std::lock_guard<std::mutex> bufferLock(bufferMutex);
-        auto qSize = static_cast<uint32_t>(inputBuffer.size());
-        Hardware::ISerializable::Serialize(stateStream, qSize);
-        for (char chr : inputBuffer) {
-            stateStream.write(&chr, 1);
-        }
-    }
-
-    auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
-    Hardware::ISerializable::Serialize(stateStream, binPathLen);
-    stateStream.write(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
-    bool autoReload = autoReloadRequested.load();
-    Hardware::ISerializable::Serialize(stateStream, autoReload);
+    SaveInternalState(stateStream);
 
     rewindBuffer.push_back(stateStream.str());
     if (rewindBuffer.size() > MAX_REWIND_STATES) {

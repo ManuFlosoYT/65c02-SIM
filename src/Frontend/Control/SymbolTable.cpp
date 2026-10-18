@@ -6,12 +6,9 @@ namespace Control {
 
 void SymbolTable::Clear() {
     files.clear();
-    mods.clear();
-    types.clear();
     syms.clear();
     spans.clear();
     lines.clear();
-    scopes.clear();
     segs.clear();
     addrToSymId.clear();
     addrToLineId.clear();
@@ -92,17 +89,6 @@ void SymbolTable::ProcessRecord(const std::string& type, std::unordered_map<std:
         fileObj.name = attrs["name"];
         fileObj.size = ParseUIntDef(attrs["size"]);
         files[fileObj.id] = fileObj;
-    } else if (type == "mod") {
-        DbgMod modObj;
-        modObj.id = ParseUIntDef(attrs["id"]);
-        modObj.name = attrs["name"];
-        modObj.fileId = ParseUIntDef(attrs["file"]);
-        mods[modObj.id] = modObj;
-    } else if (type == "type") {
-        DbgType typeObj;
-        typeObj.id = ParseUIntDef(attrs["id"]);
-        typeObj.val = attrs["val"];
-        types[typeObj.id] = typeObj;
     } else if (type == "sym") {
         DbgSym symObj;
         symObj.id = ParseUIntDef(attrs["id"]);
@@ -141,14 +127,6 @@ void SymbolTable::ProcessRecord(const std::string& type, std::unordered_map<std:
             }
         }
         lines[lineObj.id] = lineObj;
-    } else if (type == "scope") {
-        DbgScope scopeObj;
-        scopeObj.id = ParseUIntDef(attrs["id"]);
-        scopeObj.name = attrs["name"];
-        scopeObj.type = attrs["type"];
-        scopeObj.size = ParseUIntDef(attrs["size"]);
-        scopeObj.parentId = ParseIntDef(attrs["parent"]);
-        scopes[scopeObj.id] = scopeObj;
     } else if (type == "seg") {
         DbgSeg segObj;
         segObj.id = ParseUIntDef(attrs["id"]);
@@ -242,26 +220,6 @@ const DbgLine* SymbolTable::GetLineForAddress(uint16_t address) const {
 const DbgFile* SymbolTable::GetFile(unsigned int fileId) const {
     auto iter = files.find(fileId);
     return iter != files.end() ? &iter->second : nullptr;
-}
-
-const DbgMod* SymbolTable::GetMod(unsigned int modId) const {
-    auto iter = mods.find(modId);
-    return iter != mods.end() ? &iter->second : nullptr;
-}
-
-const DbgType* SymbolTable::GetType(unsigned int typeId) const {
-    auto iter = types.find(typeId);
-    return iter != types.end() ? &iter->second : nullptr;
-}
-
-const DbgScope* SymbolTable::GetScope(unsigned int scopeId) const {
-    auto iter = scopes.find(scopeId);
-    return iter != scopes.end() ? &iter->second : nullptr;
-}
-
-const DbgSeg* SymbolTable::GetSeg(unsigned int segId) const {
-    auto iter = segs.find(segId);
-    return iter != segs.end() ? &iter->second : nullptr;
 }
 
 }  // namespace Control

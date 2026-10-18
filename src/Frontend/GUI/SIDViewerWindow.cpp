@@ -1,9 +1,7 @@
 #include "Frontend/GUI/SIDViewerWindow.h"
 
 #include <cmath>
-#include <iomanip>
 #include <random>
-#include <sstream>
 
 #include "Hardware/Audio/SIDWaveTables.h"
 
@@ -17,9 +15,7 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
     const auto& voice = sid.GetVoice(voiceIndex);
 
     ImGui::BeginGroup();
-    std::ostringstream nameOss;
-    nameOss << "Voice " << (voiceIndex + 1);
-    ImGui::TextUnformatted(nameOss.str().c_str());
+    ImGui::Text("Voice %d", voiceIndex + 1);
 
     static std::array<std::array<float, 50>, 3> noise_buffer{};
     static bool initialized = false;
@@ -151,24 +147,14 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     const auto& voice = sid.GetVoice(voiceIndex);
 
     ImGui::BeginGroup();
-    std::ostringstream freqOss;
-    freqOss << "Freq: " << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << voice.frequency
-            << "  PW: " << std::setw(3) << voice.pulseWidth << " (" << GetWaveformText(voice.control) << ")";
-    ImGui::TextUnformatted(freqOss.str().c_str());
-
-    std::ostringstream envOss;
-    envOss << "A:" << std::hex << std::uppercase << static_cast<int>(voice.env.attackRate)
-           << " D:" << static_cast<int>(voice.env.decayRate) << " S:" << static_cast<int>(voice.env.sustainLevel)
-           << " R:" << static_cast<int>(voice.env.releaseRate);
-    ImGui::TextUnformatted(envOss.str().c_str());
-
+    ImGui::Text("Freq: %04X  PW: %03X (%s)", voice.frequency, voice.pulseWidth, GetWaveformText(voice.control).c_str());
+    ImGui::Text("A:%X D:%X S:%X R:%X", static_cast<int>(voice.env.attackRate),
+                static_cast<int>(voice.env.decayRate), static_cast<int>(voice.env.sustainLevel),
+                static_cast<int>(voice.env.releaseRate));
     ImGui::SameLine();
-    std::ostringstream ctrlOss;
-    ctrlOss << "Ctrl: " << std::hex << std::uppercase << std::setfill('0') << std::setw(2)
-            << static_cast<int>(voice.control) << std::dec << " (G:" << (voice.control & 1)
-            << " S:" << ((voice.control & 2) >> 1) << " R:" << ((voice.control & 4) >> 2)
-            << " T:" << ((voice.control & 8) >> 3) << ")";
-    ImGui::TextUnformatted(ctrlOss.str().c_str());
+    ImGui::Text("Ctrl: %02X (G:%d S:%d R:%d T:%d)", static_cast<int>(voice.control),
+                voice.control & 1, (voice.control & 2) >> 1, (voice.control & 4) >> 2,
+                (voice.control & 8) >> 3);
     ImGui::EndGroup();
 }
 

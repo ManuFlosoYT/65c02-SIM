@@ -2,7 +2,6 @@
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
-#include "InstructionSet.h"
 
 namespace Hardware::Instructions {
 
@@ -14,8 +13,8 @@ static void SetFlags(CPU& cpu, Word res, Byte dato, Byte oldA) {
 }
 
 static void SetFlagsBCD(CPU& cpu, Word binaryRes, Byte dato, Byte oldA) {
-    cpu.Z = ((binaryRes & 0xFF) == 0);
-    cpu.N = (binaryRes & 0b10000000) > 0;
+    cpu.Z = (cpu.A == 0);
+    cpu.N = (cpu.A & 0b10000000) > 0;
     cpu.V = (~(oldA ^ dato) & (oldA ^ binaryRes) & 0b10000000) > 0;
 }
 
@@ -35,23 +34,18 @@ static Word ADC_Decimal(CPU& cpu, Byte dato) {
     return (sumaNibbleAlto << 4) | (sumaNibbleBajo & 0x0F);
 }
 
-template <bool Debug>
-void ADC::ExecuteImmediate(CPU& cpu, Bus& bus) {
-    Byte dato = cpu.FetchByte<Debug>(bus);
+static void DoADC(CPU& cpu, Byte dato) {
     Byte oldA = cpu.A;
-
-    Word res = 0;
     if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
+        Word res = cpu.A + dato + cpu.C;
         cpu.A = res;
         SetFlags(cpu, res, dato, oldA);
     } else {
-        // BCD mode: add 1 cycle penalty
         if (cpu.cycleAccurate) {
             cpu.remainingCycles++;
         }
         Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
+        Word res = ADC_Decimal(cpu, dato);
         cpu.A = res;
         SetFlagsBCD(cpu, binaryRes, dato, oldA);
         cpu.C = (res > 0x99);
@@ -59,216 +53,76 @@ void ADC::ExecuteImmediate(CPU& cpu, Bus& bus) {
 }
 
 template <bool Debug>
+void ADC::ExecuteImmediate(CPU& cpu, Bus& bus) {
+    Byte dato = cpu.FetchByte<Debug>(bus);
+    DoADC(cpu, dato);
+}
+
+template <bool Debug>
 void ADC::ExecuteZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte oldA = cpu.A;
-
     Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    DoADC(cpu, dato);
 }
 
 template <bool Debug>
 void ADC::ExecuteZPX(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
-    Byte oldA = cpu.A;
-
     Byte dato = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    DoADC(cpu, dato);
 }
 
 template <bool Debug>
 void ADC::ExecuteABS(CPU& cpu, Bus& bus) {
     Word Dir = cpu.FetchWord<Debug>(bus);
-    Byte oldA = cpu.A;
-
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    DoADC(cpu, dato);
 }
 
 template <bool Debug>
 void ADC::ExecuteABSX(CPU& cpu, Bus& bus) {
     Word baseAddr = cpu.FetchWord<Debug>(bus);
     Word effectiveAddr = baseAddr + cpu.X;
-
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
-
-    Word Dir = effectiveAddr;
-    Byte oldA = cpu.A;
-
-    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
+    DoADC(cpu, dato);
 }
 
 template <bool Debug>
 void ADC::ExecuteABSY(CPU& cpu, Bus& bus) {
     Word baseAddr = cpu.FetchWord<Debug>(bus);
     Word effectiveAddr = baseAddr + cpu.Y;
-
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
-
-    Byte oldA = cpu.A;
-
     Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    DoADC(cpu, dato);
 }
 
 template <bool Debug>
 void ADC::ExecuteINDX(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     ZP_Dir += cpu.X;
-    Byte oldA = cpu.A;
-
     Word Dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
-
     Byte dato = cpu.ReadByte<Debug>(Dir, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    DoADC(cpu, dato);
 }
 
 template <bool Debug>
 void ADC::ExecuteINDY(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte oldA = cpu.A;
-
     Word baseAddr = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
-
     Word effectiveAddr = baseAddr + cpu.Y;
-
     cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
-
     Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    DoADC(cpu, dato);
 }
 
 template <bool Debug>
 void ADC::ExecuteIND_ZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte oldA = cpu.A;
-
     Word dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
-
     Byte dato = cpu.ReadByte<Debug>(dir, bus);
-    Word res = 0;
-    if (cpu.D == 0) {
-        res = cpu.A + dato + cpu.C;
-        cpu.A = res;
-        SetFlags(cpu, res, dato, oldA);
-    } else {
-        // BCD mode: add 1 cycle penalty
-        if (cpu.cycleAccurate) {
-            cpu.remainingCycles++;
-        }
-        Word binaryRes = cpu.A + dato + cpu.C;
-        res = ADC_Decimal(cpu, dato);
-        cpu.A = res;
-        SetFlagsBCD(cpu, binaryRes, dato, oldA);
-        cpu.C = (res > 0x99);
-    }
+    DoADC(cpu, dato);
 }
 
 template void ADC::ExecuteImmediate<true>(CPU&, Bus&);

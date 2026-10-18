@@ -18,6 +18,18 @@ using namespace Hardware;
 
 namespace GUI {
 
+static void ConvertVRAMToRGB(const Hardware::GPU& gpu, uint8_t* dst) {
+    for (size_t yIndex = 0; yIndex < GPU::VRAM_HEIGHT; yIndex++) {
+        for (size_t xIndex = 0; xIndex < GPU::VRAM_WIDTH; xIndex++) {
+            size_t idx = (yIndex * GPU::VRAM_WIDTH + xIndex) * 3;
+            Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
+            dst[idx + 0] = ((val >> 4) & 0x03) * 85;
+            dst[idx + 1] = ((val >> 2) & 0x03) * 85;
+            dst[idx + 2] = (val & 0x03) * 85;
+        }
+    }
+}
+
 static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
     std::ifstream file(imgPath, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
@@ -67,15 +79,7 @@ static void DrawVRAMControls(AppState& state) {
         int capH = GPU::VRAM_HEIGHT;
         pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
         GPU& gpu = state.emulator.GetGPU();
-        for (size_t yIndex = 0; yIndex < static_cast<size_t>(GPU::VRAM_HEIGHT); yIndex++) {
-            for (size_t xIndex = 0; xIndex < static_cast<size_t>(GPU::VRAM_WIDTH); xIndex++) {
-                size_t idx = (yIndex * static_cast<size_t>(GPU::VRAM_WIDTH) + xIndex) * 3;
-                Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
-                pixels.at(idx + 0) = ((val >> 4) & 0x03) * 85;
-                pixels.at(idx + 1) = ((val >> 2) & 0x03) * 85;
-                pixels.at(idx + 2) = (val & 0x03) * 85;
-            }
-        }
+        ConvertVRAMToRGB(gpu, pixels.data());
         SDL_Surface* surface = SDL_CreateSurfaceFrom(capW, capH, SDL_PIXELFORMAT_RGB24, pixels.data(), capW * 3);
         if (surface != nullptr) {
             SDL_SaveBMP(surface, tempPath.c_str());
@@ -125,22 +129,10 @@ void ForceRefreshVRAM(AppState& state) {
     GPU& gpu = state.emulator.GetGPU();
     std::array<unsigned char, static_cast<size_t>(GPU::VRAM_HEIGHT) * static_cast<size_t>(GPU::VRAM_WIDTH) * 3>
         pixels{};
-    for (size_t yIndex = 0; yIndex < GPU::VRAM_HEIGHT; yIndex++) {
-        for (size_t xIndex = 0; xIndex < GPU::VRAM_WIDTH; xIndex++) {
-            size_t idx = (yIndex * GPU::VRAM_WIDTH + xIndex) * 3;
-            Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
-            pixels.at(idx + 0) = ((val >> 4) & 0x03) * 85;
-            pixels.at(idx + 1) = ((val >> 2) & 0x03) * 85;
-            pixels.at(idx + 2) = (val & 0x03) * 85;
-        }
-    }
+    ConvertVRAMToRGB(gpu, pixels.data());
     glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void UpdateVRAMTexture(AppState& state) {
-    ForceRefreshVRAM(state);
 }
 
 
@@ -181,15 +173,7 @@ static void HandleVRAMSaveDialog(AppState& state) {
             capH = GPU::VRAM_HEIGHT;
             pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
             GPU& gpu = state.emulator.GetGPU();
-            for (size_t yIndex = 0; yIndex < static_cast<size_t>(GPU::VRAM_HEIGHT); yIndex++) {
-                for (size_t xIndex = 0; xIndex < static_cast<size_t>(GPU::VRAM_WIDTH); xIndex++) {
-                    size_t idx = (yIndex * static_cast<size_t>(GPU::VRAM_WIDTH) + xIndex) * 3;
-                    Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
-                    pixels.at(idx + 0) = ((val >> 4) & 0x03) * 85;
-                    pixels.at(idx + 1) = ((val >> 2) & 0x03) * 85;
-                    pixels.at(idx + 2) = (val & 0x03) * 85;
-                }
-            }
+            ConvertVRAMToRGB(gpu, pixels.data());
         }
 
         SDL_Surface* surface = SDL_CreateSurfaceFrom(capW, capH, SDL_PIXELFORMAT_RGB24, pixels.data(), capW * 3);
@@ -214,7 +198,9 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         ImGui::Begin("VRAM Viewer", nullptr, window_flags);
 
         DrawVRAMControls(state);
-        UpdateVRAMTexture(state);
+        if (state.emulator.GetGPU().ConsumeVRAMDirty()) {
+            ForceRefreshVRAM(state);
+        }
 
         ImVec2 avail = ImGui::GetContentRegionAvail();
         int scaleX = static_cast<int>(avail.x / static_cast<float>(GPU::VRAM_WIDTH));

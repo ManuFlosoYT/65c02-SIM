@@ -52,14 +52,12 @@ class BreakpointManager {
     void ClearAll();
 
     uint32_t Evaluate(const CPU& cpu, const Bus& bus);
-    [[nodiscard]] bool HasActiveBreakpoints() const;
-    [[nodiscard]] bool HasWatchpoints() const;
     [[nodiscard]] bool HasWatchpointsFast() const { return hasWatchpoints.load(std::memory_order_relaxed); }
 
     [[nodiscard]] std::vector<Breakpoint> GetBreakpointsSnapshot() const;
 
     void NotifyWrite(uint16_t address, uint8_t value);
-    bool ConsumeWatchpointHit(uint16_t& hitAddress);
+    void ClearWatchpointHit();
 
     [[nodiscard]] bool HasAnyBreakpointsFast() const { return hasAnyBreakpoints.load(std::memory_order_relaxed); }
     [[nodiscard]] bool HasComplexBreakpoints() const { return hasComplexBreakpoints.load(std::memory_order_relaxed); }

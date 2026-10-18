@@ -2,14 +2,14 @@
 
 #include <imgui.h>
 
-#include <iomanip>
+#include <array>
 #include <random>
-#include <sstream>
 namespace GUI {
 
 namespace {
 
-void DrawCPURegisters(Hardware::CPU& cpu) {
+void DrawCPURegisters(Control::AppState& state) {
+    Hardware::CPU& cpu = state.emulator.GetCPU();
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("CPU Registers");
     ImGui::PopStyleColor();
@@ -19,63 +19,63 @@ void DrawCPURegisters(Hardware::CPU& cpu) {
     uint16_t pcVal = cpu.PC;
     if (ImGui::InputScalar("PC", ImGuiDataType_U16, &pcVal, nullptr, nullptr, "%04X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
-        cpu.PC = pcVal;
+        state.emulator.WaitUntilSafeToMutate();
+        cpu.PC = static_cast<uint16_t>(pcVal);
+        cpu.UpdatePagePtr(state.emulator.GetMem());
     }
 
     uint16_t spVal = cpu.SP;
     if (ImGui::InputScalar("SP", ImGuiDataType_U16, &spVal, nullptr, nullptr, "%04X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
+        state.emulator.WaitUntilSafeToMutate();
         cpu.SP = spVal;
     }
 
     uint8_t aVal = cpu.A;
     if (ImGui::InputScalar("A", ImGuiDataType_U8, &aVal, nullptr, nullptr, "%02X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
+        state.emulator.WaitUntilSafeToMutate();
         cpu.A = aVal;
     }
 
     uint8_t xVal = cpu.X;
     if (ImGui::InputScalar("X", ImGuiDataType_U8, &xVal, nullptr, nullptr, "%02X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
+        state.emulator.WaitUntilSafeToMutate();
         cpu.X = xVal;
     }
 
     uint8_t yVal = cpu.Y;
     if (ImGui::InputScalar("Y", ImGuiDataType_U8, &yVal, nullptr, nullptr, "%02X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
+        state.emulator.WaitUntilSafeToMutate();
         cpu.Y = yVal;
     }
 
     ImGui::PopItemWidth();
 }
 
-void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row) {
+void DrawMemoryRow(Hardware::Bus& bus, int row) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
-    std::ostringstream rowBuf;
-    rowBuf << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << (row * 16);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    ImGui::TextUnformatted(rowBuf.str().c_str());
-    ImGui::PopStyleColor();
+    ImGui::TextDisabled("%04X", row * 16);
 
     for (int col = 0; col < 16; col++) {
         ImGui::TableNextColumn();
         Word addr = static_cast<Word>((row * 16) + col);
         Byte val = bus.ReadDirect(addr);
 
-        std::ostringstream labelBuf;
-        labelBuf << "##m" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << addr;
-        std::string labelStr = labelBuf.str();
-
+        ImGui::PushID(addr);
         ImGui::PushItemWidth(24.2F);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0F, ImGui::GetStyle().FramePadding.y));
-        if (ImGui::InputScalar(labelStr.c_str(), ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
+        if (ImGui::InputScalar("##m", ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
                                ImGuiInputTextFlags_CharsHexadecimal)) {
             bus.WriteDirect(addr, val);
         }
         ImGui::PopStyleVar();
         ImGui::PopItemWidth();
+        ImGui::PopID();
     }
 }
 
@@ -90,10 +90,12 @@ void DrawMemoryEditor(Core::Emulator& emulator) {
         if (ImGui::BeginTable("MemTable", 17,
                               ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY)) {
             ImGui::TableSetupColumn("Addr", ImGuiTableColumnFlags_WidthFixed, 45.0F);
-            for (int i = 0; i < 16; i++) {
-                std::ostringstream buf;
-                buf << std::uppercase << std::hex << i;
-                ImGui::TableSetupColumn(buf.str().c_str(), ImGuiTableColumnFlags_WidthFixed, 24.2F);
+            static constexpr std::array<const char*, 16> kHexHeaders = {
+                "0", "1", "2", "3", "4", "5", "6", "7",
+                "8", "9", "A", "B", "C", "D", "E", "F"
+            };
+            for (const char* header : kHexHeaders) {
+                ImGui::TableSetupColumn(header, ImGuiTableColumnFlags_WidthFixed, 24.2F);
             }
             ImGui::TableHeadersRow();
 
@@ -101,7 +103,7 @@ void DrawMemoryEditor(Core::Emulator& emulator) {
             clipper.Begin((0xFFFF + 1) / 16);
             while (clipper.Step()) {
                 for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                    DrawMemoryRow(emulator, bus, row);
+                    DrawMemoryRow(bus, row);
                 }
             }
             ImGui::EndTable();
@@ -152,10 +154,7 @@ void DrawTools(Core::Emulator& emulator) {
 }  // namespace
 
 void DrawDebuggerWindow(Control::AppState& state) {
-    Hardware::CPU& cpu = state.emulator.GetCPU();
-    Hardware::Bus& bus = state.emulator.GetMem();
-
-    DrawCPURegisters(cpu);
+    DrawCPURegisters(state);
 
     ImGui::Separator();
     ImGui::Spacing();

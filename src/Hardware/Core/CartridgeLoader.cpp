@@ -21,16 +21,18 @@ bool IsMemoryDeviceName(const std::string& deviceName) {
 
 template <typename RangeCollection>
 void ValidateNoInvalidOverlaps(const RangeCollection& ranges) {
-    for (size_t i = 1; i < ranges.size(); ++i) {
-        if (ranges[i].start <= ranges[i - 1].end) {
-            bool prevIsMemory = IsMemoryDeviceName(ranges[i - 1].name);
-            bool currIsMemory = IsMemoryDeviceName(ranges[i].name);
-            // Allow MMIO overlays on top of RAM/ROM, but reject memory-memory or MMIO-MMIO overlaps.
-            if (prevIsMemory == currIsMemory) {
-                throw std::runtime_error("Manifest bus configuration contains overlapping devices: " +
-                                         ranges[i - 1].name + " and " + ranges[i].name);
-            }
+    using RangeType = typename RangeCollection::value_type;
+    const RangeType* lastMemory = nullptr;
+    const RangeType* lastMMIO = nullptr;
+
+    for (const auto& range : ranges) {
+        bool isMemory = IsMemoryDeviceName(range.name);
+        const RangeType*& prev = isMemory ? lastMemory : lastMMIO;
+        if (prev != nullptr && range.start <= prev->end) {
+            throw std::runtime_error("Manifest bus configuration contains overlapping devices: " +
+                                     prev->name + " and " + range.name);
         }
+        prev = &range;
     }
 }
 
@@ -70,6 +72,7 @@ bool ReplaceFileWithBackup(const std::filesystem::path& sourceZipPath, const std
 namespace Core {
 
 bool CartridgeLoader::Load(const std::string& path, Cartridge& outCartridge, std::string& errorMsg) {
+    outCartridge = Cartridge{};
     mz_zip_archive zip_archive;
     memset(&zip_archive, 0, sizeof(zip_archive));
 
@@ -85,6 +88,7 @@ bool CartridgeLoader::Load(const std::string& path, Cartridge& outCartridge, std
 }
 
 bool CartridgeLoader::LoadFromMemory(const uint8_t* data, size_t size, Cartridge& outCartridge, std::string& errorMsg) {
+    outCartridge = Cartridge{};
     mz_zip_archive zip_archive;
     memset(&zip_archive, 0, sizeof(zip_archive));
 
@@ -152,15 +156,23 @@ bool CartridgeLoader::LoadInternal(void* zip_archive_ptr, Cartridge& outCartridg
                        std::filesystem::path(outCartridge.sourceZipPath).filename().string() + ".sdcard.img";
 #endif
             gsl::owner<FILE*> sdFile = fopen(tempPath.c_str(), "wb");
-            if (sdFile != nullptr) {
-                if (fwrite(sdData, 1, sdSize, sdFile) != sdSize) {
-                    // Handle write error
-                }
-                if (fclose(sdFile) != 0) {
-                    // Handle close error
-                }
-                outCartridge.sdCardPath = tempPath;
+            if (sdFile == nullptr) {
+                mz_free(sdData);
+                errorMsg = "Failed to open temporary SD card file for writing";
+                return false;
             }
+            if (fwrite(sdData, 1, sdSize, sdFile) != sdSize) {
+                fclose(sdFile);
+                mz_free(sdData);
+                errorMsg = "Failed to write temporary SD card file";
+                return false;
+            }
+            if (fclose(sdFile) != 0) {
+                mz_free(sdData);
+                errorMsg = "Failed to close temporary SD card file";
+                return false;
+            }
+            outCartridge.sdCardPath = tempPath;
             mz_free(sdData);
         }
 
@@ -203,6 +215,14 @@ void CartridgeLoader::ParseConfig(const nlohmann::json& manifestJson, Cartridge&
         }
         if (configObj.contains("sd_enabled") && configObj["sd_enabled"].is_boolean()) {
             outCartridge.config.sdEnabled = configObj["sd_enabled"].get<bool>();
+        }
+        if (configObj.contains("sid_model") && configObj["sid_model"].is_string()) {
+            const auto modelStr = configObj["sid_model"].get<std::string>();
+            if (modelStr.find("6581") != std::string::npos) {
+                outCartridge.config.sidModel = Hardware::SIDModel::MOS6581;
+            } else if (modelStr.find("8580") != std::string::npos) {
+                outCartridge.config.sidModel = Hardware::SIDModel::MOS8580;
+            }
         }
     }
 }
@@ -277,7 +297,6 @@ DeviceConfig CartridgeLoader::ParseDeviceConfig(const nlohmann::json& devJson) {
 void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& busDevices) {
     bool hasRAM = false;
     bool hasROM = false;
-    static constexpr uint32_t kMemoryDeviceMaxSize = 0x8000;
 
     static const std::unordered_map<std::string, uint32_t> kDeviceMaxRange = {
         {"RAM", 0x8000},
@@ -307,10 +326,6 @@ void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& b
 
         uint32_t rangeSize = static_cast<uint32_t>(dev.end) - static_cast<uint32_t>(dev.start) + 1;
 
-        if (rangeSize == 0) {
-            throw std::runtime_error("Manifest device " + dev.name + " has empty address range");
-        }
-
         if (const auto rangeIt = kDeviceMaxRange.find(dev.name); rangeIt != kDeviceMaxRange.end()) {
             if (rangeSize > rangeIt->second) {
                 throw std::runtime_error("Manifest " + dev.name + " range exceeds raw memory/MMIO capacity");
@@ -319,14 +334,8 @@ void CartridgeLoader::ValidateBusRequirements(const std::vector<DeviceConfig>& b
 
         if (dev.name == "RAM") {
             hasRAM = true;
-            if (rangeSize > kMemoryDeviceMaxSize) {
-                throw std::runtime_error("Manifest RAM range exceeds 32KB raw RAM size");
-            }
         } else if (dev.name == "ROM") {
             hasROM = true;
-            if (rangeSize > kMemoryDeviceMaxSize) {
-                throw std::runtime_error("Manifest ROM range exceeds 32KB raw ROM size");
-            }
         }
 
         ranges.push_back({dev.start, dev.end, dev.name});

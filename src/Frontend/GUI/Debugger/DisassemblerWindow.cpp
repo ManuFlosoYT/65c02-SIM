@@ -16,11 +16,6 @@ static void ResolveSymbolsForLocation(const Control::AppState& state, uint16_t c
                                       std::string& labelText, std::string& sourceText) {
     if (const auto* sym = state.rom.symbols.GetSymbolAtAddress(currentAddr)) {
         labelText = sym->name;
-        if (sym->typeId >= 0) {
-            if (const auto* typeInfo = state.rom.symbols.GetType(sym->typeId)) {
-                (void)typeInfo;
-            }
-        }
     }
     
     if (const auto* line = state.rom.symbols.GetLineForAddress(currentAddr)) {

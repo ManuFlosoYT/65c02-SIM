@@ -11,6 +11,7 @@ void GPU::Reset() {
     for (auto& row : vram) {
         row.fill(0);
     }
+    vramDirty.store(true, std::memory_order_relaxed);
 }
 
 void GPU::LoadVRAM(std::span<const uint8_t> data) {
@@ -18,10 +19,11 @@ void GPU::LoadVRAM(std::span<const uint8_t> data) {
         for (size_t xIndex = 0; xIndex < VRAM_WIDTH; xIndex++) {
             size_t addr = (yIndex * 128) + xIndex;
             if (addr < data.size()) {
-                vram.at(yIndex).at(xIndex) = data[addr];
+                vram[yIndex][xIndex] = data[addr];
             }
         }
     }
+    vramDirty.store(true, std::memory_order_relaxed);
 }
 
 bool GPU::SaveState(std::ostream& out) const {
@@ -58,6 +60,7 @@ bool GPU::LoadState(std::istream& inputStream) {
         }
     }
 
+    vramDirty.store(true, std::memory_order_relaxed);
     return inputStream.good();
 }
 

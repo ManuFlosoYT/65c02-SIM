@@ -268,7 +268,7 @@ static void DrawSettingsCRTPart1(AppState& state) {
                 state.crt.colorBleeding = state.crt.noise = state.crt.vsyncJitter = state.crt.phosphorDecay =
                     state.crt.bloom = state.crt.ghosting = state.crt.halation = state.crt.moire = val;
         if (!val) {
-            state.crt.gamma = 2.75F;
+            state.crt.gamma = 2.2F;
         }
     };
     if (ImGui::Button("All On", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {

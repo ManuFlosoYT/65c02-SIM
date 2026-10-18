@@ -54,3 +54,23 @@ TEST_F(SBC_Decimal_Test, SBC_Decimal_Borrow) {
     EXPECT_EQ(cpu.A, 0x99);
     EXPECT_FALSE(cpu.C);  // Borrow
 }
+
+TEST_F(SBC_Decimal_Test, SBC_Decimal_ZeroAndNegativeFlags) {
+    // 0x50 - 0x50 = 0x00 (BCD), C=1 (no borrow), Z=1, N=0
+    cpu.A = 0x50;
+    cpu.D = 1;
+    cpu.C = 1;
+
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_SBC_IM);
+    bus.Write(0x4001, 0x50);
+    bus.Write(0x4002, INS_STP);
+
+    cpu.Execute(bus);
+
+    EXPECT_EQ(cpu.A, 0x00);
+    EXPECT_TRUE(cpu.C);
+    EXPECT_TRUE(cpu.Z);
+    EXPECT_FALSE(cpu.N);
+}

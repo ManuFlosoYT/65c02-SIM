@@ -10,7 +10,6 @@
 namespace Hardware {
 
 using BusWriteHook = std::function<void(Word /* address */, Byte /* data */)>;
-using BusReadHook = std::function<void(Word /* address */, Byte /* data_read */)>;
 
 constexpr Word MAX_ADDR = 0xFFFF;
 constexpr uint32_t BUS_SIZE = (uint32_t)MAX_ADDR + 1;
@@ -72,8 +71,6 @@ class Bus : public ISerializable {
     // the Memory Layout debug window and have their 'enabled' flag queried.
     void RegisterVirtualDevice(IBusDevice* device, bool enabled = true);
 
-    void UpdateDeviceRegistration(IBusDevice* device, Word newStart, Word newEnd, bool enabled, bool ignoreCollision);
-
     template <bool Debug>
     inline Byte Read(Word address);
     inline Byte Read(Word address);
@@ -85,14 +82,8 @@ class Bus : public ISerializable {
     inline void WriteDirect(Word address, Byte data);
     [[nodiscard]] inline Byte ReadDirect(Word address) const;
 
-    template <bool Debug = false>
-    inline void ReadBlock(Word address, std::span<Byte> buffer);
-    template <bool Debug = false>
-    inline void WriteBlock(Word address, std::span<const Byte> buffer);
-
     void AddGlobalWriteHook(const BusWriteHook& hook);
     void ClearGlobalWriteHooks();
-    void AddGlobalReadHook(const BusReadHook& hook);
 
     inline void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
@@ -113,9 +104,7 @@ class Bus : public ISerializable {
 
     std::vector<DeviceRegistration> registeredDevices;
     std::vector<BusWriteHook> globalWriteHooks;
-    std::vector<BusReadHook> globalReadHooks;
     bool hasWriteHooks = false;
-    bool hasReadHooks = false;
 
     bool profilingEnabled = false;
     std::array<uint32_t, BUS_SIZE> profilerCounts{};
@@ -129,7 +118,7 @@ inline void Bus::SetProfilingEnabled(bool enabled) { profilingEnabled = enabled;
 
 inline uint32_t* Bus::GetProfilerCounts() { return profilerCounts.data(); }
 
-inline bool Bus::HasActiveHooks() const { return profilingEnabled || hasReadHooks || hasWriteHooks; }
+inline bool Bus::HasActiveHooks() const { return profilingEnabled || hasWriteHooks; }
 
 template <bool Debug>
 inline Byte Bus::Read(Word address) {
@@ -149,13 +138,6 @@ inline Byte Bus::Read(Word address) {
         }
     }
 
-    if constexpr (Debug) {
-        if (hasReadHooks) {
-            for (auto& hook : globalReadHooks) {
-                hook(address, data);
-            }
-        }
-    }
     return data;
 }
 
@@ -165,7 +147,7 @@ inline Byte Bus::ReadDirect(Word address) const {
     }
     const auto& slot = deviceMap[address];
     if (slot.device != nullptr) {
-        return slot.device->Read(slot.offset);
+        return slot.device->ReadDirect(slot.offset);
     }
     return 0;
 }
@@ -221,22 +203,6 @@ inline void Bus::Write(Word address, Byte data) {
         Write<true>(address, data);
     } else {
         Write<false>(address, data);
-    }
-}
-
-template <bool Debug>
-inline void Bus::ReadBlock(Word address, std::span<Byte> buffer) {
-    Word current = address;
-    for (auto& val : buffer) {
-        val = Read<Debug>(current++);
-    }
-}
-
-template <bool Debug>
-inline void Bus::WriteBlock(Word address, std::span<const Byte> buffer) {
-    Word current = address;
-    for (const auto& val : buffer) {
-        Write<Debug>(current++, val);
     }
 }
 

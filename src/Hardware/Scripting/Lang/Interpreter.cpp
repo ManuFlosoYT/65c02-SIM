@@ -1,4 +1,5 @@
 #include "Interpreter.h"
+#include <cstdint>
 #include <iostream>
 
 namespace System::Hardware::Scripting::Lang {
@@ -11,6 +12,8 @@ void Interpreter::defineBuiltin(const std::string& name, BuiltinFunc func) {
 }
 
 void Interpreter::interpret(const std::vector<std::unique_ptr<Stmt>>& statements) {
+    breakOut = false;
+    continueLoop = false;
     try {
         for (const auto& statement : statements) {
             execute(statement.get());
@@ -129,6 +132,9 @@ Value Interpreter::visitBinaryExpr(BinaryExpr* expr) {
             if (std::get<int64_t>(right) == 0) {
                 throw RuntimeError(expr->op, "Division by zero.");
             }
+            if (std::get<int64_t>(left) == INT64_MIN && std::get<int64_t>(right) == -1) {
+                throw RuntimeError(expr->op, "Division overflow.");
+            }
             return std::get<int64_t>(left) / std::get<int64_t>(right);
         case TokenType::Star:
             checkNumberOperands(expr->op, left, right);
@@ -143,6 +149,7 @@ Value Interpreter::visitUnaryExpr(UnaryExpr* expr) {
     Value right = evaluate(expr->right.get());
 
     switch (expr->op.type) {
+        case TokenType::Bang:
         case TokenType::BangEqual: // ! usually
             return !isTruthy(right);
         case TokenType::Minus:
@@ -179,8 +186,9 @@ Value Interpreter::visitCallExpr(CallExpr* expr) {
 
     if (std::holds_alternative<Callable>(callee)) {
         std::string funcName = std::get<Callable>(callee).name;
-        if (builtins.contains(funcName)) {
-            return builtins[funcName](arguments);
+        auto it = builtins.find(funcName);
+        if (it != builtins.end()) {
+            return it->second(arguments);
         }
         throw RuntimeError(expr->paren, "Unknown builtin function '" + funcName + "'.");
     }

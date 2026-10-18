@@ -74,10 +74,12 @@ void DrawProfilerTooltip(std::span<const uint32_t> counts, float imgSizeX, float
     }
 }
 
-void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std::span<unsigned char> pixels) {
+void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std::span<unsigned char> pixels,
+                         bool& profilerDirty) {
     ImGui::SetCursorPos(ImVec2(10, 5));
     if (ImGui::Button("Clear Data")) {
         state.emulator.ClearProfiler();
+        profilerDirty = true;
     }
     ImGui::SameLine();
 #ifdef TARGET_WASM
@@ -104,6 +106,8 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
         }
     }
 #else
+    (void)counts;
+    (void)pixels;
     if (ImGui::Button("Export RAW")) {
         if (!Frontend::CustomFileDialog::IsOpened()) {
             time_t rawTime = time(nullptr);
@@ -175,8 +179,12 @@ void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned 
 void DrawProfilerWindow(AppState& state) {
     std::span<const uint32_t> counts(state.emulator.GetProfilerCounts(), 65536);
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
+    static bool profilerDirty = true;
 
-    UpdateProfilerTexture(state, counts, pixels);
+    if ((!state.emulator.IsPaused() && !state.emulator.IsHalted()) || profilerDirty) {
+        UpdateProfilerTexture(state, counts, pixels);
+        profilerDirty = false;
+    }
 
     ImVec2 avail = ImGui::GetContentRegionAvail();
     float size = std::min(avail.x, avail.y) * 0.9F;
@@ -188,7 +196,7 @@ void DrawProfilerWindow(AppState& state) {
         DrawProfilerTooltip(counts, size, size);
     }
 
-    DrawProfilerButtons(state, counts, pixels);
+    DrawProfilerButtons(state, counts, pixels, profilerDirty);
 #ifndef TARGET_WASM
     HandleProfilerDialogs(counts, pixels);
 #endif

@@ -4,7 +4,6 @@ namespace Hardware {
 
 ESP8266::ESP8266()
     : statusReg(0),
-      cmdReg(0),
       ctrlReg(0)
 #ifndef TARGET_WASM
       ,
@@ -32,7 +31,6 @@ void ESP8266::Reset() {
         pingThread.join();
     }
     statusReg = 0;
-    cmdReg = 0;
     ctrlReg = 0;
     currentState = ATState::Idle;
     commandBuffer.clear();
@@ -57,6 +55,7 @@ Byte ESP8266::Read(Word address) {
         case 0: {  // Data Register
             std::lock_guard<std::mutex> lock(rxMutex);
             if (rxQueue.empty()) {
+                statusReg.fetch_and(0x7F);
                 return 0;
             }
             Byte data = rxQueue.front();
@@ -69,6 +68,19 @@ Byte ESP8266::Read(Word address) {
         case 1:  // Status Register
             return statusReg.load(std::memory_order_relaxed);
         case 2:  // Control Register
+            return ctrlReg;
+        default:
+            return 0;
+    }
+}
+
+Byte ESP8266::ReadDirect(Word address) {
+    switch (address & 0x03) {
+        case 0:
+            return 0;
+        case 1:
+            return statusReg.load(std::memory_order_relaxed);
+        case 2:
             return ctrlReg;
         default:
             return 0;
@@ -108,17 +120,15 @@ void ESP8266::Write(Word address, Byte data) {
 
 std::string ESP8266::GetName() const { return "ESP8266"; }
 
-void ESP8266::Clock() {}
-
 bool ESP8266::SaveState(std::ostream& out) const {
     Byte sReg = statusReg.load();
     ISerializable::Serialize(out, sReg);
-    ISerializable::Serialize(out, cmdReg);
     ISerializable::Serialize(out, ctrlReg);
     ISerializable::Serialize(out, commandBuffer);
     
     ISerializable::Serialize(out, echoEnabled);
-    ISerializable::Serialize(out, muxEnabled);
+    bool mux = muxEnabled.load();
+    ISerializable::Serialize(out, mux);
     ISerializable::Serialize(out, wifiConnected);
     ISerializable::Serialize(out, cwMode);
     ISerializable::Serialize(out, connectedSSID);
@@ -133,12 +143,13 @@ bool ESP8266::LoadState(std::istream& inStream) {
     Byte sReg = 0;
     ISerializable::Deserialize(inStream, sReg);
     statusReg.store(sReg);
-    ISerializable::Deserialize(inStream, cmdReg);
     ISerializable::Deserialize(inStream, ctrlReg);
     ISerializable::Deserialize(inStream, commandBuffer);
 
     ISerializable::Deserialize(inStream, echoEnabled);
-    ISerializable::Deserialize(inStream, muxEnabled);
+    bool mux = false;
+    ISerializable::Deserialize(inStream, mux);
+    muxEnabled.store(mux);
     ISerializable::Deserialize(inStream, wifiConnected);
     ISerializable::Deserialize(inStream, cwMode);
     ISerializable::Deserialize(inStream, connectedSSID);

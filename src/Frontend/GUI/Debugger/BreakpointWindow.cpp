@@ -217,9 +217,7 @@ void DrawConditionList(BreakpointFormState& form) {
     }
 }
 
-void DrawBreakpointList(Hardware::BreakpointManager& manager) {
-    const auto bpList = manager.GetBreakpointsSnapshot();
-
+void DrawBreakpointList(Hardware::BreakpointManager& manager, const std::vector<Hardware::Breakpoint>& bpList) {
     if (bpList.empty()) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
         ImGui::TextUnformatted("No breakpoints defined.");
@@ -240,18 +238,17 @@ void DrawBreakpointList(Hardware::BreakpointManager& manager) {
 
         uint32_t removeId = 0;
         for (const auto& entry : bpList) {
+            ImGui::PushID(static_cast<int>(entry.id));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
 
             bool enabled = entry.enabled;
-            std::string cbLabel = "##en" + std::to_string(entry.id);
-            if (ImGui::Checkbox(cbLabel.c_str(), &enabled)) {
+            if (ImGui::Checkbox("##en", &enabled)) {
                 manager.SetEnabled(entry.id, enabled);
             }
 
             ImGui::TableNextColumn();
-            std::string idText = "#" + std::to_string(entry.id);
-            ImGui::TextUnformatted(idText.c_str());
+            ImGui::Text("#%u", entry.id);
 
             ImGui::TableNextColumn();
             if (entry.label.empty()) {
@@ -267,16 +264,15 @@ void DrawBreakpointList(Hardware::BreakpointManager& manager) {
             ImGui::TextUnformatted(summary.c_str());
 
             ImGui::TableNextColumn();
-            std::string hitText = std::to_string(entry.hitCount);
-            ImGui::TextUnformatted(hitText.c_str());
+            ImGui::Text("%u", entry.hitCount);
 
             ImGui::TableNextColumn();
-            std::string delLabel = "X##del" + std::to_string(entry.id);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.3F, 0.3F, 1.0F));
-            if (ImGui::SmallButton(delLabel.c_str())) {
+            if (ImGui::SmallButton("X##del")) {
                 removeId = entry.id;
             }
             ImGui::PopStyleColor();
+            ImGui::PopID();
         }
 
         ImGui::EndTable();
@@ -318,7 +314,7 @@ void DrawBreakpointWindow(Control::AppState& state) {
 
     ImGui::Separator();
 
-    DrawBreakpointList(manager);
+    DrawBreakpointList(manager, bpSnapshot);
 
     ImGui::Spacing();
     ImGui::Separator();

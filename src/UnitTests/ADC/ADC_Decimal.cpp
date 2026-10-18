@@ -74,3 +74,23 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_CarryIn) {
     EXPECT_EQ(cpu.A, 0x11);  // 9 + 1 + 1 = 11 (BCD 11 is 0x11)
     EXPECT_FALSE(cpu.C);
 }
+
+TEST_F(ADC_Decimal_Test, ADC_Decimal_ZeroAndNegativeFlags) {
+    // 0x50 + 0x50 = 0x00 (BCD), C=1, Z=1, N=0
+    cpu.A = 0x50;
+    cpu.D = 1;
+    cpu.C = 0;
+
+    bus.WriteDirect(0xFFFC, 0x00);
+    bus.WriteDirect(0xFFFD, 0x40);
+    bus.Write(0x4000, INS_ADC_IM);
+    bus.Write(0x4001, 0x50);
+    bus.Write(0x4002, INS_STP);
+
+    cpu.Execute(bus);
+
+    EXPECT_EQ(cpu.A, 0x00);
+    EXPECT_TRUE(cpu.C);
+    EXPECT_TRUE(cpu.Z);
+    EXPECT_FALSE(cpu.N);
+}

@@ -18,36 +18,48 @@ void Emulator::Start() {
 }
 
 void Emulator::Stop() {
-    running = false;
+    {
+        std::lock_guard<std::mutex> lock(threadMutex);
+        running = false;
+        paused = false;
+        pauseCV.notify_all();
+    }
 #ifndef TARGET_WASM
     sid.StopRecording();
 #endif
     if (cartridge.loaded && !cartridge.sdCardPath.empty()) {
         Core::CartridgeLoader::SaveSDToZip(cartridge);
     }
-    Resume();
     if (emulatorThread.joinable()) {
         emulatorThread.join();
     }
 }
 
 void Emulator::Pause() {
-    if (paused.exchange(true)) {
-        return;
+    {
+        std::lock_guard<std::mutex> lock(threadMutex);
+        if (paused.exchange(true)) {
+            return;
+        }
+        pauseCV.notify_all();
     }
     sid.SetEmulationPaused(true);
-    pauseCV.notify_all();
 }
 
 void Emulator::Resume() {
     totalCyclesAtLastResume = totalCycles;
     sid.SetEmulationPaused(false);
-    paused = false;
-    pauseCV.notify_all();
+    {
+        std::lock_guard<std::mutex> lock(threadMutex);
+        paused = false;
+        pauseCV.notify_all();
+    }
 }
 
 void Emulator::WaitUntilSafeToMutate() {
-    if (!running) {
+    if (!running || std::this_thread::get_id() == emulatorThread.get_id()) {
+        paused = true;
+        isActuallyPaused = true;
         return;
     }
     if (!paused) {
@@ -102,6 +114,7 @@ void Emulator::ThreadLoop() {
         int instructionsPerSlice = (int)instructionAccumulator;
         instructionAccumulator -= instructionsPerSlice;
 
+        isActuallyPaused.store(false, std::memory_order_release);
         const auto sliceStart = high_resolution_clock::now();
         const SliceResult slice = EmulateSlice(instructionsPerSlice);
         const auto sliceEnd = high_resolution_clock::now();
@@ -120,7 +133,6 @@ void Emulator::ThreadLoop() {
             actualCpuCyclesPerSecond.store(cpuCyclesThisSecond, std::memory_order_relaxed);
             actualGpuCyclesPerSecond.store(gpuCyclesThisSecond, std::memory_order_relaxed);
             actualInstructionsPerSecond.store(instructionsThisSecond, std::memory_order_relaxed);
-            actualIPS.store(static_cast<int>(instructionsThisSecond), std::memory_order_relaxed);
             slicesPerSecond.store(slicesThisSecond, std::memory_order_relaxed);
             cyclesThisSecond = 0;
             cpuCyclesThisSecond = 0;
@@ -305,7 +317,6 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
                     batchGpuCycles += localGpuCycles;
                     lastStepCpuCycles = cpuStepped ? 1 : 0;
                     lastStepGpuCycles = (gpuEnabled && !cpuStepped) ? 1 : 0;
-                    lastStepCycles = 1;
                     stopCode = res;
                     return i;
                 }
@@ -313,7 +324,6 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             batchInstructions += localInstructions;
             batchCpuCycles += localCpuCycles;
             batchGpuCycles += localGpuCycles;
-            lastStepCycles = 1;
             return count;
         }
         for (int i = 0; i < count; ++i) {

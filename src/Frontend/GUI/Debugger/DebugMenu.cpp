@@ -115,8 +115,6 @@ void DrawDebugMenu(Control::AppState& state) {
         return;
     }
 
-    state.emulator.SetProfilingEnabled(true);
-
     ImVec2 vpSize = ImGui::GetMainViewport()->Size;
     ImGui::SetNextWindowSize(ImVec2(vpSize.x * 0.75F, vpSize.y * 0.75F), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Debug Menu", &state.debugger.open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
@@ -140,6 +138,8 @@ void DrawDebugMenu(Control::AppState& state) {
 
     // Content area
     ImGui::BeginChild("DebugContent", ImVec2(0, 0), ImGuiChildFlags_None);
+
+    state.emulator.SetProfilingEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Profiler);
 
     if (state.debugger.mode == Control::DebuggerMode::Settings) {
         DrawSettingsContent(state);

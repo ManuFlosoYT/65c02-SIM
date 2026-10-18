@@ -2,7 +2,6 @@
 
 #include <array>
 #include <functional>
-#include <iostream>
 
 #include "Hardware/Core/IBusDevice.h"
 
@@ -36,7 +35,6 @@ class LCD : public IBusDevice {
 
    private:
     Byte PORTB_DATA;
-    Byte DDRB_DATA;
 
     bool four_bit_mode = false;
     bool waiting_low_nibble = false;

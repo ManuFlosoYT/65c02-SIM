@@ -4,11 +4,9 @@
 #include <iostream>
 #include <deque>
 #include <mutex>
-#include <span>
 #include <string>
 
 #include "Hardware/Core/Emulator.h"
-#include "Hardware/Core/CartridgeLoader.h"
 #include "Hardware/Scripting/Lang/Lexer.h"
 #include "Hardware/Scripting/Lang/Parser.h"
 #include "Hardware/Scripting/Lang/Interpreter.h"
@@ -167,6 +165,7 @@ struct ScriptEngine::Impl {
             auto addr = static_cast<uint16_t>(std::get<int64_t>(args[0]));
             const auto& str = std::get<std::string>(args[1]);
 
+            emulator.WaitUntilSafeToMutate();
             for (auto c : str) {
                 emulator.GetMem().WriteDirect(addr++, static_cast<uint8_t>(c));
             }
@@ -184,18 +183,14 @@ struct ScriptEngine::Impl {
         interpreter->defineBuiltin("emu.load_bin", [this](const std::vector<Value>& args) -> Value {
             if (args.size() < 2 || !std::holds_alternative<std::string>(args[0]) || !std::holds_alternative<int64_t>(args[1])) return false;
 
-            std::string error;
-            bool ok = emulator.InitFromMemory(std::span<const uint8_t>(), std::get<std::string>(args[0]), error);
-            // This is just a stub for test since load_bin reads files.
-            // PocketPy loaded `[path]` from filesystem inside the binding.
-            // I will open file here.
             std::ifstream file(std::get<std::string>(args[0]), std::ios::binary | std::ios::ate);
             if (!file) return false;
             auto sz = file.tellg();
             file.seekg(0);
             std::vector<uint8_t> buf(sz);
             file.read(reinterpret_cast<char*>(buf.data()), sz);
-            
+
+            emulator.WaitUntilSafeToMutate();
             auto addr = static_cast<uint16_t>(std::get<int64_t>(args[1]));
             for (auto b : buf) emulator.GetMem().WriteDirect(addr++, b);
             return true;
@@ -288,6 +283,9 @@ void ScriptEngine::ClearOutput() {
 }
 
 void ScriptEngine::AppendOutput(const std::string& text) {
+    if (mirrorToStdout.load(std::memory_order_relaxed)) {
+        std::cout << text << '\n';
+    }
     std::lock_guard<std::mutex> lock(pImpl->outputMutex);
     pImpl->outputQueue.emplace_back(text);
 }

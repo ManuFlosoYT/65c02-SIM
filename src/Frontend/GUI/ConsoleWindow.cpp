@@ -27,6 +27,7 @@ using namespace Hardware;
 
 namespace GUI {
 
+#ifdef TARGET_WASM
 static void HandleSDKFileLoading(AppState& state, const std::string& filename, const uint8_t* data, int size) {
     if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".65c") {
         state.emulator.Pause();
@@ -55,11 +56,11 @@ static void HandleSDKFileLoading(AppState& state, const std::string& filename, c
             state.rom.bin = filename;
             state.rom.loaded = true;
             state.rom.symbols.Clear();
-            state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
             state.emulator.ClearProfiler();
         }
     }
 }
+#endif
 
 static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files, const std::string& subfolder) {
     for (const auto& file : files) {
@@ -170,7 +171,6 @@ static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
                     state.rom.bin = filename;
                     state.rom.loaded = true;
                     state.rom.symbols.Clear();
-                    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                     state.emulator.ClearProfiler();
                     state.emulator.ClearCartridge();
                 } else {
@@ -334,11 +334,6 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     ImGui::SetNextWindowSize(ImVec2(state.emulation.gpuEnabled ? left_width : work_size.x, bottom_section_height),
                              ImGuiCond_Always);
     ImGui::Begin("Console", nullptr, window_flags);
-    if (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup) &&
-        ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) &&
-        (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) {
-        ImGui::SetWindowFocus("Console");
-    }
 
     DrawConsoleButtonBar(state);
     DrawConsoleView(state);

@@ -576,7 +576,9 @@ static void ProcessCharUnlocked(char character) {
         state.parserState = ParserState::Ground;
     } else if (state.parserState == ParserState::Csi) {
         if (character >= '0' && character <= '9') {
-            state.currentParam = state.currentParam * 10 + (character - '0');
+            if (state.currentParam < 10000) {
+                state.currentParam = state.currentParam * 10 + (character - '0');
+            }
             state.hasCurrentParam = true;
         } else if (character == ';') {
             state.csiParams.push_back(state.currentParam);
@@ -594,14 +596,6 @@ static void ProcessCharUnlocked(char character) {
 void OutputCallback(char character) {
     std::lock_guard<std::mutex> lock(GetMutex());
     ProcessCharUnlocked(character);
-}
-
-void Print(const std::string& message) {
-    std::lock_guard<std::mutex> lock(GetMutex());
-    for (char character : message) {
-        ProcessCharUnlocked(character);
-    }
-    ProcessCharUnlocked('\n');
 }
 
 bool SaveState(std::ostream& out) {
@@ -634,9 +628,15 @@ bool LoadState(std::istream& inputStream) {
 
     uint32_t linesCount = 0;
     Hardware::ISerializable::Deserialize(inputStream, linesCount);
+    if (!inputStream.good() || linesCount > 2000) {
+        return false;
+    }
     for (uint32_t i = 0; i < linesCount; ++i) {
         uint32_t len = 0;
         Hardware::ISerializable::Deserialize(inputStream, len);
+        if (!inputStream.good() || len > 1024) {
+            return false;
+        }
         std::string line(len, '\0');
         inputStream.read(line.data(), static_cast<std::streamsize>(len));
         state.scrollbackLines.push_back(line);
@@ -644,8 +644,15 @@ bool LoadState(std::istream& inputStream) {
 
     uint32_t currentLen = 0;
     Hardware::ISerializable::Deserialize(inputStream, currentLen);
+    if (!inputStream.good() || currentLen > 1024) {
+        return false;
+    }
     std::string currentLine(currentLen, '\0');
     inputStream.read(currentLine.data(), static_cast<std::streamsize>(currentLen));
+
+    for (char c : currentLine) {
+        state.PutChar(static_cast<uint8_t>(c));
+    }
 
     Hardware::ISerializable::Deserialize(inputStream, state.cursorX);
     if (inputStream.good()) {

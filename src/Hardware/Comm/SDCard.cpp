@@ -246,11 +246,6 @@ void SDCard::HandleReadPendingState(uint8_t mosi, uint8_t& miso) {
         return;
     }
     miso = 0xFFU;
-#ifndef TARGET_WASM
-    if (io_future.valid() && io_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-        return; // Still waiting
-    }
-#endif
     current_crc = CalculateCrc16(data_buffer);
     if (read_latency_enabled) {
         read_delay_bytes = static_cast<uint8_t>((std::rand() % 20) + 5);
@@ -361,6 +356,9 @@ void SDCard::HandleWriteDataCrcState(uint8_t mosi, uint8_t& miso) {
             state = State::IDLE;
         } else {
             WriteBlockToImage();
+            if (is_write_multiblock) {
+                current_lba++;
+            }
             // Send Data Response:
             // xxx00101b = 0x05 -> Accepted
             miso = 0x05U;
@@ -372,11 +370,6 @@ void SDCard::HandleWriteDataCrcState(uint8_t mosi, uint8_t& miso) {
 
 void SDCard::HandleWriteBusyState(uint8_t& miso) {
     miso = 0x00U;
-#ifndef TARGET_WASM
-    if (io_future.valid() && io_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-        return; // Still waiting
-    }
-#endif
     if (write_busy_bytes > 0) {
         write_busy_bytes--;
     } else {
@@ -515,15 +508,16 @@ void SDCard::HandleCmd16() {
     QueueResponse1(is_initialized ? 0x00U : 0x01U);
 }
 
-void SDCard::HandleCmd17(uint32_t arg) {
+bool SDCard::PrepareBlockTransfer(uint32_t arg, State nextState, bool isMultiblock, bool isWrite) {
+    (void)nextState;
     if (!is_initialized) {
         QueueResponse1(0x05U);  // R1: Illegal command + In Idle State
-        return;
+        return false;
     }
     if (arg >= total_blocks && is_sdhc) {
         sd_status_byte |= 0x40U;
         QueueResponse1(0x40U); // R1: Parameter Error
-        return;
+        return false;
     }
     current_lba = arg;
     if (!is_sdhc) {
@@ -531,92 +525,33 @@ void SDCard::HandleCmd17(uint32_t arg) {
         if (current_lba >= total_blocks) {
             sd_status_byte |= 0x40U;
             QueueResponse1(0x40U);
-            return;
+            return false;
         }
     }
-    ReadBlockFromImage();
-    current_crc = CalculateCrc16(data_buffer);
-    if (read_latency_enabled) {
-        read_delay_bytes = static_cast<uint8_t>((std::rand() % 20) + 5);
+    if (isWrite) {
+        is_write_multiblock = isMultiblock;
     } else {
-        read_delay_bytes = 0;
+        is_read_multiblock = isMultiblock;
+        ReadBlockFromImage();
     }
     QueueResponse1(0x00U);  // R1: Success
+    return true;
+}
+
+void SDCard::HandleCmd17(uint32_t arg) {
+    PrepareBlockTransfer(arg, State::READ_PENDING, false, false);
 }
 
 void SDCard::HandleCmd18(uint32_t arg) {
-    if (!is_initialized) {
-        QueueResponse1(0x05U);  // R1: Illegal command + In Idle State
-        return;
-    }
-    if (arg >= total_blocks && is_sdhc) {
-        sd_status_byte |= 0x40U;
-        QueueResponse1(0x40U); // R1: Parameter Error
-        return;
-    }
-    current_lba = arg;
-    if (!is_sdhc) {
-        current_lba /= 512U;
-        if (current_lba >= total_blocks) {
-            sd_status_byte |= 0x40U;
-            QueueResponse1(0x40U);
-            return;
-        }
-    }
-    is_read_multiblock = true;
-    ReadBlockFromImage();
-    current_crc = CalculateCrc16(data_buffer);
-    if (read_latency_enabled) {
-        read_delay_bytes = static_cast<uint8_t>((std::rand() % 20) + 5);
-    } else {
-        read_delay_bytes = 0;
-    }
-    QueueResponse1(0x00U);  // R1: Success
+    PrepareBlockTransfer(arg, State::READ_PENDING, true, false);
 }
 
 void SDCard::HandleCmd24(uint32_t arg) {
-    if (!is_initialized) {
-        QueueResponse1(0x05U);  // R1: Illegal command + In Idle State
-        return;
-    }
-    if (arg >= total_blocks && is_sdhc) {
-        sd_status_byte |= 0x40U;
-        QueueResponse1(0x40U); // R1: Parameter Error
-        return;
-    }
-    current_lba = arg;
-    if (!is_sdhc) {
-        current_lba /= 512U;
-        if (current_lba >= total_blocks) {
-            sd_status_byte |= 0x40U;
-            QueueResponse1(0x40U);
-            return;
-        }
-    }
-    QueueResponse1(0x00U);  // R1: Success
+    PrepareBlockTransfer(arg, State::WRITE_DATA_TOKEN, false, true);
 }
 
 void SDCard::HandleCmd25(uint32_t arg) {
-    if (!is_initialized) {
-        QueueResponse1(0x05U);  // R1: Illegal command + In Idle State
-        return;
-    }
-    if (arg >= total_blocks && is_sdhc) {
-        sd_status_byte |= 0x40U;
-        QueueResponse1(0x40U); // R1: Parameter Error
-        return;
-    }
-    current_lba = arg;
-    if (!is_sdhc) {
-        current_lba /= 512U;
-        if (current_lba >= total_blocks) {
-            sd_status_byte |= 0x40U;
-            QueueResponse1(0x40U);
-            return;
-        }
-    }
-    is_write_multiblock = true;
-    QueueResponse1(0x00U);  // R1: Success
+    PrepareBlockTransfer(arg, State::WRITE_DATA_TOKEN, true, true);
 }
 
 void SDCard::HandleCmd55() {
@@ -697,6 +632,7 @@ bool SDCard::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, mounted);
     ISerializable::Serialize(out, cs_active);
     ISerializable::Serialize(out, state);
+    ISerializable::Serialize(out, last_miso);
     ISerializable::Serialize(out, cmd_buffer);
     ISerializable::Serialize(out, cmd_bytes_received);
 
@@ -745,6 +681,7 @@ bool SDCard::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, mounted);
     ISerializable::Deserialize(inStream, cs_active);
     ISerializable::Deserialize(inStream, state);
+    ISerializable::Deserialize(inStream, last_miso);
     ISerializable::Deserialize(inStream, cmd_buffer);
     ISerializable::Deserialize(inStream, cmd_bytes_received);
 
@@ -792,8 +729,27 @@ bool SDCard::LoadState(std::istream& inStream) {
         ISerializable::Deserialize(inStream, total_blocks);
     }
 
-    if (mounted) {
-        Mount(currentPath);
+    if (imageFile.is_open()) {
+        imageFile.close();
+    }
+    if (mounted && !currentPath.empty()) {
+        imageFile.open(currentPath, std::ios::in | std::ios::out | std::ios::binary);
+        if (!imageFile.is_open()) {
+            imageFile.clear();
+            imageFile.open(currentPath, std::ios::in | std::ios::binary);
+            if (imageFile.is_open()) {
+                is_read_only = true;
+            }
+        } else {
+            is_read_only = false;
+        }
+        if (imageFile.is_open()) {
+            imageFile.seekg(0, std::ios::end);
+            total_blocks = static_cast<uint32_t>(imageFile.tellg() / 512);
+            imageFile.seekg(0, std::ios::beg);
+        } else {
+            mounted = false;
+        }
     }
 
     return inStream.good();

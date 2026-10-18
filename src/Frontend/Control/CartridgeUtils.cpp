@@ -101,8 +101,6 @@ void ExecuteReset(AppState& state) {
 #ifdef TARGET_WASM
         if (!state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg)) {
             state.rom.loaded = false;
-        } else {
-            state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
         }
 #else
         bool initSuccess = false;
@@ -114,8 +112,6 @@ void ExecuteReset(AppState& state) {
         if (!initSuccess) {
             state.rom.loaded = false;
             Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
-        } else {
-            state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
         }
 #endif
     }

@@ -58,14 +58,12 @@ class CPU : public ISerializable {
     int StepCycleAccurate(Bus& bus);
     template <bool Debug>
     int StepFast(Bus& bus);
-    int Step(Bus& bus);
 
     template <bool Debug>
     void IRQ(Bus& bus);
     void IRQ(Bus& bus);
 
     template <bool Debug>
-    void NMI(Bus& bus);
     void NMI(Bus& bus);
 
     template <bool Debug>
@@ -84,31 +82,22 @@ class CPU : public ISerializable {
 
     template <bool Debug>
     Byte FetchByte(Bus& bus);
-    Byte FetchByte(Bus& bus);
     template <bool Debug>
-    Word FetchWord(Bus& bus);
     Word FetchWord(Bus& bus);
     template <bool Debug>
     Byte ReadByte(Word addr, Bus& bus);
-    Byte ReadByte(Word addr, Bus& bus);
     template <bool Debug>
     Word ReadWord(Word addr, Bus& bus);
-    Word ReadWord(Word addr, Bus& bus);
     template <bool Debug>
-    Word ReadWordZP(Byte zpAddr, Bus& bus);
     Word ReadWordZP(Byte zpAddr, Bus& bus);
 
     template <bool Debug>
     void PushByte(Byte val, Bus& bus);
-    void PushByte(Byte val, Bus& bus);
     template <bool Debug>
-    Byte PopByte(Bus& bus);
     Byte PopByte(Bus& bus);
     template <bool Debug>
     void PushWord(Word val, Bus& bus);
-    void PushWord(Word val, Bus& bus);
     template <bool Debug>
-    Word PopWord(Bus& bus);
     Word PopWord(Bus& bus);
 };
 
@@ -368,82 +357,10 @@ inline Hardware::Word Hardware::CPU::PopWord(Bus& bus) {
     return (High << 8) | Low;
 }
 
-inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return FetchByte<true>(bus);
-    }
-    return FetchByte<false>(bus);
-}
-inline Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return FetchWord<true>(bus);
-    }
-    return FetchWord<false>(bus);
-}
-inline Hardware::Byte Hardware::CPU::ReadByte(Word addr, Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return ReadByte<true>(addr, bus);
-    }
-    return ReadByte<false>(addr, bus);
-}
-inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return ReadWord<true>(addr, bus);
-    }
-    return ReadWord<false>(addr, bus);
-}
-inline Hardware::Word Hardware::CPU::ReadWordZP(Byte zpAddr, Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return ReadWordZP<true>(zpAddr, bus);
-    }
-    return ReadWordZP<false>(zpAddr, bus);
-}
-inline void Hardware::CPU::PushByte(Byte val, Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        PushByte<true>(val, bus);
-        return;
-    }
-    PushByte<false>(val, bus);
-}
-inline void Hardware::CPU::PushWord(Word val, Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        PushWord<true>(val, bus);
-        return;
-    }
-    PushWord<false>(val, bus);
-}
-inline Hardware::Byte Hardware::CPU::PopByte(Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return PopByte<true>(bus);
-    }
-    return PopByte<false>(bus);
-}
-inline Hardware::Word Hardware::CPU::PopWord(Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return PopWord<true>(bus);
-    }
-    return PopWord<false>(bus);
-}
-
-inline int Hardware::CPU::Step(Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        return Step<true>(bus);
-    }
-    return Step<false>(bus);
-}
-
 inline void Hardware::CPU::IRQ(Bus& bus) {
     if (bus.HasActiveHooks()) {
         IRQ<true>(bus);
         return;
     }
     IRQ<false>(bus);
-}
-
-inline void Hardware::CPU::NMI(Bus& bus) {
-    if (bus.HasActiveHooks()) {
-        NMI<true>(bus);
-        return;
-    }
-    NMI<false>(bus);
 }

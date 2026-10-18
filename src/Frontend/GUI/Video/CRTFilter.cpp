@@ -79,6 +79,28 @@ void CRTFilter::CreateFBO(int width, int height) {
 void CRTFilter::Init(int width, int height) {
     m_shader = CompileShader(kCRTVertSrc, kCRTFragSrc);
 
+    m_uTexture = glGetUniformLocation(m_shader, "u_texture");
+    m_uTexelSize = glGetUniformLocation(m_shader, "u_texelSize");
+    m_uTime = glGetUniformLocation(m_shader, "u_time");
+    m_uScanlines = glGetUniformLocation(m_shader, "u_scanlines");
+    m_uInterlacing = glGetUniformLocation(m_shader, "u_interlacing");
+    m_uCurvature = glGetUniformLocation(m_shader, "u_curvature");
+    m_uChromatic = glGetUniformLocation(m_shader, "u_chromatic");
+    m_uBlur = glGetUniformLocation(m_shader, "u_blur");
+    m_uShadowMask = glGetUniformLocation(m_shader, "u_shadowMask");
+    m_uVignette = glGetUniformLocation(m_shader, "u_vignette");
+    m_uCornerRounding = glGetUniformLocation(m_shader, "u_cornerRounding");
+    m_uGlassGlare = glGetUniformLocation(m_shader, "u_glassGlare");
+    m_uColorBleeding = glGetUniformLocation(m_shader, "u_colorBleeding");
+    m_uNoise = glGetUniformLocation(m_shader, "u_noise");
+    m_uVsyncJitter = glGetUniformLocation(m_shader, "u_vsyncJitter");
+    m_uPhosphorDecay = glGetUniformLocation(m_shader, "u_phosphorDecay");
+    m_uBloom = glGetUniformLocation(m_shader, "u_bloom");
+    m_uGhosting = glGetUniformLocation(m_shader, "u_ghosting");
+    m_uHalation = glGetUniformLocation(m_shader, "u_halation");
+    m_uMoire = glGetUniformLocation(m_shader, "u_moire");
+    m_uGamma = glGetUniformLocation(m_shader, "u_gamma");
+
     // clang-format off
     std::array<float, 24> verts = {
         -1.0F, -1.0F,  0.0F, 0.0F,
@@ -161,31 +183,29 @@ GLuint CRTFilter::Apply(GLuint inputTex, int width, int height, const CRTParams&
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, inputTex);
 
-    auto uni1i = [&](const char* n, bool val) { glUniform1i(glGetUniformLocation(m_shader, n), val ? 1 : 0); };
-
-    glUniform1i(glGetUniformLocation(m_shader, "u_texture"), 0);
-    glUniform2f(glGetUniformLocation(m_shader, "u_texelSize"), 1.0F / static_cast<float>(width),
+    glUniform1i(m_uTexture, 0);
+    glUniform2f(m_uTexelSize, 1.0F / static_cast<float>(width),
                 1.0F / static_cast<float>(height));
-    glUniform1f(glGetUniformLocation(m_shader, "u_time"), params.time);
+    glUniform1f(m_uTime, params.time);
 
-    uni1i("u_scanlines", params.scanlines);
-    uni1i("u_interlacing", params.interlacing);
-    uni1i("u_curvature", params.curvature);
-    uni1i("u_chromatic", params.chromatic);
-    uni1i("u_blur", params.blur);
-    uni1i("u_shadowMask", params.shadowMask);
-    uni1i("u_vignette", params.vignette);
-    uni1i("u_cornerRounding", params.cornerRounding);
-    uni1i("u_glassGlare", params.glassGlare);
-    uni1i("u_colorBleeding", params.colorBleeding);
-    uni1i("u_noise", params.noise);
-    uni1i("u_vsyncJitter", params.vsyncJitter);
-    uni1i("u_phosphorDecay", params.phosphorDecay);
-    uni1i("u_bloom", params.bloom);
-    uni1i("u_ghosting", params.ghosting);
-    uni1i("u_halation", params.halation);
-    uni1i("u_moire", params.moire);
-    glUniform1f(glGetUniformLocation(m_shader, "u_gamma"), params.gamma);
+    glUniform1i(m_uScanlines, params.scanlines ? 1 : 0);
+    glUniform1i(m_uInterlacing, params.interlacing ? 1 : 0);
+    glUniform1i(m_uCurvature, params.curvature ? 1 : 0);
+    glUniform1i(m_uChromatic, params.chromatic ? 1 : 0);
+    glUniform1i(m_uBlur, params.blur ? 1 : 0);
+    glUniform1i(m_uShadowMask, params.shadowMask ? 1 : 0);
+    glUniform1i(m_uVignette, params.vignette ? 1 : 0);
+    glUniform1i(m_uCornerRounding, params.cornerRounding ? 1 : 0);
+    glUniform1i(m_uGlassGlare, params.glassGlare ? 1 : 0);
+    glUniform1i(m_uColorBleeding, params.colorBleeding ? 1 : 0);
+    glUniform1i(m_uNoise, params.noise ? 1 : 0);
+    glUniform1i(m_uVsyncJitter, params.vsyncJitter ? 1 : 0);
+    glUniform1i(m_uPhosphorDecay, params.phosphorDecay ? 1 : 0);
+    glUniform1i(m_uBloom, params.bloom ? 1 : 0);
+    glUniform1i(m_uGhosting, params.ghosting ? 1 : 0);
+    glUniform1i(m_uHalation, params.halation ? 1 : 0);
+    glUniform1i(m_uMoire, params.moire ? 1 : 0);
+    glUniform1f(m_uGamma, params.gamma);
 
     glBindVertexArray(m_vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);

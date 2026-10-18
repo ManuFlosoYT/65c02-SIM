@@ -32,8 +32,6 @@ bool MediaExporter::Initialize(const std::string& filename,
     this->rawHeight = rawH;
     this->processedWidth = processedW;
     this->processedHeight = processedH;
-    this->recordingType = type;
-    this->videoFormat = format;
     this->audioFormat = audioFormat;
     this->shouldRecordRaw = recordRaw;
     this->shouldRecordProcessed = recordProcessed;
@@ -45,7 +43,7 @@ bool MediaExporter::Initialize(const std::string& filename,
         return false;
     }
 
-    if (recordingType != Control::RecordingType::Audio) {
+    if (type != Control::RecordingType::Audio) {
         if (shouldRecordRaw) {
             if (!SetupVideoStream(&videoStreamRaw, &videoCodecCtxRaw, rawWidth, rawHeight, "Raw Video", true)) {
                 return false;
@@ -53,7 +51,7 @@ bool MediaExporter::Initialize(const std::string& filename,
         }
 
         if (shouldRecordProcessed) {
-            std::string trackName = (recordingType == Control::RecordingType::SIDWindow) ? "SID Viewer" : "Processed Video";
+            std::string trackName = (type == Control::RecordingType::SIDWindow) ? "SID Viewer" : "Processed Video";
             if (!SetupVideoStream(&videoStreamProcessed, &videoCodecCtxProcessed, processedWidth, processedHeight, trackName, !shouldRecordRaw)) {
                 return false;
             }
@@ -74,6 +72,7 @@ bool MediaExporter::Initialize(const std::string& filename,
         std::cerr << "MediaExporter: Error writing header\n";
         return false;
     }
+    headerWritten = true;
 
     if (shouldRecordRaw) {
         SetupSwsContext(&swsCtxRaw, rawWidth, rawHeight, videoCodecCtxRaw);
@@ -239,7 +238,6 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }
 
-    std::vector<uint8_t> processedPixels;
     if (shouldRecordProcessed) {
         glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(pboIndex));
         glBindTexture(GL_TEXTURE_2D, texProcessed);
@@ -305,15 +303,6 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
     pboIndex = nextIndex;
 }
 
-std::vector<uint8_t> MediaExporter::ReadTextureSynchronous(uint32_t tex, int width, int height) {
-    std::vector<uint8_t> pixels(static_cast<size_t>(width) * static_cast<size_t>(height) * 4U);
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return pixels;
-}
-
 void MediaExporter::PushAudio(const float* samples, int count) {
     if (!isRunning) {
         return;
@@ -327,15 +316,10 @@ void MediaExporter::PushAudio(const float* samples, int count) {
 }
 
 void MediaExporter::ProcessVideoFrame(const VideoFrameData& vData, AVFrame* frameRaw, AVFrame* frameProcessed) {
-    av_frame_make_writable(frameRaw);
-    av_frame_make_writable(frameProcessed);
-
-    const std::array<const uint8_t*, 1> rawSrc = {vData.rawPixels.data()};
-    const std::array<const uint8_t*, 1> procSrc = {vData.processedPixels.data()};
-    const std::array<int, 1> rawStride = {vData.rawW * 4};
-    const std::array<int, 1> procStride = {vData.processedW * 4};
-
-    if (shouldRecordRaw) {
+    if (shouldRecordRaw && frameRaw != nullptr) {
+        av_frame_make_writable(frameRaw);
+        const std::array<const uint8_t*, 1> rawSrc = {vData.rawPixels.data()};
+        const std::array<int, 1> rawStride = {vData.rawW * 4};
         sws_scale(swsCtxRaw, rawSrc.data(), rawStride.data(), 0, vData.rawH, frameRaw->data, frameRaw->linesize);
 
         // Zero out any Y padding rows (encoder height > texture height)
@@ -347,7 +331,10 @@ void MediaExporter::ProcessVideoFrame(const VideoFrameData& vData, AVFrame* fram
         EncodeVideoFrame(frameRaw, videoCodecCtxRaw, videoStreamRaw);
     }
 
-    if (shouldRecordProcessed) {
+    if (shouldRecordProcessed && frameProcessed != nullptr) {
+        av_frame_make_writable(frameProcessed);
+        const std::array<const uint8_t*, 1> procSrc = {vData.processedPixels.data()};
+        const std::array<int, 1> procStride = {vData.processedW * 4};
         // Recreate the sws context if the processed texture dimensions changed
         if (vData.processedW != processedWidth || vData.processedH != processedHeight) {
             if (swsCtxProcessed != nullptr) {
@@ -418,16 +405,16 @@ void MediaExporter::ProcessAudioData(const std::vector<float>& aData, AVFrame* a
 }
 
 void MediaExporter::WorkerLoop() {
-    AVFrame* frameRaw = av_frame_alloc();
-    AVFrame* frameProcessed = av_frame_alloc();
-    if (shouldRecordRaw) {
+    AVFrame* frameRaw = shouldRecordRaw ? av_frame_alloc() : nullptr;
+    AVFrame* frameProcessed = shouldRecordProcessed ? av_frame_alloc() : nullptr;
+    if (shouldRecordRaw && frameRaw != nullptr) {
         frameRaw->format = videoCodecCtxRaw->pix_fmt;
         frameRaw->width = videoCodecCtxRaw->width;
         frameRaw->height = videoCodecCtxRaw->height;
         av_frame_get_buffer(frameRaw, 32);
     }
 
-    if (shouldRecordProcessed) {
+    if (shouldRecordProcessed && frameProcessed != nullptr) {
         frameProcessed->format = videoCodecCtxProcessed->pix_fmt;
         frameProcessed->width = videoCodecCtxProcessed->width;
         frameProcessed->height = videoCodecCtxProcessed->height;
@@ -464,8 +451,12 @@ void MediaExporter::WorkerLoop() {
         }
     }
 
-    av_frame_free(&frameRaw);
-    av_frame_free(&frameProcessed);
+    if (frameRaw != nullptr) {
+        av_frame_free(&frameRaw);
+    }
+    if (frameProcessed != nullptr) {
+        av_frame_free(&frameProcessed);
+    }
     av_frame_free(&audioFrame);
 }
 
@@ -514,18 +505,12 @@ void MediaExporter::Finalize() {
         }
 
         if (audioCodecCtx != nullptr) {
-            AVPacket* pkt = av_packet_alloc();
-            avcodec_send_frame(audioCodecCtx, nullptr);
-            while (avcodec_receive_packet(audioCodecCtx, pkt) >= 0) {
-                av_packet_rescale_ts(pkt, audioCodecCtx->time_base, audioStream->time_base);
-                pkt->stream_index = audioStream->index;
-                av_interleaved_write_frame(fmtCtx, pkt);
-                av_packet_unref(pkt);
-            }
-            av_packet_free(&pkt);
+            EncodeAudioFrame(nullptr);
         }
 
-        av_write_trailer(fmtCtx);
+        if (headerWritten) {
+            av_write_trailer(fmtCtx);
+        }
 
         if ((fmtCtx->oformat->flags & AVFMT_NOFILE) == 0) {
             avio_closep(&fmtCtx->pb);

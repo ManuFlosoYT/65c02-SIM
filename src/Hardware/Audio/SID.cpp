@@ -7,8 +7,6 @@
 #include <cmath>
 #include <chrono>
 #include <mutex>
-#include <span>
-#include <cstring>
 #include <iostream>
 #include <numbers>
 #include <vector>
@@ -437,7 +435,6 @@ void Oscillator::Next(SIDModel model) {
         uint16_t ix = (accumulator ^ (~syncAcc & ringMask)) >> 12;
         
         uint16_t pulseOutput = ((accumulator >> 12) >= pulseWidth) ? 0xFFF : 0;
-        if (control & 0x08) pulseOutput = 0xFFF; // Test bit sets pulse high
         
         if (model == SIDModel::MOS6581) {
             if (waveControl == 0x01) { // Tri
@@ -538,146 +535,59 @@ void SID::FlushAvailableOutput() {
     }
 }
 
-void SID::ClockProfiled() {
+template <bool Profiled>
+void SID::ClockInternal() {
     clockCounter++;
 
-    const auto oscStart = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point oscStart;
+    if constexpr (Profiled) {
+        oscStart = std::chrono::steady_clock::now();
+    }
     Oscillator* const v = voices.data();
     v[0].Next(model);
     v[1].Next(model);
     v[2].Next(model);
-    profilingStats.oscillatorNanoseconds += static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now() - oscStart)
-            .count());
+    if constexpr (Profiled) {
+        profilingStats.oscillatorNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - oscStart)
+                .count());
+    }
 
-    const auto envStart = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point envStart;
+    if constexpr (Profiled) {
+        envStart = std::chrono::steady_clock::now();
+    }
     v[0].env.Update((v[0].control & 0x01) != 0);
     v[1].env.Update((v[1].control & 0x01) != 0);
     v[2].env.Update((v[2].control & 0x01) != 0);
-    profilingStats.envelopeNanoseconds += static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now() - envStart)
-            .count());
-
-    ++profilingStats.clockCount;
+    if constexpr (Profiled) {
+        profilingStats.envelopeNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - envStart)
+                .count());
+        ++profilingStats.clockCount;
+    }
 
     voice3OscOutput = (v[2].oscOutput >> 4) & 0xFF;
     voice3EnvOutput = v[2].env.level;
 
-    if (!soundEnabled) {
-        return;
-    }
-
-    const auto filterStart = std::chrono::steady_clock::now();
-    if (filterCoefficientsDirty) {
-        UpdateFilterCoefficients();
-    }
-
-    double filteredInput = 0.0;
-    double directOutput = 0.0;
-    static constexpr double INV_2048 = 1.0 / 2048.0;
-    static constexpr double INV_255 = 1.0 / 255.0;
-    static constexpr double INV_15 = 1.0 / 15.0;
-
-    for (size_t idx = 0; idx < MAX_SID_VOICES; ++idx) {
-        const uint8_t level = v[idx].env.level;
-        if (level == 0) {
-            continue;
-        }
-        double voiceSample = ((static_cast<double>(v[idx].oscOutput) * INV_2048) - 1.0) *
-                             (static_cast<double>(level) * INV_255);
-        if ((filterFiltMask & (1U << idx)) != 0) {
-            filteredInput += voiceSample;
-        } else if (idx != 2 || (filterMode & 0x80) == 0) {
-            directOutput += voiceSample;
-        }
-    }
-
-    double hp = (filteredInput - filterLow - (filterBand * filterRPlusG)) * filterDenomInv;
-    double bp = filterBand + (filterG * hp);
-    double lp = filterLow + (filterG * bp);
-
-    filterBand = bp + (filterG * hp);
-    filterLow = lp + (filterG * bp);
-
-    if (model == SIDModel::MOS6581) {
-        filterBand = FastTanh(filterBand);
-        filterLow = FastTanh(filterLow);
-    }
-
-    double filterOutput = 0.0;
-    if ((filterMode & 0x10) != 0) {
-        filterOutput += filterLow;
-    }
-    if ((filterMode & 0x20) != 0) {
-        filterOutput += filterBand;
-    }
-    if ((filterMode & 0x40) != 0) {
-        filterOutput += hp;
-    }
-
-    if (model == SIDModel::MOS6581) {
-        filterOutput += filteredInput * 0.05;
-    }
-
-    double mix = FastTanh((directOutput + filterOutput) * 0.25);
-    const uint8_t currentVolume = volumeRegister & 0x0F;
-    const double volScaled = static_cast<double>(currentVolume) * INV_15;
-    mix *= volScaled;
-
-    if (model == SIDModel::MOS6581) {
-        mix += (volScaled - 0.5) * 0.45;
-    }
-
-    double pole = (model == SIDModel::MOS6581) ? 0.99995 : 0.995;
-    double filteredMix = mix - dcBlockerPrevIn + (pole * dcBlockerState);
-    dcBlockerState = filteredMix;
-    dcBlockerPrevIn = mix;
-    mix = filteredMix;
-
-    profilingStats.filterNanoseconds += static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now() - filterStart)
-            .count());
-
-    const auto resamplerStart = std::chrono::steady_clock::now();
-    resampler.PushSample(mix);
-    profilingStats.resamplerNanoseconds += static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now() - resamplerStart)
-            .count());
-
-    const auto outputStart = std::chrono::steady_clock::now();
-    FlushAvailableOutput();
-    profilingStats.outputNanoseconds += static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now() - outputStart)
-            .count());
-}
-
-void SID::ClockSlow() {
-    if (profilingEnabled) [[unlikely]] {
-        ClockProfiled();
-        return;
-    }
-
-    clockCounter++;
-
-    Oscillator* const v = voices.data();
-    v[0].Next(model);
-    v[1].Next(model);
-    v[2].Next(model);
-
-    v[0].env.Update((v[0].control & 0x01) != 0);
-    v[1].env.Update((v[1].control & 0x01) != 0);
-    v[2].env.Update((v[2].control & 0x01) != 0);
-
-    voice3OscOutput = (v[2].oscOutput >> 4) & 0xFF;
-    voice3EnvOutput = v[2].env.level;
+    const uint16_t envOr = v[0].env.level | v[1].env.level | v[2].env.level;
 
     if (!soundEnabled) {
+        if (envOr == 0) {
+            filterLow = 0.0;
+            filterBand = 0.0;
+            dcBlockerState = 0.0;
+            dcBlockerPrevIn = 0.0;
+            UpdateDormantState();
+        }
         return;
+    }
+
+    std::chrono::steady_clock::time_point filterStart;
+    if constexpr (Profiled) {
+        filterStart = std::chrono::steady_clock::now();
     }
 
     if (filterCoefficientsDirty) [[unlikely]] {
@@ -685,13 +595,32 @@ void SID::ClockSlow() {
     }
 
     const uint8_t currentVolume = volumeRegister & 0x0F;
-    const uint16_t envOr = v[0].env.level | v[1].env.level | v[2].env.level;
     if (envOr == 0 && (model != SIDModel::MOS6581 || currentVolume == 0) &&
         filterLow == 0.0 && filterBand == 0.0 && dcBlockerState == 0.0 && dcBlockerPrevIn == 0.0) [[likely]] {
-        UpdateDormantState();
-        resampler.PushSample(0.0);
-        if (resampler.HasOutput()) [[unlikely]] {
-            FlushAvailableOutput();
+        if constexpr (Profiled) {
+            profilingStats.filterNanoseconds += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - filterStart)
+                    .count());
+            const auto resamplerStart = std::chrono::steady_clock::now();
+            resampler.PushSample(0.0);
+            profilingStats.resamplerNanoseconds += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - resamplerStart)
+                    .count());
+            const auto outputStart = std::chrono::steady_clock::now();
+            if (resampler.HasOutput()) [[unlikely]] {
+                FlushAvailableOutput();
+            }
+            profilingStats.outputNanoseconds += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - outputStart)
+                    .count());
+        } else {
+            resampler.PushSample(0.0);
+            if (resampler.HasOutput()) [[unlikely]] {
+                FlushAvailableOutput();
+            }
         }
         return;
     }
@@ -757,29 +686,72 @@ void SID::ClockSlow() {
         filteredMix = 0.0;
         filterLow = 0.0;
         filterBand = 0.0;
+        dcBlockerState = 0.0;
+        dcBlockerPrevIn = 0.0;
         UpdateDormantState();
+    } else {
+        dcBlockerState = filteredMix;
+        dcBlockerPrevIn = mix;
     }
-    dcBlockerState = filteredMix;
-    dcBlockerPrevIn = mix;
 
-    resampler.PushSample(filteredMix);
-    if (resampler.HasOutput()) [[unlikely]] {
-        FlushAvailableOutput();
+    if constexpr (Profiled) {
+        profilingStats.filterNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - filterStart)
+                .count());
+
+        const auto resamplerStart = std::chrono::steady_clock::now();
+        resampler.PushSample(filteredMix);
+        profilingStats.resamplerNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - resamplerStart)
+                .count());
+
+        const auto outputStart = std::chrono::steady_clock::now();
+        if (resampler.HasOutput()) [[unlikely]] {
+            FlushAvailableOutput();
+        }
+        profilingStats.outputNanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - outputStart)
+                .count());
+    } else {
+        resampler.PushSample(filteredMix);
+        if (resampler.HasOutput()) [[unlikely]] {
+            FlushAvailableOutput();
+        }
     }
 }
 
-// Keep stubs for compatibility
-void SID::AudioCallback(void*, SDL_AudioStream*, int, int) {}
-void SID::GenerateAudio(int16_t*, int) {}
+void SID::ClockProfiled() {
+    ClockInternal<true>();
+}
+
+void SID::ClockSlow() {
+    if (profilingEnabled) [[unlikely]] {
+        ClockProfiled();
+        return;
+    }
+    ClockInternal<false>();
+}
 
 bool ADSREnvelope::SaveState(std::ostream& out) const {
     Hardware::ISerializable::Serialize(out, state);
     Hardware::ISerializable::Serialize(out, level);
     Hardware::ISerializable::Serialize(out, rateCounter);
+    Hardware::ISerializable::Serialize(out, ratePeriod);
+    Hardware::ISerializable::Serialize(out, exponentialCounter);
+    Hardware::ISerializable::Serialize(out, exponentialCounterPeriod);
+    Hardware::ISerializable::Serialize(out, holdZero);
+    Hardware::ISerializable::Serialize(out, gate);
     Hardware::ISerializable::Serialize(out, attackRate);
     Hardware::ISerializable::Serialize(out, decayRate);
     Hardware::ISerializable::Serialize(out, sustainLevel);
     Hardware::ISerializable::Serialize(out, releaseRate);
+    Hardware::ISerializable::Serialize(out, targetAttackRate);
+    Hardware::ISerializable::Serialize(out, targetDecayRate);
+    Hardware::ISerializable::Serialize(out, targetSustainLevel);
+    Hardware::ISerializable::Serialize(out, targetReleaseRate);
     return out.good();
 }
 
@@ -787,10 +759,19 @@ bool ADSREnvelope::LoadState(std::istream& inStream) {
     Hardware::ISerializable::Deserialize(inStream, state);
     Hardware::ISerializable::Deserialize(inStream, level);
     Hardware::ISerializable::Deserialize(inStream, rateCounter);
+    Hardware::ISerializable::Deserialize(inStream, ratePeriod);
+    Hardware::ISerializable::Deserialize(inStream, exponentialCounter);
+    Hardware::ISerializable::Deserialize(inStream, exponentialCounterPeriod);
+    Hardware::ISerializable::Deserialize(inStream, holdZero);
+    Hardware::ISerializable::Deserialize(inStream, gate);
     Hardware::ISerializable::Deserialize(inStream, attackRate);
     Hardware::ISerializable::Deserialize(inStream, decayRate);
     Hardware::ISerializable::Deserialize(inStream, sustainLevel);
     Hardware::ISerializable::Deserialize(inStream, releaseRate);
+    Hardware::ISerializable::Deserialize(inStream, targetAttackRate);
+    Hardware::ISerializable::Deserialize(inStream, targetDecayRate);
+    Hardware::ISerializable::Deserialize(inStream, targetSustainLevel);
+    Hardware::ISerializable::Deserialize(inStream, targetReleaseRate);
     return inStream.good();
 }
 
@@ -856,6 +837,9 @@ bool SID::LoadState(std::istream& inStream) {
         ISerializable::Deserialize(inStream, mod);
         model = static_cast<SIDModel>(mod);
     }
+    filterFiltMask = registers[0x17] & 0x0F;
+    filterMode = registers[0x18] & 0xF0;
+    UpdateFilterCoefficients();
     isDormant = false;
     UpdateDormantState();
     UpdateAudioState();

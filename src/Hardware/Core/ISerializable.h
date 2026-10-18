@@ -53,6 +53,10 @@ class ISerializable {
     static void Deserialize(std::istream& inputStream, std::string& str) {
         uint32_t len = 0;
         Deserialize(inputStream, len);
+        if (!inputStream.good() || len > 16U * 1024U * 1024U) {
+            inputStream.setstate(std::ios::failbit);
+            return;
+        }
         str.assign(len, '\0');
         inputStream.read(str.data(), static_cast<std::streamsize>(len));
     }

@@ -217,7 +217,7 @@ void main() {
         color.rgb = clamp(color.rgb + glare, 0.0, 1.0);
     }
 
-    if (u_gamma != 1.0) {
+    if (u_gamma != 2.2) {
         color.rgb = pow(color.rgb, vec3(u_gamma / 2.2));
     }
 

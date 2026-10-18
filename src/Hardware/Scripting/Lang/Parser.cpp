@@ -94,15 +94,13 @@ std::unique_ptr<Stmt> Parser::whileStatement() {
 }
 
 std::unique_ptr<Stmt> Parser::breakStatement() {
-    Token keyword = previous();
     consume(TokenType::Semicolon, "Expect ';' after 'break'.");
-    return std::make_unique<BreakStmt>(keyword);
+    return std::make_unique<BreakStmt>();
 }
 
 std::unique_ptr<Stmt> Parser::continueStatement() {
-    Token keyword = previous();
     consume(TokenType::Semicolon, "Expect ';' after 'continue'.");
-    return std::make_unique<ContinueStmt>(keyword);
+    return std::make_unique<ContinueStmt>();
 }
 
 std::vector<std::unique_ptr<Stmt>> Parser::block() {
@@ -143,7 +141,7 @@ std::unique_ptr<Expr> Parser::assignment() {
         // Could handle GetExpr here if we support objects/properties
         // if (GetExpr* getExpr = dynamic_cast<GetExpr*>(expr.get())) { ... }
 
-        error(equals, "Invalid assignment target.");
+        throw error(equals, "Invalid assignment target.");
     }
 
     return expr;
@@ -198,7 +196,7 @@ std::unique_ptr<Expr> Parser::factor() {
 }
 
 std::unique_ptr<Expr> Parser::unary() {
-    if (match({TokenType::BangEqual /* Bang might be missing, adding it if needed */, TokenType::Minus})) {
+    if (match({TokenType::Bang, TokenType::Minus})) {
         Token op = previous();
         std::unique_ptr<Expr> right = unary();
         return std::make_unique<UnaryExpr>(op, std::move(right));

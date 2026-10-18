@@ -202,8 +202,27 @@ void ESP8266::DisconnectAll() {
     }
 }
 
+void ESP8266::EnqueueIPD(int linkId, const char* data, size_t bytesRead) {
+    std::string header;
+    if (muxEnabled.load(std::memory_order_relaxed)) {
+        header = "+IPD," + std::to_string(linkId) + "," + std::to_string(bytesRead) + ":";
+    } else {
+        header = "+IPD," + std::to_string(bytesRead) + ":";
+    }
+
+    std::lock_guard<std::mutex> lock(rxMutex);
+    for (char chr : header) {
+        rxQueue.push(static_cast<Byte>(chr));
+    }
+    for (size_t i = 0; i < bytesRead; ++i) {
+        rxQueue.push(static_cast<Byte>(data[i]));
+    }
+    statusReg.fetch_or(0x80);
+}
+
 void ESP8266::SendDataOnLink(int linkId, const std::string& data) {
     auto& conn = connections.at(linkId);
+    std::lock_guard<std::recursive_mutex> lock(conn.rxThreadMutex);
     if (!conn.active) {
         return;
     }
@@ -249,25 +268,7 @@ void ESP8266::RxLoopTCP(int linkId) {
         size_t numBytes = conn.tcpSocket->read_some(asio::buffer(buffer), rxErrCode);
  
         if (numBytes > 0) {
-            std::string header = "+IPD," + std::to_string(numBytes) + ":";
-            if (muxEnabled) {
-                header = "+IPD," + std::to_string(linkId) + "," + std::to_string(numBytes) + ":";
-            }
-            
-            printf("[ASIO] Rx %zu bytes on link %d. First bytes: ", numBytes, linkId);
-            for(size_t i=0; i<std::min((size_t)16, numBytes); i++) {
-                printf("%02X ", (uint8_t)buffer[i]);
-            }
-            printf("\n");
-
-            std::lock_guard<std::mutex> lock(rxMutex);
-            for (char chr : header) {
-                rxQueue.push(static_cast<Byte>(chr));
-            }
-            for (size_t i = 0; i < numBytes; ++i) {
-                rxQueue.push(buffer.at(i));
-            }
-            statusReg.fetch_or(0x80);
+            EnqueueIPD(linkId, reinterpret_cast<const char*>(buffer.data()), numBytes);
         }
 
         if (rxErrCode) {
@@ -306,19 +307,7 @@ void ESP8266::RxLoopSSL(int linkId) {
         size_t numBytes = conn.sslStream->read_some(asio::buffer(buffer), rxErrCode);
 
         if (numBytes > 0) {
-            std::string header = "+IPD," + std::to_string(numBytes) + ":";
-            if (muxEnabled) {
-                header = "+IPD," + std::to_string(linkId) + "," + std::to_string(numBytes) + ":";
-            }
-
-            std::lock_guard<std::mutex> lock(rxMutex);
-            for (char chr : header) {
-                rxQueue.push(static_cast<Byte>(chr));
-            }
-            for (size_t i = 0; i < numBytes; ++i) {
-                rxQueue.push(buffer.at(i));
-            }
-            statusReg.fetch_or(0x80);
+            EnqueueIPD(linkId, reinterpret_cast<const char*>(buffer.data()), numBytes);
         } else {
             if (rxErrCode == asio::error::would_block || rxErrCode == asio::error::try_again) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -369,29 +358,7 @@ void ESP8266::RxLoopUDP(int linkId) {
             if (conn.udpMode == 1 || conn.udpMode == 2) {
                 conn.udpRemoteEndpoint = senderEndpoint;
             }
-
-            std::string header;
-            if (muxEnabled) {
-                header = "\r\n+IPD," + std::to_string(linkId) + "," + std::to_string(numBytes) + ":";
-            } else {
-                header = "\r\n+IPD," + std::to_string(numBytes) + ":";
-            }
-
-            std::lock_guard<std::mutex> lock(rxMutex);
-            for (char chr : header) {
-                rxQueue.push(static_cast<Byte>(chr));
-            }
-            for (size_t i = 0; i < numBytes; ++i) {
-                rxQueue.push(buffer.at(i));
-            }
-            statusReg.fetch_or(0x80);
-        } else {
-            if (rxErrCode == asio::error::would_block || rxErrCode == asio::error::try_again) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                continue;
-            }
-            conn.active = false;
-            break;
+            EnqueueIPD(linkId, reinterpret_cast<const char*>(buffer.data()), numBytes);
         }
     }
 }
@@ -404,7 +371,6 @@ void ESP8266::StartServer(int port) {
 
     serverErrCode = serverAcceptor->open(asio::ip::tcp::v4(), serverErrCode);
     if (serverErrCode) {
-        printf("StartServer: open failed: %s\n", serverErrCode.message().c_str());
         serverAcceptor.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;
@@ -414,7 +380,6 @@ void ESP8266::StartServer(int port) {
 
     serverErrCode = serverAcceptor->bind(asio::ip::tcp::endpoint(asio::ip::tcp::v4(), static_cast<unsigned short>(port)), serverErrCode);
     if (serverErrCode) {
-        printf("StartServer: bind failed on port %d: %s\n", port, serverErrCode.message().c_str());
         serverAcceptor.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;
@@ -422,7 +387,6 @@ void ESP8266::StartServer(int port) {
 
     serverErrCode = serverAcceptor->listen(asio::socket_base::max_listen_connections, serverErrCode);
     if (serverErrCode) {
-        printf("StartServer: listen failed: %s\n", serverErrCode.message().c_str());
         serverAcceptor.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;
@@ -430,7 +394,6 @@ void ESP8266::StartServer(int port) {
 
     serverAcceptor->non_blocking(true, serverErrCode);
     if (serverErrCode) {
-        printf("StartServer: non_blocking failed: %s\n", serverErrCode.message().c_str());
         serverAcceptor.reset();
         EnqueueResponse("\r\nERROR\r\n");
         return;

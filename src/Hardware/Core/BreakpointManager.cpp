@@ -67,6 +67,7 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
                 entry.enabled = false;
                 UpdateFastPath();
             }
+            watchpointTriggered = false;
             return entry.id;
         }
     }
@@ -83,11 +84,13 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
                     entry.enabled = false;
                     UpdateFastPath();
                 }
+                watchpointTriggered = false;
                 return entry.id;
             }
         }
     }
 
+    watchpointTriggered = false;
     return 0;
 }
 
@@ -106,14 +109,6 @@ bool BreakpointManager::CheckBreakpoint(const Breakpoint& breakpoint, const CPU&
         }
     }
     return result;
-}
-
-bool BreakpointManager::HasActiveBreakpoints() const {
-    return hasAnyBreakpoints.load(std::memory_order_relaxed);
-}
-
-bool BreakpointManager::HasWatchpoints() const {
-    return hasWatchpoints.load(std::memory_order_relaxed);
 }
 
 std::vector<Breakpoint> BreakpointManager::GetBreakpointsSnapshot() const {
@@ -137,14 +132,9 @@ void BreakpointManager::NotifyWrite(uint16_t address, uint8_t /*value*/) {
     }
 }
 
-bool BreakpointManager::ConsumeWatchpointHit(uint16_t& hitAddress) {
+void BreakpointManager::ClearWatchpointHit() {
     std::lock_guard<std::recursive_mutex> lock(bpMutex);
-    if (watchpointTriggered) {
-        hitAddress = watchpointAddress;
-        watchpointTriggered = false;
-        return true;
-    }
-    return false;
+    watchpointTriggered = false;
 }
 
 bool BreakpointManager::EvaluateCondition(const BreakCondition& cond, const CPU& cpu, const Bus& bus) const {

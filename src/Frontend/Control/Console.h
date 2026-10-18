@@ -41,7 +41,6 @@ struct Cell {
 
 void Clear();
 void OutputCallback(char character);
-void Print(const std::string& message);
 void SetInputResponseCallback(std::function<void(char)> callback);
 
 bool SaveState(std::ostream& out);

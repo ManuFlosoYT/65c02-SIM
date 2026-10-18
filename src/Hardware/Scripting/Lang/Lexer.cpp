@@ -65,7 +65,7 @@ void Lexer::scanToken() {
         case ';': tokens.push_back(makeToken(TokenType::Semicolon)); break;
         case '*': tokens.push_back(makeToken(TokenType::Star)); break;
         case '!':
-            tokens.push_back(makeToken(match('=') ? TokenType::BangEqual : TokenType::Error));
+            tokens.push_back(makeToken(match('=') ? TokenType::BangEqual : TokenType::Bang));
             break;
         case '=':
             tokens.push_back(makeToken(match('=') ? TokenType::EqualEqual : TokenType::Equal));
@@ -143,13 +143,6 @@ char Lexer::peek() const {
         return '\0';
     }
     return source[current];
-}
-
-char Lexer::peekNext() const {
-    if (current + 1 >= source.length()) {
-        return '\0';
-    }
-    return source[current + 1];
 }
 
 bool Lexer::isAtEnd() const {

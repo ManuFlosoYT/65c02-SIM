@@ -44,7 +44,6 @@ public:
                      bool recordProcessed);
     
     void PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emulationPaused);
-    static std::vector<uint8_t> ReadTextureSynchronous(uint32_t tex, int width, int height);
     void PushAudio(const float* samples, int count);
     
     void Finalize();
@@ -63,7 +62,6 @@ private:
     void WorkerLoop();
     void EncodeVideoFrame(AVFrame* frame, AVCodecContext* codecCtx, AVStream* stream);
     void EncodeAudioFrame(AVFrame* frame);
-    void FlushEncoder(AVCodecContext* codecCtx, AVStream* stream);
     void ProcessVideoFrame(const VideoFrameData& vData, AVFrame* frameRaw, AVFrame* frameProcessed);
     void ProcessAudioData(const std::vector<float>& aData, AVFrame* audioFrame);
     bool SetupVideoStream(AVStream** outStream, AVCodecContext** outCodecCtx, int texWidth, int texHeight, const std::string& trackName, bool isDefault);
@@ -137,8 +135,7 @@ private:
 
     bool shouldRecordRaw = true;
     bool shouldRecordProcessed = true;
-    Control::RecordingType recordingType = Control::RecordingType::Video;
-    Control::VideoFormat videoFormat = Control::VideoFormat::MKV;
+    bool headerWritten = false;
     Control::AudioFormat audioFormat = Control::AudioFormat::FLAC;
 
     std::array<uint32_t, 2> pboRaw = {0, 0};

@@ -2,7 +2,6 @@
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
-#include "InstructionSet.h"
 
 namespace Hardware::Instructions {
 
@@ -50,15 +49,7 @@ void STA::ExecuteINDX(CPU& cpu, Bus& bus) {
 template <bool Debug>
 void STA::ExecuteINDY(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Word dir = 0;
-
-    if (ZP_Dir != 0xFF) {
-        dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
-    } else {
-        Byte low = cpu.ReadByte<Debug>(0xFF, bus);
-        Byte high = cpu.ReadByte<Debug>(0x00, bus);
-        dir = (high << 8) | low;
-    }
+    Word dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
 
     dir += cpu.Y;
 
@@ -68,15 +59,7 @@ void STA::ExecuteINDY(CPU& cpu, Bus& bus) {
 template <bool Debug>
 void STA::ExecuteINDZP(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Word dir = 0;
-
-    if (ZP_Dir != 0xFF) {
-        dir = cpu.ReadWord<Debug>(ZP_Dir, bus);
-    } else {
-        Byte low = cpu.ReadByte<Debug>(0xFF, bus);
-        Byte high = cpu.ReadByte<Debug>(0x00, bus);
-        dir = (high << 8) | low;
-    }
+    Word dir = cpu.ReadWordZP<Debug>(ZP_Dir, bus);
 
     bus.Write<Debug>(dir, cpu.A);
 }

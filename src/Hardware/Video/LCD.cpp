@@ -3,14 +3,14 @@
 
 namespace Hardware {
 
-LCD::LCD() : PORTB_DATA(0), DDRB_DATA(0), screen{} { Reset(); }
+LCD::LCD() : PORTB_DATA(0), screen{} { Reset(); }
 
 void LCD::Reset() {
     four_bit_mode = false;
     waiting_low_nibble = false;
+    current_high_nibble = 0;
     last_portb = 0;
     PORTB_DATA = 0;
-    DDRB_DATA = 0;
 
     for (auto& row : screen) {
         row.fill(' ');
@@ -18,14 +18,14 @@ void LCD::Reset() {
     cursorX = 0;
     cursorY = 0;
     is_init = false;
+    display_on = true;
+    cursor_on = false;
+    cursor_increment = true;
 }
 
 Byte LCD::Read(Word address) {
     if (address == PORTB) {
         return PORTB_DATA;
-    }
-    if (address == DDRB) {
-        return DDRB_DATA;
     }
     return 0;
 }
@@ -33,8 +33,6 @@ Byte LCD::Read(Word address) {
 void LCD::Write(Word address, Byte data) {
     if (address == PORTB) {
         Update(data);
-    } else if (address == DDRB) {
-        DDRB_DATA = data;
     }
 }
 
@@ -109,7 +107,7 @@ void LCD::WriteCharToScreen(char character) {
         return;
     }
 
-    if (cursorX < 16 && cursorY < 2) {
+    if (cursorX >= 0 && cursorX < 16 && cursorY >= 0 && cursorY < 2) {
         screen.at(cursorY).at(cursorX) = character;
     }
 
@@ -161,14 +159,6 @@ void LCD::HandleCommand(Byte cmd) {
         case 0x28:
             four_bit_mode = true;
             break;
-        case 0x80:
-            cursorX = 0;
-            cursorY = 0;
-            break;
-        case 0xC0:
-            cursorX = 0;
-            cursorY = 1;
-            break;
         default:
             if ((cmd & 0x80) == 0x80) {
                 Byte addr = cmd & 0x7F;
@@ -187,7 +177,6 @@ void LCD::HandleCommand(Byte cmd) {
 
 bool LCD::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, PORTB_DATA);
-    ISerializable::Serialize(out, DDRB_DATA);
     ISerializable::Serialize(out, four_bit_mode);
     ISerializable::Serialize(out, waiting_low_nibble);
     ISerializable::Serialize(out, current_high_nibble);
@@ -204,7 +193,6 @@ bool LCD::SaveState(std::ostream& out) const {
 
 bool LCD::LoadState(std::istream& inputStream) {
     ISerializable::Deserialize(inputStream, PORTB_DATA);
-    ISerializable::Deserialize(inputStream, DDRB_DATA);
     ISerializable::Deserialize(inputStream, four_bit_mode);
     ISerializable::Deserialize(inputStream, waiting_low_nibble);
     ISerializable::Deserialize(inputStream, current_high_nibble);

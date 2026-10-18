@@ -85,10 +85,6 @@ public:
     const DbgLine* GetLineForAddress(uint16_t address) const;
 
     const DbgFile* GetFile(unsigned int fileId) const;
-    const DbgMod* GetMod(unsigned int modId) const;
-    const DbgType* GetType(unsigned int typeId) const;
-    const DbgScope* GetScope(unsigned int scopeId) const;
-    const DbgSeg* GetSeg(unsigned int segId) const;
 
     bool IsLoaded() const { return loaded; }
     std::size_t GetSymbolCount() const { return syms.size(); }
@@ -98,12 +94,9 @@ private:
     bool loaded = false;
 
     std::unordered_map<unsigned int, DbgFile> files;
-    std::unordered_map<unsigned int, DbgMod> mods;
-    std::unordered_map<unsigned int, DbgType> types;
     std::unordered_map<unsigned int, DbgSym> syms;
     std::unordered_map<unsigned int, DbgSpan> spans;
     std::unordered_map<unsigned int, DbgLine> lines;
-    std::unordered_map<unsigned int, DbgScope> scopes;
     std::unordered_map<unsigned int, DbgSeg> segs;
 
     // Fast lookups

@@ -48,7 +48,7 @@ class Emulator {
     };
 
     Emulator();
-    ~Emulator() = default;
+    ~Emulator() { Stop(); }
 
     Emulator(const Emulator&) = delete;
     Emulator& operator=(const Emulator&) = delete;
@@ -75,9 +75,6 @@ class Emulator {
     void InjectKey(char key);
 
     void SetOutputCallback(std::function<void(char)> callback);
-    void SetLCDOutputCallback(std::function<void(char)> callback);
-
-    const std::array<std::array<char, 16>, 2>& GetLCDScreen() const;
     const LCD& GetLCD() const;
     const CPU& GetCPU() const;
     CPU& GetCPU();
@@ -101,15 +98,11 @@ class Emulator {
     Hardware::ROM& GetROM();
     Hardware::SDCard& GetSDCard();
     const Hardware::SDCard& GetSDCard() const;
-    Hardware::ESP8266& GetESP8266();
     Hardware::ScriptEngine& GetScriptEngine();
     Hardware::BreakpointManager& GetBreakpointManager();
-    // std::recursive_mutex& GetMutex() { return emulationMutex; }
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
-
-    void PrintState();
 
     // Threading
     void Start();
@@ -125,7 +118,6 @@ class Emulator {
     [[nodiscard]] uint64_t GetTotalInstructions() const { return totalInstructions; }
     void SetTargetIPS(int ips);
     int GetTargetIPS() const;
-    int GetActualIPS() const;
     [[nodiscard]] RuntimeStats GetRuntimeStats() const;
 
     void SetProfilingEnabled(bool enabled);
@@ -145,10 +137,7 @@ class Emulator {
     void ClearCartridge() { cartridge = Cartridge(); }
 
     void SetupHardware();
-    void SetHeadless(bool isHeadless) { headless = isHeadless; }
-    [[nodiscard]] bool IsHeadless() const { return headless; }
     void SetRewindSnapshotsEnabled(bool enabled);
-    [[nodiscard]] bool IsRewindSnapshotsEnabled() const { return rewindSnapshotsEnabled; }
 
    private:
     void ThreadLoop();
@@ -177,6 +166,8 @@ class Emulator {
     void HandleSerialInput();
 
 
+    bool SaveComponentsState(std::ostream& stateStream);
+    void SaveInternalState(std::ostream& stateStream);
     bool LoadComponentsState(std::istream& stateStream);
     bool LoadInternalState(std::istream& stateStream);
 
@@ -229,7 +220,6 @@ class Emulator {
     bool sidEnabledOverride = false;
     bool espEnabled = false;
     bool sdEnabled = false;
-    bool headless = false;
     bool rewindSnapshotsEnabled = true;
     int rewindSliceCounter = 0;
 
@@ -238,7 +228,6 @@ class Emulator {
     std::atomic<bool> paused{true};
     std::atomic<bool> halted{false};
     std::atomic<int> targetIPS{1000000};
-    std::atomic<int> actualIPS{0};
     std::atomic<uint64_t> actualCyclesPerSecond{0};
     std::atomic<uint64_t> actualCpuCyclesPerSecond{0};
     std::atomic<uint64_t> actualGpuCyclesPerSecond{0};
@@ -247,19 +236,15 @@ class Emulator {
     std::atomic<uint64_t> emulationNanoseconds{0};
     std::atomic<uint64_t> sleepNanoseconds{0};
     std::atomic<uint64_t> lateNanoseconds{0};
-    uint64_t lastStepCycles = 0;
     uint64_t lastStepCpuCycles = 0;
     uint64_t lastStepGpuCycles = 0;
     std::thread emulatorThread;
     std::mutex threadMutex;
     std::condition_variable pauseCV;
     std::atomic<bool> isActuallyPaused{true};
-    // No emulationMutex
     std::atomic<uint64_t> totalCycles{0};
     std::atomic<uint64_t> totalInstructions{0};
     uint64_t totalCyclesAtLastResume{0};
-
-    std::chrono::steady_clock::time_point lastSaveTime;
 
     std::string currentBinPath;
     std::filesystem::file_time_type lastBinModificationTime;
@@ -277,11 +262,6 @@ class Emulator {
 
 }  // namespace Core
 
-inline void Core::Emulator::SetLCDOutputCallback(std::function<void(char)> callback) {
-    lcd.SetOutputCallback(std::move(callback));
-}
-
-inline const std::array<std::array<char, 16>, 2>& Core::Emulator::GetLCDScreen() const { return lcd.GetScreen(); }
 inline const Hardware::LCD& Core::Emulator::GetLCD() const { return lcd; }
 inline const Hardware::CPU& Core::Emulator::GetCPU() const { return cpu; }
 inline Hardware::CPU& Core::Emulator::GetCPU() { return cpu; }
@@ -289,18 +269,21 @@ inline const Hardware::Bus& Core::Emulator::GetMem() const { return bus; }
 inline Hardware::Bus& Core::Emulator::GetMem() { return bus; }
 inline Hardware::GPU& Core::Emulator::GetGPU() { return gpu; }
 inline void Core::Emulator::SetGPUEnabled(bool enabled) { 
+    if (gpuEnabled == enabled) { return; }
     gpuEnabled = enabled; 
     SetupHardware();
 }
 inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
 
 inline void Core::Emulator::SetESPEnabled(bool enabled) {
+    if (espEnabled == enabled) { return; }
     espEnabled = enabled;
     SetupHardware();
 }
 inline bool Core::Emulator::IsESPEnabled() const { return espEnabled; }
 
 inline void Core::Emulator::SetSDEnabled(bool enabled) {
+    if (sdEnabled == enabled) { return; }
     sdEnabled = enabled;
     SetupHardware();
 }
@@ -312,7 +295,6 @@ inline Hardware::VIA& Core::Emulator::GetVIA() { return via; }
 inline Hardware::ROM& Core::Emulator::GetROM() { return rom; }
 inline Hardware::SDCard& Core::Emulator::GetSDCard() { return sdcard; }
 inline const Hardware::SDCard& Core::Emulator::GetSDCard() const { return sdcard; }
-inline Hardware::ESP8266& Core::Emulator::GetESP8266() { return esp8266; }
 inline Hardware::ScriptEngine& Core::Emulator::GetScriptEngine() { return scriptEngine; }
 inline Hardware::BreakpointManager& Core::Emulator::GetBreakpointManager() { return breakpointManager; }
 
@@ -325,7 +307,6 @@ inline bool Core::Emulator::IsHalted() const { return halted; }
 
 inline void Core::Emulator::SetTargetIPS(int ips) { targetIPS = ips; }
 inline int Core::Emulator::GetTargetIPS() const { return targetIPS; }
-inline int Core::Emulator::GetActualIPS() const { return actualIPS; }
 inline Core::Emulator::RuntimeStats Core::Emulator::GetRuntimeStats() const {
     return {
         .cyclesPerSecond = actualCyclesPerSecond.load(std::memory_order_relaxed),

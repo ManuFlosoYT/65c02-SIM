@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <iostream>
 #include <span>
 
@@ -32,29 +33,24 @@ class GPU : public IBusDevice {
     // Clock the GPU to advance pixel counters
     inline void Clock();
 
-    // Get current pixel position (14-bit values)
-    [[nodiscard]] inline Word GetPixelX() const;
-    [[nodiscard]] inline Word GetPixelY() const;
-
     // Bus control status
-    [[nodiscard]] inline bool IsInDrawingInterval() const;
+    [[nodiscard]] inline Word GetPixelX() const { return static_cast<Word>(pixelX); }
+    [[nodiscard]] inline Word GetPixelY() const { return static_cast<Word>(pixelY); }
     [[nodiscard]] inline bool IsInBlankingInterval() const;
     [[nodiscard]] uint32_t GetDrawingWaitCycles() const {
         return (!isBlanking && ticksToNextEvent > 1) ? (ticksToNextEvent - 1) : 0;
-    }
-    [[nodiscard]] uint32_t GetBlankingWaitCycles() const {
-        return (isBlanking && ticksToNextEvent > 1) ? (ticksToNextEvent - 1) : 0;
     }
     void SkipDrawingCycles(uint32_t cycles) {
         pixelX += cycles;
         ticksToNextEvent -= cycles;
     }
 
-    // Addressing: A0-A6 = X (0-99), A7-A13 = Y (0-74)
-    inline Byte operator[](Word addr) const;
+    [[nodiscard]] bool ConsumeVRAMDirty() const { return vramDirty.exchange(false, std::memory_order_relaxed); }
 
     inline void Write(Word addr, Byte val) override;
+    inline void WriteDirect(Word addr, Byte val) override;
     inline Byte Read(Word addr) override;
+    inline Byte ReadDirect(Word addr) override;
     [[nodiscard]] inline std::string GetName() const override;
 
     [[nodiscard]] const std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT>& GetVRAM() const { return vram; }
@@ -62,6 +58,7 @@ class GPU : public IBusDevice {
 
    private:
     std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT> vram{};
+    mutable std::atomic<bool> vramDirty{true};
 
     // Pixel counters (32-bit native to prevent partial register stalls on x86)
     uint32_t pixelX = 0;  // 0-131 (132 total)
@@ -106,27 +103,23 @@ inline void GPU::Clock() {
     }
 }
 
-inline Word GPU::GetPixelX() const { return pixelX; }
-inline Word GPU::GetPixelY() const { return pixelY; }
-
-inline bool GPU::IsInDrawingInterval() const { return !isBlanking; }
-
 inline bool GPU::IsInBlankingInterval() const { return isBlanking; }
-
-inline Byte GPU::operator[](Word addr) const {
-    Byte pixelXAddr = addr & 0x7F;         // bits 0-6
-    Byte pixelYAddr = (addr >> 7) & 0x7F;  // bits 7-13
-    if (pixelXAddr < VRAM_WIDTH && pixelYAddr < VRAM_HEIGHT) {
-        return vram.at(pixelYAddr).at(pixelXAddr);
-    }
-    return 0;
-}
 
 inline void GPU::Write(Word addr, Byte val) {
     Byte pixelXAddr = addr & 0x7F;
     Byte pixelYAddr = (addr >> 7) & 0x7F;
     if (pixelXAddr < VRAM_WIDTH && pixelYAddr < VRAM_HEIGHT) {
-        vram.at(pixelYAddr).at(pixelXAddr) = val;
+        vram[pixelYAddr][pixelXAddr] = val;
+        vramDirty.store(true, std::memory_order_relaxed);
+    }
+}
+
+inline void GPU::WriteDirect(Word addr, Byte val) {
+    Byte pixelXAddr = addr & 0x7F;
+    Byte pixelYAddr = (addr >> 7) & 0x7F;
+    if (pixelXAddr < VRAM_WIDTH && pixelYAddr < VRAM_HEIGHT) {
+        vram[pixelYAddr][pixelXAddr] = val;
+        vramDirty.store(true, std::memory_order_relaxed);
     }
 }
 
@@ -134,9 +127,13 @@ inline Byte GPU::Read(Word addr) {
     Byte pixelXAddr = addr & 0x7F;
     Byte pixelYAddr = (addr >> 7) & 0x7F;
     if (pixelXAddr < VRAM_WIDTH && pixelYAddr < VRAM_HEIGHT) {
-        return vram.at(pixelYAddr).at(pixelXAddr);
+        return vram[pixelYAddr][pixelXAddr];
     }
     return 0;
+}
+
+inline Byte GPU::ReadDirect(Word addr) {
+    return Read(addr);
 }
 
 inline std::string GPU::GetName() const { return "GPU"; }

@@ -13,9 +13,7 @@ void Bus::Init() {
     pageReadMap.fill(nullptr);
     pageWriteMap.fill(nullptr);
     hasWriteHooks = false;
-    hasReadHooks = false;
     globalWriteHooks.clear();
-    globalReadHooks.clear();
     RebuildDeviceMap();
 }
 
@@ -81,15 +79,6 @@ bool Bus::LoadState(std::istream& inStream) {
 }
 
 void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device, bool enabled, bool ignoreCollision) {
-    if (enabled && !ignoreCollision) {
-        for (int i = static_cast<int>(startAddress); i <= static_cast<int>(endAddress); ++i) {
-            if (deviceMap[i].device != nullptr) {
-                throw std::runtime_error(std::format("Memory collision detected while registering device: {} at address 0x{:04X}",
-                                                     device->GetName(), i));
-            }
-        }
-    }
-
     registeredDevices.push_back({startAddress, endAddress, device, enabled, ignoreCollision, false});
     RebuildDeviceMap();
 }
@@ -100,19 +89,6 @@ void Bus::RegisterVirtualDevice(IBusDevice* device, bool enabled) {
     // No RebuildDeviceMap needed — deviceMap is unaffected.
 }
 
-void Bus::UpdateDeviceRegistration(IBusDevice* device, Word newStart, Word newEnd, bool enabled, bool ignoreCollision) {
-    for (auto& reg : registeredDevices) {
-        if (reg.device == device) {
-            reg.startAddress = newStart;
-            reg.endAddress = newEnd;
-            reg.enabled = enabled;
-            reg.ignoreCollision = ignoreCollision;
-            break;
-        }
-    }
-    RebuildDeviceMap();
-}
-
 void Bus::AddGlobalWriteHook(const BusWriteHook& hook) {
     globalWriteHooks.push_back(hook);
     hasWriteHooks = !globalWriteHooks.empty();
@@ -121,11 +97,6 @@ void Bus::AddGlobalWriteHook(const BusWriteHook& hook) {
 void Bus::ClearGlobalWriteHooks() {
     globalWriteHooks.clear();
     hasWriteHooks = false;
-}
-
-void Bus::AddGlobalReadHook(const BusReadHook& hook) {
-    globalReadHooks.push_back(hook);
-    hasReadHooks = !globalReadHooks.empty();
 }
 
 void Bus::ClearProfiler() { profilerCounts.fill(0); }

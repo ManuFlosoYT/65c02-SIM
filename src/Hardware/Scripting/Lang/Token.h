@@ -1,10 +1,7 @@
 #pragma once
 
 #include <string>
-#include <string_view>
-#include <optional>
 #include <cstdint>
-#include <variant>
 
 namespace System::Hardware::Scripting::Lang {
 
@@ -32,6 +29,7 @@ enum class TokenType {
     Slash,          // /
     Equal,          // =
     EqualEqual,     // ==
+    Bang,           // !
     BangEqual,      // !=
     Less,           // <
     LessEqual,      // <=

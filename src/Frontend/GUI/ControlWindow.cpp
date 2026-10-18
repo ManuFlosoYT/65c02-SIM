@@ -155,17 +155,16 @@ static void DrawActualIPS(AppState& state) {
     const uint64_t displayedRate = state.emulation.cycleAccurate
                                        ? stats.cyclesPerSecond
                                        : stats.instructionsPerSecond;
-    std::ostringstream oss;
+    const char* unitM = state.emulation.cycleAccurate ? "MHz" : "MIPS";
+    const char* unitK = state.emulation.cycleAccurate ? "KHz" : "KIPS";
+    const char* unitH = state.emulation.cycleAccurate ? "Hz" : "IPS";
     if (displayedRate >= 1000000) {
-        oss << "Sim: " << std::fixed << std::setprecision(2)
-            << (static_cast<double>(displayedRate) / 1000000.0) << (state.emulation.cycleAccurate ? " MHz" : " MIPS");
+        ImGui::Text("Sim: %.2f %s", static_cast<double>(displayedRate) / 1000000.0, unitM);
     } else if (displayedRate >= 1000) {
-        oss << "Sim: " << std::fixed << std::setprecision(2)
-            << (static_cast<double>(displayedRate) / 1000.0) << (state.emulation.cycleAccurate ? " KHz" : " KIPS");
+        ImGui::Text("Sim: %.2f %s", static_cast<double>(displayedRate) / 1000.0, unitK);
     } else {
-        oss << "Sim: " << displayedRate << (state.emulation.cycleAccurate ? " Hz" : " IPS");
+        ImGui::Text("Sim: %llu %s", static_cast<unsigned long long>(displayedRate), unitH);
     }
-    ImGui::TextUnformatted(oss.str().c_str());
 
     if (ImGui::IsItemHovered()) {
         if (ImGui::BeginItemTooltip()) {

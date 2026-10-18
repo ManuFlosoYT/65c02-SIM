@@ -19,6 +19,7 @@ class IBusDevice : public ISerializable {
     IBusDevice& operator=(IBusDevice&&) = delete;
 
     virtual Byte Read(Word address) = 0;
+    virtual Byte ReadDirect(Word address) { return Read(address); }
     virtual void Write(Word address, Byte data) = 0;
     virtual void WriteDirect(Word address, Byte data) { Write(address, data); }
 

@@ -26,7 +26,6 @@ class RAM : public IBusDevice {
 
    private:
     std::vector<Byte> data;
-    size_t size;
 };
 
 }  // namespace Hardware

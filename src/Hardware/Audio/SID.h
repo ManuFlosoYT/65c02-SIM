@@ -3,7 +3,6 @@
 #include <SDL3/SDL.h>
 
 #include <array>
-#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -15,7 +14,6 @@
 #include "Hardware/Core/IBusDevice.h"
 #include "Hardware/Audio/SIDResampler.h"
 #include <memory>
-#include <optional>
 
 namespace Hardware {
 
@@ -47,7 +45,6 @@ struct ADSREnvelope {
     uint8_t targetReleaseRate = 0;
 
     void Update(bool gate);
-    double Next();
 
     bool SaveState(std::ostream& out) const;
     bool LoadState(std::istream& inStream);
@@ -166,7 +163,6 @@ class SID : public IBusDevice {
 
     double filterLow = 0.0;
     double filterBand = 0.0;
-    double filterF = 0.0;
     double filterQ = 1.0;
     std::uint8_t filterFiltMask = 0;
     std::uint8_t filterMode = 0;
@@ -193,9 +189,8 @@ class SID : public IBusDevice {
     bool profilingEnabled = false;
     SIDProfilingStats profilingStats;
 
-    static void AudioCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
-                               int total_amount);
-    void GenerateAudio(int16_t* buffer, int length);
+    template <bool Profiled>
+    void ClockInternal();
     void UpdateAudioState();
     void ClockSlow();
     void UpdateDormantState();

@@ -33,7 +33,7 @@ TEST_F(PHP_Test, PHP) {
     cpu.V = 1;
     cpu.D = 1;
     cpu.I = 1;
-    cpu.B = 1;
+    cpu.B = 0;
 
     cpu.Execute(bus);
 

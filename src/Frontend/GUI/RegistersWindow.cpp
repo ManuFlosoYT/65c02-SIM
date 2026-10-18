@@ -1,7 +1,5 @@
 #include "Frontend/GUI/RegistersWindow.h"
 
-#include <iomanip>
-#include <sstream>
 using namespace Control;
 using namespace Core;
 using namespace Hardware;
@@ -15,14 +13,10 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     ImGui::Begin("Registers", nullptr, window_flags);
     const auto& cpu = state.emulator.GetCPU();
     auto printHex16 = [](const char* prefix, uint16_t val) {
-        std::ostringstream oss;
-        oss << prefix << std::hex << std::uppercase << std::setfill('0') << std::setw(4) << val;
-        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::Text("%s%04X", prefix, val);
     };
     auto printHex8 = [](const char* prefix, uint8_t val) {
-        std::ostringstream oss;
-        oss << prefix << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(val);
-        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::Text("%s%02X", prefix, static_cast<int>(val));
     };
 
     printHex16("PC: ", cpu.PC);
@@ -33,15 +27,10 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     ImGui::Separator();
     printHex8("Flags: ", cpu.GetStatus());
 
-    std::ostringstream flagsStr1;
-    flagsStr1 << "N: " << static_cast<int>(cpu.N) << " V: " << static_cast<int>(cpu.V)
-              << " B: " << static_cast<int>(cpu.B) << " D: " << static_cast<int>(cpu.D);
-    ImGui::TextUnformatted(flagsStr1.str().c_str());
-
-    std::ostringstream flagsStr2;
-    flagsStr2 << "I: " << static_cast<int>(cpu.I) << " Z: " << static_cast<int>(cpu.Z)
-              << " C: " << static_cast<int>(cpu.C);
-    ImGui::TextUnformatted(flagsStr2.str().c_str());
+    ImGui::Text("N: %d V: %d B: %d D: %d", static_cast<int>(cpu.N), static_cast<int>(cpu.V),
+                static_cast<int>(cpu.B), static_cast<int>(cpu.D));
+    ImGui::Text("I: %d Z: %d C: %d", static_cast<int>(cpu.I), static_cast<int>(cpu.Z),
+                static_cast<int>(cpu.C));
     ImGui::End();
 }
 

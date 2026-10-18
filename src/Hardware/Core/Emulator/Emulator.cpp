@@ -19,7 +19,6 @@ Emulator::Emulator() : cpu(), scriptEngine(*this) {
 
 bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     if (bin.empty()) {
-        // Lock removed
         SetupHardware();
         currentBinPath = "";
         return true;
@@ -50,8 +49,6 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 }
 
 bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& name, std::string& errorMsg) {
-    // Lock removed
-
     if (data.size() > ROM_SIZE) {
         errorMsg = "Error: ROM data too large (max 32KB, got " + std::to_string(data.size()) + ")";
         std::cerr << errorMsg << "\n";
@@ -72,8 +69,8 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
 
     if (data.empty()) {
         // VRAM only cartridge or empty ROM. Set reset vector to standard ROM start.
-        rom.WriteDirect(0xFFFC, 0x00);
-        rom.WriteDirect(0xFFFD, 0x80);
+        rom.WriteDirect(0x7FFC, 0x00);
+        rom.WriteDirect(0x7FFD, 0x80);
     }
 
     currentBinPath = name;
@@ -102,7 +99,6 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
 }
 
 int Emulator::Step() {
-    // Lock removed
     EnsureWatchpointWriteHook();
 
     int res = 0;
@@ -160,7 +156,6 @@ void Emulator::RunCPUTick(int& res, bool& cpuStepped) {
 void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction, int ips) {
     lastStepCpuCycles = cpuStepped ? 1 : 0;
     lastStepGpuCycles = (gpuEnabled && !cpuStepped) ? 1 : 0;
-    lastStepCycles = lastStepCpuCycles + lastStepGpuCycles;
     if (baudDelay > 0) [[unlikely]] {
         baudDelay--;
     }
@@ -179,7 +174,6 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction, int ip
         if (extraCycles > 0) {
             const auto extra = static_cast<uint32_t>(extraCycles);
             lastStepCpuCycles += extra;
-            lastStepCycles += extra;
             via.Clock(extra);
             if (!acia.IsIdle()) [[unlikely]] {
                 for (int i = 0; i < extraCycles; ++i) {
@@ -301,10 +295,13 @@ int Emulator::Step() {
     if (sidEnabled) {
         sid.SetClockRate(static_cast<double>(ips));
     }
-    if (cpu.cycleAccurate) {
-        return StepInternal<Debug, true>(ips);
+    bool isNewInstruction = !cpu.cycleAccurate || (cpu.remainingCycles == 0);
+    int res = cpu.cycleAccurate ? StepInternal<Debug, true>(ips) : StepInternal<Debug, false>(ips);
+    totalCycles.fetch_add(lastStepCpuCycles + lastStepGpuCycles, std::memory_order_relaxed);
+    if (lastStepCpuCycles > 0 && isNewInstruction) {
+        totalInstructions.fetch_add(1, std::memory_order_relaxed);
     }
-    return StepInternal<Debug, false>(ips);
+    return res;
 }
 template int Emulator::Step<true>();
 template int Emulator::Step<false>();
@@ -339,7 +336,6 @@ void Emulator::TriggerNMI() {
 }
 
 void Emulator::Reset() {
-    // Lock removed
     SetupHardware();
 }
 
@@ -456,6 +452,9 @@ void Emulator::MountSDCardIfPresent() {
 }
 
 void Emulator::SetupHardware() {
+    if (running && std::this_thread::get_id() != emulatorThread.get_id() && !isActuallyPaused.load()) {
+        WaitUntilSafeToMutate();
+    }
     halted = false;
     bus.ClearDevices();
     bus.Init();
@@ -465,9 +464,9 @@ void Emulator::SetupHardware() {
     pendingNMI.store(false, std::memory_order_relaxed);
     pendingInterruptAny.store(false, std::memory_order_relaxed);
     totalCycles = 0;
+    totalInstructions = 0;
     rewindBuffer.clear();
     rewindSliceCounter = 0;
-    lastSaveTime = std::chrono::steady_clock::now();
 
     try {
         if (!RegisterCartridgeLayout()) {

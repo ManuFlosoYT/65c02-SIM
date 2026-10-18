@@ -29,9 +29,6 @@ class ScriptEngine {
     void ClearOutput();
     void AppendOutput(const std::string& text);
     void SetMirrorToStdout(bool enabled) { mirrorToStdout = enabled; }
-    [[nodiscard]] bool IsMirrorToStdoutEnabled() const { return mirrorToStdout; }
-
-    Core::Emulator& GetEmulator() { return emulatorRef; }
 
     bool HasPendingScript() const;
     void ExecutePendingScript();

@@ -22,7 +22,6 @@ static void HandleROMFilePicker(AppState& state) {
                 state.rom.bin = filePathName;
                 state.rom.loaded = true;
                 state.rom.symbols.Clear();
-                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                 state.emulator.ClearProfiler();
             } else {
                 ImGui::OpenPopup("ErrorLoadingROM");

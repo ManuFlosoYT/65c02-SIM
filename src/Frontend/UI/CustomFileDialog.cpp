@@ -2,11 +2,6 @@
 
 namespace Frontend {
 
-CustomFileDialog* CustomFileDialog::Instance() {
-    static CustomFileDialog instance;
-    return &instance;
-}
-
 void CustomFileDialog::OpenDialog(const std::string& vKey, const std::string& vTitle, const char* vFilters,
                                   const std::string& vPath, const std::string& vFileName,
                                   int vCountSelectionMax, void* vUserDatas,

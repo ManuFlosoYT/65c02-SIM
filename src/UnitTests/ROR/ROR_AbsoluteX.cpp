@@ -24,6 +24,7 @@ TEST_F(ROR_AbsoluteX_Test, ROR_AbsoluteX) {
     // Carry Out = Old Bit 0 (1).
     cpu.C = 0;
     cpu.X = 0x04;
+    cpu.A = 0x80;
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);

@@ -102,7 +102,7 @@ void DrawMemoryLayoutTooltip(const std::vector<DeviceRegistration>& devices, flo
     }
 }
 
-void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& devices) {
+void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& devices, bool& layoutDirty) {
     ImGui::TextUnformatted("Hardware Components");
     ImGui::Separator();
 
@@ -146,6 +146,7 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
                 int size = (reg.endAddress - reg.startAddress) + 1;
                 reg.startAddress = static_cast<Word>(base);
                 reg.endAddress = static_cast<Word>(base + size - 1);
+                layoutDirty = true;
             }
             ImGui::PopItemWidth();
 
@@ -154,6 +155,7 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
             ImGui::PushItemWidth(-FLT_MIN);
             if (ImGui::DragInt("##size", &size, 1.0F, 1, 0x10000, "0x%04X")) {
                 reg.endAddress = static_cast<Word>(reg.startAddress + size - 1);
+                layoutDirty = true;
             }
             ImGui::PopItemWidth();
 
@@ -166,10 +168,13 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
                     state.emulator.SetESPEnabled(reg.enabled);
                     state.emulation.espEnabled = reg.enabled;
                 }
+                layoutDirty = true;
             }
 
             ImGui::TableSetColumnIndex(4);
-            ImGui::Checkbox("##ign", &reg.ignoreCollision);
+            if (ImGui::Checkbox("##ign", &reg.ignoreCollision)) {
+                layoutDirty = true;
+            }
 
             ImGui::TableSetColumnIndex(5);
             ImGui::ColorButton("##device_color", GetDeviceColor(reg.device->GetName()), ImGuiColorEditFlags_NoTooltip);
@@ -187,36 +192,22 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
     }
 }
 
-void DrawVirtualDeviceRow(DeviceRegistration& reg, std::vector<DeviceRegistration>& devices, int devIdx) {
-    ImGui::PushID(1000 + devIdx);
-    ImGui::TableNextRow();
-    ImGui::TableSetColumnIndex(0);
-    ImGui::TextUnformatted(reg.device->GetName().c_str());
-    ImGui::TableSetColumnIndex(1);
-    if (ImGui::Checkbox("##en", &reg.enabled)) {
-        if (reg.enabled) {
-            for (auto& otherReg : devices) {
-                if (otherReg.isVirtual && &otherReg != &reg) {
-                    otherReg.enabled = false;
-                }
-            }
-        }
-    }
-    ImGui::PopID();
-}
-
-void DrawHardwareComponentsTable(AppState& state, std::vector<DeviceRegistration>& devices) {
-    DrawMappedDevicesTable(state, devices);
-}
-
 }  // namespace
 
 void DrawMemoryLayoutWindow(AppState& state) {
     Bus& bus = state.emulator.GetMem();
-    std::vector<DeviceRegistration> devices = bus.GetRegisteredDevices();
+    static std::vector<DeviceRegistration> editDevices;
+    static bool layoutDirty = true;
+    if (editDevices.size() != bus.GetRegisteredDevices().size()) {
+        editDevices = bus.GetRegisteredDevices();
+        layoutDirty = true;
+    }
 
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
-    UpdateMemoryLayoutTexture(state, devices, pixels);
+    if (layoutDirty) {
+        UpdateMemoryLayoutTexture(state, editDevices, pixels);
+        layoutDirty = false;
+    }
 
     ImGui::Columns(2, "LayoutColumns", true);
     ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() * 0.4F);
@@ -230,12 +221,12 @@ void DrawMemoryLayoutWindow(AppState& state) {
                  ImVec2(mapSize, mapSize));
 
     if (ImGui::IsItemHovered()) {
-        DrawMemoryLayoutTooltip(devices, mapSize, mapSize);
+        DrawMemoryLayoutTooltip(editDevices, mapSize, mapSize);
     }
 
     ImGui::NextColumn();
 
-    DrawHardwareComponentsTable(state, devices);
+    DrawMappedDevicesTable(state, editDevices, layoutDirty);
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -251,14 +242,12 @@ void DrawMemoryLayoutWindow(AppState& state) {
 
         try {
             state.emulator.WaitUntilSafeToMutate();
-            bus.GetRegisteredDevices() = devices;
+            bus.GetRegisteredDevices() = editDevices;
             bus.RebuildDeviceMap();
-
-            std::string error;
-            if (!state.emulator.Init(state.rom.bin, error)) {
-                strncpy(collisionError.data(), error.c_str(), 255);
-                showCollisionError = true;
-            } else if (wasRunning) {
+            state.emulator.GetCPU().Reset();
+            state.emulator.GetCPU().PC = static_cast<uint16_t>(bus.ReadDirect(0xFFFC) | (bus.ReadDirect(0xFFFD) << 8));
+            state.emulator.GetCPU().UpdatePagePtr(bus);
+            if (wasRunning) {
                 state.emulator.Resume();
             }
         } catch (const std::runtime_error& e) {

@@ -18,12 +18,10 @@
 namespace Hardware {
 
 static constexpr int kMaxConnections = 5;
-static constexpr int kDefaultServerTimeout = 180;
 
 enum class ATState : uint8_t {
     Idle,
-    WaitingCIPSENDData,
-    PassthroughMode
+    WaitingCIPSENDData
 };
 
 enum class CWMode : uint8_t {
@@ -63,15 +61,12 @@ class ESP8266 : public IBusDevice {
     void Reset() override;
 
     Byte Read(Word address) override;
+    Byte ReadDirect(Word address) override;
     void Write(Word address, Byte data) override;
     [[nodiscard]] std::string GetName() const override;
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
-
-    [[nodiscard]] bool HasIRQ() const { return (statusReg.load(std::memory_order_relaxed) & 0x80) != 0; }
-
-    void Clock();
 
    private:
     void ProcessCommand();
@@ -129,14 +124,13 @@ class ESP8266 : public IBusDevice {
     [[nodiscard]] bool IsAnyConnectionActive() const;
     static std::string ParseQuotedParam(const std::string& cmd, size_t& pos);
     static int ParseIntParam(const std::string& cmd, size_t& pos);
+    void EnqueueIPD(int linkId, const char* data, size_t bytesRead);
 
     // CIPSTART helpers
-    void ParseCIPSTARTParams(const std::string& params, int& linkId, std::string& type, std::string& host, int& port, size_t& pos) const;
     void PerformConnection(int linkId, const std::string& type, const std::string& host, int port, const std::string& params, size_t pos);
 
     // Registers (memory-mapped)
     std::atomic<Byte> statusReg;
-    Byte cmdReg;
     Byte ctrlReg;
 
     // AT state machine
@@ -153,7 +147,7 @@ class ESP8266 : public IBusDevice {
 
     // Config
     bool echoEnabled{true};
-    bool muxEnabled{false};
+    std::atomic<bool> muxEnabled{false};
     bool wifiConnected{false};
     CWMode cwMode{CWMode::Station};
     std::string connectedSSID;
@@ -169,7 +163,6 @@ class ESP8266 : public IBusDevice {
     std::unique_ptr<asio::ip::tcp::acceptor> serverAcceptor;
     std::thread acceptThread;
     std::atomic<bool> serverRunning{false};
-    int serverTimeout{kDefaultServerTimeout};
 };
 
 }  // namespace Hardware

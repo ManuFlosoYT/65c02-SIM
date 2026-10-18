@@ -154,7 +154,7 @@ static void InitializeTextures(AppState& state) {
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    state.crtFilter.Init(GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT);
+    state.crtFilter.Init(1440, 1080);
 }
 
 static void SetupStyle(){
@@ -210,6 +210,12 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
     glDeleteTextures(1, &state.render.vramTexture);
     glDeleteTextures(1, &state.render.profilerTexture);
     glDeleteTextures(1, &state.render.layoutTexture);
+    if (state.render.sidTexture != 0U) {
+        glDeleteTextures(1, &state.render.sidTexture);
+    }
+    if (state.render.sidFBO != 0U) {
+        glDeleteFramebuffers(1, &state.render.sidFBO);
+    }
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
@@ -381,7 +387,6 @@ static std::string ResolveHeadlessRomPath(const Args& args) {
 
 static int RunHeadless(const Args& args) {
     Core::Emulator emulator;
-    emulator.SetHeadless(true);
     emulator.SetRewindSnapshotsEnabled(false);
     emulator.GetSID().Init(sidSampleRate);
     emulator.SetSIDEnabled(args.sidDevice);
@@ -409,6 +414,10 @@ static int RunHeadless(const Args& args) {
     if (!args.scriptPath.empty()) {
         emulator.GetScriptEngine().SetMirrorToStdout(true);
         emulator.GetScriptEngine().LoadAndRun(args.scriptPath);
+    }
+
+    if (emulator.GetScriptEngine().HasPendingScript()) {
+        emulator.GetScriptEngine().ExecutePendingScript();
     }
 
     if (args.runCycles > 0) {
@@ -626,6 +635,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    mediaExporter.reset();
     Cleanup(state, window, gl_context);
 #endif
 

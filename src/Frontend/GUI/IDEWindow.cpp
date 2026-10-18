@@ -41,7 +41,7 @@ namespace {
             "smb0", "smb1", "smb2", "smb3", "smb4", "smb5", "smb6", "smb7"
         }};
 
-        static const std::array<const char*, 38> directives = {{
+        static const std::array<const char*, 29> directives = {{
             ".byte", ".word", ".dword", ".short", ".fill", ".space", ".text", ".data", ".bss", ".rodata",
             ".section", ".globl", ".global", ".set", ".equ", ".ascii", ".asciz", ".org", ".include", ".incbin",
             ".macro", ".endm", ".endmacro", ".res", ".segment", ".export", ".import", ".align", ".addr"
@@ -108,26 +108,38 @@ static void DrawFileToolbar(Control::AppState& state) {
     }
 }
 
-static void HandleCompileAndRun(Control::AppState& state) {
+static bool SaveCurrentFileForCompile(Control::AppState& state) {
     state.ide.outputLog.clear();
     if (state.ide.currentFilePath.empty()) {
         state.ide.outputLog = "Error: Please save your file before compiling.";
-        return;
+        return false;
     }
     std::ofstream fileOut(state.ide.currentFilePath);
-    if (fileOut) {
-        fileOut << state.ide.code;
-    } else {
+    if (!fileOut) {
         state.ide.outputLog = "Error: Failed to auto-save file before compiling.";
+        return false;
+    }
+    fileOut << state.ide.code;
+    return true;
+}
+
+#ifndef TARGET_WASM
+static CompilerFrontend::BuildResult CompileCurrentFile(Control::AppState& state) {
+    CompilerFrontend::BuildType type = state.ide.isCMode ?
+        CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
+    auto result = CompilerFrontend::Compile(type, state.ide.code, state.ide.currentFilePath);
+    state.ide.outputLog = result.log;
+    return result;
+}
+#endif
+
+static void HandleCompileAndRun(Control::AppState& state) {
+    if (!SaveCurrentFileForCompile(state)) {
         return;
     }
 
 #ifndef TARGET_WASM
-    CompilerFrontend::BuildType type = state.ide.isCMode ? 
-        CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
-    
-    auto result = CompilerFrontend::Compile(type, state.ide.code, state.ide.currentFilePath);
-    state.ide.outputLog = result.log;
+    auto result = CompileCurrentFile(state);
 
     if (result.success && !result.binary.empty()) {
         state.emulator.Pause();
@@ -137,13 +149,6 @@ static void HandleCompileAndRun(Control::AppState& state) {
             state.rom.data = result.binary;
             state.rom.loaded = true;
             state.rom.symbols.Clear();
-            if (!result.dbgFile.empty()) {
-                if (state.rom.symbols.LoadFromFile(result.dbgFile)) {
-                    state.ide.outputLog += "\nLoaded debug symbols.";
-                } else {
-                    state.ide.outputLog += "\nFailed to load debug symbols.";
-                }
-            }
             state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
             state.emulator.ClearProfiler();
             state.ide.outputLog += "\nSuccessfully loaded to emulator and Reset.";
@@ -155,29 +160,15 @@ static void HandleCompileAndRun(Control::AppState& state) {
 }
 
 static void HandleCompileAndExport(Control::AppState& state) {
-    state.ide.outputLog.clear();
-    if (state.ide.currentFilePath.empty()) {
-        state.ide.outputLog = "Error: Please save your file before compiling.";
-        return;
-    }
-    std::ofstream fileOut(state.ide.currentFilePath);
-    if (fileOut) {
-        fileOut << state.ide.code;
-    } else {
-        state.ide.outputLog = "Error: Failed to auto-save file before compiling.";
+    if (!SaveCurrentFileForCompile(state)) {
         return;
     }
 
 #ifndef TARGET_WASM
-    CompilerFrontend::BuildType type = state.ide.isCMode ? 
-        CompilerFrontend::BuildType::C : CompilerFrontend::BuildType::Assembly;
-    
-    auto result = CompilerFrontend::Compile(type, state.ide.code, state.ide.currentFilePath);
-    state.ide.outputLog = result.log;
+    auto result = CompileCurrentFile(state);
 
     if (result.success && !result.binary.empty()) {
         state.ide.exportBinary = result.binary;
-        state.ide.exportDbgPath = result.dbgFile;
         state.ide.outputLog += "\nCompilation successful. Choose where to save the .bin file.";
         CustomFileDialog::OpenDialog("IDE_ExportBinDlg", "Export Binary As", ".bin", ".");
     }
@@ -268,24 +259,12 @@ static void HandleExportFile(Control::AppState& state) {
                 fileOut.write(std::bit_cast<const char*>(state.ide.exportBinary.data()),
                             static_cast<std::streamsize>(state.ide.exportBinary.size()));
                 state.ide.outputLog += "\nExported binary to " + exportPath;
-                
-                if (!state.ide.exportDbgPath.empty()) {
-                    std::string dbgPath = exportPath.substr(0, exportPath.find_last_of('.')) + ".dbg";
-                    std::ifstream src(state.ide.exportDbgPath, std::ios::binary);
-                    std::ofstream dst(dbgPath, std::ios::binary);
-                    if (src && dst) {
-                        dst << src.rdbuf();
-                        state.ide.outputLog += "\nExported debug symbols to " + dbgPath;
-                    }
-                }
             } else {
                 state.ide.outputLog += "\nFailed to export binary to " + exportPath;
             }
             state.ide.exportBinary.clear();
-            state.ide.exportDbgPath.clear();
         } else {
             state.ide.exportBinary.clear();
-            state.ide.exportDbgPath.clear();
         }
         CustomFileDialog::Close();
     }
@@ -328,12 +307,8 @@ void DrawIDEWindow(Control::AppState& state) {
         }
 
         ImGui::TextUnformatted("Build Output:");
-        static std::vector<char> outputBuffer;
-        outputBuffer.assign(state.ide.outputLog.begin(), state.ide.outputLog.end());
-        outputBuffer.push_back('\0');
-        
-        ImGui::InputTextMultiline("##BuildOutput", outputBuffer.data(), 
-            outputBuffer.size(), 
+        ImGui::InputTextMultiline("##BuildOutput", state.ide.outputLog.data(),
+            state.ide.outputLog.size() + 1,
             ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
 
         HandleIDEFileDialogs(state);

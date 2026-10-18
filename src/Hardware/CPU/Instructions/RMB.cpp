@@ -1,72 +1,55 @@
 #include "RMB.h"
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
-#include "InstructionSet.h"
 
 namespace Hardware::Instructions {
 
-template <bool Debug>
-void RMB::Execute0(CPU& cpu, Bus& bus) {
+template <bool Debug, Byte Bit>
+static void ExecuteBit(CPU& cpu, Bus& bus) {
     Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
     Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b11111110;
+    data &= static_cast<Byte>(~(1U << Bit));
     bus.Write<Debug>(ZP_Dir, data);
+}
+
+template <bool Debug>
+void RMB::Execute0(CPU& cpu, Bus& bus) {
+    ExecuteBit<Debug, 0>(cpu, bus);
 }
 
 template <bool Debug>
 void RMB::Execute1(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b11111101;
-    bus.Write<Debug>(ZP_Dir, data);
+    ExecuteBit<Debug, 1>(cpu, bus);
 }
 
 template <bool Debug>
 void RMB::Execute2(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b11111011;
-    bus.Write<Debug>(ZP_Dir, data);
+    ExecuteBit<Debug, 2>(cpu, bus);
 }
 
 template <bool Debug>
 void RMB::Execute3(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b11110111;
-    bus.Write<Debug>(ZP_Dir, data);
+    ExecuteBit<Debug, 3>(cpu, bus);
 }
 
 template <bool Debug>
 void RMB::Execute4(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b11101111;
-    bus.Write<Debug>(ZP_Dir, data);
+    ExecuteBit<Debug, 4>(cpu, bus);
 }
 
 template <bool Debug>
 void RMB::Execute5(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b11011111;
-    bus.Write<Debug>(ZP_Dir, data);
+    ExecuteBit<Debug, 5>(cpu, bus);
 }
 
 template <bool Debug>
 void RMB::Execute6(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b10111111;
-    bus.Write<Debug>(ZP_Dir, data);
+    ExecuteBit<Debug, 6>(cpu, bus);
 }
 
 template <bool Debug>
 void RMB::Execute7(CPU& cpu, Bus& bus) {
-    Byte ZP_Dir = cpu.FetchByte<Debug>(bus);
-    Byte data = cpu.ReadByte<Debug>(ZP_Dir, bus);
-    data &= 0b01111111;
-    bus.Write<Debug>(ZP_Dir, data);
+    ExecuteBit<Debug, 7>(cpu, bus);
 }
 
 template void RMB::Execute0<true>(CPU&, Bus&);

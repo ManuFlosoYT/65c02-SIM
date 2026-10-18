@@ -44,14 +44,11 @@ struct RecordingSettings {
     AudioFormat audioFormat = AudioFormat::FLAC;
     bool recordRaw = true;
     bool recordProcessed = true;
-    bool showPopup = false;
 };
 
 struct EmulationState {
     int instructionsPerFrame = 1000000;
-    float ipsLogScale = 6.0F;
     bool gpuEnabled = false;
-    bool sidEnabled = true;
     bool espEnabled = false;
     bool sdEnabled = false;
     bool cycleAccurate = true;
@@ -147,16 +144,13 @@ struct IDEState {
     std::string outputLog;
     std::string currentFilePath;
     std::vector<uint8_t> exportBinary;
-    std::string exportDbgPath;
     bool isCMode = true;
-    std::array<char, 65536> codeBuffer = {{0}};
 };
 
 struct AppState {
     Emulator emulator;
 
     ROMState rom;
-    Cartridge cartridge;
     ScriptState script;
     EmulationState emulation;
     DebuggerState debugger;

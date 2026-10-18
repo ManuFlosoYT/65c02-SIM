@@ -5,7 +5,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <future>
 
 #include "Hardware/Core/IBusDevice.h"
 
@@ -30,6 +29,7 @@ class SDCard : public IBusDevice {
 
     // IBusDevice overrides
     Byte Read(Word address) override;
+    [[nodiscard]] Byte ReadDirect(Word address) override { return (address == 0) ? last_miso : 0xFF; }
     void Write(Word address, Byte data) override;
     [[nodiscard]] std::string GetName() const override { return "SD Card"; }
     [[nodiscard]] bool IsReadOnly() const override { return is_read_only; }
@@ -64,7 +64,6 @@ class SDCard : public IBusDevice {
     enum class State : std::uint8_t {
         IDLE,
         COMMAND_RECEIVE,
-        COMMAND_EXECUTE,
         WAIT_RESPONSE,
         SEND_RESPONSE,
         READ_PENDING,
@@ -116,15 +115,12 @@ class SDCard : public IBusDevice {
     uint16_t current_crc = 0;
     uint16_t received_crc = 0;
 
-#ifndef TARGET_WASM
-    std::future<void> io_future;
-#endif
-
     // Helpers
     uint8_t CalculateCrc7(const std::array<std::uint8_t, 6>& buffer) const;
     uint16_t CalculateCrc16(const std::array<std::uint8_t, 512>& buffer) const;
     bool CheckForStopCommand(uint8_t mosi);
     void ProcessCommand();
+    bool PrepareBlockTransfer(uint32_t arg, State nextState, bool isMultiblock, bool isWrite);
     void HandleAcmd(uint8_t cmd, uint32_t arg);
     void HandleStandardCmd(uint8_t cmd, uint32_t arg);
     void HandleAcmd41(uint32_t arg);

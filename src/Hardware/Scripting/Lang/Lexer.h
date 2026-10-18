@@ -16,7 +16,6 @@ private:
     void scanToken();
     char advance();
     [[nodiscard]] char peek() const;
-    [[nodiscard]] char peekNext() const;
     [[nodiscard]] bool isAtEnd() const;
     bool match(char expected);
 

@@ -374,7 +374,7 @@ void ESP8266::PingTask(const std::string& host) {
         }
     }
 
-    if (!valid || host.empty()) {
+    if (!valid || host.empty() || host.front() == '-') {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }

@@ -7,8 +7,6 @@ namespace Frontend {
 
 class CustomFileDialog {
 public:
-    static CustomFileDialog* Instance();
-
     static void OpenDialog(const std::string& vKey, const std::string& vTitle, const char* vFilters,
                            const std::string& vPath = ".", const std::string& vFileName = "",
                            int vCountSelectionMax = 1, void* vUserDatas = nullptr,

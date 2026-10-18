@@ -7,6 +7,11 @@ SIDResampler::SIDResampler(double inRate, double outRate) {
 }
 
 void SIDResampler::SetRates(double inRate, double outRate) {
+    if (!firTable.empty() && inRate == inputRate * static_cast<double>(decimFactor) && outRate == outputRate) {
+        Clear();
+        return;
+    }
+
     decimFactor = (inRate >= 2000000.0) ? static_cast<std::size_t>(inRate / 1000000.0) : 1;
     decimCount = 0;
     decimInv = 1.0 / static_cast<double>(decimFactor);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <iostream>
 
 #include "Hardware/Core/IBusDevice.h"
 
@@ -14,6 +13,7 @@ class VIA : public IBusDevice {
 
     // IBusDevice implementation
     Byte Read(Word address) override;
+    Byte ReadDirect(Word address) override;
     void Write(Word address, Byte data) override;
     [[nodiscard]] inline std::string GetName() const override;
 
@@ -22,55 +22,11 @@ class VIA : public IBusDevice {
 
     [[nodiscard]] Byte GetPortA() const;
     [[nodiscard]] Byte GetPortB() const;
-    void SetPortA(Byte val);
-    void SetPortB(Byte val);
 
     inline void SetPortBCallback(std::function<void(Byte)> callback);
-    inline void SetCA2Callback(std::function<void(bool)> callback);
-    inline void SetCB1Callback(std::function<void(bool)> callback);
-    inline void SetCB2Callback(std::function<void(bool)> callback);
 
     [[nodiscard]] Byte GetDDRB() const;
-    void SetDDRB(Byte val);
-
-    [[nodiscard]] Byte GetDDRA() const;
-    void SetDDRA(Byte val);
-
-    [[nodiscard]] Byte GetT1C_L() const;
-    void SetT1C_L(Byte val);
-
-    [[nodiscard]] Byte GetT1C_H() const;
-    void SetT1C_H(Byte val);
-
     [[nodiscard]] Byte GetT1L_L() const;
-    void SetT1L_L(Byte val);
-
-    [[nodiscard]] Byte GetT1L_H() const;
-    void SetT1L_H(Byte val);
-
-    [[nodiscard]] Byte GetT2C_L() const;
-    void SetT2C_L(Byte val);
-
-    [[nodiscard]] Byte GetT2C_H() const;
-    void SetT2C_H(Byte val);
-
-    [[nodiscard]] Byte GetSR() const;
-    void SetSR(Byte val);
-
-    [[nodiscard]] Byte GetACR() const;
-    void SetACR(Byte val);
-
-    [[nodiscard]] Byte GetPCR() const;
-    void SetPCR(Byte val);
-
-    [[nodiscard]] Byte GetIFR() const;
-    void SetIFR(Byte val);
-
-    [[nodiscard]] Byte GetIER() const;
-    void SetIER(Byte val);
-
-    [[nodiscard]] Byte GetORA_NH() const;
-    void SetORA_NH(Byte val);
 
     // External Input Setters (to simulate pins)
     void SetInputA(Byte val);
@@ -86,55 +42,45 @@ class VIA : public IBusDevice {
     [[nodiscard]] bool IsIdle() const { return !anyActive; }
 
    private:
-    Byte orb;     // 0x00 Output Register B
-    Byte ora;     // 0x01 Output Register A
-    Byte ddrb;    // 0x02 Data Direction Register B
-    Byte ddra;    // 0x03 Data Direction Register A
-    Byte t1c_l;   // 0x04 Timer 1 Counter Low
-    Byte t1c_h;   // 0x05 Timer 1 Counter High
-    Byte t1l_l;   // 0x06 Timer 1 Latch Low
-    Byte t1l_h;   // 0x07 Timer 1 Latch High
-    Byte t2c_l;   // 0x08 Timer 2 Counter Low
-    Byte t2c_h;   // 0x09 Timer 2 Counter High
-    Byte sr;      // 0x0A Shift Register
-    Byte acr;     // 0x0B Auxiliary Control Register
-    Byte pcr;     // 0x0C Peripheral Control Register
-    Byte ifr;     // 0x0D Interrupt Flag Register
-    Byte ier;     // 0x0E Interrupt Enable Register
-    Byte ora_nh;  // 0x0F Output Register A (No Handshake)
+    Byte orb = 0;    // 0x00 Output Register B
+    Byte ora = 0;    // 0x01 Output Register A
+    Byte ddrb = 0;   // 0x02 Data Direction Register B
+    Byte ddra = 0;   // 0x03 Data Direction Register A
+    Byte t1l_l = 0;  // 0x06 Timer 1 Latch Low
+    Byte t1l_h = 0;  // 0x07 Timer 1 Latch High
+    Byte sr = 0;     // 0x0A Shift Register
+    Byte acr = 0;    // 0x0B Auxiliary Control Register
+    Byte pcr = 0;    // 0x0C Peripheral Control Register
+    Byte ifr = 0;    // 0x0D Interrupt Flag Register
+    Byte ier = 0;    // 0x0E Interrupt Enable Register
 
     // Internal state
-    Word t1c;  // Timer 1 Counter (16-bit internal)
-    Word t1l;  // Timer 1 Latch (16-bit internal)
-    Word t2c;  // Timer 2 Counter (16-bit internal)
-    Word t2l;  // Timer 2 Latch (16-bit internal)
+    Word t1c = 0xFFFF;  // Timer 1 Counter (16-bit internal)
+    Word t1l = 0xFFFF;  // Timer 1 Latch (16-bit internal)
+    Word t2c = 0xFFFF;  // Timer 2 Counter (16-bit internal)
+    Word t2l = 0xFFFF;  // Timer 2 Latch (16-bit internal)
 
-    bool t1_interrupt_armed; // Is T1 interrupt armed?
-    bool t2_interrupt_armed; // Is T2 interrupt armed?
-    bool t1_pb7_output;  // State of PB7 due to specific T1 mode
+    bool t1_interrupt_armed = false;  // Is T1 interrupt armed?
+    bool t2_interrupt_armed = false;  // Is T2 interrupt armed?
+    bool t1_pb7_output = true;        // State of PB7 due to specific T1 mode
 
-    Byte ira;  // Input Register A (External Pins)
-    Byte irb;  // Input Register B (External Pins)
-    Byte ira_latched;
-    Byte irb_latched;
-    bool ira_latch_full;
-    bool irb_latch_full;
+    Byte ira = 0x00;  // Input Register A (External Pins)
+    Byte irb = 0x00;  // Input Register B (External Pins)
+    Byte ira_latched = 0;
+    Byte irb_latched = 0;
+    bool ira_latch_full = false;
+    bool irb_latch_full = false;
 
     // Pulse Counting & CB state
-    Byte last_irb;
-    bool ca1_in;
-    bool ca2_in;
-    bool cb1_in;
-    bool cb2_in;
-    bool last_ca1;
-    bool last_ca2;
-    bool last_cb1;
-    bool last_cb2;
+    bool ca1_in = true;
+    bool ca2_in = true;
+    bool cb1_in = true;
+    bool cb2_in = true;
 
     // Shift Register state
-    Byte sr_cnt;      // Number of bits shifted so far (for 8-bit cycle)
-    bool sr_active;   // Is SR currently shifting?
-    bool sr_out_cb2;  // State of CB2 output for SR modes
+    Byte sr_cnt = 0;         // Number of bits shifted so far (for 8-bit cycle)
+    bool sr_active = false;  // Is SR currently shifting?
+    bool sr_out_cb2 = true;  // State of CB2 output for SR modes
 
     bool anyActive = false;
     void UpdateAnyActive() {
@@ -151,18 +97,17 @@ class VIA : public IBusDevice {
     void HandleShiftRegister(bool timer2_underflowed);
 
     // Output Callbacks (triggered when Output Pins change)
-    std::function<void(Byte)> port_a_callback;
     std::function<void(Byte)> port_b_callback;
     std::function<void(bool)> ca2_callback;
     std::function<void(bool)> cb1_callback;
     std::function<void(bool)> cb2_callback;
 
-    bool ca2_out;
-    bool cb1_out;
-    bool cb2_out;
-    bool ca2_pulse_pending;
-    bool cb1_pulse_pending;
-    bool cb2_pulse_pending;
+    bool ca2_out = true;
+    bool cb1_out = true;
+    bool cb2_out = true;
+    bool ca2_pulse_pending = false;
+    bool cb1_pulse_pending = false;
+    bool cb2_pulse_pending = false;
 
     inline void UpdateCA2Output(bool val);
     inline void UpdateCB1Output(bool val);
@@ -178,9 +123,6 @@ namespace Hardware {
 inline std::string VIA::GetName() const { return "VIA"; }
 
 inline void VIA::SetPortBCallback(std::function<void(Byte)> callback) { port_b_callback = std::move(callback); }
-inline void VIA::SetCA2Callback(std::function<void(bool)> callback) { ca2_callback = std::move(callback); }
-inline void VIA::SetCB1Callback(std::function<void(bool)> callback) { cb1_callback = std::move(callback); }
-inline void VIA::SetCB2Callback(std::function<void(bool)> callback) { cb2_callback = std::move(callback); }
 
 inline void VIA::UpdateCA2Output(bool val) {
     if (ca2_out != val) {
@@ -338,7 +280,8 @@ inline void VIA::HandleShiftRegister(bool timer2_underflowed) {
 }
 
 inline void VIA::Clock() {
-    if (!anyActive) [[likely]] {
+    if (!anyActive || (!ca2_pulse_pending && !cb1_pulse_pending && !cb2_pulse_pending && !sr_active && t1c > 0 &&
+                       ((acr & 0x20) != 0 || t2c > 0))) [[likely]] {
         t1c--;
         if ((acr & 0x20) == 0) {
             t2c--;
