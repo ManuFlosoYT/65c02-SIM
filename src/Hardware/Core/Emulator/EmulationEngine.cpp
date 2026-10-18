@@ -241,7 +241,7 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
         ips = 1000000;
     }
     if (sidEnabled) {
-        sid.SetClockRate(static_cast<double>(ips));
+        sid.SetCpuClockRate(static_cast<double>(ips));
     }
 
     if (cpu.cycleAccurate) {

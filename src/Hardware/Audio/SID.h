@@ -83,6 +83,7 @@ struct SIDProfilingStats {
 class SID : public IBusDevice {
    public:
     static constexpr int MAX_SID_VOICES = 3;
+    static constexpr double SID_NATIVE_RATE = 1000000.0;
     
     SID();
     ~SID() override;
@@ -93,6 +94,7 @@ class SID : public IBusDevice {
 
     void Init(int sampleRate = 48000);
     void SetClockRate(double clockRate);
+    void SetCpuClockRate(double rate);
     void Close();
     void Reset() override;
     Byte Read(Word addr) override;
@@ -112,18 +114,22 @@ class SID : public IBusDevice {
     bool LoadState(std::istream& inStream) override;
     void Clock() {
         if (isDormant) [[likely]] {
-            clockCounter++;
             return;
         }
-        ClockSlow();
+        sidCycleAccumulator += static_cast<uint64_t>(SID_NATIVE_RATE);
+        while (sidCycleAccumulator >= cpuClockRateInt) {
+            sidCycleAccumulator -= cpuClockRateInt;
+            ClockSlow();
+        }
     }
 
     void Clock(uint32_t cycles) {
         if (isDormant) [[likely]] {
-            clockCounter += cycles;
             return;
         }
-        for (uint32_t i = 0; i < cycles; ++i) {
+        sidCycleAccumulator += static_cast<uint64_t>(SID_NATIVE_RATE) * cycles;
+        while (sidCycleAccumulator >= cpuClockRateInt) {
+            sidCycleAccumulator -= cpuClockRateInt;
             ClockSlow();
         }
     }
@@ -152,7 +158,9 @@ class SID : public IBusDevice {
     uint64_t clockCounter = 0;
     uint64_t dormantClockAnchor = 0;
     bool isDormant = true;
-    double clockRate = 1000000.0;
+    double clockRate = SID_NATIVE_RATE;
+    uint64_t sidCycleAccumulator = 0;
+    uint64_t cpuClockRateInt = 1000000;
     
     // Buffer for audio generated during Clock()
     std::vector<int16_t> sampleBuffer;

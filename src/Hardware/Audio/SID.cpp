@@ -43,7 +43,7 @@ void SID::Close() {
 
 void SID::Init(int sampleRate) {
     this->sampleRate = sampleRate;
-    resampler.SetRates(clockRate, static_cast<double>(sampleRate));
+    resampler.SetRates(SID_NATIVE_RATE, static_cast<double>(sampleRate));
 
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
         std::cerr << "SDL Audio init failed: " << SDL_GetError() << '\n';
@@ -64,15 +64,20 @@ void SID::Init(int sampleRate) {
     }
 }
 
-void SID::SetClockRate(double newClockRate) {
-    if (newClockRate <= 0.0 || newClockRate == clockRate) {
+void SID::SetCpuClockRate(double rate) {
+    if (rate <= 0.0) {
         return;
     }
 
     std::lock_guard<std::mutex> lock(sidMutex);
-    clockRate = newClockRate;
-    resampler.SetRates(clockRate, static_cast<double>(sampleRate));
-    filterCoefficientsDirty = true;
+    cpuClockRateInt = static_cast<uint64_t>(rate);
+    if (cpuClockRateInt == 0) {
+        cpuClockRateInt = 1000000;
+    }
+}
+
+void SID::SetClockRate(double newClockRate) {
+    SetCpuClockRate(newClockRate);
 }
 
 void SID::SyncDormantEnvelopes() {
@@ -143,6 +148,7 @@ void SID::Reset() {
     dcBlockerPrevIn = 0.0;
     clockCounter = 0;
     dormantClockAnchor = 0;
+    sidCycleAccumulator = 0;
     isDormant = false;
     resampler.Clear();
     sampleBuffer.clear();
@@ -503,7 +509,7 @@ void SID::UpdateFilterCoefficients() {
         filterQ = 2.0 - (1.8 * (static_cast<double>(res) * (1.0 / 15.0)));
     }
     cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
-    double w = 2.0 * std::numbers::pi * cutoffHz / clockRate;
+    double w = 2.0 * std::numbers::pi * cutoffHz / SID_NATIVE_RATE;
     filterG = std::tan(w * 0.5);
     filterR = 1.0 / filterQ;
     filterRPlusG = filterR + filterG;

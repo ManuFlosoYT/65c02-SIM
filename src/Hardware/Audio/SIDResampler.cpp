@@ -7,8 +7,9 @@ SIDResampler::SIDResampler(double inRate, double outRate) {
 }
 
 void SIDResampler::SetRates(double inRate, double outRate) {
-    if (!firTable.empty() && inRate == inputRate * static_cast<double>(decimFactor) && outRate == outputRate) {
-        Clear();
+    if (!firTable.empty() &&
+        std::abs(inRate - (inputRate * static_cast<double>(decimFactor))) < 1e-6 &&
+        std::abs(outRate - outputRate) < 1e-6) {
         return;
     }
 

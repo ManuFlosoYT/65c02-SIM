@@ -293,7 +293,7 @@ int Emulator::Step() {
         ips = 1000000;
     }
     if (sidEnabled) {
-        sid.SetClockRate(static_cast<double>(ips));
+        sid.SetCpuClockRate(static_cast<double>(ips));
     }
     bool isNewInstruction = !cpu.cycleAccurate || (cpu.remainingCycles == 0);
     int res = cpu.cycleAccurate ? StepInternal<Debug, true>(ips) : StepInternal<Debug, false>(ips);
