@@ -54,8 +54,10 @@ def get_voice_offset(voice_idx):
     return (voice_idx - 1) * 7
 
 
-def freq_for_note(note_num, clock=CLOCK_NTSC):
+def freq_for_note(note_num, clock=CLOCK_NTSC, sid_clock=None):
     """Converts a MIDI note number to a SID frequency register value."""
+    if sid_clock is not None:
+        clock = sid_clock
     freq_hz = 440.0 * (2.0 ** ((note_num - 69.0) / 12.0))
     sid_freq = int(freq_hz * (16777216.0 / float(clock)))
     return sid_freq

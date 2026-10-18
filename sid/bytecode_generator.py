@@ -57,7 +57,7 @@ class Voice:
 
 
 class BytecodeGenerator:
-    def __init__(self, events, mode, chip="8580", system="NTSC", bass_channel=-1, melody_channel=-1, noise_channel=-1, clock=None):
+    def __init__(self, events, mode, chip="8580", system="NTSC", bass_channel=-1, melody_channel=-1, noise_channel=-1, clock=None, cpu_clock=None, sid_clock=None):
         self.events = events
         self.mode = mode
         self.chip = chip
@@ -67,10 +67,17 @@ class BytecodeGenerator:
         self.noise_channel = noise_channel
         self.voices = [Voice(i) for i in range(1, 4)]
         self.sid_state = [-1] * 25
-        if clock is not None:
-            self.sid_clock = float(clock)
+        if sid_clock is not None:
+            self.sid_clock = float(sid_clock)
         else:
-            self.sid_clock = CLOCK_NTSC if system == "NTSC" else CLOCK_PAL
+            self.sid_clock = CLOCK_PAL if system == "PAL" else CLOCK_NTSC
+
+        if cpu_clock is not None:
+            self.cpu_clock = float(cpu_clock)
+        elif clock is not None:
+            self.cpu_clock = float(clock)
+        else:
+            self.cpu_clock = 1000000.0
 
     def _freq_to_cutoff_dac(self, hz):
         if self.chip == "6581":
@@ -138,7 +145,7 @@ class BytecodeGenerator:
                 return
 
             dt = target_time - current_time
-            target_cycles = round(target_time * self.sid_clock)
+            target_cycles = round(target_time * self.cpu_clock)
 
             has_effects = False
             for v in self.voices:
@@ -174,7 +181,7 @@ class BytecodeGenerator:
             while remaining_dt > 0:
                 step = min(remaining_dt, step_dt)
                 remaining_dt -= step
-                step_cycles = step * self.sid_clock
+                step_cycles = step * self.cpu_clock
                 accumulated_step_cycles += step_cycles
 
                 prev_len = len(bytecode)

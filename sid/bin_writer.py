@@ -11,7 +11,7 @@ from stream_scheduler import schedule_stream_reads, SD_DEFAULT_COST, DEFAULT_TAR
 from asm_writer import calculate_duration
 
 
-def write_bin(bytecode, input_path, target_bufs=DEFAULT_TARGET_BUFS, sd_cost=SD_DEFAULT_COST, system="NTSC", clock=None, verify=True):
+def write_bin(bytecode, input_path, target_bufs=DEFAULT_TARGET_BUFS, sd_cost=SD_DEFAULT_COST, system="NTSC", clock=None, cpu_clock=None, sid_clock=None, verify=True):
     """
     Encodes and writes raw SID bytecode into a compressed SDZ v2 .sid container.
 
@@ -21,11 +21,16 @@ def write_bin(bytecode, input_path, target_bufs=DEFAULT_TARGET_BUFS, sd_cost=SD_
         target_bufs: ring buffer size target in play.c (default 24)
         sd_cost: cycles per 512B SD read (default 54000)
         system: "NTSC" or "PAL"
-        clock: clock frequency in Hz (float or None)
+        clock: deprecated alias for cpu_clock
+        cpu_clock: CPU clock frequency in Hz (float or None)
+        sid_clock: SID clock frequency in Hz (float or None)
         verify: if True, formally verifies lossless reconstruction
     """
-    if clock is None:
-        clock = CLOCK_PAL if system == "PAL" else CLOCK_NTSC
+    if sid_clock is None:
+        sid_clock = CLOCK_PAL if system == "PAL" else CLOCK_NTSC
+
+    if cpu_clock is None:
+        cpu_clock = clock if clock is not None else 10000000.0
 
     filename_only = os.path.splitext(os.path.basename(input_path))[0].replace(" ", "") + ".sid"
     project_root = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
@@ -38,14 +43,14 @@ def write_bin(bytecode, input_path, target_bufs=DEFAULT_TARGET_BUFS, sd_cost=SD_
     output_file = os.path.join(output_dir, filename_only)
 
     # 1. Encode to Semantic v2
-    hdr, sem = encode_semantic_v2(bytecode, clock=clock)
+    hdr, sem = encode_semantic_v2(bytecode, sid_clock=sid_clock)
 
     # 2. Compress with SIDLZ
     pkg = compress_sidlz(sem)
 
     # 3. Formal verification
     if verify:
-        verify_lossless(bytecode, hdr, pkg, clock=clock)
+        verify_lossless(bytecode, hdr, pkg, sid_clock=sid_clock)
 
     # 4. Schedule SD reads
     pauses = extract_pause_events(hdr, sem, pkg)
@@ -79,7 +84,7 @@ def write_bin(bytecode, input_path, target_bufs=DEFAULT_TARGET_BUFS, sd_cost=SD_
     orig_size = len(bytecode)
     final_size = len(container)
     ratio = (final_size / orig_size * 100.0) if orig_size > 0 else 0
-    mins, secs, total_sec = calculate_duration(bytecode, system, clock=clock)
+    mins, secs, total_sec = calculate_duration(bytecode, system, cpu_clock=cpu_clock)
     dur_str = f"{mins}:{secs:02d}"
 
     print(f"Generated {output_file}")

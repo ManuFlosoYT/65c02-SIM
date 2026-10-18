@@ -10,8 +10,10 @@ if _SCRIPT_DIR not in sys.path:
 from sid_codec import encode_semantic_v2, decode_semantic_v2, compress_sidlz, decompress_sidlz
 
 
-def calculate_duration(bytecode, system="NTSC", clock=None):
-    if clock is not None:
+def calculate_duration(bytecode, system="NTSC", clock=None, cpu_clock=None):
+    if cpu_clock is not None:
+        clock_freq = float(cpu_clock)
+    elif clock is not None:
         clock_freq = float(clock)
     else:
         clock_freq = 985248.0 if system == "PAL" else 1000000.0
@@ -45,9 +47,11 @@ def calculate_duration(bytecode, system="NTSC", clock=None):
     return mins, secs, total_sec
 
 
-def write_asm(bytecode, input_path, mode, system="NTSC", clock=None, verify=True):
-    if clock is None:
-        clock = 985248.0 if system == "PAL" else 1000000.0
+def write_asm(bytecode, input_path, mode, system="NTSC", clock=None, cpu_clock=None, sid_clock=None, verify=True):
+    if sid_clock is None:
+        sid_clock = 985248.0 if system == "PAL" else 1000000.0
+    if cpu_clock is None:
+        cpu_clock = clock if clock is not None else (985248.0 if system == "PAL" else 1000000.0)
 
     filename_only = os.path.splitext(os.path.basename(input_path))[0].replace(" ", "") + ".s"
     output_dir = os.path.join(_SCRIPT_DIR, "build")
@@ -57,13 +61,13 @@ def write_asm(bytecode, input_path, mode, system="NTSC", clock=None, verify=True
 
     print(f"Writing streaming compressed Native ASM to {output_file}...")
 
-    hdr, sem = encode_semantic_v2(bytecode, clock=clock)
+    hdr, sem = encode_semantic_v2(bytecode, sid_clock=sid_clock)
     pkg = compress_sidlz(sem, window_size=2048)
 
     if verify:
         sem_rec = decompress_sidlz(pkg, expected_uncompressed_len=len(sem))
         assert sem_rec == sem, "Semantic stream mismatch in SIDLZ roundtrip"
-        ir_rec = decode_semantic_v2(hdr, sem_rec, clock=clock)
+        ir_rec = decode_semantic_v2(hdr, sem_rec, sid_clock=sid_clock)
         assert ir_rec == bytecode, "Lossless IR mismatch in SIDLZ roundtrip"
 
     ntbl_first = hdr['ntbl_first']
@@ -71,7 +75,7 @@ def write_asm(bytecode, input_path, mode, system="NTSC", clock=None, verify=True
     dict_delays = hdr['dict']
     pw_step = hdr['pw_step']
 
-    mins, secs, total_sec = calculate_duration(bytecode, system, clock=clock)
+    mins, secs, total_sec = calculate_duration(bytecode, system, cpu_clock=cpu_clock)
     dur_str = f"{mins}:{secs:02d}"
 
     with open(output_file, "w") as f:

@@ -15,8 +15,12 @@ def main():
                         help="Target SID Chip model (6581 or 8580)")
     parser.add_argument("--system", choices=["NTSC", "PAL"], default="NTSC",
                         help="Target clock system (NTSC=1MHz, PAL=985kHz)")
+    parser.add_argument("--cpu-clock", type=float, default=None,
+                        help="Target CPU clock frequency in Hz (e.g. 10000000 for microDOS, 1000000 otherwise)")
     parser.add_argument("--clock", type=float, default=None,
-                        help="Target clock frequency in Hz (e.g. 10000000)")
+                        help="Alias for --cpu-clock")
+    parser.add_argument("--sid-clock", type=float, default=None,
+                        help="Target SID clock frequency in Hz (default: 1000000.0 NTSC / 985248.0 PAL)")
     parser.add_argument("--microDOS", action='store_true', help="Output raw execution bytes instead of ASM")
     parser.add_argument("--duration", type=int, default=180, help="Max duration in seconds for infinite NSF loops")
     parser.add_argument("--sd-cost", type=int, default=49731, help="Cycles per 512B SD read")
@@ -25,12 +29,16 @@ def main():
 
     args = parser.parse_args()
 
-    if args.clock is not None:
-        clock = args.clock
+    if args.sid_clock is not None:
+        sid_clock = args.sid_clock
     elif args.system == "PAL":
-        clock = CLOCK_PAL
+        sid_clock = CLOCK_PAL
     else:
-        clock = CLOCK_NTSC
+        sid_clock = CLOCK_NTSC
+
+    cpu_clock = args.cpu_clock if args.cpu_clock is not None else args.clock
+    if cpu_clock is None:
+        cpu_clock = 10000000.0 if args.microDOS else 1000000.0
 
     ext = args.input.lower().split('.')[-1]
     if ext == 'nsf':
@@ -42,7 +50,7 @@ def main():
     events = processor.process()
 
     noise_channel = getattr(processor, 'noise_channel', -1)
-    generator = BytecodeGenerator(events, args.mode, args.chip, args.system, processor.bass_channel, processor.melody_channel, noise_channel, clock=clock)
+    generator = BytecodeGenerator(events, args.mode, args.chip, args.system, processor.bass_channel, processor.melody_channel, noise_channel, cpu_clock=cpu_clock, sid_clock=sid_clock)
     bytecode = generator.generate()
 
     if args.microDOS:
@@ -52,7 +60,8 @@ def main():
             target_bufs=args.stream_bufs,
             sd_cost=args.sd_cost,
             system=args.system,
-            clock=clock,
+            cpu_clock=cpu_clock,
+            sid_clock=sid_clock,
             verify=not args.no_verify
         )
     else:
@@ -61,7 +70,8 @@ def main():
             args.input,
             args.mode,
             system=args.system,
-            clock=clock,
+            cpu_clock=cpu_clock,
+            sid_clock=sid_clock,
             verify=not args.no_verify
         )
         if not fits:

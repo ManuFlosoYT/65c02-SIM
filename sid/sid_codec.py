@@ -74,7 +74,7 @@ def parse_ir(ir_bytes):
     return ops
 
 
-def encode_semantic_v2(ir_bytes, pw_step=DEFAULT_PW_STEP, clock=CLOCK_NTSC):
+def encode_semantic_v2(ir_bytes, pw_step=DEFAULT_PW_STEP, clock=CLOCK_NTSC, sid_clock=None):
     """
     Encodes IR v1 bytecode into Semantic v2 format.
     Returns:
@@ -87,6 +87,8 @@ def encode_semantic_v2(ir_bytes, pw_step=DEFAULT_PW_STEP, clock=CLOCK_NTSC):
         }
         semantic_bytes: bytearray
     """
+    if sid_clock is not None:
+        clock = sid_clock
     note_map, freq_to_note = get_note_maps(clock)
     ops = parse_ir(ir_bytes)
 
@@ -247,11 +249,13 @@ def encode_semantic_v2(ir_bytes, pw_step=DEFAULT_PW_STEP, clock=CLOCK_NTSC):
     return header, out
 
 
-def decode_semantic_v2(header, semantic_bytes, clock=CLOCK_NTSC):
+def decode_semantic_v2(header, semantic_bytes, clock=CLOCK_NTSC, sid_clock=None):
     """
     Decodes Semantic v2 bytes back into equivalent IR v1 bytecode.
     Used for 100% lossless formal verification.
     """
+    if sid_clock is not None:
+        clock = sid_clock
     pw_step = header['pw_step']
     ntbl_first = header['ntbl_first']
     ntbl_count = header['ntbl_count']
@@ -738,12 +742,14 @@ def extract_pause_events(header, semantic_bytes, compressed_pkg):
     return pauses
 
 
-def verify_lossless(ir_original, header, compressed_pkg, clock=CLOCK_NTSC):
+def verify_lossless(ir_original, header, compressed_pkg, clock=CLOCK_NTSC, sid_clock=None):
     """
     Formal verification of lossless round-trip:
     compressed_pkg -> decompress_sidlz -> decode_semantic_v2 == ir_original
     Returns True on success, raises ValueError with details on discrepancy.
     """
+    if sid_clock is not None:
+        clock = sid_clock
     decompressed_sem = decompress_sidlz(compressed_pkg, expected_uncompressed_len=header.get('uncompressed_len'))
     reconstructed_ir = decode_semantic_v2(header, decompressed_sem, clock=clock)
 
