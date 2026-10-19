@@ -55,6 +55,37 @@ static inline void tui_set_color(uint8_t fg, uint8_t bg) {
     bios_putchar('m');
 }
 
+static inline void tui_set_color_256(uint8_t fg, uint8_t bg) {
+    print_str("\x1b[38;5;");
+    print_num(fg);
+    print_str(";48;5;");
+    print_num(bg);
+    bios_putchar('m');
+}
+
+static inline void tui_set_color_rgb(uint8_t r, uint8_t g, uint8_t b, bool is_bg) {
+    print_str(is_bg ? "\x1b[48;2;" : "\x1b[38;2;");
+    print_num(r);
+    bios_putchar(';');
+    print_num(g);
+    bios_putchar(';');
+    print_num(b);
+    bios_putchar('m');
+}
+
+static inline void tui_set_default_colors(const char* fg_hex, const char* bg_hex) {
+    if (fg_hex != NULL) {
+        print_str("\x1b]10;#");
+        print_str(fg_hex);
+        bios_putchar(7);
+    }
+    if (bg_hex != NULL) {
+        print_str("\x1b]11;#");
+        print_str(bg_hex);
+        bios_putchar(7);
+    }
+}
+
 static inline void tui_set_attr(bool bold, bool inverse) {
     if (bold) {
         print_str("\x1b[1m");
