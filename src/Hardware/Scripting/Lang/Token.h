@@ -5,7 +5,7 @@
 
 namespace System::Hardware::Scripting::Lang {
 
-enum class TokenType {
+enum class TokenType : uint8_t {
     // Keywords
     Let,
     If,
@@ -16,6 +16,7 @@ enum class TokenType {
     True,
     False,
     Print,
+    Changed,
 
     // Types
     Identifier,
@@ -44,6 +45,8 @@ enum class TokenType {
     Comma,          // ,
     Dot,            // .
     Semicolon,      // ;
+    AndAnd,         // &&
+    OrOr,           // ||
 
     Eof,
     Error

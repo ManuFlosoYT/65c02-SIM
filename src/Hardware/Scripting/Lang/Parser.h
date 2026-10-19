@@ -19,6 +19,7 @@ class Parser {
 public:
     explicit Parser(std::span<const Token> tokens);
     std::vector<std::unique_ptr<Stmt>> parse();
+    std::unique_ptr<Expr> parseExpression();
 
 private:
     std::unique_ptr<Stmt> declaration();
@@ -34,6 +35,8 @@ private:
 
     std::unique_ptr<Expr> expression();
     std::unique_ptr<Expr> assignment();
+    std::unique_ptr<Expr> logicalOr();
+    std::unique_ptr<Expr> logicalAnd();
     std::unique_ptr<Expr> equality();
     std::unique_ptr<Expr> comparison();
     std::unique_ptr<Expr> term();

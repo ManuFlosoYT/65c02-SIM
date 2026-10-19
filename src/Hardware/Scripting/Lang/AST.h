@@ -84,6 +84,25 @@ struct GetExpr : public Expr {
         : object(std::move(object)), name(std::move(name)) {}
 };
 
+struct IndexExpr : public Expr {
+    std::unique_ptr<Expr> object;
+    Token bracket;
+    std::unique_ptr<Expr> index;
+
+    IndexExpr(std::unique_ptr<Expr> object, Token bracket, std::unique_ptr<Expr> index)
+        : object(std::move(object)), bracket(std::move(bracket)), index(std::move(index)) {}
+};
+
+struct ChangedExpr : public Expr {
+    std::unique_ptr<Expr> expression;
+    Token keyword;
+    mutable bool hasPrev = false;
+    mutable std::variant<std::monostate, int64_t, std::string, bool> prevValue;
+
+    ChangedExpr(std::unique_ptr<Expr> expression, Token keyword)
+        : expression(std::move(expression)), keyword(std::move(keyword)) {}
+};
+
 // Statements
 
 struct ExpressionStmt : public Stmt {

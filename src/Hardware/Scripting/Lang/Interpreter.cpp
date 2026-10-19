@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <iostream>
 
+#include "Hardware/CPU/CPU.h"
+#include "Hardware/Core/Bus.h"
+
 namespace System::Hardware::Scripting::Lang {
 
 Interpreter::Interpreter()
@@ -49,6 +52,12 @@ Value Interpreter::evaluate(Expr* expr) {
     }
     if (auto* get = dynamic_cast<GetExpr*>(expr)) {
         return visitGetExpr(get);
+    }
+    if (auto* index = dynamic_cast<IndexExpr*>(expr)) {
+        return visitIndexExpr(index);
+    }
+    if (auto* changed = dynamic_cast<ChangedExpr*>(expr)) {
+        return visitChangedExpr(changed);
     }
 
     throw std::runtime_error("Unknown expression type");
@@ -98,6 +107,21 @@ void Interpreter::executeBlock(const std::vector<std::unique_ptr<Stmt>>& stateme
 }
 
 Value Interpreter::visitBinaryExpr(BinaryExpr* expr) {
+    if (expr->op.type == TokenType::AndAnd) {
+        Value left = evaluate(expr->left.get());
+        if (!isTruthy(left)) {
+            return false;
+        }
+        return isTruthy(evaluate(expr->right.get()));
+    }
+    if (expr->op.type == TokenType::OrOr) {
+        Value left = evaluate(expr->left.get());
+        if (isTruthy(left)) {
+            return true;
+        }
+        return isTruthy(evaluate(expr->right.get()));
+    }
+
     Value left = evaluate(expr->left.get());
     Value right = evaluate(expr->right.get());
 
@@ -166,7 +190,98 @@ Value Interpreter::visitLiteralExpr(LiteralExpr* expr) {
 }
 
 Value Interpreter::visitVariableExpr(VariableExpr* expr) {
+    if (cpuContext != nullptr) {
+        const std::string& name = expr->name.lexeme;
+        if (name == "PC" || name == "pc") {
+            return static_cast<int64_t>(cpuContext->PC);
+        }
+        if (name == "A" || name == "a") {
+            return static_cast<int64_t>(cpuContext->A);
+        }
+        if (name == "X" || name == "x") {
+            return static_cast<int64_t>(cpuContext->X);
+        }
+        if (name == "Y" || name == "y") {
+            return static_cast<int64_t>(cpuContext->Y);
+        }
+        if (name == "SP" || name == "sp") {
+            return static_cast<int64_t>(cpuContext->SP);
+        }
+        if (name == "C" || name == "c") {
+            return static_cast<int64_t>(cpuContext->C);
+        }
+        if (name == "Z" || name == "z") {
+            return static_cast<int64_t>(cpuContext->Z);
+        }
+        if (name == "I" || name == "i") {
+            return static_cast<int64_t>(cpuContext->I);
+        }
+        if (name == "D" || name == "d") {
+            return static_cast<int64_t>(cpuContext->D);
+        }
+        if (name == "B" || name == "b") {
+            return static_cast<int64_t>(cpuContext->B);
+        }
+        if (name == "V" || name == "v") {
+            return static_cast<int64_t>(cpuContext->V);
+        }
+        if (name == "N" || name == "n") {
+            return static_cast<int64_t>(cpuContext->N);
+        }
+    }
+    if (expr->name.lexeme == "MEM" || expr->name.lexeme == "mem") {
+        return std::string("MEM");
+    }
     return environment->get(expr->name);
+}
+
+Value Interpreter::visitIndexExpr(IndexExpr* expr) {
+    Value object = evaluate(expr->object.get());
+    Value indexVal = evaluate(expr->index.get());
+
+    if (std::holds_alternative<std::string>(object) && std::get<std::string>(object) == "MEM") {
+        if (!std::holds_alternative<int64_t>(indexVal)) {
+            throw RuntimeError(expr->bracket, "Memory address index must be a number.");
+        }
+        if (busContext != nullptr) {
+            auto addr = static_cast<uint16_t>(std::get<int64_t>(indexVal));
+            return static_cast<int64_t>(busContext->ReadDirect(addr));
+        }
+        return static_cast<int64_t>(0);
+    }
+
+    throw RuntimeError(expr->bracket, "Index operator not supported on this object.");
+}
+
+Value Interpreter::visitChangedExpr(ChangedExpr* expr) {
+    Value current = evaluate(expr->expression.get());
+    if (!expr->hasPrev) {
+        if (std::holds_alternative<int64_t>(current)) {
+            expr->prevValue = std::get<int64_t>(current);
+        } else if (std::holds_alternative<bool>(current)) {
+            expr->prevValue = std::get<bool>(current);
+        } else if (std::holds_alternative<std::string>(current)) {
+            expr->prevValue = std::get<std::string>(current);
+        }
+        expr->hasPrev = true;
+        return false;
+    }
+
+    bool changed = false;
+    if (std::holds_alternative<int64_t>(current)) {
+        changed = !std::holds_alternative<int64_t>(expr->prevValue) ||
+                  std::get<int64_t>(current) != std::get<int64_t>(expr->prevValue);
+        expr->prevValue = std::get<int64_t>(current);
+    } else if (std::holds_alternative<bool>(current)) {
+        changed = !std::holds_alternative<bool>(expr->prevValue) ||
+                  std::get<bool>(current) != std::get<bool>(expr->prevValue);
+        expr->prevValue = std::get<bool>(current);
+    } else if (std::holds_alternative<std::string>(current)) {
+        changed = !std::holds_alternative<std::string>(expr->prevValue) ||
+                  std::get<std::string>(current) != std::get<std::string>(expr->prevValue);
+        expr->prevValue = std::get<std::string>(current);
+    }
+    return changed;
 }
 
 Value Interpreter::visitAssignExpr(AssignExpr* expr) {

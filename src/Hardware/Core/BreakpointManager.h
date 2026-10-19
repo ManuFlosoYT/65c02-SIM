@@ -3,9 +3,15 @@
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+
+namespace System::Hardware::Scripting::Lang {
+struct Expr;
+class Interpreter;
+}
 
 namespace Hardware {
 
@@ -17,7 +23,8 @@ enum class BreakpointType : uint8_t {
     RegisterCondition,
     FlagCondition,
     MemoryCondition,
-    MemoryWatchpoint
+    MemoryWatchpoint,
+    Expression
 };
 
 enum class CompareOp : uint8_t { Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual };
@@ -32,6 +39,8 @@ struct BreakCondition {
     CompareOp op = CompareOp::Equal;
     uint16_t address = 0;
     uint16_t value = 0;
+    std::string expression;
+    std::shared_ptr<System::Hardware::Scripting::Lang::Expr> ast;
 };
 
 struct Breakpoint {
@@ -46,6 +55,13 @@ struct Breakpoint {
 
 class BreakpointManager {
    public:
+    BreakpointManager();
+    ~BreakpointManager();
+    BreakpointManager(const BreakpointManager&) = delete;
+    BreakpointManager& operator=(const BreakpointManager&) = delete;
+    BreakpointManager(BreakpointManager&&) = delete;
+    BreakpointManager& operator=(BreakpointManager&&) = delete;
+
     uint32_t AddBreakpoint(Breakpoint breakpoint);
     void RemoveBreakpoint(uint32_t breakpointId);
     void SetEnabled(uint32_t breakpointId, bool enabled);
@@ -63,6 +79,8 @@ class BreakpointManager {
     [[nodiscard]] bool HasComplexBreakpoints() const { return hasComplexBreakpoints.load(std::memory_order_relaxed); }
     [[nodiscard]] bool IsPCBreakpoint(uint16_t address) const { return fastPathBreakpoints.test(address); }
 
+    static bool ValidateExpression(const std::string& expr, std::string* outError = nullptr);
+
    private:
     void UpdateFastPath();
 
@@ -79,6 +97,8 @@ class BreakpointManager {
 
     bool watchpointTriggered = false;
     uint16_t watchpointAddress = 0;
+
+    mutable std::unique_ptr<System::Hardware::Scripting::Lang::Interpreter> interpreter;
 
     [[nodiscard]] bool EvaluateCondition(const BreakCondition& cond, const CPU& cpu, const Bus& bus) const;
     [[nodiscard]] bool CheckBreakpoint(const Breakpoint& breakpoint, const CPU& cpu, const Bus& bus) const;

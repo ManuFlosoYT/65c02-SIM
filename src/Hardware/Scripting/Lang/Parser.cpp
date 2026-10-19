@@ -123,12 +123,16 @@ std::unique_ptr<Stmt> Parser::expressionStatement() {
     return std::make_unique<ExpressionStmt>(std::move(expr));
 }
 
+std::unique_ptr<Expr> Parser::parseExpression() {
+    return expression();
+}
+
 std::unique_ptr<Expr> Parser::expression() {
     return assignment();
 }
 
 std::unique_ptr<Expr> Parser::assignment() {
-    std::unique_ptr<Expr> expr = equality(); // might be GetExpr instead of VariableExpr. Assignment could work for property access too.
+    std::unique_ptr<Expr> expr = logicalOr();
 
     if (match({TokenType::Equal})) {
         Token equals = previous();
@@ -142,6 +146,30 @@ std::unique_ptr<Expr> Parser::assignment() {
         // if (GetExpr* getExpr = dynamic_cast<GetExpr*>(expr.get())) { ... }
 
         throw error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
+}
+
+std::unique_ptr<Expr> Parser::logicalOr() {
+    std::unique_ptr<Expr> expr = logicalAnd();
+
+    while (match({TokenType::OrOr})) {
+        Token op = previous();
+        std::unique_ptr<Expr> right = logicalAnd();
+        expr = std::make_unique<BinaryExpr>(std::move(expr), op, std::move(right));
+    }
+
+    return expr;
+}
+
+std::unique_ptr<Expr> Parser::logicalAnd() {
+    std::unique_ptr<Expr> expr = equality();
+
+    while (match({TokenType::AndAnd})) {
+        Token op = previous();
+        std::unique_ptr<Expr> right = equality();
+        expr = std::make_unique<BinaryExpr>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -214,6 +242,14 @@ std::unique_ptr<Expr> Parser::call() {
         } else if (match({TokenType::Dot})) {
             Token name = consume(TokenType::Identifier, "Expect property name after '.'.");
             expr = std::make_unique<GetExpr>(std::move(expr), name);
+        } else if (match({TokenType::LeftBracket})) {
+            Token bracket = previous();
+            std::unique_ptr<Expr> index = expression();
+            consume(TokenType::RightBracket, "Expect ']' after index.");
+            expr = std::make_unique<IndexExpr>(std::move(expr), bracket, std::move(index));
+        } else if (match({TokenType::Changed})) {
+            Token keyword = previous();
+            expr = std::make_unique<ChangedExpr>(std::move(expr), keyword);
         } else {
             break;
         }

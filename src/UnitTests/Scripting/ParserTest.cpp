@@ -53,3 +53,39 @@ TEST(ParserTest, FunctionCall) {
     ASSERT_NE(varExpr, nullptr);
     EXPECT_EQ(varExpr->name.lexeme, "emu");
 }
+
+TEST(ParserTest, ComplexExpression) {
+    Lexer lexer("PC == $8000 && A > $10 || MEM[$0200] changed");
+    auto tokens = lexer.scanTokens();
+    Parser parser(tokens);
+    auto expr = parser.parseExpression();
+
+    ASSERT_NE(expr, nullptr);
+    auto* orExpr = dynamic_cast<BinaryExpr*>(expr.get());
+    ASSERT_NE(orExpr, nullptr);
+    EXPECT_EQ(orExpr->op.type, TokenType::OrOr);
+
+    auto* andExpr = dynamic_cast<BinaryExpr*>(orExpr->left.get());
+    ASSERT_NE(andExpr, nullptr);
+    EXPECT_EQ(andExpr->op.type, TokenType::AndAnd);
+
+    auto* pcEq = dynamic_cast<BinaryExpr*>(andExpr->left.get());
+    ASSERT_NE(pcEq, nullptr);
+    EXPECT_EQ(pcEq->op.type, TokenType::EqualEqual);
+
+    auto* aGt = dynamic_cast<BinaryExpr*>(andExpr->right.get());
+    ASSERT_NE(aGt, nullptr);
+    EXPECT_EQ(aGt->op.type, TokenType::Greater);
+
+    auto* changedExpr = dynamic_cast<ChangedExpr*>(orExpr->right.get());
+    ASSERT_NE(changedExpr, nullptr);
+
+    auto* indexExpr = dynamic_cast<IndexExpr*>(changedExpr->expression.get());
+    ASSERT_NE(indexExpr, nullptr);
+    auto* memVar = dynamic_cast<VariableExpr*>(indexExpr->object.get());
+    ASSERT_NE(memVar, nullptr);
+    EXPECT_EQ(memVar->name.lexeme, "MEM");
+    auto* addrLit = dynamic_cast<LiteralExpr*>(indexExpr->index.get());
+    ASSERT_NE(addrLit, nullptr);
+    EXPECT_EQ(std::get<int64_t>(addrLit->value), 0x0200);
+}

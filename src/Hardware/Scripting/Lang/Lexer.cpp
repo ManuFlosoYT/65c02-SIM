@@ -14,7 +14,8 @@ TokenType Lexer::getKeywordType(const std::string& text) {
         {"continue", TokenType::Continue},
         {"true", TokenType::True},
         {"false", TokenType::False},
-        {"print", TokenType::Print}
+        {"print", TokenType::Print},
+        {"changed", TokenType::Changed}
     };
 
     auto it = keywords.find(text);
@@ -87,6 +88,13 @@ void Lexer::scanToken() {
             }
             break;
         case '"': stringToken(); break;
+        case '$': hexDollarToken(); break;
+        case '&':
+            tokens.push_back(match('&') ? makeToken(TokenType::AndAnd) : errorToken("Unexpected character."));
+            break;
+        case '|':
+            tokens.push_back(match('|') ? makeToken(TokenType::OrOr) : errorToken("Unexpected character."));
+            break;
         default:
             if (isDigit(c)) {
                 numberToken();
@@ -204,6 +212,24 @@ void Lexer::numberToken() {
         }
     }
 
+    tokens.emplace_back(TokenType::Number, numStr, line, columnStart, val);
+}
+
+void Lexer::hexDollarToken() {
+    while (isDigit(peek()) || (peek() >= 'a' && peek() <= 'f') || (peek() >= 'A' && peek() <= 'F')) {
+        advance();
+    }
+    std::string numStr = source.substr(start, current - start);
+    if (numStr.size() <= 1) {
+        tokens.push_back(errorToken("Expect hex digits after '$'."));
+        return;
+    }
+    int64_t val = 0;
+    auto result = std::from_chars(numStr.data() + 1, numStr.data() + numStr.size(), val, 16);
+    if (result.ec != std::errc()) {
+        tokens.push_back(errorToken("Invalid hex number format."));
+        return;
+    }
     tokens.emplace_back(TokenType::Number, numStr, line, columnStart, val);
 }
 

@@ -1,14 +1,33 @@
 #include "Hardware/Core/BreakpointManager.h"
 
-
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
+#include "Hardware/Scripting/Lang/Interpreter.h"
+#include "Hardware/Scripting/Lang/Lexer.h"
+#include "Hardware/Scripting/Lang/Parser.h"
 
 namespace Hardware {
 
+BreakpointManager::BreakpointManager()
+    : interpreter(std::make_unique<System::Hardware::Scripting::Lang::Interpreter>()) {}
+
+BreakpointManager::~BreakpointManager() = default;
+
 uint32_t BreakpointManager::AddBreakpoint(Breakpoint breakpoint) {
-    std::lock_guard<std::recursive_mutex> lock(bpMutex);
+    std::scoped_lock lock(bpMutex);
     breakpoint.id = nextId++;
+    for (auto& cond : breakpoint.conditions) {
+        if (cond.type == BreakpointType::Expression && cond.ast == nullptr && !cond.expression.empty()) {
+            try {
+                System::Hardware::Scripting::Lang::Lexer lexer(cond.expression);
+                auto tokens = lexer.scanTokens();
+                System::Hardware::Scripting::Lang::Parser parser(tokens);
+                cond.ast = parser.parseExpression();
+            } catch (...) {
+                cond.ast = nullptr;
+            }
+        }
+    }
     breakpoints.push_back(std::move(breakpoint));
     UpdateFastPath();
     return breakpoints.back().id;
@@ -200,6 +219,22 @@ bool BreakpointManager::EvaluateCondition(const BreakCondition& cond, const CPU&
 
         case BreakpointType::MemoryWatchpoint:
             return watchpointTriggered && watchpointAddress == cond.address;
+
+        case BreakpointType::Expression: {
+            if (!cond.ast) {
+                return false;
+            }
+            if (!interpreter) {
+                interpreter = std::make_unique<System::Hardware::Scripting::Lang::Interpreter>();
+            }
+            interpreter->setContext(&cpu, &bus);
+            try {
+                auto val = interpreter->evaluate(cond.ast.get());
+                return System::Hardware::Scripting::Lang::Interpreter::isTruthy(val);
+            } catch (...) {
+                return false;
+            }
+        }
     }
     return false;
 }
@@ -255,11 +290,58 @@ void BreakpointManager::UpdateFastPath() {
             if (cond.type == BreakpointType::MemoryWatchpoint) {
                 watchpoints = true;
             }
+            if (cond.type == BreakpointType::Expression) {
+                if (cond.expression.find("MEM") != std::string::npos ||
+                    cond.expression.find("mem") != std::string::npos ||
+                    cond.expression.find("changed") != std::string::npos) {
+                    watchpoints = true;
+                }
+            }
         }
     }
     hasAnyBreakpoints.store(any, std::memory_order_relaxed);
     hasComplexBreakpoints.store(complex, std::memory_order_relaxed);
     hasWatchpoints.store(watchpoints, std::memory_order_relaxed);
+}
+
+bool BreakpointManager::ValidateExpression(const std::string& expr, std::string* outError) {
+    if (expr.empty()) {
+        if (outError != nullptr) {
+            *outError = "Expression is empty";
+        }
+        return false;
+    }
+    try {
+        System::Hardware::Scripting::Lang::Lexer lexer(expr);
+        auto tokens = lexer.scanTokens();
+        for (const auto& token : tokens) {
+            if (token.type == System::Hardware::Scripting::Lang::TokenType::Error) {
+                if (outError != nullptr) {
+                    *outError = token.lexeme;
+                }
+                return false;
+            }
+        }
+        System::Hardware::Scripting::Lang::Parser parser(tokens);
+        auto ast = parser.parseExpression();
+        if (ast == nullptr) {
+            if (outError != nullptr) {
+                *outError = "Failed to parse expression";
+            }
+            return false;
+        }
+        return true;
+    } catch (const std::exception& e) {
+        if (outError != nullptr) {
+            *outError = e.what();
+        }
+        return false;
+    } catch (...) {
+        if (outError != nullptr) {
+            *outError = "Unknown parse error";
+        }
+        return false;
+    }
 }
 
 }  // namespace Hardware

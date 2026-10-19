@@ -7,6 +7,11 @@
 #include <vector>
 #include <unordered_map>
 
+namespace Hardware {
+class CPU;
+class Bus;
+}
+
 namespace System::Hardware::Scripting::Lang {
 
 using BuiltinFunc = std::function<Value(const std::vector<Value>&)>;
@@ -18,14 +23,21 @@ public:
     void interpret(const std::vector<std::unique_ptr<Stmt>>& statements);
     void defineBuiltin(const std::string& name, BuiltinFunc func);
 
-    
     void setPrintHandler(std::function<void(const std::string&)> handler) {
         printHandler = std::move(handler);
     }
 
+    Value evaluate(Expr* expr);
+    void setContext(const ::Hardware::CPU* cpu, const ::Hardware::Bus* bus) {
+        cpuContext = cpu;
+        busContext = bus;
+    }
+
+    static bool isTruthy(const Value& value);
+    static bool isEqual(const Value& a, const Value& b);
+
    private:
     std::function<void(const std::string&)> printHandler;
-    Value evaluate(Expr* expr);
     void execute(Stmt* stmt);
     void executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, std::shared_ptr<Environment> environment);
 
@@ -36,6 +48,8 @@ public:
     Value visitAssignExpr(AssignExpr* expr);
     Value visitCallExpr(CallExpr* expr);
     Value visitGetExpr(GetExpr* expr);
+    Value visitIndexExpr(IndexExpr* expr);
+    Value visitChangedExpr(ChangedExpr* expr);
 
     void visitExpressionStmt(ExpressionStmt* stmt);
     void visitPrintStmt(PrintStmt* stmt);
@@ -46,10 +60,11 @@ public:
     void visitBreakStmt(BreakStmt* stmt);
     void visitContinueStmt(ContinueStmt* stmt);
 
-    static bool isTruthy(const Value& value);
-    static bool isEqual(const Value& a, const Value& b);
     static void checkNumberOperand(const Token& op, const Value& operand);
     static void checkNumberOperands(const Token& op, const Value& left, const Value& right);
+
+    const ::Hardware::CPU* cpuContext = nullptr;
+    const ::Hardware::Bus* busContext = nullptr;
 
     std::shared_ptr<Environment> globals;
     std::shared_ptr<Environment> environment;

@@ -23,6 +23,7 @@ private:
 
     void stringToken();
     void numberToken();
+    void hexDollarToken();
     void identifierToken();
 
     static bool isAlpha(char c);

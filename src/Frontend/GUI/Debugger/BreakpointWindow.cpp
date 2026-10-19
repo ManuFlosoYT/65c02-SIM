@@ -12,7 +12,7 @@ namespace GUI {
 
 namespace {
 
-constexpr std::array<const char*, 5> kTypeNames = {"PC Address", "Register", "Flag", "Memory Value", "Watchpoint"};
+constexpr std::array<const char*, 6> kTypeNames = {"PC Address", "Register", "Flag", "Memory Value", "Watchpoint", "Expression"};
 constexpr std::array<const char*, 6> kOpNames = {"==", "!=", "<", "<=", ">", ">="};
 constexpr std::array<const char*, 5> kRegNames = {"A", "X", "Y", "SP", "PC"};
 constexpr std::array<const char*, 7> kFlagNames = {"C", "Z", "I", "D", "B", "V", "N"};
@@ -27,6 +27,8 @@ struct BreakpointFormState {
     int compoundOpIndex = 0;
     bool hitOnce = false;
     std::array<char, 64> labelBuf = {{0}};
+    std::array<char, 256> exprBuf = {{0}};
+    std::string exprError;
     std::vector<Hardware::BreakCondition> conditions;
 };
 
@@ -52,6 +54,8 @@ std::string ConditionToString(const Hardware::BreakCondition& cond) {
         case Hardware::BreakpointType::MemoryWatchpoint:
             oss << "write @ 0x" << std::setw(4) << cond.address;
             break;
+        case Hardware::BreakpointType::Expression:
+            return cond.expression;
     }
     return oss.str();
 }
@@ -76,6 +80,7 @@ Hardware::BreakCondition BuildConditionFromForm(const BreakpointFormState& form)
     cond.op = static_cast<Hardware::CompareOp>(form.opIndex);
     cond.address = form.address;
     cond.value = form.value;
+    cond.expression = form.exprBuf.data();
     return cond;
 }
 
@@ -125,6 +130,22 @@ void DrawConditionForm(BreakpointFormState& form) {
             ImGui::InputScalar("Address##wp", ImGuiDataType_U16, &form.address, nullptr, nullptr, "%04X",
                                ImGuiInputTextFlags_CharsHexadecimal);
             break;
+
+        case Hardware::BreakpointType::Expression: {
+            ImGui::PopItemWidth();
+            ImGui::PushItemWidth(360);
+            if (ImGui::InputTextWithHint("Expression##expr", "e.g. PC == $8000 && A > $10 || MEM[$0200] changed",
+                                         form.exprBuf.data(), form.exprBuf.size())) {
+                form.exprError.clear();
+            }
+            if (!form.exprError.empty()) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.4F, 0.4F, 1.0F));
+                ImGui::TextUnformatted(form.exprError.c_str());
+                ImGui::PopStyleColor();
+            }
+            ImGui::PushItemWidth(100);
+            break;
+        }
     }
     ImGui::PopItemWidth();
 }
@@ -187,6 +208,13 @@ void DrawHelperSection(BreakpointFormState& form) {
         form.opIndex = 0;
         form.value = 1;
         form.conditions.clear();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Expression")) {
+        form.typeIndex = 5;
+        form.conditions.clear();
+        form.exprBuf.fill(0);
+        form.exprError.clear();
     }
 
     ImGui::PopStyleVar();
@@ -333,7 +361,18 @@ void DrawBreakpointWindow(Control::AppState& state) {
     ImGui::Spacing();
 
     if (ImGui::Button("Add Condition")) {
-        form.conditions.push_back(BuildConditionFromForm(form));
+        if (form.typeIndex == 5) {
+            std::string err;
+            if (Hardware::BreakpointManager::ValidateExpression(form.exprBuf.data(), &err)) {
+                form.conditions.push_back(BuildConditionFromForm(form));
+                form.exprBuf.fill(0);
+                form.exprError.clear();
+            } else {
+                form.exprError = err;
+            }
+        } else {
+            form.conditions.push_back(BuildConditionFromForm(form));
+        }
     }
     ImGui::SameLine();
 
@@ -355,21 +394,36 @@ void DrawBreakpointWindow(Control::AppState& state) {
     ImGui::Spacing();
 
     if (ImGui::Button("Create Breakpoint")) {
-        Hardware::Breakpoint newBp;
-        newBp.hitOnce = form.hitOnce;
-        newBp.compoundOp = static_cast<Hardware::LogicOp>(form.compoundOpIndex);
-        newBp.label = std::string(form.labelBuf.data());
-
+        bool canCreate = true;
         if (form.conditions.empty()) {
-            form.conditions.push_back(BuildConditionFromForm(form));
+            if (form.typeIndex == 5) {
+                std::string err;
+                if (Hardware::BreakpointManager::ValidateExpression(form.exprBuf.data(), &err)) {
+                    form.conditions.push_back(BuildConditionFromForm(form));
+                    form.exprError.clear();
+                } else {
+                    form.exprError = err;
+                    canCreate = false;
+                }
+            } else {
+                form.conditions.push_back(BuildConditionFromForm(form));
+            }
         }
-        newBp.conditions = form.conditions;
+        if (canCreate && !form.conditions.empty()) {
+            Hardware::Breakpoint newBp;
+            newBp.hitOnce = form.hitOnce;
+            newBp.compoundOp = static_cast<Hardware::LogicOp>(form.compoundOpIndex);
+            newBp.label = std::string(form.labelBuf.data());
+            newBp.conditions = form.conditions;
 
-        manager.AddBreakpoint(std::move(newBp));
+            manager.AddBreakpoint(std::move(newBp));
 
-        form.conditions.clear();
-        form.hitOnce = false;
-        form.labelBuf.fill(0);
+            form.conditions.clear();
+            form.hitOnce = false;
+            form.labelBuf.fill(0);
+            form.exprBuf.fill(0);
+            form.exprError.clear();
+        }
     }
 }
 

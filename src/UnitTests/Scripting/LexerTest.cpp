@@ -4,10 +4,10 @@
 using namespace System::Hardware::Scripting::Lang;
 
 TEST(LexerTest, Keywords) {
-    Lexer lexer("let if else while break continue true false");
+    Lexer lexer("let if else while break continue true false changed");
     auto tokens = lexer.scanTokens();
     
-    ASSERT_EQ(tokens.size(), 9); // 8 keywords + EOF
+    ASSERT_EQ(tokens.size(), 10); // 9 keywords + EOF
     EXPECT_EQ(tokens[0].type, TokenType::Let);
     EXPECT_EQ(tokens[1].type, TokenType::If);
     EXPECT_EQ(tokens[2].type, TokenType::Else);
@@ -16,18 +16,25 @@ TEST(LexerTest, Keywords) {
     EXPECT_EQ(tokens[5].type, TokenType::Continue);
     EXPECT_EQ(tokens[6].type, TokenType::True);
     EXPECT_EQ(tokens[7].type, TokenType::False);
-    EXPECT_EQ(tokens[8].type, TokenType::Eof);
+    EXPECT_EQ(tokens[8].type, TokenType::Changed);
+    EXPECT_EQ(tokens[9].type, TokenType::Eof);
 }
 
 TEST(LexerTest, Numbers) {
-    Lexer lexer("123 0x1A");
+    Lexer lexer("123 0x1A $8000 $10 $0200");
     auto tokens = lexer.scanTokens();
     
-    ASSERT_EQ(tokens.size(), 3); // 2 numbers + EOF
+    ASSERT_EQ(tokens.size(), 6); // 5 numbers + EOF
     EXPECT_EQ(tokens[0].type, TokenType::Number);
     EXPECT_EQ(tokens[0].numberValue, 123);
     EXPECT_EQ(tokens[1].type, TokenType::Number);
     EXPECT_EQ(tokens[1].numberValue, 26);
+    EXPECT_EQ(tokens[2].type, TokenType::Number);
+    EXPECT_EQ(tokens[2].numberValue, 0x8000);
+    EXPECT_EQ(tokens[3].type, TokenType::Number);
+    EXPECT_EQ(tokens[3].numberValue, 0x10);
+    EXPECT_EQ(tokens[4].type, TokenType::Number);
+    EXPECT_EQ(tokens[4].numberValue, 0x0200);
 }
 
 TEST(LexerTest, Identifiers) {
@@ -42,11 +49,11 @@ TEST(LexerTest, Identifiers) {
 }
 
 TEST(LexerTest, Symbols) {
-    Lexer lexer("= == != < <= > >= + - * / () {} [],.");
+    Lexer lexer("= == != < <= > >= + - * / () {} [],. && ||");
     auto tokens = lexer.scanTokens();
     
-    // There are 19 symbols here, plus EOF
-    ASSERT_EQ(tokens.size(), 20);
+    // There are 21 symbols here, plus EOF
+    ASSERT_EQ(tokens.size(), 22);
     EXPECT_EQ(tokens[0].type, TokenType::Equal);
     EXPECT_EQ(tokens[1].type, TokenType::EqualEqual);
     EXPECT_EQ(tokens[2].type, TokenType::BangEqual);
@@ -66,4 +73,6 @@ TEST(LexerTest, Symbols) {
     EXPECT_EQ(tokens[16].type, TokenType::RightBracket);
     EXPECT_EQ(tokens[17].type, TokenType::Comma);
     EXPECT_EQ(tokens[18].type, TokenType::Dot);
+    EXPECT_EQ(tokens[19].type, TokenType::AndAnd);
+    EXPECT_EQ(tokens[20].type, TokenType::OrOr);
 }
