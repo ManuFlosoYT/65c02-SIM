@@ -522,6 +522,10 @@ void SID::FlushAvailableOutput() {
         double finalMix = resampler.GetOutput();
         sampleBuffer.push_back(static_cast<int16_t>(finalMix * 18000.0));
 
+        const size_t wIdx = visualizerWriteIndex.load(std::memory_order_relaxed);
+        visualizerBuffer[wIdx % AUDIO_SNAPSHOT_SIZE] = static_cast<float>(finalMix);
+        visualizerWriteIndex.store(wIdx + 1, std::memory_order_relaxed);
+
         if (sampleBuffer.size() >= 512) {
             std::scoped_lock lock(sidMutex);
             if (audioStream != nullptr && !emulationPaused) {
@@ -637,7 +641,15 @@ void SID::ClockInternal() {
     static constexpr double INV_255 = 1.0 / 255.0;
     static constexpr double INV_15 = 1.0 / 15.0;
 
+    const uint8_t soloMask = voiceSoloMask.load(std::memory_order_relaxed);
+    const uint8_t muteMask = voiceMuteMask.load(std::memory_order_relaxed);
+
     for (size_t idx = 0; idx < MAX_SID_VOICES; ++idx) {
+        const bool active = (soloMask != 0 ? ((soloMask & (1U << idx)) != 0) : true) &&
+                            ((muteMask & (1U << idx)) == 0);
+        if (!active) {
+            continue;
+        }
         const uint8_t level = v[idx].env.level;
         if (level == 0) {
             continue;
@@ -913,6 +925,21 @@ void SID::ClearProfilingStats() {
 
 SIDProfilingStats SID::GetProfilingStats() const {
     return profilingStats;
+}
+
+void SID::GetAudioSnapshot(std::span<float> outBuffer) const {
+    if (outBuffer.empty()) {
+        return;
+    }
+    const size_t count = std::min(outBuffer.size(), AUDIO_SNAPSHOT_SIZE);
+    const size_t writeIdx = visualizerWriteIndex.load(std::memory_order_relaxed);
+    for (size_t i = 0; i < count; ++i) {
+        const size_t bufIdx = (writeIdx + AUDIO_SNAPSHOT_SIZE - count + i) % AUDIO_SNAPSHOT_SIZE;
+        outBuffer[i] = visualizerBuffer[bufIdx];
+    }
+    for (size_t i = count; i < outBuffer.size(); ++i) {
+        outBuffer[i] = 0.0F;
+    }
 }
 
 }  // namespace Hardware

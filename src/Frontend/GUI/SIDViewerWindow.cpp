@@ -1,9 +1,14 @@
 #include "Frontend/GUI/SIDViewerWindow.h"
 
+#include <algorithm>
 #include <cmath>
+#include <complex>
 #include <format>
+#include <numbers>
 #include <random>
+#include <span>
 #include <string_view>
+#include <vector>
 
 #include "Frontend/GUI/Style/Style.h"
 #include "Hardware/Audio/SIDWaveTables.h"
@@ -14,11 +19,56 @@ using namespace Hardware;
 
 namespace GUI {
 
-static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_time, bool should_update) {
+static void DrawMuteSoloButtons(Hardware::SID& sid, int voiceIndex) {
+    bool isMuted = sid.IsVoiceMuted(voiceIndex);
+    bool isSolo = sid.IsVoiceSolo(voiceIndex);
+
+    if (isMuted) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85F, 0.20F, 0.20F, 0.9F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95F, 0.30F, 0.30F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.75F, 0.15F, 0.15F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 1.0F, 1.0F));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
+    }
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0F, 0.0F));
+    if (ImGui::SmallButton("M")) {
+        sid.SetVoiceMute(voiceIndex, !isMuted);
+    }
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(4);
+
+    ImGui::SameLine(0.0F, 2.0F);
+
+    if (isSolo) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.90F, 0.70F, 0.10F, 0.9F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.00F, 0.80F, 0.20F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.80F, 0.60F, 0.05F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1F, 0.1F, 0.1F, 1.0F));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
+    }
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0F, 0.0F));
+    if (ImGui::SmallButton("S")) {
+        sid.SetVoiceSolo(voiceIndex, !isSolo);
+    }
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(4);
+}
+
+static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_time, bool should_update) {
     const auto& voice = sid.GetVoice(voiceIndex);
 
     ImGui::BeginGroup();
-    ImGui::Text("Voice %d", voiceIndex + 1);
+    ImGui::Text("V%d", voiceIndex + 1);
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawMuteSoloButtons(sid, voiceIndex);
 
     static std::array<std::array<float, 50>, 3> noise_buffer{};
     static bool initialized = false;
@@ -177,6 +227,68 @@ static void DrawControlBadge(const char* label, bool active) {
     ImGui::PopStyleColor(5);
 }
 
+static void DrawVoiceADSR(const Oscillator& voice) {
+    const ImVec2 size(75.0F, 22.0F);
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    const ImVec2 p1 = ImVec2(p0.x + size.x, p0.y + size.y);
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    drawList->AddRectFilled(p0, p1, ImColor(Theme::Surface));
+    drawList->AddRect(p0, p1, ImColor(Theme::BorderSubtle), 2.0F);
+
+    const float y0 = p1.y - 3.0F;
+    const float yPeak = p0.y + 3.0F;
+    const float susRatio = static_cast<float>(voice.env.sustainLevel) / 15.0F;
+    const float ySus = y0 - ((y0 - yPeak) * susRatio);
+
+    const float x0 = p0.x + 3.0F;
+    const float x1 = p0.x + (size.x * 0.26F);
+    const float x2 = p0.x + (size.x * 0.50F);
+    const float x3 = p0.x + (size.x * 0.74F);
+    const float x4 = p1.x - 3.0F;
+
+    const ImU32 curveColor = ImColor(Theme::TextSecondary);
+    drawList->AddLine(ImVec2(x0, y0), ImVec2(x1, yPeak), curveColor, 1.2F);
+    drawList->AddLine(ImVec2(x1, yPeak), ImVec2(x2, ySus), curveColor, 1.2F);
+    drawList->AddLine(ImVec2(x2, ySus), ImVec2(x3, ySus), curveColor, 1.2F);
+    drawList->AddLine(ImVec2(x3, ySus), ImVec2(x4, y0), curveColor, 1.2F);
+
+    const float curLevel = static_cast<float>(voice.env.level) / 255.0F;
+    const float curY = y0 - ((y0 - yPeak) * curLevel);
+    float curX = x0;
+
+    switch (voice.env.state) {
+        case ADSREnvelope::ATTACK:
+            curX = x0 + ((x1 - x0) * curLevel);
+            break;
+        case ADSREnvelope::DECAY: {
+            float range = std::max(0.01F, 1.0F - susRatio);
+            float t = std::clamp((1.0F - curLevel) / range, 0.0F, 1.0F);
+            curX = x1 + ((x2 - x1) * t);
+            break;
+        }
+        case ADSREnvelope::SUSTAIN:
+            curX = (x2 + x3) * 0.5F;
+            break;
+        case ADSREnvelope::RELEASE: {
+            float t = (susRatio > 0.01F) ? std::clamp(1.0F - (curLevel / susRatio), 0.0F, 1.0F) : 1.0F;
+            curX = x3 + ((x4 - x3) * t);
+            break;
+        }
+        case ADSREnvelope::IDLE:
+        default:
+            curX = x0;
+            break;
+    }
+
+    if (voice.env.level > 0) {
+        drawList->AddLine(ImVec2(curX, y0), ImVec2(curX, curY), ImColor(Theme::AccentPrimary), 1.5F);
+        drawList->AddCircleFilled(ImVec2(curX, curY), 3.0F, ImColor(Theme::AccentActive));
+    }
+
+    ImGui::Dummy(size);
+}
+
 static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     const auto& voice = sid.GetVoice(voiceIndex);
 
@@ -211,7 +323,10 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     ImGui::SameLine(0.0F, 2.0F);
     DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.releaseRate));
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 6.0F);
+    DrawVoiceADSR(voice);
+
+    ImGui::SameLine(0.0F, 6.0F);
     DrawControlBadge("GATE", (voice.control & 1) != 0);
     ImGui::SameLine();
     DrawControlBadge("SYNC", (voice.control & 2) != 0);
@@ -222,18 +337,277 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     ImGui::EndGroup();
 }
 
-static void DrawSIDViewerContent(const AppState& state, double sid_time, bool should_update) {
-    for (int voiceIndex = 0; voiceIndex < 3; ++voiceIndex) {
-        ImGui::PushID(voiceIndex);
-        if (voiceIndex > 0) {
+static void DrawPianoRoll(const Core::SID& sid) {
+    ImGui::TextUnformatted("Piano Roll:");
+    ImGui::SameLine();
+
+    static constexpr const char* NOTE_NAMES[12] = {
+        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+    };
+    static constexpr std::array<ImU32, 3> VOICE_COLORS = {
+        IM_COL32(79, 195, 247, 240),
+        IM_COL32(255, 183, 77, 240),
+        IM_COL32(240, 98, 146, 240)
+    };
+
+    std::array<int, 3> activeNotes = {-1, -1, -1};
+    for (int v = 0; v < 3; ++v) {
+        const auto& voice = sid.GetVoice(v);
+        if (voice.frequency > 0 && voice.env.level > 0 && (voice.control & 0x08) == 0) {
+            float freqHz = static_cast<float>(voice.frequency) * (1000000.0F / 16777216.0F);
+            if (freqHz >= 16.0F) {
+                activeNotes.at(v) = static_cast<int>(std::round(69.0F + (12.0F * std::log2(freqHz / 440.0F))));
+            }
+        }
+        if (v > 0) {
+            ImGui::SameLine(0.0F, 6.0F);
+        }
+        if (activeNotes.at(v) >= 0) {
+            int noteVal = activeNotes.at(v);
+            int nInOct = ((noteVal % 12) + 12) % 12;
+            int oct = (noteVal / 12) - 1;
+            float freqHz = static_cast<float>(sid.GetVoice(v).frequency) * (1000000.0F / 16777216.0F);
+            ImGui::TextColored(ImColor(VOICE_COLORS.at(v)).Value, "V%d: %s%d (%.0fHz)", v + 1, NOTE_NAMES[nInOct], oct, freqHz);
+        } else {
+            ImGui::TextColored(Theme::TextSecondary, "V%d: ---", v + 1);
+        }
+    }
+
+    constexpr int START_NOTE = 36;
+    constexpr int NUM_WHITE_KEYS = 28;
+    constexpr float WHITE_KEY_W = 8.0F;
+    constexpr float WHITE_KEY_H = 15.0F;
+    constexpr float BLACK_KEY_W = 5.0F;
+    constexpr float BLACK_KEY_H = 9.0F;
+
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    static constexpr std::array<int, 12> NOTE_TO_WHITE = {
+        0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6
+    };
+
+    for (int i = 0; i < NUM_WHITE_KEYS; ++i) {
+        ImVec2 kp0(p0.x + (static_cast<float>(i) * WHITE_KEY_W), p0.y);
+        ImVec2 kp1(kp0.x + WHITE_KEY_W, kp0.y + WHITE_KEY_H);
+        drawList->AddRectFilled(kp0, kp1, IM_COL32(230, 230, 230, 255));
+        drawList->AddRect(kp0, kp1, IM_COL32(60, 60, 60, 255));
+    }
+
+    for (int oct = 0; oct < 4; ++oct) {
+        int baseW = oct * 7;
+        const std::array<int, 5> blackOffsets = {0, 1, 3, 4, 5};
+        for (int b : blackOffsets) {
+            float kx = p0.x + (static_cast<float>(baseW + b) * WHITE_KEY_W) + (WHITE_KEY_W * 0.65F);
+            ImVec2 kp0(kx, p0.y);
+            ImVec2 kp1(kx + BLACK_KEY_W, p0.y + BLACK_KEY_H);
+            drawList->AddRectFilled(kp0, kp1, IM_COL32(35, 35, 35, 255));
+        }
+    }
+
+    for (int v = 0; v < 3; ++v) {
+        int note = activeNotes.at(v);
+        if (note < START_NOTE || note >= (START_NOTE + 48)) {
+            continue;
+        }
+        int relNote = note - START_NOTE;
+        int oct = relNote / 12;
+        int nInOct = relNote % 12;
+        int whiteIdx = NOTE_TO_WHITE.at(nInOct);
+
+        if (whiteIdx >= 0) {
+            int keyIdx = (oct * 7) + whiteIdx;
+            ImVec2 kp0(p0.x + (static_cast<float>(keyIdx) * WHITE_KEY_W), p0.y + BLACK_KEY_H);
+            ImVec2 kp1(kp0.x + WHITE_KEY_W, p0.y + WHITE_KEY_H);
+            drawList->AddRectFilled(kp0, kp1, VOICE_COLORS.at(v));
+        } else {
+            int prevWhite = NOTE_TO_WHITE.at(nInOct - 1);
+            int keyIdx = (oct * 7) + prevWhite;
+            float kx = p0.x + (static_cast<float>(keyIdx) * WHITE_KEY_W) + (WHITE_KEY_W * 0.65F);
+            ImVec2 kp0(kx, p0.y);
+            ImVec2 kp1(kx + BLACK_KEY_W, p0.y + BLACK_KEY_H);
+            drawList->AddRectFilled(kp0, kp1, VOICE_COLORS.at(v));
+        }
+    }
+
+    ImGui::Dummy(ImVec2(static_cast<float>(NUM_WHITE_KEYS) * WHITE_KEY_W, WHITE_KEY_H));
+}
+
+static void ComputeFFT(std::vector<std::complex<float>>& a) {
+    const size_t n = a.size();
+    for (size_t i = 1, j = 0; i < n; ++i) {
+        size_t bit = n >> 1U;
+        for (; (j & bit) != 0; bit >>= 1U) {
+            j ^= bit;
+        }
+        j ^= bit;
+        if (i < j) {
+            std::swap(a[i], a[j]);
+        }
+    }
+    for (size_t len = 2; len <= n; len <<= 1U) {
+        float ang = -2.0F * std::numbers::pi_v<float> / static_cast<float>(len);
+        std::complex<float> wlen(std::cos(ang), std::sin(ang));
+        for (size_t i = 0; i < n; i += len) {
+            std::complex<float> w(1.0F, 0.0F);
+            for (size_t j = 0; j < (len / 2U); ++j) {
+                std::complex<float> u = a[i + j];
+                std::complex<float> v = a[i + j + (len / 2U)] * w;
+                a[i + j] = u + v;
+                a[i + j + (len / 2U)] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+}
+
+static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrumOut, bool should_update) {
+    static std::array<float, 32> smoothedSpectrum{};
+    if (!should_update) {
+        spectrumOut = smoothedSpectrum;
+        return;
+    }
+
+    constexpr size_t FFT_SIZE = 128;
+    std::array<float, FFT_SIZE> samples{};
+    sid.GetAudioSnapshot(samples);
+
+    std::vector<std::complex<float>> fftData(FFT_SIZE);
+    for (size_t i = 0; i < FFT_SIZE; ++i) {
+        float window = 0.5F * (1.0F - std::cos(2.0F * std::numbers::pi_v<float> * static_cast<float>(i) / (FFT_SIZE - 1.0F)));
+        fftData[i] = std::complex<float>(samples.at(i) * window, 0.0F);
+    }
+    ComputeFFT(fftData);
+
+    for (size_t i = 0; i < 32; ++i) {
+        float mag = std::abs(fftData.at(i + 1)) * 4.0F;
+        smoothedSpectrum.at(i) = std::max(mag, smoothedSpectrum.at(i) * 0.82F);
+        spectrumOut.at(i) = std::clamp(smoothedSpectrum.at(i), 0.0F, 1.0F);
+    }
+}
+
+static void DrawCompactSpectrum(const std::array<float, 32>& spectrum) {
+    const float availW = ImGui::GetContentRegionAvail().x;
+    constexpr float barH = 14.0F;
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    drawList->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barH), ImColor(Theme::Surface));
+    const float barW = (availW - 4.0F) / 32.0F;
+    for (size_t i = 0; i < 32; ++i) {
+        float h = spectrum.at(i) * (barH - 2.0F);
+        float bx0 = p0.x + 2.0F + (static_cast<float>(i) * barW);
+        float by1 = p0.y + barH - 1.0F;
+        drawList->AddRectFilled(ImVec2(bx0, by1 - h), ImVec2(bx0 + barW - 1.0F, by1), ImColor(Theme::AccentPrimary));
+    }
+    ImGui::Dummy(ImVec2(availW, barH));
+}
+
+static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 32>& spectrum, bool should_update) {
+    ImGui::TextUnformatted("Mute/Solo:");
+    for (int v = 0; v < 3; ++v) {
+        ImGui::SameLine(0.0F, 12.0F);
+        ImGui::Text("V%d", v + 1);
+        ImGui::SameLine(0.0F, 4.0F);
+        DrawMuteSoloButtons(sid, v);
+    }
+
+    ImGui::Separator();
+
+    ImGui::TextUnformatted("Frequency Spectrum:");
+    const float availW = ImGui::GetContentRegionAvail().x;
+    const float barHeight = 42.0F;
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    drawList->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barHeight), ImColor(Theme::Surface));
+    drawList->AddRect(p0, ImVec2(p0.x + availW, p0.y + barHeight), ImColor(Theme::BorderSubtle));
+
+    const float barWidth = (availW - 4.0F) / 32.0F;
+    for (size_t i = 0; i < 32; ++i) {
+        float h = spectrum.at(i) * (barHeight - 6.0F);
+        float bx0 = p0.x + 2.0F + (static_cast<float>(i) * barWidth);
+        float by1 = p0.y + barHeight - 3.0F;
+        float by0 = by1 - h;
+        ImU32 col = ImColor(Theme::AccentPrimary);
+        if (spectrum.at(i) > 0.7F) {
+            col = IM_COL32(255, 100, 100, 255);
+        } else if (spectrum.at(i) > 0.4F) {
+            col = IM_COL32(255, 200, 50, 255);
+        }
+        drawList->AddRectFilled(ImVec2(bx0, by0), ImVec2(bx0 + barWidth - 1.0F, by1), col);
+    }
+    ImGui::Dummy(ImVec2(availW, barHeight + 4.0F));
+
+    ImGui::TextUnformatted("Waterfall Spectrogram (Time vs Freq):");
+    constexpr int WATERFALL_ROWS = 14;
+    static std::array<std::array<float, 32>, WATERFALL_ROWS> waterfallGrid{};
+    if (should_update) {
+        for (int r = WATERFALL_ROWS - 1; r > 0; --r) {
+            waterfallGrid.at(r) = waterfallGrid.at(r - 1);
+        }
+        waterfallGrid.at(0) = spectrum;
+    }
+
+    const ImVec2 wp0 = ImGui::GetCursorScreenPos();
+    const float cellH = 5.0F;
+    for (int r = 0; r < WATERFALL_ROWS; ++r) {
+        for (size_t c = 0; c < 32; ++c) {
+            float val = waterfallGrid.at(r).at(c);
+            float cx0 = wp0.x + 2.0F + (static_cast<float>(c) * barWidth);
+            float cy0 = wp0.y + (static_cast<float>(r) * cellH);
+            ImVec2 cp0(cx0, cy0);
+            ImVec2 cp1(cx0 + barWidth - 1.0F, cy0 + cellH - 0.5F);
+
+            ImU32 cellColor = IM_COL32(11, 29, 40, 200);
+            if (val > 0.75F) {
+                cellColor = IM_COL32(255, 235, 59, 255);
+            } else if (val > 0.5F) {
+                cellColor = IM_COL32(0, 230, 200, 240);
+            } else if (val > 0.25F) {
+                cellColor = IM_COL32(0, 150, 180, 220);
+            } else if (val > 0.05F) {
+                cellColor = IM_COL32(20, 70, 95, 200);
+            }
+            drawList->AddRectFilled(cp0, cp1, cellColor);
+        }
+    }
+    ImGui::Dummy(ImVec2(availW, (static_cast<float>(WATERFALL_ROWS) * cellH) + 4.0F));
+}
+
+static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_update) {
+    std::array<float, 32> spectrum{};
+    ProcessFFT(state.emulator.GetSID(), spectrum, should_update);
+
+    if (ImGui::BeginTabBar("SIDViewerTabs")) {
+        if (ImGui::BeginTabItem("Oscillators")) {
+            for (int voiceIndex = 0; voiceIndex < 3; ++voiceIndex) {
+                ImGui::PushID(voiceIndex);
+                if (voiceIndex > 0) {
+                    ImGui::Separator();
+                }
+
+                DrawVoiceWaveform(state.emulator.GetSID(), voiceIndex, sid_time, should_update);
+                ImGui::SameLine();
+                DrawVoiceParameters(state.emulator.GetSID(), voiceIndex);
+
+                ImGui::PopID();
+            }
+
             ImGui::Separator();
+            DrawPianoRoll(state.emulator.GetSID());
+            ImGui::Spacing();
+            DrawCompactSpectrum(spectrum);
+
+            ImGui::EndTabItem();
         }
 
-        DrawVoiceWaveform(state.emulator.GetSID(), voiceIndex, sid_time, should_update);
-        ImGui::SameLine();
-        DrawVoiceParameters(state.emulator.GetSID(), voiceIndex);
+        if (ImGui::BeginTabItem("FFT Spectrogram")) {
+            DrawFullSpectrogramTab(state.emulator.GetSID(), spectrum, should_update);
+            ImGui::EndTabItem();
+        }
 
-        ImGui::PopID();
+        ImGui::EndTabBar();
     }
 }
 

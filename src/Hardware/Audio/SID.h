@@ -3,10 +3,12 @@
 #include <SDL3/SDL.h>
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <iostream>
 #include <mutex>
+#include <span>
 
 #ifndef TARGET_WASM
 #include "Hardware/Audio/AudioRecorder.h"
@@ -145,6 +147,12 @@ class SID : public IBusDevice {
     void ClearProfilingStats();
     SIDProfilingStats GetProfilingStats() const;
 
+    void SetVoiceMute(int index, bool mute);
+    [[nodiscard]] bool IsVoiceMuted(int index) const;
+    void SetVoiceSolo(int index, bool solo);
+    [[nodiscard]] bool IsVoiceSolo(int index) const;
+    void GetAudioSnapshot(std::span<float> outBuffer) const;
+
    private:
     std::array<std::uint8_t, 0x20> registers{};
     std::array<Oscillator, MAX_SID_VOICES> voices{};
@@ -197,6 +205,13 @@ class SID : public IBusDevice {
     bool profilingEnabled = false;
     SIDProfilingStats profilingStats;
 
+    std::atomic<uint8_t> voiceMuteMask{0};
+    std::atomic<uint8_t> voiceSoloMask{0};
+
+    static constexpr size_t AUDIO_SNAPSHOT_SIZE = 256;
+    mutable std::array<float, AUDIO_SNAPSHOT_SIZE> visualizerBuffer{};
+    std::atomic<size_t> visualizerWriteIndex{0};
+
     template <bool Profiled>
     void ClockInternal();
     void UpdateAudioState();
@@ -214,4 +229,40 @@ inline std::string Hardware::SID::GetName() const { return "SID"; }
 inline bool Hardware::SID::IsSoundEnabled() const { return soundEnabled; }
 inline const Hardware::Oscillator& Hardware::SID::GetVoice(int index) const {
     return voices.at(index % MAX_SID_VOICES);
+}
+
+inline void Hardware::SID::SetVoiceMute(int index, bool mute) {
+    if (index < 0 || index >= MAX_SID_VOICES) {
+        return;
+    }
+    if (mute) {
+        voiceMuteMask.fetch_or(static_cast<uint8_t>(1U << index), std::memory_order_relaxed);
+    } else {
+        voiceMuteMask.fetch_and(static_cast<uint8_t>(~(1U << index)), std::memory_order_relaxed);
+    }
+}
+
+inline bool Hardware::SID::IsVoiceMuted(int index) const {
+    if (index < 0 || index >= MAX_SID_VOICES) {
+        return false;
+    }
+    return (voiceMuteMask.load(std::memory_order_relaxed) & (1U << index)) != 0;
+}
+
+inline void Hardware::SID::SetVoiceSolo(int index, bool solo) {
+    if (index < 0 || index >= MAX_SID_VOICES) {
+        return;
+    }
+    if (solo) {
+        voiceSoloMask.fetch_or(static_cast<uint8_t>(1U << index), std::memory_order_relaxed);
+    } else {
+        voiceSoloMask.fetch_and(static_cast<uint8_t>(~(1U << index)), std::memory_order_relaxed);
+    }
+}
+
+inline bool Hardware::SID::IsVoiceSolo(int index) const {
+    if (index < 0 || index >= MAX_SID_VOICES) {
+        return false;
+    }
+    return (voiceSoloMask.load(std::memory_order_relaxed) & (1U << index)) != 0;
 }
