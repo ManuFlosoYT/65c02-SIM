@@ -5,6 +5,8 @@
 #include <sstream>
 #include <array>
 #include <vector>
+#include <unordered_set>
+#include <algorithm>
 #include <filesystem>
 #include <optional>
 #include <TextEditor.h>
@@ -121,6 +123,18 @@ namespace {
     }
 
     std::string ResolveLibPath(const std::string& lib) {
+        if (std::filesystem::exists("sdk/microdos/Libs/" + lib)) {
+            return "sdk/microdos/Libs/" + lib;
+        }
+        if (std::filesystem::exists("output/SDK/sdk/microdos/Libs/" + lib)) {
+            return "output/SDK/sdk/microdos/Libs/" + lib;
+        }
+        if (std::filesystem::exists("sdk/src/Libs/" + lib)) {
+            return "sdk/src/Libs/" + lib;
+        }
+        if (std::filesystem::exists("output/SDK/sdk/src/Libs/" + lib)) {
+            return "output/SDK/sdk/src/Libs/" + lib;
+        }
 #ifndef TARGET_WASM
         const std::string vfsDir = CompilerVFS::GetTempDir();
         if (!vfsDir.empty()) {
@@ -130,12 +144,6 @@ namespace {
             }
         }
 #endif
-        if (std::filesystem::exists("sdk/microdos/Libs/" + lib)) {
-            return "sdk/microdos/Libs/" + lib;
-        }
-        if (std::filesystem::exists("sdk/src/Libs/" + lib)) {
-            return "sdk/src/Libs/" + lib;
-        }
         return {};
     }
 
@@ -207,22 +215,76 @@ namespace {
         state.ide.code = targetTab->code;
     }
 
+    std::vector<std::string> GetAvailableLibraries(Control::IDEMode mode) {
+        std::vector<std::string> libs;
+        std::unordered_set<std::string> seen;
+
+        auto scanDir = [&](const std::string& dirPath) {
+            std::error_code ec;
+            std::vector<std::string> files;
+            if (std::filesystem::exists(dirPath, ec) && std::filesystem::is_directory(dirPath, ec)) {
+                for (const auto& entry : std::filesystem::directory_iterator(dirPath, ec)) {
+                    if (entry.is_regular_file(ec) && entry.path().extension() == ".h") {
+                        files.push_back(entry.path().filename().string());
+                    }
+                }
+                std::sort(files.begin(), files.end());
+            }
+            return files;
+        };
+
+        if (mode == Control::IDEMode::MicroDOS) {
+            libs.emplace_back("app-bios.h");
+            seen.insert("app-bios.h");
+
+            const std::array<const char*, 2> microdosDirs = {"sdk/microdos/Libs", "output/SDK/sdk/microdos/Libs"};
+            for (const auto* dir : microdosDirs) {
+                auto files = scanDir(dir);
+                for (const auto& file : files) {
+                    if (seen.find(file) == seen.end()) {
+                        seen.insert(file);
+                        libs.push_back(file);
+                    }
+                }
+            }
+        }
+
+        const std::array<const char*, 2> standardDirs = {"sdk/src/Libs", "output/SDK/sdk/src/Libs"};
+        bool scannedAny = false;
+        for (const auto* dir : standardDirs) {
+            auto files = scanDir(dir);
+            if (!files.empty()) {
+                scannedAny = true;
+                for (const auto& file : files) {
+                    if (seen.find(file) == seen.end()) {
+                        seen.insert(file);
+                        libs.push_back(file);
+                    }
+                }
+            }
+        }
+
+        if (!scannedAny) {
+            static const std::array<const char*, 8> standardLibs = {
+                "BIOS.h", "GPU.h", "GPUDoubleBuffer.h", "LCD.h", "NET.h", "SD.h", "SID.h", "VIA.h"
+            };
+            for (const auto* lib : standardLibs) {
+                if (seen.find(lib) == seen.end()) {
+                    seen.insert(lib);
+                    libs.emplace_back(lib);
+                }
+            }
+        }
+
+        return libs;
+    }
+
     void DrawSDKLibrariesSidebar(Control::AppState& state, float height) {
         ImGui::BeginChild("##IDELibsSidebar", ImVec2(170.0F, height), true);
         ImGui::TextUnformatted("SDK Libraries");
         ImGui::Separator();
 
-        std::vector<std::string> libs;
-        if (state.ide.mode == Control::IDEMode::MicroDOS) {
-            libs.emplace_back("app-bios.h");
-        }
-        static const std::array<const char*, 8> standardLibs = {
-            "BIOS.h", "GPU.h", "GPUDoubleBuffer.h", "LCD.h", "NET.h", "SD.h", "SID.h", "VIA.h"
-        };
-        for (const auto* lib : standardLibs) {
-            libs.emplace_back(lib);
-        }
-
+        const std::vector<std::string> libs = GetAvailableLibraries(state.ide.mode);
         auto& tabs = GetTabs();
         auto& activeIndex = GetActiveTabIndex();
 
