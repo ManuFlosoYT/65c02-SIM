@@ -465,7 +465,7 @@ namespace {
                     tab.editor.Render("##CodeEditor", ImVec2(0.0F, height - 35.0F));
 
                     if (tab.editor.IsTextChanged()) {
-                        tab.code = tab.editor.GetText();
+                        GetSanitizedTabCode(tab);
                         if (!tab.isReadOnly) {
                             state.ide.code = tab.code;
                         }
@@ -544,8 +544,7 @@ static void DrawFileToolbar(Control::AppState& state) {
             CustomFileDialog::OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
         } else {
             if (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly) {
-                tabs.at(activeIndex).code = tabs.at(activeIndex).editor.GetText();
-                state.ide.code = tabs.at(activeIndex).code;
+                state.ide.code = GetSanitizedTabCode(tabs.at(activeIndex));
             }
             std::ofstream out(state.ide.currentFilePath);
             if (out) {
@@ -584,8 +583,7 @@ static bool SaveCurrentFileForCompile(Control::AppState& state) {
         state.ide.outputLog = "Error: No active source file to compile.";
         return false;
     }
-    state.ide.code = tabs.at(activeIndex).editor.GetText();
-    tabs.at(activeIndex).code = state.ide.code;
+    state.ide.code = GetSanitizedTabCode(tabs.at(activeIndex));
     state.ide.currentFilePath = tabs.at(activeIndex).filePath;
     if (state.ide.currentFilePath.empty()) {
         state.ide.outputLog = "Error: Please save your file before compiling.";
@@ -820,8 +818,7 @@ static void HandleSaveFile(Control::AppState& state) {
             if (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly) {
                 tabs.at(activeIndex).filePath = state.ide.currentFilePath;
                 tabs.at(activeIndex).title = std::filesystem::path(state.ide.currentFilePath).filename().string();
-                tabs.at(activeIndex).code = tabs.at(activeIndex).editor.GetText();
-                state.ide.code = tabs.at(activeIndex).code;
+                state.ide.code = GetSanitizedTabCode(tabs.at(activeIndex));
             }
             std::ofstream fileOut(state.ide.currentFilePath);
             if (fileOut) {
