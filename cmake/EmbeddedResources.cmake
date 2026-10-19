@@ -1,6 +1,7 @@
 # LLVM-MOS Toolchain & Resources Embedding
 if(NOT EMSCRIPTEN)
 	set(EMBEDDED_LLVM_MOS_H "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_llvm_mos.h")
+	file(GLOB_RECURSE EMBEDDED_LIBS_DEPS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/sdk/src/Libs/*" "${CMAKE_CURRENT_SOURCE_DIR}/sdk/microdos/Libs/*")
 
 	add_custom_command(
 		OUTPUT "${EMBEDDED_LLVM_MOS_H}"
@@ -14,7 +15,7 @@ if(NOT EMSCRIPTEN)
 		DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedLLVMMOS.py"
 				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/link.ld"
 				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/bios.s"
-				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/microdos/Libs/app-bios.h"
+				${EMBEDDED_LIBS_DEPS}
 		COMMENT "Generating embedded LLVM-MOS VFS header (embedded_llvm_mos.h)"
 		VERBATIM
 	)
