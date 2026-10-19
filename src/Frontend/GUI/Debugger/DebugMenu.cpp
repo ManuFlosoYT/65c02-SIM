@@ -12,6 +12,7 @@
 #include "Frontend/GUI/Debugger/MemoryLayoutWindow.h"
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
 #include "Frontend/GUI/Debugger/BreakpointWindow.h"
+#include "Frontend/GUI/Debugger/NetworkSnifferWindow.h"
 #include "Frontend/GUI/Debugger/SettingsWindow.h"
 
 namespace GUI {
@@ -19,8 +20,8 @@ namespace GUI {
 namespace {
 
 void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
-    constexpr std::array<const char*, 6> modes = {"Settings", "Disassembly", "Profiler", "Debugger", "Breakpoints",
-                                                   "Memory Layout"};
+    constexpr std::array<const char*, 7> modes = {"Settings", "Disassembly", "Profiler", "Debugger", "Breakpoints",
+                                                   "Memory Layout", "Network Sniffer"};
     ImGui::BeginChild("DebugSidebar", ImVec2(sidebarWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2));
@@ -151,8 +152,10 @@ void DrawDebugMenu(Control::AppState& state) {
         DrawDebuggerWindow(state);
     } else if (state.debugger.mode == Control::DebuggerMode::Breakpoints) {
         DrawBreakpointWindow(state);
-    } else {  // Memory Layout
+    } else if (state.debugger.mode == Control::DebuggerMode::MemoryLayout) {
         DrawMemoryLayoutWindow(state);
+    } else {  // Network Sniffer
+        DrawNetworkSnifferContent(state);
     }
     ImGui::EndChild();
 

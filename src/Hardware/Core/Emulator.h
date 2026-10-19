@@ -93,6 +93,13 @@ class Emulator {
     void SetSDEnabled(bool enabled);
     bool IsSDEnabled() const;
 
+    Hardware::ESP8266& GetESP8266();
+    const Hardware::ESP8266& GetESP8266() const;
+    Hardware::ACIA& GetACIA();
+    const Hardware::ACIA& GetACIA() const;
+    void SetACIAESPBridge(bool enabled);
+    [[nodiscard]] bool IsACIAESPBridge() const;
+
     Hardware::SID& GetSID();
     const Hardware::SID& GetSID() const;
     [[nodiscard]] bool IsSIDEnabled() const { return sidEnabled; }
@@ -222,6 +229,7 @@ class Emulator {
     bool sidEnabledOverride = false;
     bool espEnabled = false;
     bool sdEnabled = false;
+    bool aciaEspBridge = false;
     bool rewindSnapshotsEnabled = true;
     int rewindSliceCounter = 0;
 
@@ -290,6 +298,12 @@ inline void Core::Emulator::SetESPEnabled(bool enabled) {
     SetupHardware();
 }
 inline bool Core::Emulator::IsESPEnabled() const { return espEnabled; }
+inline Hardware::ESP8266& Core::Emulator::GetESP8266() { return esp8266; }
+inline const Hardware::ESP8266& Core::Emulator::GetESP8266() const { return esp8266; }
+inline Hardware::ACIA& Core::Emulator::GetACIA() { return acia; }
+inline const Hardware::ACIA& Core::Emulator::GetACIA() const { return acia; }
+inline void Core::Emulator::SetACIAESPBridge(bool enabled) { aciaEspBridge = enabled; }
+inline bool Core::Emulator::IsACIAESPBridge() const { return aciaEspBridge; }
 
 inline void Core::Emulator::SetSDEnabled(bool enabled) {
     if (sdEnabled == enabled) { return; }

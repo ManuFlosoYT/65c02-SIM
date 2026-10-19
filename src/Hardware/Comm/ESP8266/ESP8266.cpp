@@ -21,6 +21,9 @@ ESP8266::~ESP8266() {
         stopPing.store(true);
         pingThread.join();
     }
+    if (httpClientThread.joinable()) {
+        httpClientThread.join();
+    }
     StopServer();
     DisconnectAll();
 }
@@ -29,6 +32,9 @@ void ESP8266::Reset() {
     if (pingThread.joinable()) {
         stopPing.store(true);
         pingThread.join();
+    }
+    if (httpClientThread.joinable()) {
+        httpClientThread.join();
     }
     statusReg = 0;
     ctrlReg = 0;
@@ -94,6 +100,8 @@ void ESP8266::Write(Word address, Byte data) {
                 cipsendBuffer += static_cast<char>(data);
                 cipsendReceived++;
                 if (cipsendReceived >= cipsendLength) {
+                    RecordTraffic(TrafficDirection::TX, TrafficChannel::DataPayload, cipsendLinkId,
+                                  "CIPSEND (" + std::to_string(cipsendLength) + " B)", cipsendBuffer);
                     SendDataOnLink(cipsendLinkId, cipsendBuffer);
                     EnqueueResponse("\r\nSEND OK\r\n");
                     currentState = ATState::Idle;
@@ -157,5 +165,37 @@ bool ESP8266::LoadState(std::istream& inStream) {
     currentState = ATState::Idle;
     return inStream.good();
 }
+
+void ESP8266::RecordTraffic(TrafficDirection dir, TrafficChannel ch, int linkId, const std::string& tag,
+                            const std::string& payload) {
+    if (snifferPaused.load(std::memory_order_relaxed)) {
+        return;
+    }
+    uint64_t nowMs = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count());
+    TrafficPacket pkt{nowMs, dir, ch, linkId, tag, payload};
+    std::lock_guard<std::mutex> lock(trafficMutex);
+    trafficLog.push_back(std::move(pkt));
+    if (trafficLog.size() > kMaxTrafficPackets) {
+        trafficLog.pop_front();
+    }
+}
+
+std::vector<TrafficPacket> ESP8266::GetTrafficLog() const {
+    std::lock_guard<std::mutex> lock(trafficMutex);
+    return {trafficLog.begin(), trafficLog.end()};
+}
+
+void ESP8266::ClearTrafficLog() {
+    std::lock_guard<std::mutex> lock(trafficMutex);
+    trafficLog.clear();
+}
+
+void ESP8266::SetSnifferPaused(bool paused) { snifferPaused.store(paused, std::memory_order_relaxed); }
+
+bool ESP8266::IsSnifferPaused() const { return snifferPaused.load(std::memory_order_relaxed); }
+
+void ESP8266::SetRxByteCallback(std::function<void(Byte)> callback) { rxByteCallback = std::move(callback); }
 
 }  // namespace Hardware

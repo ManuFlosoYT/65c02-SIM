@@ -15,6 +15,8 @@ void ESP8266::ProcessCommand() {
     std::string upper = commandBuffer;
     std::ranges::transform(upper, upper.begin(), [](unsigned char chr) { return std::toupper(chr); });
 
+    RecordTraffic(TrafficDirection::TX, TrafficChannel::ATCommand, -1, original, original);
+
     if (echoEnabled) {
         EnqueueResponse(original + "\r\n");
     }
@@ -51,10 +53,12 @@ void ESP8266::DispatchATCommand(const std::string& upper, const std::string& ori
         HandleCIPCLOSE(upper);
     } else if (upper.starts_with("AT+CIPMUX")) {
         HandleCIPMUX(upper);
-    } else if (upper == "AT+CIPSTATUS") {
+    } else if (upper.starts_with("AT+CIPSTATUS")) {
         HandleCIPSTATUS();
     } else if (upper.starts_with("AT+CIPSERVER")) {
         HandleCIPSERVER(upper);
+    } else if (upper.starts_with("AT+HTTPCLIENT")) {
+        HandleHTTPCLIENT(original);
     } else if (upper.starts_with("AT+PING")) {
         HandlePing(original);
     } else if (upper == "AT+RST") {
@@ -204,11 +208,11 @@ void ESP8266::PerformConnection(int linkId, const std::string& type, const std::
             }
         }
         ConnectUDP(linkId, host, port, localPort, mode);
-    } else if (type == "SSL") {
+    } else if (type == "SSL" || type == "HTTPS") {
 #ifndef TARGET_WASM
         ConnectSSL(linkId, host, port);
 #else
-        EnqueueResponse("\r\nSSL not supported in WASM\r\nERROR\r\n");
+        EnqueueResponse("\r\nSSL/HTTPS not supported in WASM\r\nERROR\r\n");
 #endif
     } else {
         EnqueueResponse("\r\nERROR\r\n");
@@ -484,13 +488,69 @@ void ESP8266::EnqueueLinkClosedResponse(int linkId) {
     }
 }
 
+void ESP8266::HandleHTTPCLIENT(const std::string& cmd) {
+    size_t eqPos = cmd.find('=');
+    if (eqPos == std::string::npos) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
+    size_t ppos = eqPos + 1;
+    int opt = ParseIntParam(cmd, ppos);
+    if (ppos < cmd.size() && cmd[ppos] == ',') {
+        ppos++;
+    }
+    int contentType = ParseIntParam(cmd, ppos);
+    if (ppos < cmd.size() && cmd[ppos] == ',') {
+        ppos++;
+    }
+    std::string url = ParseQuotedParam(cmd, ppos);
+    if (url.empty()) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
+    std::string host;
+    if (ppos < cmd.size() && cmd[ppos] == ',') {
+        ppos++;
+        host = ParseQuotedParam(cmd, ppos);
+    }
+    std::string path;
+    if (ppos < cmd.size() && cmd[ppos] == ',') {
+        ppos++;
+        path = ParseQuotedParam(cmd, ppos);
+    }
+    int dataType = 0;
+    if (ppos < cmd.size() && cmd[ppos] == ',') {
+        ppos++;
+        dataType = ParseIntParam(cmd, ppos);
+    }
+    std::string postData;
+    if (ppos < cmd.size() && cmd[ppos] == ',') {
+        ppos++;
+        postData = ParseQuotedParam(cmd, ppos);
+    }
+    (void)dataType;
+
+#ifndef TARGET_WASM
+    if (httpClientThread.joinable()) {
+        httpClientThread.join();
+    }
+    httpClientThread = std::thread(&ESP8266::PerformHttpClientRequest, this, opt, contentType, url, host, path, postData);
+#else
+    EnqueueResponse("\r\nHTTPCLIENT not supported in WASM\r\nERROR\r\n");
+#endif
+}
+
 void ESP8266::EnqueueResponse(const std::string& response) {
+    RecordTraffic(TrafficDirection::RX, TrafficChannel::ATResponse, -1, "RESPONSE", response);
     std::lock_guard<std::mutex> lock(rxMutex);
     if (rxQueue.size() + response.length() > 65536) {
         return;  // Prevent OOM from excessive unchecked UART output
     }
     for (char chr : response) {
         rxQueue.push(static_cast<Byte>(chr));
+        if (rxByteCallback) {
+            rxByteCallback(static_cast<Byte>(chr));
+        }
     }
     if (!rxQueue.empty()) {
         statusReg.fetch_or(0x80);

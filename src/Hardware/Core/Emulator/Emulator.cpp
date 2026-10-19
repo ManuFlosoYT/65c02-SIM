@@ -14,6 +14,13 @@ namespace Core {
 
 Emulator::Emulator() : cpu(), scriptEngine(*this) {
     components = {&bus, &cpu, &ram, &rom, &via, &sid, &acia, &sdcard, &esp8266, &lcd, &gpu, &consoleSerializable};
+    esp8266.SetRxByteCallback([this](Byte b) {
+        if (aciaEspBridge) {
+            esp8266.RecordTraffic(TrafficDirection::RX, TrafficChannel::ATResponse, -1, "ESP8266 -> ACIA",
+                                  std::string(1, static_cast<char>(b)));
+            acia.ReceiveData(b);
+        }
+    });
     SetupHardware();
 }
 
@@ -324,7 +331,18 @@ void Emulator::InjectKey(char key) {
     hasInput.store(true, std::memory_order_relaxed);
 }
 
-void Emulator::SetOutputCallback(std::function<void(char)> callback) { acia.SetOutputCallback(std::move(callback)); }
+void Emulator::SetOutputCallback(std::function<void(char)> callback) {
+    acia.SetOutputCallback([this, cb = std::move(callback)](char c) {
+        if (aciaEspBridge) {
+            esp8266.RecordTraffic(TrafficDirection::TX, TrafficChannel::ATCommand, -1, "ACIA -> ESP8266",
+                                  std::string(1, c));
+            esp8266.Write(0x5004, static_cast<Byte>(c));
+        }
+        if (cb) {
+            cb(c);
+        }
+    });
+}
 
 void Emulator::TriggerIRQ() {
     this->pendingIRQ.store(true, std::memory_order_relaxed);

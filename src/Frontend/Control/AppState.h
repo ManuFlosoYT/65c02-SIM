@@ -66,7 +66,17 @@ enum class DebuggerMode : std::uint8_t {
     Profiler = 2,
     Debugger = 3,
     Breakpoints = 4,
-    MemoryLayout = 5
+    MemoryLayout = 5,
+    NetworkSniffer = 6
+};
+
+struct NetworkSnifferState {
+    bool autoScroll = true;
+    bool paused = false;
+    int filterDirection = 0;  // 0=All, 1=TX, 2=RX, 3=NetTX, 4=NetRX
+    char searchFilter[64] = "";
+    int selectedPacketIndex = -1;
+    bool aciaBridgeEnabled = false;
 };
 
 struct DebuggerState {
@@ -168,6 +178,7 @@ struct AppState {
     PopupState popups;
     SDKState sdk;
     IDEState ide;
+    NetworkSnifferState sniffer;
     bool requestExit = false;
 
     GUI::CRTFilter crtFilter;

@@ -2,11 +2,15 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
+#include <deque>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <asio.hpp>
 #ifndef TARGET_WASM
@@ -30,6 +34,30 @@ enum class CWMode : uint8_t {
     StationAndAP = 3
 };
 
+enum class TrafficDirection : uint8_t {
+    TX,
+    RX,
+    NetTX,
+    NetRX
+};
+
+enum class TrafficChannel : uint8_t {
+    ATCommand,
+    ATResponse,
+    DataPayload,
+    TLS_HTTP,
+    System
+};
+
+struct TrafficPacket {
+    uint64_t timestampMs{0};
+    TrafficDirection direction{TrafficDirection::TX};
+    TrafficChannel channel{TrafficChannel::ATCommand};
+    int linkId{-1};
+    std::string tag;
+    std::string payload;
+};
+
 struct ATConnection {
     std::unique_ptr<asio::ip::tcp::socket> tcpSocket;
 #ifndef TARGET_WASM
@@ -41,6 +69,7 @@ struct ATConnection {
     std::thread rxThread;
     std::recursive_mutex rxThreadMutex;
     std::atomic<bool> active{false};
+    bool isHttps{false};
     std::string protocol;
     std::string remoteHost;
     int remotePort{0};
@@ -68,12 +97,28 @@ class ESP8266 : public IBusDevice {
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
 
+    void RecordTraffic(TrafficDirection dir, TrafficChannel ch, int linkId, const std::string& tag,
+                       const std::string& payload);
+    [[nodiscard]] std::vector<TrafficPacket> GetTrafficLog() const;
+    void ClearTrafficLog();
+    void SetSnifferPaused(bool paused);
+    [[nodiscard]] bool IsSnifferPaused() const;
+    void SetRxByteCallback(std::function<void(Byte)> callback);
+
    private:
     void ProcessCommand();
     void EnqueueResponse(const std::string& response);
     void EnqueueLinkClosedResponse(int linkId);
 
     void DispatchATCommand(const std::string& upper, const std::string& original);
+
+    // HTTP / HTTPS commands
+    void HandleHTTPCLIENT(const std::string& cmd);
+#ifndef TARGET_WASM
+    void PerformHttpsRequest(int linkId, const std::string& host, int port, const std::string& requestData);
+    void PerformHttpClientRequest(int opt, int contentType, const std::string& url, const std::string& host,
+                                  const std::string& path, const std::string& postData);
+#endif
 
     // WiFi commands
     void HandleCWMode(const std::string& cmd);
@@ -118,6 +163,7 @@ class ESP8266 : public IBusDevice {
     void PingTask(const std::string& host);
     std::thread pingThread;
     std::atomic<bool> stopPing{false};
+    std::thread httpClientThread;
 
     // Helpers
     [[nodiscard]] int FindFreeLinkId() const;
@@ -163,6 +209,13 @@ class ESP8266 : public IBusDevice {
     std::unique_ptr<asio::ip::tcp::acceptor> serverAcceptor;
     std::thread acceptThread;
     std::atomic<bool> serverRunning{false};
+
+    // Sniffer
+    static constexpr size_t kMaxTrafficPackets = 500;
+    std::deque<TrafficPacket> trafficLog;
+    mutable std::mutex trafficMutex;
+    std::atomic<bool> snifferPaused{false};
+    std::function<void(Byte)> rxByteCallback;
 };
 
 }  // namespace Hardware
