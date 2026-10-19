@@ -3,6 +3,7 @@
 #include "CompilerVFS.h"
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -423,11 +424,95 @@ std::string CompilerFrontend::GenerateAppLinkerScript() {
     return ld.str();
 }
 
+std::vector<CompilerFrontend::Diagnostic> CompilerFrontend::ParseDiagnostics(const std::string& log) {
+    std::vector<Diagnostic> diagnostics;
+    std::istringstream stream(log);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line.empty()) {
+            continue;
+        }
+
+        size_t markerPos = line.find(": error: ");
+        size_t markerLen = 9;
+        bool isError = true;
+
+        if (markerPos == std::string::npos) {
+            markerPos = line.find(": fatal error: ");
+            markerLen = 15;
+            isError = true;
+        }
+        if (markerPos == std::string::npos) {
+            markerPos = line.find(": warning: ");
+            markerLen = 11;
+            isError = false;
+        }
+        if (markerPos == std::string::npos) {
+            continue;
+        }
+
+        std::string message = line.substr(markerPos + markerLen);
+        std::string prefix = line.substr(0, markerPos);
+
+        size_t secondColon = prefix.rfind(':');
+        if (secondColon == std::string::npos) {
+            diagnostics.push_back({.file = prefix, .line = 0, .column = 0, .message = message, .isError = isError});
+            continue;
+        }
+
+        std::string secondPart = prefix.substr(secondColon + 1);
+        bool secondIsDigit = !secondPart.empty() && std::ranges::all_of(secondPart, [](char c) {
+            return std::isdigit(static_cast<unsigned char>(c)) != 0;
+        });
+
+        if (!secondIsDigit) {
+            diagnostics.push_back({.file = prefix, .line = 0, .column = 0, .message = message, .isError = isError});
+            continue;
+        }
+
+        size_t firstColon = prefix.rfind(':', secondColon - 1);
+        if (firstColon != std::string::npos && firstColon > 1) {
+            std::string firstPart = prefix.substr(firstColon + 1, secondColon - firstColon - 1);
+            bool firstIsDigit = !firstPart.empty() && std::ranges::all_of(firstPart, [](char c) {
+                return std::isdigit(static_cast<unsigned char>(c)) != 0;
+            });
+
+            if (firstIsDigit) {
+                try {
+                    int lineNum = std::stoi(firstPart);
+                    int colNum = std::stoi(secondPart);
+                    std::string file = prefix.substr(0, firstColon);
+                    diagnostics.push_back(
+                        {.file = file, .line = lineNum, .column = colNum, .message = message, .isError = isError});
+                    continue;
+                } catch (const std::exception&) {
+                }
+            }
+        }
+
+        try {
+            int lineNum = std::stoi(secondPart);
+            std::string file = prefix.substr(0, secondColon);
+            diagnostics.push_back(
+                {.file = file, .line = lineNum, .column = 0, .message = message, .isError = isError});
+        } catch (const std::exception&) {
+            diagnostics.push_back({.file = prefix, .line = 0, .column = 0, .message = message, .isError = isError});
+        }
+    }
+
+    return diagnostics;
+}
+
 CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const std::string& code,
                                                         const std::string& sourceName) {
     BuildResult res;
     if (code.empty()) {
         res.log = "Error: Empty source code.\n";
+        res.diagnostics = ParseDiagnostics(res.log);
         return res;
     }
 
@@ -441,6 +526,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string tempDir = CompilerVFS::GetTempDir();
     if (tempDir.empty()) {
         res.log = "Error: Compiler VFS not initialized.";
+        res.diagnostics = ParseDiagnostics(res.log);
         return res;
     }
 
@@ -535,18 +621,21 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
             res.log += "Optimization " + std::string(opt) + " exceeded memory. Falling back...\n";
         } else {
             res.log += "Compilation error at " + std::string(opt) + " (not a size issue). Aborting without fallback.\n";
+            res.diagnostics = ParseDiagnostics(res.log);
             return res;
         }
     }
 
     if (!buildOk) {
         res.log += "Error: Compilation failed for all optimization levels (-Os, -Oz).\n";
+        res.diagnostics = ParseDiagnostics(res.log);
         return res;
     }
 
     res.binary = ReadBinaryFile(binFile);
     if (res.binary.empty()) {
         res.log += "Error: Output binary is empty.\n";
+        res.diagnostics = ParseDiagnostics(res.log);
         return res;
     }
 
@@ -558,6 +647,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
 
     res.success = true;
     res.log += "Compilation Successful.\n";
+    res.diagnostics = ParseDiagnostics(res.log);
     return res;
 }
 #endif

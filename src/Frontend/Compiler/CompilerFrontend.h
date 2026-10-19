@@ -21,6 +21,14 @@ public:
         bool sd = false;
     };
 
+    struct Diagnostic {
+        std::string file;
+        int line = 0;
+        int column = 0;
+        std::string message;
+        bool isError = true;
+    };
+
     struct BuildResult {
         bool success = false;
         std::string log;
@@ -29,7 +37,10 @@ public:
         std::string elfPath;
         Control::SymbolTable symbols;
         HardwareRequirements hardware;
+        std::vector<Diagnostic> diagnostics;
     };
+
+    static std::vector<Diagnostic> ParseDiagnostics(const std::string& log);
 
     static BuildResult Compile(BuildType type, const std::string& code, const std::string& sourceName = "test.c");
     static int RunCommand(const std::string& cmd, std::string& output);

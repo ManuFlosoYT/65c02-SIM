@@ -7,6 +7,7 @@
 #include <array>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <algorithm>
 #include <filesystem>
 #include <optional>
@@ -201,6 +202,98 @@ namespace {
         SetEditorText(tab.editor, content);
         tabs.push_back(std::move(tab));
     }
+
+#ifndef TARGET_WASM
+    std::vector<CompilerFrontend::Diagnostic>& GetLastDiagnostics() {
+        static std::vector<CompilerFrontend::Diagnostic> diagnostics;
+        return diagnostics;
+    }
+
+    std::optional<size_t> FindTabForDiagnostic(const CompilerFrontend::Diagnostic& diag) {
+        auto& tabs = GetTabs();
+        auto& activeIndex = GetActiveTabIndex();
+        std::string diagFilename = std::filesystem::path(diag.file).filename().string();
+
+        for (size_t i = 0; i < tabs.size(); ++i) {
+            const auto& tab = tabs.at(i);
+            if (!tab.filePath.empty()) {
+                if (tab.filePath == diag.file ||
+                    std::filesystem::path(tab.filePath).filename().string() == diagFilename) {
+                    return i;
+                }
+            }
+            if (tab.title == diagFilename) {
+                return i;
+            }
+            if (!tab.isReadOnly && i == activeIndex) {
+                if (diagFilename.find(".c") != std::string::npos || diagFilename.find(".s") != std::string::npos) {
+                    return i;
+                }
+            }
+        }
+        return std::nullopt;
+    }
+
+    void ApplyDiagnosticsToTabs(const std::vector<CompilerFrontend::Diagnostic>& diags) {
+        auto& tabs = GetTabs();
+        for (auto& tab : tabs) {
+            tab.editor.SetErrorMarkers({});
+        }
+
+        std::unordered_map<size_t, TextEditor::ErrorMarkers> tabMarkers;
+        for (const auto& diag : diags) {
+            if (diag.line <= 0) {
+                continue;
+            }
+            auto tabIdx = FindTabForDiagnostic(diag);
+            if (tabIdx.has_value() && tabIdx.value() < tabs.size()) {
+                auto& markers = tabMarkers[tabIdx.value()];
+                auto it = markers.find(diag.line);
+                if (it != markers.end()) {
+                    it->second += "\n" + diag.message;
+                } else {
+                    markers[diag.line] = diag.message;
+                }
+            }
+        }
+
+        for (const auto& [idx, markers] : tabMarkers) {
+            tabs.at(idx).editor.SetErrorMarkers(markers);
+        }
+    }
+
+    void JumpToDiagnostic(const CompilerFrontend::Diagnostic& diag) {
+        if (diag.line <= 0) {
+            return;
+        }
+
+        auto& tabs = GetTabs();
+        auto& activeIndex = GetActiveTabIndex();
+        auto tabIdx = FindTabForDiagnostic(diag);
+
+        if (tabIdx.has_value() && tabIdx.value() < tabs.size()) {
+            activeIndex = tabIdx.value();
+            auto& tab = tabs.at(activeIndex);
+            tab.requestSelect = true;
+            int line = std::max(0, diag.line - 1);
+            int col = std::max(0, diag.column - 1);
+            tab.editor.SetCursorPosition(TextEditor::Coordinates(line, col));
+            return;
+        }
+
+        std::string diagFilename = std::filesystem::path(diag.file).filename().string();
+        if (diagFilename.ends_with(".h")) {
+            OpenLibInTab(diagFilename);
+            if (!tabs.empty()) {
+                activeIndex = tabs.size() - 1;
+                auto& tab = tabs.back();
+                int line = std::max(0, diag.line - 1);
+                int col = std::max(0, diag.column - 1);
+                tab.editor.SetCursorPosition(TextEditor::Coordinates(line, col));
+            }
+        }
+    }
+#endif
 
     void InsertIncludeInActiveTab(Control::AppState& state, const std::string& lib) {
         auto& tabs = GetTabs();
@@ -614,6 +707,11 @@ static CompilerFrontend::BuildResult CompileCurrentFile(Control::AppState& state
     }
     auto result = CompilerFrontend::Compile(type, state.ide.code, state.ide.currentFilePath);
     state.ide.outputLog = result.log;
+    GetLastDiagnostics() = result.diagnostics;
+    ApplyDiagnosticsToTabs(result.diagnostics);
+    if (!result.success && !result.diagnostics.empty()) {
+        JumpToDiagnostic(result.diagnostics.front());
+    }
     return result;
 }
 #endif
@@ -943,9 +1041,68 @@ void DrawIDEWindow(Control::AppState& state) {
         }
 
         ImGui::TextUnformatted("Build Output:");
-        ImGui::InputTextMultiline("##BuildOutput", state.ide.outputLog.data(),
-            state.ide.outputLog.size() + 1,
-            ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Clear")) {
+            state.ide.outputLog.clear();
+            GetLastDiagnostics().clear();
+            ApplyDiagnosticsToTabs({});
+        }
+
+        if (ImGui::BeginChild("##BuildOutputChild", ImVec2(-FLT_MIN, -FLT_MIN), true,
+                              ImGuiWindowFlags_HorizontalScrollbar)) {
+            if (state.ide.outputLog.empty()) {
+                ImGui::TextDisabled("No build output.");
+            } else {
+                std::istringstream stream(state.ide.outputLog);
+                std::string line;
+                int lineIndex = 0;
+                const auto& diags = GetLastDiagnostics();
+
+                while (std::getline(stream, line)) {
+                    if (!line.empty() && line.back() == '\r') {
+                        line.pop_back();
+                    }
+                    if (line.empty()) {
+                        ImGui::Spacing();
+                        continue;
+                    }
+
+                    const CompilerFrontend::Diagnostic* matchedDiag = nullptr;
+                    for (const auto& diag : diags) {
+                        if (diag.line > 0 && !diag.message.empty() && line.find(diag.message) != std::string::npos) {
+                            matchedDiag = &diag;
+                            break;
+                        }
+                    }
+
+                    if (matchedDiag != nullptr) {
+                        ImVec4 color = matchedDiag->isError ? ImVec4(1.0F, 0.4F, 0.4F, 1.0F)
+                                                            : ImVec4(1.0F, 0.85F, 0.3F, 1.0F);
+                        ImGui::PushStyleColor(ImGuiCol_Text, color);
+                        std::string selectableLabel = line + "##diag_" + std::to_string(lineIndex);
+                        if (ImGui::Selectable(selectableLabel.c_str(), false)) {
+                            JumpToDiagnostic(*matchedDiag);
+                        }
+                        ImGui::PopStyleColor();
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Click to jump to %s:%d", matchedDiag->file.c_str(), matchedDiag->line);
+                        }
+                    } else if (line.find(": error:") != std::string::npos || line.find("Error:") != std::string::npos) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.4F, 0.4F, 1.0F));
+                        ImGui::TextUnformatted(line.c_str());
+                        ImGui::PopStyleColor();
+                    } else if (line.find("Compilation Successful") != std::string::npos) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4F, 1.0F, 0.4F, 1.0F));
+                        ImGui::TextUnformatted(line.c_str());
+                        ImGui::PopStyleColor();
+                    } else {
+                        ImGui::TextUnformatted(line.c_str());
+                    }
+                    lineIndex++;
+                }
+            }
+            ImGui::EndChild();
+        }
 
         HandleIDEFileDialogs(state);
     }
