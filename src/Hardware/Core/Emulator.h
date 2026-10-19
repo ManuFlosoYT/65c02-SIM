@@ -132,6 +132,8 @@ class Emulator {
     void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
     uint32_t* GetProfilerCounts();
+    uint32_t* GetProfilerReadCounts();
+    uint32_t* GetProfilerWriteCounts();
 
     void SetHeatmapEnabled(bool enabled);
     void ClearHeatmap();
@@ -350,6 +352,8 @@ inline Core::Emulator::RuntimeStats Core::Emulator::GetRuntimeStats() const {
 inline void Core::Emulator::SetProfilingEnabled(bool enabled) { bus.SetProfilingEnabled(enabled); }
 inline void Core::Emulator::ClearProfiler() { bus.ClearProfiler(); }
 inline uint32_t* Core::Emulator::GetProfilerCounts() { return bus.GetProfilerCounts(); }
+inline uint32_t* Core::Emulator::GetProfilerReadCounts() { return bus.GetProfilerReadCounts(); }
+inline uint32_t* Core::Emulator::GetProfilerWriteCounts() { return bus.GetProfilerWriteCounts(); }
 
 inline void Core::Emulator::SetHeatmapEnabled(bool enabled) { bus.SetHeatmapEnabled(enabled); }
 inline void Core::Emulator::ClearHeatmap() { bus.ClearHeatmap(); }

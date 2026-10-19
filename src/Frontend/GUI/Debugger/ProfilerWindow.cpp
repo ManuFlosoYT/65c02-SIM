@@ -23,21 +23,23 @@ namespace GUI {
 
 namespace {
 
-void UpdateProfilerTexture(AppState& state, std::span<const uint32_t> counts,
+void UpdateProfilerTexture(AppState& state, std::span<const uint32_t> readCounts,
+                           std::span<const uint32_t> writeCounts,
                            std::array<unsigned char, 256ULL * 256ULL * 3ULL>& pixels) {
-    uint32_t maxCount = 0;
-    for (uint32_t count : counts) {
-        maxCount = std::max(maxCount, count);
+    uint32_t maxAccess = 0;
+    for (std::size_t i = 0; i < readCounts.size(); i++) {
+        maxAccess = std::max({maxAccess, readCounts[i], writeCounts[i]});
     }
 
-    if (maxCount > 0) {
-        float logMax = std::log(static_cast<float>(maxCount) + 1.0F);
-        for (std::size_t i = 0; i < counts.size(); i++) {
+    if (maxAccess > 0) {
+        float logMax = std::log(static_cast<float>(maxAccess) + 1.0F);
+        for (std::size_t i = 0; i < readCounts.size(); i++) {
             std::size_t idx = i * 3U;
-            float intensity = std::log(static_cast<float>(counts[i]) + 1.0F) / logMax;
-            pixels.at(idx + 0) = static_cast<unsigned char>(intensity * 255.0F);
+            float rIntensity = std::log(static_cast<float>(writeCounts[i]) + 1.0F) / logMax;
+            float bIntensity = std::log(static_cast<float>(readCounts[i]) + 1.0F) / logMax;
+            pixels.at(idx + 0) = static_cast<unsigned char>(rIntensity * 255.0F);
             pixels.at(idx + 1) = 0;
-            pixels.at(idx + 2) = 0;
+            pixels.at(idx + 2) = static_cast<unsigned char>(bIntensity * 255.0F);
         }
     } else {
         pixels.fill(0);
@@ -48,7 +50,8 @@ void UpdateProfilerTexture(AppState& state, std::span<const uint32_t> counts,
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void DrawProfilerTooltip(std::span<const uint32_t> counts, float imgSizeX, float imgSizeY) {
+void DrawProfilerTooltip(std::span<const uint32_t> counts, std::span<const uint32_t> readCounts,
+                         std::span<const uint32_t> writeCounts, float imgSizeX, float imgSizeY) {
     ImVec2 mousePos = ImGui::GetMousePos();
     ImVec2 imgPos = ImGui::GetItemRectMin();
 
@@ -70,6 +73,15 @@ void DrawProfilerTooltip(std::span<const uint32_t> counts, float imgSizeX, float
         std::ostringstream countBuf;
         countBuf << "Accesses: " << std::dec << counts[addr];
         ImGui::TextUnformatted(countBuf.str().c_str());
+
+        std::ostringstream readBuf;
+        readBuf << "Reads:    " << std::dec << readCounts[addr];
+        ImGui::TextColored(ImVec4(0.3F, 0.6F, 1.0F, 1.0F), "%s", readBuf.str().c_str());
+
+        std::ostringstream writeBuf;
+        writeBuf << "Writes:   " << std::dec << writeCounts[addr];
+        ImGui::TextColored(ImVec4(1.0F, 0.3F, 0.3F, 1.0F), "%s", writeBuf.str().c_str());
+
         ImGui::EndTooltip();
     }
 }
@@ -134,6 +146,10 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
         }
     }
 #endif
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0F, 0.3F, 0.3F, 1.0F), "Write (Red)");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.3F, 0.6F, 1.0F, 1.0F), "Read (Blue)");
 }
 
 #ifndef TARGET_WASM
@@ -178,11 +194,13 @@ void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned 
 
 void DrawProfilerWindow(AppState& state) {
     std::span<const uint32_t> counts(state.emulator.GetProfilerCounts(), 65536);
+    std::span<const uint32_t> readCounts(state.emulator.GetProfilerReadCounts(), 65536);
+    std::span<const uint32_t> writeCounts(state.emulator.GetProfilerWriteCounts(), 65536);
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
     static bool profilerDirty = true;
 
     if ((!state.emulator.IsPaused() && !state.emulator.IsHalted()) || profilerDirty) {
-        UpdateProfilerTexture(state, counts, pixels);
+        UpdateProfilerTexture(state, readCounts, writeCounts, pixels);
         profilerDirty = false;
     }
 
@@ -193,7 +211,7 @@ void DrawProfilerWindow(AppState& state) {
     ImGui::Image((ImTextureID)(intptr_t)state.render.profilerTexture, ImVec2(size, size));
 
     if (ImGui::IsItemHovered()) {
-        DrawProfilerTooltip(counts, size, size);
+        DrawProfilerTooltip(counts, readCounts, writeCounts, size, size);
     }
 
     DrawProfilerButtons(state, counts, pixels, profilerDirty);

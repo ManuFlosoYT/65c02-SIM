@@ -101,7 +101,11 @@ void Bus::ClearGlobalWriteHooks() {
     hasWriteHooks = false;
 }
 
-void Bus::ClearProfiler() { profilerCounts.fill(0); }
+void Bus::ClearProfiler() {
+    profilerCounts.fill(0);
+    profilerReadCounts.fill(0);
+    profilerWriteCounts.fill(0);
+}
 
 void Bus::ClearCDL() { cdlMap.fill(CDL_NONE); }
 

@@ -97,6 +97,8 @@ class Bus : public ISerializable {
     inline void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
     inline uint32_t* GetProfilerCounts();
+    inline uint32_t* GetProfilerReadCounts();
+    inline uint32_t* GetProfilerWriteCounts();
 
     inline void SetHeatmapEnabled(bool enabled);
     [[nodiscard]] inline bool IsHeatmapEnabled() const;
@@ -130,6 +132,8 @@ class Bus : public ISerializable {
 
     bool profilingEnabled = false;
     std::array<uint32_t, BUS_SIZE> profilerCounts{};
+    std::array<uint32_t, BUS_SIZE> profilerReadCounts{};
+    std::array<uint32_t, BUS_SIZE> profilerWriteCounts{};
     std::array<uint8_t, BUS_SIZE> cdlMap{};
 
     bool heatmapEnabled = false;
@@ -154,6 +158,10 @@ inline void Bus::SetProfilingEnabled(bool enabled) { profilingEnabled = enabled;
 
 inline uint32_t* Bus::GetProfilerCounts() { return profilerCounts.data(); }
 
+inline uint32_t* Bus::GetProfilerReadCounts() { return profilerReadCounts.data(); }
+
+inline uint32_t* Bus::GetProfilerWriteCounts() { return profilerWriteCounts.data(); }
+
 inline void Bus::SetHeatmapEnabled(bool enabled) {
     heatmapEnabled = enabled;
     if (!enabled) {
@@ -174,6 +182,7 @@ inline Byte Bus::Read(Word address) {
     if constexpr (Debug) {
         if (profilingEnabled) {
             profilerCounts[address]++;
+            profilerReadCounts.at(address)++;
         }
         if (heatmapEnabled) {
             readHeat.at(address).store(255, std::memory_order_relaxed);
@@ -210,6 +219,7 @@ inline void Bus::Write(Word address, Byte data) {
     if constexpr (Debug) {
         if (profilingEnabled) {
             profilerCounts[address]++;
+            profilerWriteCounts.at(address)++;
         }
         if (heatmapEnabled) {
             writeHeat.at(address).store(255, std::memory_order_relaxed);
