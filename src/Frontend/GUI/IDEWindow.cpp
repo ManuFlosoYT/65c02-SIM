@@ -1,6 +1,7 @@
 #include "IDEWindow.h"
 #include <bit>
 #include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/IDEUtils.h"
 #include <fstream>
 #include <sstream>
 #include <array>
@@ -227,6 +228,13 @@ namespace {
         targetTab->editor.SetText(includeLine + currentText);
         targetTab->code = targetTab->editor.GetText();
         state.ide.code = targetTab->code;
+    }
+
+    std::string GetSanitizedTabCode(IDETab& tab) {
+        std::string code = tab.editor.GetText();
+        StripSpacesFromTrailingBlankLines(code);
+        tab.code = code;
+        return code;
     }
 
     std::vector<std::string> GetAvailableLibraries(Control::IDEMode mode) {
@@ -639,6 +647,7 @@ static void HandleCompileAndRun(Control::AppState& state) {
             if (state.emulator.InitFromMemory(result.binary, "compiled.bin", errorMsg)) {
                 state.rom.bin = "compiled.bin";
                 state.rom.data = result.binary;
+                state.rom.loaded = true;
                 state.rom.symbols.Clear();
                 bool symbolsLoaded = false;
                 if (!result.symbolFile.empty() && std::filesystem::exists(result.symbolFile)) {
