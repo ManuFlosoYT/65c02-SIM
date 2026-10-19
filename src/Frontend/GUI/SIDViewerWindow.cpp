@@ -20,6 +20,7 @@ using namespace Hardware;
 namespace GUI {
 
 static void DrawMuteSoloButtons(Hardware::SID& sid, int voiceIndex) {
+    ImGui::PushID(voiceIndex);
     bool isMuted = sid.IsVoiceMuted(voiceIndex);
     bool isSolo = sid.IsVoiceSolo(voiceIndex);
 
@@ -60,6 +61,7 @@ static void DrawMuteSoloButtons(Hardware::SID& sid, int voiceIndex) {
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(4);
+    ImGui::PopID();
 }
 
 static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_time, bool should_update) {
@@ -228,7 +230,7 @@ static void DrawControlBadge(const char* label, bool active) {
 }
 
 static void DrawVoiceADSR(const Oscillator& voice) {
-    const ImVec2 size(75.0F, 22.0F);
+    const ImVec2 size(80.0F, 24.0F);
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
     const ImVec2 p1 = ImVec2(p0.x + size.x, p0.y + size.y);
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -236,54 +238,100 @@ static void DrawVoiceADSR(const Oscillator& voice) {
     drawList->AddRectFilled(p0, p1, ImColor(Theme::Surface));
     drawList->AddRect(p0, p1, ImColor(Theme::BorderSubtle), 2.0F);
 
+    const uint8_t rateA = std::max(voice.env.attackRate, voice.env.targetAttackRate);
+    const uint8_t rateD = std::max(voice.env.decayRate, voice.env.targetDecayRate);
+    const uint8_t rateS = std::max(voice.env.sustainLevel, voice.env.targetSustainLevel);
+    const uint8_t rateR = std::max(voice.env.releaseRate, voice.env.targetReleaseRate);
+
     const float y0 = p1.y - 3.0F;
     const float yPeak = p0.y + 3.0F;
-    const float susRatio = static_cast<float>(voice.env.sustainLevel) / 15.0F;
+    const float x0 = p0.x + 3.0F;
+    const float x4 = p1.x - 3.0F;
+    const float totalW = x4 - x0;
+
+    const bool isConfigured = (rateA != 0 || rateD != 0 || rateS != 0 || rateR != 0 || voice.env.level != 0);
+    const ImU32 curveColor = IM_COL32(110, 130, 150, 160);
+
+    if (!isConfigured) {
+        drawList->AddLine(ImVec2(x0, y0), ImVec2(x4, y0), curveColor, 1.2F);
+        ImGui::Dummy(size);
+        return;
+    }
+
+    const float weightA = 1.0F + (static_cast<float>(rateA) * 1.8F);
+    const float weightD = 1.0F + (static_cast<float>(rateD) * 1.8F);
+    const float weightS = 6.0F;
+    const float weightR = 1.0F + (static_cast<float>(rateR) * 1.8F);
+    const float totalWeight = weightA + weightD + weightS + weightR;
+
+    const float x1 = x0 + (totalW * (weightA / totalWeight));
+    const float x2 = x1 + (totalW * (weightD / totalWeight));
+    const float x3 = x2 + (totalW * (weightS / totalWeight));
+
+    const float susRatio = static_cast<float>(rateS) / 15.0F;
     const float ySus = y0 - ((y0 - yPeak) * susRatio);
 
-    const float x0 = p0.x + 3.0F;
-    const float x1 = p0.x + (size.x * 0.26F);
-    const float x2 = p0.x + (size.x * 0.50F);
-    const float x3 = p0.x + (size.x * 0.74F);
-    const float x4 = p1.x - 3.0F;
-
-    const ImU32 curveColor = ImColor(Theme::TextSecondary);
     drawList->AddLine(ImVec2(x0, y0), ImVec2(x1, yPeak), curveColor, 1.2F);
     drawList->AddLine(ImVec2(x1, yPeak), ImVec2(x2, ySus), curveColor, 1.2F);
     drawList->AddLine(ImVec2(x2, ySus), ImVec2(x3, ySus), curveColor, 1.2F);
     drawList->AddLine(ImVec2(x3, ySus), ImVec2(x4, y0), curveColor, 1.2F);
 
     const float curLevel = static_cast<float>(voice.env.level) / 255.0F;
-    const float curY = y0 - ((y0 - yPeak) * curLevel);
     float curX = x0;
+    float curY = y0 - ((y0 - yPeak) * curLevel);
 
     switch (voice.env.state) {
         case ADSREnvelope::ATTACK:
             curX = x0 + ((x1 - x0) * curLevel);
+            curY = y0 - ((y0 - yPeak) * curLevel);
             break;
         case ADSREnvelope::DECAY: {
             float range = std::max(0.01F, 1.0F - susRatio);
             float t = std::clamp((1.0F - curLevel) / range, 0.0F, 1.0F);
             curX = x1 + ((x2 - x1) * t);
+            curY = yPeak + ((ySus - yPeak) * t);
             break;
         }
         case ADSREnvelope::SUSTAIN:
             curX = (x2 + x3) * 0.5F;
+            curY = ySus;
             break;
         case ADSREnvelope::RELEASE: {
-            float t = (susRatio > 0.01F) ? std::clamp(1.0F - (curLevel / susRatio), 0.0F, 1.0F) : 1.0F;
+            float range = (susRatio > 0.01F) ? susRatio : 1.0F;
+            float t = std::clamp(1.0F - (curLevel / range), 0.0F, 1.0F);
             curX = x3 + ((x4 - x3) * t);
+            curY = ySus + ((y0 - ySus) * t);
             break;
         }
         case ADSREnvelope::IDLE:
         default:
             curX = x0;
+            curY = y0;
             break;
     }
 
-    if (voice.env.level > 0) {
+    if (voice.env.level > 0 || voice.env.state != ADSREnvelope::IDLE) {
+        const ImU32 activeColor = ImColor(Theme::AccentActive);
+
+        if (voice.env.state == ADSREnvelope::ATTACK) {
+            drawList->AddLine(ImVec2(x0, y0), ImVec2(curX, curY), activeColor, 2.0F);
+        } else if (voice.env.state == ADSREnvelope::DECAY) {
+            drawList->AddLine(ImVec2(x0, y0), ImVec2(x1, yPeak), activeColor, 2.0F);
+            drawList->AddLine(ImVec2(x1, yPeak), ImVec2(curX, curY), activeColor, 2.0F);
+        } else if (voice.env.state == ADSREnvelope::SUSTAIN) {
+            drawList->AddLine(ImVec2(x0, y0), ImVec2(x1, yPeak), activeColor, 2.0F);
+            drawList->AddLine(ImVec2(x1, yPeak), ImVec2(x2, ySus), activeColor, 2.0F);
+            drawList->AddLine(ImVec2(x2, ySus), ImVec2(curX, ySus), activeColor, 2.0F);
+        } else if (voice.env.state == ADSREnvelope::RELEASE) {
+            drawList->AddLine(ImVec2(x0, y0), ImVec2(x1, yPeak), activeColor, 2.0F);
+            drawList->AddLine(ImVec2(x1, yPeak), ImVec2(x2, ySus), activeColor, 2.0F);
+            drawList->AddLine(ImVec2(x2, ySus), ImVec2(x3, ySus), activeColor, 2.0F);
+            drawList->AddLine(ImVec2(x3, ySus), ImVec2(curX, curY), activeColor, 2.0F);
+        }
+
         drawList->AddLine(ImVec2(curX, y0), ImVec2(curX, curY), ImColor(Theme::AccentPrimary), 1.5F);
-        drawList->AddCircleFilled(ImVec2(curX, curY), 3.0F, ImColor(Theme::AccentActive));
+        drawList->AddCircleFilled(ImVec2(curX, curY), 4.0F, IM_COL32(79, 195, 247, 100));
+        drawList->AddCircleFilled(ImVec2(curX, curY), 2.5F, activeColor);
     }
 
     ImGui::Dummy(size);
@@ -307,21 +355,26 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     ImGui::AlignTextToFramePadding();
     ImGui::PopStyleVar();
 
+    const uint8_t dispA = std::max(voice.env.attackRate, voice.env.targetAttackRate);
+    const uint8_t dispD = std::max(voice.env.decayRate, voice.env.targetDecayRate);
+    const uint8_t dispS = std::max(voice.env.sustainLevel, voice.env.targetSustainLevel);
+    const uint8_t dispR = std::max(voice.env.releaseRate, voice.env.targetReleaseRate);
+
     DrawColoredText(Theme::TextSecondary, "A:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.attackRate));
+    DrawColoredText(Theme::TextMain, std::format("{:X}", dispA));
     ImGui::SameLine();
     DrawColoredText(Theme::TextSecondary, "D:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.decayRate));
+    DrawColoredText(Theme::TextMain, std::format("{:X}", dispD));
     ImGui::SameLine();
     DrawColoredText(Theme::TextSecondary, "S:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.sustainLevel));
+    DrawColoredText(Theme::TextMain, std::format("{:X}", dispS));
     ImGui::SameLine();
     DrawColoredText(Theme::TextSecondary, "R:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.releaseRate));
+    DrawColoredText(Theme::TextMain, std::format("{:X}", dispR));
 
     ImGui::SameLine(0.0F, 6.0F);
     DrawVoiceADSR(voice);
@@ -504,6 +557,7 @@ static void DrawCompactSpectrum(const std::array<float, 32>& spectrum) {
 }
 
 static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 32>& spectrum, bool should_update) {
+    ImGui::PushID("FullSpectrogramTab");
     ImGui::TextUnformatted("Mute/Solo:");
     for (int v = 0; v < 3; ++v) {
         ImGui::SameLine(0.0F, 12.0F);
@@ -573,6 +627,7 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
         }
     }
     ImGui::Dummy(ImVec2(availW, (static_cast<float>(WATERFALL_ROWS) * cellH) + 4.0F));
+    ImGui::PopID();
 }
 
 static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_update) {

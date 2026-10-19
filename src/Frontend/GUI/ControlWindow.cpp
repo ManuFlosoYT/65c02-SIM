@@ -482,9 +482,11 @@ static void HandleDialogs(AppState& state) {
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                        ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
+    float lcdHeight = work_size.y * 0.162F;
+    float controlHeight = top_section_height - lcdHeight;
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(mainColWidth, top_section_height * 0.4F), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(mainColWidth, controlHeight), ImGuiCond_Always);
     ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     DrawControlButtonBar(state);

@@ -9,9 +9,11 @@ namespace GUI {
 
 void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                    ImGuiWindowFlags window_flags) {
-    ImGui::SetNextWindowPos(ImVec2(work_pos.x, work_pos.y + (top_section_height * 0.4F)), ImGuiCond_Always);
+    float lcdHeight = work_size.y * 0.162F;
+    float controlHeight = top_section_height - lcdHeight;
+    ImGui::SetNextWindowPos(ImVec2(work_pos.x, work_pos.y + controlHeight), ImGuiCond_Always);
     float lcdWidth = work_size.x * 0.47F;
-    ImGui::SetNextWindowSize(ImVec2(lcdWidth, top_section_height * 0.6F), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(lcdWidth, lcdHeight), ImGuiCond_Always);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F, 10.0F));
     ImGui::Begin("LCD Output", nullptr, window_flags);
 
