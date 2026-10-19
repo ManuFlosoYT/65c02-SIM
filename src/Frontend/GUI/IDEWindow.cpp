@@ -131,17 +131,23 @@ namespace {
     }
 
     std::string ResolveLibPath(const std::string& lib) {
-        if (std::filesystem::exists("sdk/microdos/Libs/" + lib)) {
-            return "sdk/microdos/Libs/" + lib;
-        }
-        if (std::filesystem::exists("output/SDK/sdk/microdos/Libs/" + lib)) {
-            return "output/SDK/sdk/microdos/Libs/" + lib;
-        }
-        if (std::filesystem::exists("sdk/src/Libs/" + lib)) {
-            return "sdk/src/Libs/" + lib;
-        }
-        if (std::filesystem::exists("output/SDK/sdk/src/Libs/" + lib)) {
-            return "output/SDK/sdk/src/Libs/" + lib;
+        static const std::array<const char*, 10> searchDirs = {
+            "sdk/microdos/Libs/",
+            "SDK/sdk/microdos/Libs/",
+            "output/SDK/sdk/microdos/Libs/",
+            "../sdk/microdos/Libs/",
+            "../../sdk/microdos/Libs/",
+            "sdk/src/Libs/",
+            "SDK/sdk/src/Libs/",
+            "output/SDK/sdk/src/Libs/",
+            "../sdk/src/Libs/",
+            "../../sdk/src/Libs/"
+        };
+        for (const auto* dir : searchDirs) {
+            std::string path = std::string(dir) + lib;
+            if (std::filesystem::exists(path)) {
+                return path;
+            }
         }
 #ifndef TARGET_WASM
         const std::string vfsDir = CompilerVFS::GetTempDir();
@@ -242,22 +248,37 @@ namespace {
         };
 
         if (mode == Control::IDEMode::MicroDOS) {
-            libs.emplace_back("app-bios.h");
-            seen.insert("app-bios.h");
-
-            const std::array<const char*, 2> microdosDirs = {"sdk/microdos/Libs", "output/SDK/sdk/microdos/Libs"};
+            const std::array<const char*, 5> microdosDirs = {
+                "sdk/microdos/Libs", "SDK/sdk/microdos/Libs", "output/SDK/sdk/microdos/Libs", "../sdk/microdos/Libs", "../../sdk/microdos/Libs"
+            };
+            bool scannedMicrodos = false;
             for (const auto* dir : microdosDirs) {
                 auto files = scanDir(dir);
-                for (const auto& file : files) {
-                    if (seen.find(file) == seen.end()) {
-                        seen.insert(file);
-                        libs.push_back(file);
+                if (!files.empty()) {
+                    scannedMicrodos = true;
+                    for (const auto& file : files) {
+                        if (seen.find(file) == seen.end()) {
+                            seen.insert(file);
+                            libs.push_back(file);
+                        }
+                    }
+                }
+            }
+
+            if (!scannedMicrodos) {
+                static const std::array<const char*, 3> microdosLibs = {"app-bios.h", "System.h", "tui.h"};
+                for (const auto* lib : microdosLibs) {
+                    if (seen.find(lib) == seen.end()) {
+                        seen.insert(lib);
+                        libs.emplace_back(lib);
                     }
                 }
             }
         }
 
-        const std::array<const char*, 2> standardDirs = {"sdk/src/Libs", "output/SDK/sdk/src/Libs"};
+        const std::array<const char*, 5> standardDirs = {
+            "sdk/src/Libs", "SDK/sdk/src/Libs", "output/SDK/sdk/src/Libs", "../sdk/src/Libs", "../../sdk/src/Libs"
+        };
         bool scannedAny = false;
         for (const auto* dir : standardDirs) {
             auto files = scanDir(dir);
