@@ -83,6 +83,8 @@ class Emulator {
     GPU& GetGPU();
     void SetGPUEnabled(bool enabled);
     bool IsGPUEnabled() const;
+    void SetRasterBeamSlowMotion(bool enabled);
+    [[nodiscard]] bool IsRasterBeamSlowMotion() const;
     void SetSIDEnabled(bool enabled);
 
     void SetESPEnabled(bool enabled);
@@ -249,6 +251,7 @@ class Emulator {
     std::string currentBinPath;
     std::filesystem::file_time_type lastBinModificationTime;
     std::atomic<bool> autoReloadRequested{true};
+    std::atomic<bool> rasterBeamSlowMotion{false};
 
     // Savestate versioning
     SavestateLoadResult lastLoadResult = SavestateLoadResult::Success;
@@ -274,6 +277,12 @@ inline void Core::Emulator::SetGPUEnabled(bool enabled) {
     SetupHardware();
 }
 inline bool Core::Emulator::IsGPUEnabled() const { return gpuEnabled; }
+inline void Core::Emulator::SetRasterBeamSlowMotion(bool enabled) {
+    rasterBeamSlowMotion.store(enabled, std::memory_order_relaxed);
+}
+inline bool Core::Emulator::IsRasterBeamSlowMotion() const {
+    return rasterBeamSlowMotion.load(std::memory_order_relaxed);
+}
 
 inline void Core::Emulator::SetESPEnabled(bool enabled) {
     if (espEnabled == enabled) { return; }

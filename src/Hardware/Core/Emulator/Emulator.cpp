@@ -104,7 +104,7 @@ int Emulator::Step() {
     int res = 0;
     bool hooks = bus.HasActiveHooks() || breakpointManager.HasAnyBreakpointsFast();
 
-    if (!gpuEnabled) {
+    if (!gpuEnabled || rasterBeamSlowMotion.load(std::memory_order_relaxed)) {
         res = hooks ? Step<true>() : Step<false>();
     } else {
         // Advance through the full drawing interval until the CPU executes one instruction

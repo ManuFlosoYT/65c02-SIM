@@ -97,6 +97,7 @@ struct CRTSettings {
     bool ghosting = true;
     bool halation = true;
     bool moire = true;
+    bool rasterBeam = false;
     float gamma = 2.75F;
     float time = 0.0F;
 };

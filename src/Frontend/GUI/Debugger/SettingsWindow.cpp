@@ -308,6 +308,11 @@ static void DrawSettingsCRTPart2(AppState& state) {
     ImGui::Checkbox("Ghosting (Echo)", &state.crt.ghosting);
     ImGui::Checkbox("Moiré Pattern", &state.crt.moire);
     ImGui::SliderFloat("Gamma", &state.crt.gamma, 1.0F, 3.5F, "%.2f");
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Electron Beam");
+    if (ImGui::Checkbox("Raster Beam Visualization", &state.crt.rasterBeam)) {
+        state.emulator.SetRasterBeamSlowMotion(state.crt.rasterBeam);
+    }
 }
 
 static std::string pendingManifestStr;

@@ -8,6 +8,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <ctime>
 #include <vector>
@@ -186,6 +187,69 @@ static void HandleVRAMSaveDialog(AppState& state) {
 }
 #endif
 
+static void DrawRasterBeamOverlay(AppState& state, ImVec2 imgMin, int scale, float imgW, float imgH) {
+    const GPU& gpu = state.emulator.GetGPU();
+    uint16_t beamX = gpu.GetPixelX();
+    uint16_t beamY = gpu.GetPixelY();
+    bool isBlanking = gpu.IsInBlankingInterval();
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    float scaleF = static_cast<float>(scale);
+
+    if (beamX < GPU::VRAM_WIDTH && beamY < GPU::VRAM_HEIGHT) {
+        float px = imgMin.x + static_cast<float>(beamX) * scaleF;
+        float py = imgMin.y + static_cast<float>(beamY) * scaleF;
+
+        drawList->AddLine(ImVec2(imgMin.x, py + scaleF * 0.5F),
+                          ImVec2(imgMin.x + imgW, py + scaleF * 0.5F),
+                          IM_COL32(0, 255, 180, 45), 1.0F);
+
+        drawList->AddLine(ImVec2(imgMin.x, py + scaleF * 0.5F),
+                          ImVec2(px, py + scaleF * 0.5F),
+                          IM_COL32(50, 255, 160, 120), 1.5F);
+
+        ImVec2 beamCenter(px + scaleF * 0.5F, py + scaleF * 0.5F);
+        drawList->AddCircleFilled(beamCenter, scaleF * 2.5F, IM_COL32(0, 230, 255, 45));
+        drawList->AddCircleFilled(beamCenter, scaleF * 1.3F, IM_COL32(80, 255, 200, 110));
+
+        drawList->AddRectFilled(ImVec2(px, py), ImVec2(px + scaleF, py + scaleF),
+                                IM_COL32(255, 255, 255, 240));
+        drawList->AddRect(ImVec2(px - 1.0F, py - 1.0F), ImVec2(px + scaleF + 1.0F, py + scaleF + 1.0F),
+                          IM_COL32(0, 255, 255, 255), 0.0F, 0, 1.5F);
+    } else if (beamY < GPU::VRAM_HEIGHT) {
+        float py = imgMin.y + static_cast<float>(beamY) * scaleF;
+        float hblankSpan = static_cast<float>(GPU::DISPLAY_WIDTH - GPU::VRAM_WIDTH);
+        float hblankProg = static_cast<float>(beamX - GPU::VRAM_WIDTH) / hblankSpan;
+        float retraceX = (imgMin.x + imgW) - (hblankProg * imgW);
+        drawList->AddLine(ImVec2(imgMin.x + imgW, py + scaleF * 0.5F),
+                          ImVec2(imgMin.x, py + scaleF * 1.5F),
+                          IM_COL32(255, 170, 0, 60), 1.0F);
+        drawList->AddCircleFilled(ImVec2(retraceX, py + scaleF * (0.5F + hblankProg)),
+                                  3.0F, IM_COL32(255, 180, 40, 170));
+    } else {
+        float vblankSpan = static_cast<float>(GPU::DISPLAY_HEIGHT - GPU::VRAM_HEIGHT);
+        float vblankProg = static_cast<float>(beamY - GPU::VRAM_HEIGHT) / vblankSpan;
+        drawList->AddLine(ImVec2(imgMin.x + imgW, imgMin.y + imgH),
+                          ImVec2(imgMin.x, imgMin.y),
+                          IM_COL32(255, 70, 70, 60), 1.0F);
+        drawList->AddCircleFilled(ImVec2((imgMin.x + imgW) - (vblankProg * imgW),
+                                         (imgMin.y + imgH) - (vblankProg * imgH)),
+                                  4.0F, IM_COL32(255, 90, 90, 180));
+    }
+
+    std::array<char, 64> hudText{};
+    const char* status = isBlanking ? (beamY >= GPU::VRAM_HEIGHT ? "V-BLANK" : "H-BLANK") : "DRAWING";
+    std::snprintf(hudText.data(), hudText.size(), "BEAM: (%u, %u) [%s]", beamX, beamY, status);
+
+    ImVec2 textPos(imgMin.x + 8.0F, imgMin.y + 8.0F);
+    ImVec2 textSize = ImGui::CalcTextSize(hudText.data());
+    drawList->AddRectFilled(ImVec2(textPos.x - 4.0F, textPos.y - 2.0F),
+                            ImVec2(textPos.x + textSize.x + 4.0F, textPos.y + textSize.y + 2.0F),
+                            IM_COL32(10, 15, 25, 200), 3.0F);
+    uint32_t textColor = isBlanking ? IM_COL32(255, 180, 50, 255) : IM_COL32(80, 255, 180, 255);
+    drawList->AddText(textPos, textColor, hudText.data());
+}
+
 void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                           ImGuiWindowFlags window_flags) {
     float leftWidth = work_size.x * 0.5F;
@@ -266,6 +330,9 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         }
 
         ImGui::Image((ImTextureID)(intptr_t)displayTex, ImVec2(imgW, imgH));
+        if (state.crt.rasterBeam) {
+            DrawRasterBeamOverlay(state, ImGui::GetItemRectMin(), scale, imgW, imgH);
+        }
 
         ImGui::End();
     }
