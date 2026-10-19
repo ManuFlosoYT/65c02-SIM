@@ -3,6 +3,7 @@
 #include "CompilerVFS.h"
 #include <algorithm>
 #include <array>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -74,6 +75,7 @@ static int PlatformRunCommand(const std::string& cmd, const std::string& logFile
     std::string mutableCmd = cmd;
     if (!CreateProcessA(nullptr, mutableCmd.data(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
         CloseHandle(hLog);
+        WriteTextFile(logFile, "Error: Failed to execute process: error code " + std::to_string(GetLastError()) + "\n");
         return -1;
     }
 
@@ -123,8 +125,10 @@ static int PlatformRunCommand(const std::string& cmd, const std::string& logFile
     argv.push_back(nullptr);
 
     pid_t pid = 0;
-    if (posix_spawn(&pid, argv.at(0), &actions, nullptr, argv.data(), nullptr) != 0) {
+    int spawnResult = posix_spawnp(&pid, argv.at(0), &actions, nullptr, argv.data(), nullptr);
+    if (spawnResult != 0) {
         posix_spawn_file_actions_destroy(&actions);
+        WriteTextFile(logFile, "Error: Failed to execute compiler '" + args.at(0) + "': " + std::strerror(spawnResult) + "\n");
         return -1;
     }
 
