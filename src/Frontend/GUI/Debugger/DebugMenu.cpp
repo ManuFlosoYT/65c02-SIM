@@ -81,6 +81,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     // Step
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button("Step", ImVec2(adjustedWidth, 0))) {
+        state.emulator.DecayHeatmap(48);
         state.emulator.GetSID().SetEmulationPaused(false);
         state.emulator.Pause();
         state.emulator.Step();
@@ -113,6 +114,7 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
 void DrawDebugMenu(Control::AppState& state) {
     if (!state.debugger.open) {
         state.emulator.SetProfilingEnabled(false);
+        state.emulator.SetHeatmapEnabled(false);
         return;
     }
 
@@ -120,6 +122,7 @@ void DrawDebugMenu(Control::AppState& state) {
     ImGui::SetNextWindowSize(ImVec2(vpSize.x * 0.75F, vpSize.y * 0.75F), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Debug Menu", &state.debugger.open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
         state.emulator.SetProfilingEnabled(false);
+        state.emulator.SetHeatmapEnabled(false);
         ImGui::End();
         return;
     }
@@ -141,6 +144,8 @@ void DrawDebugMenu(Control::AppState& state) {
     ImGui::BeginChild("DebugContent", ImVec2(0, 0), ImGuiChildFlags_None);
 
     state.emulator.SetProfilingEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Profiler);
+    state.emulator.SetHeatmapEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Debugger &&
+                                     state.debugger.heatmapEnabled);
 
     if (state.debugger.mode == Control::DebuggerMode::Settings) {
         DrawSettingsContent(state);

@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <array>
 #include <random>
 namespace GUI {
@@ -55,16 +56,46 @@ void DrawCPURegisters(Control::AppState& state) {
     ImGui::PopItemWidth();
 }
 
-void DrawMemoryRow(Hardware::Bus& bus, int row) {
+void DrawMemoryRow(Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
     ImGui::TextDisabled("%04X", row * 16);
 
+    const ImVec4 baseFrameBg = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+
     for (int col = 0; col < 16; col++) {
         ImGui::TableNextColumn();
         Word addr = static_cast<Word>((row * 16) + col);
         Byte val = bus.ReadDirect(addr);
+
+        int colorsPushed = 0;
+        if (heatmapEnabled) {
+            if (addr == pc) {
+                ImVec4 pcCol(0.12F, 0.70F, 0.18F, 0.85F);
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, pcCol);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 1.0F, 1.0F));
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(pcCol));
+                colorsPushed = 2;
+            } else {
+                uint8_t w = bus.GetWriteHeat(addr);
+                uint8_t r = bus.GetReadHeat(addr);
+                if (w > 0 || r > 0) {
+                    float rw = static_cast<float>(w) / 255.0F;
+                    float rb = static_cast<float>(r) / 255.0F;
+                    float t = std::max(rw, rb);
+                    float red = baseFrameBg.x * (1.0F - rw) + 0.90F * rw;
+                    float green = baseFrameBg.y * (1.0F - t) + 0.10F * t;
+                    float blue = baseFrameBg.z * (1.0F - rb) + 0.95F * rb;
+                    float alpha = baseFrameBg.w * (1.0F - t) + 0.90F * t;
+                    ImVec4 heatCol(red, green, blue, alpha);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, heatCol);
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 1.0F, 1.0F));
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, ImGui::GetColorU32(heatCol));
+                    colorsPushed = 2;
+                }
+            }
+        }
 
         ImGui::PushID(addr);
         ImGui::PushItemWidth(24.2F);
@@ -76,14 +107,36 @@ void DrawMemoryRow(Hardware::Bus& bus, int row) {
         ImGui::PopStyleVar();
         ImGui::PopItemWidth();
         ImGui::PopID();
+
+        if (colorsPushed > 0) {
+            ImGui::PopStyleColor(colorsPushed);
+        }
     }
 }
 
-void DrawMemoryEditor(Core::Emulator& emulator) {
-    Hardware::Bus& bus = emulator.GetMem();
+void DrawMemoryEditor(Control::AppState& state) {
+    Hardware::Bus& bus = state.emulator.GetMem();
+    if (!state.emulator.IsPaused() && state.debugger.heatmapEnabled) {
+        float dt = ImGui::GetIO().DeltaTime;
+        auto decay = static_cast<uint8_t>(std::clamp(static_cast<int>(255.0F * dt / 0.8F), 1, 255));
+        bus.DecayHeatmap(decay);
+    }
+
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("Memory Editor (0x0000-0xFFFF)");
     ImGui::PopStyleColor();
+    ImGui::SameLine();
+    ImGui::Checkbox("Heatmap", &state.debugger.heatmapEnabled);
+    if (state.debugger.heatmapEnabled) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.2F, 0.9F, 0.3F, 1.0F), "PC");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.9F, 0.3F, 0.3F, 1.0F), "Write");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.3F, 0.6F, 1.0F, 1.0F), "Read");
+    }
 
     if (ImGui::BeginChild("MemEditScroll", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() * 4.0F),
                           ImGuiChildFlags_Borders)) {
@@ -99,11 +152,13 @@ void DrawMemoryEditor(Core::Emulator& emulator) {
             }
             ImGui::TableHeadersRow();
 
+            uint16_t pc = state.emulator.GetCPU().PC;
+            bool heatmapEnabled = state.debugger.heatmapEnabled;
             ImGuiListClipper clipper;
             clipper.Begin((0xFFFF + 1) / 16);
             while (clipper.Step()) {
                 for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                    DrawMemoryRow(bus, row);
+                    DrawMemoryRow(bus, row, pc, heatmapEnabled);
                 }
             }
             ImGui::EndTable();
@@ -159,7 +214,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
     ImGui::Separator();
     ImGui::Spacing();
 
-    DrawMemoryEditor(state.emulator);
+    DrawMemoryEditor(state);
 
     ImGui::Separator();
     ImGui::Spacing();

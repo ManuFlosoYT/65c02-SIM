@@ -133,6 +133,10 @@ class Emulator {
     void ClearProfiler();
     uint32_t* GetProfilerCounts();
 
+    void SetHeatmapEnabled(bool enabled);
+    void ClearHeatmap();
+    void DecayHeatmap(uint8_t amount);
+
     void SetAutoReload(bool enabled);
     bool IsAutoReloadEnabled() const;
 
@@ -346,6 +350,10 @@ inline Core::Emulator::RuntimeStats Core::Emulator::GetRuntimeStats() const {
 inline void Core::Emulator::SetProfilingEnabled(bool enabled) { bus.SetProfilingEnabled(enabled); }
 inline void Core::Emulator::ClearProfiler() { bus.ClearProfiler(); }
 inline uint32_t* Core::Emulator::GetProfilerCounts() { return bus.GetProfilerCounts(); }
+
+inline void Core::Emulator::SetHeatmapEnabled(bool enabled) { bus.SetHeatmapEnabled(enabled); }
+inline void Core::Emulator::ClearHeatmap() { bus.ClearHeatmap(); }
+inline void Core::Emulator::DecayHeatmap(uint8_t amount) { bus.DecayHeatmap(amount); }
 
 inline void Core::Emulator::SetAutoReload(bool enabled) { autoReloadRequested = enabled; }
 inline bool Core::Emulator::IsAutoReloadEnabled() const { return autoReloadRequested; }

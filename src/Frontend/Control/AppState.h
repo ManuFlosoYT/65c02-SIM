@@ -82,6 +82,7 @@ struct NetworkSnifferState {
 struct DebuggerState {
     bool open = false;
     DebuggerMode mode = DebuggerMode::Settings;
+    bool heatmapEnabled = true;
 };
 
 struct UpdateState {
