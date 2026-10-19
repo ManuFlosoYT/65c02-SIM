@@ -12,6 +12,7 @@ void SymbolTable::Clear() {
     segs.clear();
     addrToSymId.clear();
     addrToLineId.clear();
+    nameToSymId.clear();
     loaded = false;
 }
 
@@ -175,6 +176,9 @@ bool SymbolTable::LoadFromFile(const std::string& path) {
         if (sym.val >= 0 && sym.name.size() > 0 && sym.name[0] != '@') {
             addrToSymId[static_cast<uint16_t>(sym.val)] = symId;
         }
+        if (!sym.name.empty()) {
+            nameToSymId[sym.name] = symId;
+        }
     }
 
     // Line lookup build
@@ -220,6 +224,37 @@ const DbgLine* SymbolTable::GetLineForAddress(uint16_t address) const {
 const DbgFile* SymbolTable::GetFile(unsigned int fileId) const {
     auto iter = files.find(fileId);
     return iter != files.end() ? &iter->second : nullptr;
+}
+
+const DbgSym* SymbolTable::FindSymbol(const std::string& name) const {
+    if (name.empty()) {
+        return nullptr;
+    }
+
+    auto lookup = [this](const std::string& key) -> const DbgSym* {
+        auto it = nameToSymId.find(key);
+        if (it != nameToSymId.end()) {
+            auto symIt = syms.find(it->second);
+            if (symIt != syms.end()) {
+                return &symIt->second;
+            }
+        }
+        return nullptr;
+    };
+
+    if (const auto* sym = lookup(name)) {
+        return sym;
+    }
+    if (const auto* sym = lookup("_" + name)) {
+        return sym;
+    }
+    if (name.front() == '_') {
+        if (const auto* sym = lookup(name.substr(1))) {
+            return sym;
+        }
+    }
+
+    return nullptr;
 }
 
 }  // namespace Control

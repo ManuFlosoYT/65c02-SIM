@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <filesystem>
 #include <optional>
+#include <format>
+#include <cctype>
 #include <TextEditor.h>
 
 #ifndef TARGET_WASM
@@ -310,6 +312,95 @@ namespace {
         ImGui::EndChild();
     }
 
+    std::string GetDebugTooltip(Control::AppState& state, const std::string& word) {
+        if (!state.emulator.IsPaused() || word.empty()) {
+            return {};
+        }
+
+        if (state.rom.symbols.IsLoaded() || state.rom.symbols.GetSymbolCount() > 0) {
+            if (const auto* sym = state.rom.symbols.FindSymbol(word)) {
+                if (sym->val >= 0) {
+                    auto addr = static_cast<uint16_t>(sym->val);
+                    const auto& bus = state.emulator.GetMem();
+                    uint8_t byteVal = bus.ReadDirect(addr);
+                    uint8_t highByte = bus.ReadDirect(static_cast<uint16_t>(addr + 1));
+                    auto wordVal = static_cast<uint16_t>(byteVal | (highByte << 8));
+
+                    return std::format(
+                        "Symbol: {}\n"
+                        "Address: 0x{:04X}\n"
+                        "Hex: 0x{:02X} (Word: 0x{:04X})\n"
+                        "Dec: {} (Word: {})\n"
+                        "Bin: 0b{:08b}",
+                        sym->name, addr, byteVal, wordVal, byteVal, wordVal, byteVal);
+                }
+            }
+        }
+
+        std::string lower = word;
+        std::ranges::transform(lower, lower.begin(), [](unsigned char c) {
+            return static_cast<char>(std::tolower(c));
+        });
+
+        const auto& cpu = state.emulator.GetCPU();
+        if (lower == "a") {
+            uint8_t val = cpu.A;
+            return std::format(
+                "Register: A\n"
+                "Hex: 0x{:02X}\n"
+                "Dec: {}\n"
+                "Bin: 0b{:08b}",
+                val, val, val);
+        }
+        if (lower == "x") {
+            uint8_t val = cpu.X;
+            return std::format(
+                "Register: X\n"
+                "Hex: 0x{:02X}\n"
+                "Dec: {}\n"
+                "Bin: 0b{:08b}",
+                val, val, val);
+        }
+        if (lower == "y") {
+            uint8_t val = cpu.Y;
+            return std::format(
+                "Register: Y\n"
+                "Hex: 0x{:02X}\n"
+                "Dec: {}\n"
+                "Bin: 0b{:08b}",
+                val, val, val);
+        }
+        if (lower == "pc") {
+            uint16_t val = cpu.PC;
+            return std::format(
+                "Register: PC\n"
+                "Hex: 0x{:04X}\n"
+                "Dec: {}\n"
+                "Bin: 0b{:08b} {:08b}",
+                val, val, (val >> 8) & 0xFF, val & 0xFF);
+        }
+        if (lower == "sp") {
+            uint16_t val = cpu.SP;
+            return std::format(
+                "Register: SP\n"
+                "Hex: 0x{:04X} (0x{:02X})\n"
+                "Dec: {} ({})\n"
+                "Bin: 0b{:08b}",
+                val, val & 0xFF, val, val & 0xFF, val & 0xFF);
+        }
+        if (lower == "p" || lower == "sr" || lower == "flags") {
+            uint8_t val = cpu.GetStatus();
+            return std::format(
+                "Register: P (Flags)\n"
+                "Hex: 0x{:02X}\n"
+                "Dec: {}\n"
+                "Bin: 0b{:08b}",
+                val, val, val);
+        }
+
+        return {};
+    }
+
     void DrawTabsAndEditor(Control::AppState& state, float width, float height) {
         ImGui::BeginChild("##EditorChild", ImVec2(width, height), false);
 
@@ -332,6 +423,9 @@ namespace {
                 std::string tabLabel = tab.title + "###Tab_" + std::to_string(tab.id);
                 if (ImGui::BeginTabItem(tabLabel.c_str(), pOpen, flags)) {
                     activeIndex = i;
+                    tab.editor.SetTooltipCallback([&state](const std::string& word) {
+                        return GetDebugTooltip(state, word);
+                    });
                     tab.editor.Render("##CodeEditor", ImVec2(0.0F, height - 35.0F));
 
                     if (tab.editor.IsTextChanged()) {

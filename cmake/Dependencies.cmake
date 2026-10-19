@@ -123,6 +123,7 @@ FetchContent_Declare(
     ImGuiColorTextEdit
     GIT_REPOSITORY ${IMGUI_COLOR_TEXT_EDIT_REPO}
     GIT_TAG ${IMGUI_COLOR_TEXT_EDIT_TAG}
+    PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_imguicolortextedit.cmake
 )
 FetchContent_MakeAvailable(ImGuiColorTextEdit)
 

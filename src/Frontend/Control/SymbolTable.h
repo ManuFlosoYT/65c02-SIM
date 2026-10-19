@@ -85,6 +85,7 @@ public:
     const DbgLine* GetLineForAddress(uint16_t address) const;
 
     const DbgFile* GetFile(unsigned int fileId) const;
+    const DbgSym* FindSymbol(const std::string& name) const;
 
     bool IsLoaded() const { return loaded; }
     std::size_t GetSymbolCount() const { return syms.size(); }
@@ -102,6 +103,7 @@ private:
     // Fast lookups
     std::unordered_map<uint16_t, unsigned int> addrToSymId; 
     std::unordered_map<uint16_t, unsigned int> addrToLineId;
+    std::unordered_map<std::string, unsigned int> nameToSymId;
     
     void ProcessRecord(const std::string& type, std::unordered_map<std::string, std::string>& attrs);
 };
