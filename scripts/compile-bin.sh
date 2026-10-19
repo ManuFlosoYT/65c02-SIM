@@ -189,7 +189,7 @@ elif [ "$NAME" == "microDOS" ]; then
     compile_with_opt_fallback "sdk/src/build/microDOS.bin" "$LINKER_LD" \
         -std=c23 \
         -mlto-zp=200 \
-        -I "sdk/src" -I "sdk/microdos/src" -D ENABLE_SD_SUPPORT=1 \
+        -I "sdk/src" -I "sdk/microdos" -I "sdk/microdos/src" -D ENABLE_SD_SUPPORT=1 \
         "${MICRODOS_SRCS[@]}"
 
     mkdir -p output/rom
