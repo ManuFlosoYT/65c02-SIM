@@ -16,6 +16,7 @@
 #include <string.h>
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
+#include "Libs/System.h"
 #include "shell.h"
 #include "msg.h"
 #include "commands.h"

@@ -1,6 +1,7 @@
 #include "commands.h"
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
+#include "Libs/System.h"
 #include <stddef.h>
 #include <string.h>
 

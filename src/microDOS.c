@@ -2,6 +2,7 @@
 #include <string.h>
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
+#include "Libs/System.h"
 #include "microDOS/shell.h"
 #include "microDOS/commands.h"
 #include "microDOS/msg.h"
