@@ -426,12 +426,12 @@ static void DrawPianoRoll(const Core::SID& sid) {
         }
     }
 
-    constexpr int START_NOTE = 36;
-    constexpr int NUM_WHITE_KEYS = 28;
-    constexpr float WHITE_KEY_W = 8.0F;
-    constexpr float WHITE_KEY_H = 15.0F;
-    constexpr float BLACK_KEY_W = 5.0F;
-    constexpr float BLACK_KEY_H = 9.0F;
+    constexpr int START_NOTE = 24;
+    constexpr int NUM_WHITE_KEYS = 35;
+    constexpr float WHITE_KEY_W = 10.0F;
+    constexpr float WHITE_KEY_H = 18.0F;
+    constexpr float BLACK_KEY_W = 6.0F;
+    constexpr float BLACK_KEY_H = 11.0F;
 
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -447,7 +447,7 @@ static void DrawPianoRoll(const Core::SID& sid) {
         drawList->AddRect(kp0, kp1, IM_COL32(60, 60, 60, 255));
     }
 
-    for (int oct = 0; oct < 4; ++oct) {
+    for (int oct = 0; oct < 5; ++oct) {
         int baseW = oct * 7;
         const std::array<int, 5> blackOffsets = {0, 1, 3, 4, 5};
         for (int b : blackOffsets) {
@@ -460,7 +460,7 @@ static void DrawPianoRoll(const Core::SID& sid) {
 
     for (int v = 0; v < 3; ++v) {
         int note = activeNotes.at(v);
-        if (note < START_NOTE || note >= (START_NOTE + 48)) {
+        if (note < START_NOTE || note >= (START_NOTE + 60)) {
             continue;
         }
         int relNote = note - START_NOTE;
@@ -684,8 +684,10 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
 
 void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                          ImGuiWindowFlags window_flags) {
-    ImGui::SetNextWindowPos(ImVec2(work_pos.x + (work_size.x * 0.47F), work_pos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(work_size.x * 0.33F, top_section_height), ImGuiCond_Always);
+    float leftWidth = work_size.x * 0.47F;
+    float sidWidth = work_size.x - leftWidth;
+    ImGui::SetNextWindowPos(ImVec2(work_pos.x + leftWidth, work_pos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(sidWidth, top_section_height), ImGuiCond_Always);
     ImGui::Begin("SID Viewer", nullptr, window_flags | ImGuiWindowFlags_NoMove);
 
     state.render.sidWindowPos[0] = ImGui::GetWindowPos().x;

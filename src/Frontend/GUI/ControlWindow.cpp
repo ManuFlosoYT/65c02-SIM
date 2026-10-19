@@ -483,7 +483,8 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
                        ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
     float lcdHeight = work_size.y * 0.162F;
-    float controlHeight = top_section_height - lcdHeight;
+    float availTop = top_section_height - lcdHeight;
+    float controlHeight = std::round(availTop * 0.55F);
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, controlHeight), ImGuiCond_Always);
