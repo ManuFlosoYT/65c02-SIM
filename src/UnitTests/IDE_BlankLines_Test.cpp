@@ -37,3 +37,34 @@ TEST(IDEBlankLinesTest, EmptyTextOrWithoutTrailingSpaces) {
     GUI::StripSpacesFromTrailingBlankLines(code);
     EXPECT_EQ(code, "int a;\n");
 }
+
+TEST(StripTrailingNewlineTest, StripsSingleUnixNewline) {
+    std::string code = "int a;\n";
+    GUI::StripTrailingNewline(code);
+    EXPECT_EQ(code, "int a;");
+}
+
+TEST(StripTrailingNewlineTest, StripsSingleWindowsNewline) {
+    std::string code = "int a;\r\n";
+    GUI::StripTrailingNewline(code);
+    EXPECT_EQ(code, "int a;");
+}
+
+TEST(StripTrailingNewlineTest, PreservesIntentionalBlankLine) {
+    std::string code = "int a;\n\n";
+    GUI::StripTrailingNewline(code);
+    EXPECT_EQ(code, "int a;\n");
+}
+
+TEST(StripTrailingNewlineTest, UnchangedWithoutTrailingNewline) {
+    std::string code = "int a;";
+    GUI::StripTrailingNewline(code);
+    EXPECT_EQ(code, "int a;");
+}
+
+TEST(StripTrailingNewlineTest, EmptyString) {
+    std::string code = "";
+    GUI::StripTrailingNewline(code);
+    EXPECT_EQ(code, "");
+}
+

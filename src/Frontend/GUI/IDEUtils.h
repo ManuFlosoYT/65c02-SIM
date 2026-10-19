@@ -41,4 +41,12 @@ inline void StripSpacesFromTrailingBlankLines(std::string& code) {
     }
 }
 
+inline void StripTrailingNewline(std::string& text) {
+    if (text.ends_with("\r\n")) {
+        text.erase(text.size() - 2);
+    } else if (text.ends_with('\n')) {
+        text.pop_back();
+    }
+}
+
 }

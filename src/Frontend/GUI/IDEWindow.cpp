@@ -88,6 +88,12 @@ namespace {
         return langDef;
     }
 
+    void SetEditorText(TextEditor& editor, const std::string& text) {
+        std::string sanitized = text;
+        GUI::StripTrailingNewline(sanitized);
+        editor.SetText(sanitized);
+    }
+
     void InitTabs(Control::AppState& state) {
         static bool initialized = false;
         if (initialized) {
@@ -113,7 +119,7 @@ namespace {
                 defaultTab.editor.SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
             }
             if (!defaultTab.code.empty()) {
-                defaultTab.editor.SetText(defaultTab.code);
+                SetEditorText(defaultTab.editor, defaultTab.code);
             }
             tabs.push_back(std::move(defaultTab));
         }
@@ -192,7 +198,7 @@ namespace {
         tab.editor.SetPalette(TextEditor::GetDarkPalette());
         tab.editor.SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
         tab.editor.SetReadOnly(true);
-        tab.editor.SetText(content);
+        SetEditorText(tab.editor, content);
         tabs.push_back(std::move(tab));
     }
 
@@ -225,7 +231,7 @@ namespace {
         }
 
         const std::string includeLine = "#include \"" + lib + "\"\n";
-        targetTab->editor.SetText(includeLine + currentText);
+        SetEditorText(targetTab->editor, includeLine + currentText);
         targetTab->code = targetTab->editor.GetText();
         state.ide.code = targetTab->code;
     }
@@ -795,7 +801,7 @@ static void HandleOpenFile(Control::AppState& state) {
                     tab.filePath = filePath;
                     tab.title = std::filesystem::path(filePath).filename().string();
                     tab.code = content;
-                    tab.editor.SetText(content);
+                    SetEditorText(tab.editor, content);
                 } else {
                     IDETab newTab;
                     newTab.id = GetNextTabId()++;
@@ -803,7 +809,7 @@ static void HandleOpenFile(Control::AppState& state) {
                     newTab.title = std::filesystem::path(filePath).filename().string();
                     newTab.code = content;
                     newTab.editor.SetPalette(TextEditor::GetDarkPalette());
-                    newTab.editor.SetText(content);
+                    SetEditorText(newTab.editor, content);
                     newTab.requestSelect = true;
                     tabs.push_back(std::move(newTab));
                     activeIndex = tabs.size() - 1;
