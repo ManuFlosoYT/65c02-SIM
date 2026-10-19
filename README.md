@@ -113,7 +113,7 @@ The branches are structured as follows:
 
 To clone the repository and automatically mount all components into their respective folders, use the following one-liner:
 
-**Linux / macOS (Bash):**
+**Linux (Bash):**
 ```bash
 git clone https://github.com/ManuFlosoYT/65c02-SIM.git && cd 65c02-SIM && \
 git worktree add sdk SDK && \
