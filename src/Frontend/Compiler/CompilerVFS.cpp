@@ -47,10 +47,14 @@ static fs::path GetExecutableDir() {
     return fs::current_path();
 }
 
+static std::string NormalizePath(const fs::path& p) {
+    return fs::absolute(p).lexically_normal().string();
+}
+
 static std::string FindCompiler() {
     const char* envPath = std::getenv("MOS_CLANG");
     if (envPath != nullptr && fs::exists(envPath)) {
-        return envPath;
+        return NormalizePath(envPath);
     }
 
     const char* llvmMosDir = std::getenv("LLVM_MOS_DIR");
@@ -62,14 +66,14 @@ static std::string FindCompiler() {
         for (const auto* binName : {"bin/mos-common-clang", "bin/mos-clang", "mos-common-clang", "mos-clang"}) {
             fs::path p = base / binName;
             if (fs::exists(p)) {
-                return fs::canonical(p).string();
+                return NormalizePath(p);
             }
         }
     }
 
 #ifdef MOS_CLANG_DEFAULT_PATH
     if (fs::exists(MOS_CLANG_DEFAULT_PATH)) {
-        return fs::canonical(MOS_CLANG_DEFAULT_PATH).string();
+        return NormalizePath(MOS_CLANG_DEFAULT_PATH);
     }
 #endif
 
@@ -110,7 +114,7 @@ static std::string FindCompiler() {
         for (const auto& rel : relativeCandidates) {
             fs::path candidate = root / rel;
             if (fs::exists(candidate)) {
-                return fs::canonical(candidate).string();
+                return NormalizePath(candidate);
             }
         }
     }
@@ -135,7 +139,7 @@ static std::string FindCompiler() {
             }) {
                 fs::path p = fs::path(dir) / name;
                 if (fs::exists(p)) {
-                    return fs::canonical(p).string();
+                    return NormalizePath(p);
                 }
             }
         }
