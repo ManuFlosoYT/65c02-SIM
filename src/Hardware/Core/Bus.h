@@ -15,6 +15,14 @@ constexpr Word MAX_ADDR = 0xFFFF;
 constexpr uint32_t BUS_SIZE = (uint32_t)MAX_ADDR + 1;
 constexpr Word ROM_SIZE = 0x8000;
 
+enum CDLFlags : uint8_t {
+    CDL_NONE = 0,
+    CDL_OPCODE = 1 << 0,
+    CDL_DATA = 1 << 1,
+    CDL_ZP_POINTER = 1 << 2,
+    CDL_OPERAND = 1 << 3,
+};
+
 constexpr Word ACIA_DATA = 0x5000;
 constexpr Word ACIA_STATUS = 0x5001;
 constexpr Word ACIA_CMD = 0x5002;
@@ -89,6 +97,12 @@ class Bus : public ISerializable {
     void ClearProfiler();
     inline uint32_t* GetProfilerCounts();
 
+    inline void LogCDL(Word address, uint8_t flags);
+    [[nodiscard]] inline uint8_t GetCDL(Word address) const;
+    void ClearCDL();
+    [[nodiscard]] const std::array<uint8_t, BUS_SIZE>& GetCDLMap() const;
+    [[nodiscard]] std::array<uint8_t, BUS_SIZE>& GetCDLMap();
+
     [[nodiscard]] const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
     [[nodiscard]] std::vector<DeviceRegistration>& GetRegisteredDevices();
     void RebuildDeviceMap();
@@ -108,11 +122,20 @@ class Bus : public ISerializable {
 
     bool profilingEnabled = false;
     std::array<uint32_t, BUS_SIZE> profilerCounts{};
+    std::array<uint8_t, BUS_SIZE> cdlMap{};
 };
 
 }  // namespace Hardware
 
 namespace Hardware {
+
+inline void Bus::LogCDL(Word address, uint8_t flags) { cdlMap[address] |= flags; }
+
+inline uint8_t Bus::GetCDL(Word address) const { return cdlMap[address]; }
+
+inline const std::array<uint8_t, BUS_SIZE>& Bus::GetCDLMap() const { return cdlMap; }
+
+inline std::array<uint8_t, BUS_SIZE>& Bus::GetCDLMap() { return cdlMap; }
 
 inline void Bus::SetProfilingEnabled(bool enabled) { profilingEnabled = enabled; }
 

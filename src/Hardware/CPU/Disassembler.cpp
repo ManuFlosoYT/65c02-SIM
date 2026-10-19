@@ -15,6 +15,22 @@ DisassembledInstruction Disassembler::Disassemble(const Bus& bus, uint16_t addr)
     ssAddr << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << addr;
     inst.address = ssAddr.str();
 
+    uint8_t flags = bus.GetCDL(addr);
+    bool isOpcode = (flags & CDL_OPCODE) != 0;
+    bool isData = (flags & (CDL_DATA | CDL_ZP_POINTER | CDL_OPERAND)) != 0;
+
+    if (!isOpcode && isData) {
+        uint8_t val = bus.ReadDirect(addr);
+        std::stringstream ssBytes;
+        ssBytes << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(val) << " ";
+        inst.bytes = ssBytes.str();
+        inst.mnemonic = ".byte";
+        std::stringstream ssOperands;
+        ssOperands << "$" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(val);
+        inst.operands = ssOperands.str();
+        return inst;
+    }
+
     uint8_t opcode = bus.ReadDirect(addr);
     const InstructionInfo& info = OpcodeTable.at(opcode);
     inst.mnemonic = info.mnemonic;

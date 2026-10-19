@@ -14,6 +14,7 @@ void Bus::Init() {
     pageWriteMap.fill(nullptr);
     hasWriteHooks = false;
     globalWriteHooks.clear();
+    ClearCDL();
     RebuildDeviceMap();
 }
 
@@ -100,6 +101,8 @@ void Bus::ClearGlobalWriteHooks() {
 }
 
 void Bus::ClearProfiler() { profilerCounts.fill(0); }
+
+void Bus::ClearCDL() { cdlMap.fill(CDL_NONE); }
 
 const std::vector<DeviceRegistration>& Bus::GetRegisteredDevices() const { return registeredDevices; }
 std::vector<DeviceRegistration>& Bus::GetRegisteredDevices() { return registeredDevices; }

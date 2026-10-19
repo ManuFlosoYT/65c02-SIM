@@ -232,7 +232,7 @@ namespace Hardware::CPUDispatch {
 
 template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus) {
-    Byte opcode = cpu.FetchByte<Debug>(bus);
+    Byte opcode = cpu.FetchOpcode<Debug>(bus);
 
 #define HOT_OPCODE_LIST(X)                                                                                             \
     X(INS_LDA_IM, LDA::ExecuteImmediate, CYC_INS_LDA_IM)                                                               \

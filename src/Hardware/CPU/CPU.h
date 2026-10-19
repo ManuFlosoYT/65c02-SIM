@@ -81,6 +81,8 @@ class CPU : public ISerializable {
     inline void UpdatePagePtr(Bus& bus);
 
     template <bool Debug>
+    Byte FetchOpcode(Bus& bus);
+    template <bool Debug>
     Byte FetchByte(Bus& bus);
     template <bool Debug>
     Word FetchWord(Bus& bus);
@@ -267,7 +269,25 @@ inline void Hardware::CPU::UpdatePagePtr(Bus& bus) {
 }
 
 template <bool Debug>
+inline Hardware::Byte Hardware::CPU::FetchOpcode(Bus& bus) {
+    bus.LogCDL(PC, CDL_OPCODE);
+    Byte dato = 0;
+    if (current_page_ptr != nullptr) [[likely]] {
+        dato = *current_page_ptr;
+        current_page_ptr++;
+    } else {
+        dato = bus.Read<Debug>(PC);
+    }
+    PC++;
+    if ((PC & 0xFF) == 0) {
+        UpdatePagePtr(bus);
+    }
+    return dato;
+}
+
+template <bool Debug>
 inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
+    bus.LogCDL(PC, CDL_OPERAND);
     Byte dato = 0;
     if (current_page_ptr != nullptr) [[likely]] {
         dato = *current_page_ptr;
@@ -285,6 +305,8 @@ inline Hardware::Byte Hardware::CPU::FetchByte(Bus& bus) {
 template <bool Debug>
 inline Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
     if (current_page_ptr != nullptr && (PC & 0xFF) < 0xFE) [[likely]] {
+        bus.LogCDL(PC, CDL_OPERAND);
+        bus.LogCDL(static_cast<Word>(PC + 1), CDL_OPERAND);
         Word dato = static_cast<Word>(current_page_ptr[0]) | (static_cast<Word>(current_page_ptr[1]) << 8);
         current_page_ptr += 2;
         PC += 2;
@@ -297,11 +319,14 @@ inline Hardware::Word Hardware::CPU::FetchWord(Bus& bus) {
 
 template <bool Debug>
 inline Hardware::Byte Hardware::CPU::ReadByte(Word addr, Bus& bus) {
+    bus.LogCDL(addr, CDL_DATA);
     return bus.Read<Debug>(addr);
 }
 
 template <bool Debug>
 inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
+    bus.LogCDL(addr, CDL_DATA);
+    bus.LogCDL(static_cast<Word>(addr + 1), CDL_DATA);
     if constexpr (!Debug) {
         if ((addr & 0xFF) != 0xFF) [[likely]] {
             if (const Byte* page = bus.GetPageReadPtr(addr >> 8)) [[likely]] {
@@ -317,6 +342,8 @@ inline Hardware::Word Hardware::CPU::ReadWord(Word addr, Bus& bus) {
 
 template <bool Debug>
 inline Hardware::Word Hardware::CPU::ReadWordZP(Byte zpAddr, Bus& bus) {
+    bus.LogCDL(zpAddr, CDL_ZP_POINTER);
+    bus.LogCDL(static_cast<Byte>(zpAddr + 1), CDL_ZP_POINTER);
     if constexpr (!Debug) {
         if (zpAddr != 0xFF) [[likely]] {
             if (const Byte* page0 = bus.GetPageReadPtr(0)) [[likely]] {
