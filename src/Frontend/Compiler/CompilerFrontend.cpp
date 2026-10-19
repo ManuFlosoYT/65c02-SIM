@@ -212,6 +212,7 @@ std::string CompilerFrontend::GenerateLinkerScript(const std::string& code) {
     };
     std::vector<Block> res = {
         {.start = 0x5000, .end = 0x5003, .name = "ACIA"},
+        {.start = 0x5008, .end = 0x500B, .name = "SD Card"},
         {.start = 0x6000, .end = 0x600F, .name = "VIA"}
     };
 
@@ -268,7 +269,7 @@ std::string CompilerFrontend::GenerateLinkerScript(const std::string& code) {
     ld << "ASSERT(__rc31 == 0x1f, \"Error en mapeo de Zero Page.\")\n\n";
 
     ld << "MEMORY {\n";
-    ld << "    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x100 - (__rc31 + 1)\n";
+    ld << "    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0xFC - (__rc31 + 1)\n";
     ld << "    input_buffer (rw) : ORIGIN = 0x0300,     LENGTH = 0x0100\n";
 
     for (size_t i = 0; i < ram.size(); i++) {
@@ -402,6 +403,13 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
         return res;
     }
 
+    res.hardware.gpu = code.find("--gpu") != std::string::npos || code.find("GPU.h") != std::string::npos ||
+                       code.find("--double-buffer") != std::string::npos ||
+                       code.find("GPUDoubleBuffer.h") != std::string::npos;
+    res.hardware.sid = code.find("--sid") != std::string::npos || code.find("SID.h") != std::string::npos;
+    res.hardware.net = code.find("--net") != std::string::npos || code.find("NET.h") != std::string::npos;
+    res.hardware.sd = code.find("--sd") != std::string::npos || code.find("SD.h") != std::string::npos;
+
     std::string tempDir = CompilerVFS::GetTempDir();
     if (tempDir.empty()) {
         res.log = "Error: Compiler VFS not initialized.";
@@ -457,7 +465,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
             cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -T " << linkScript
                       << " -I " << tempDir << "/include -I " << tempDir
                       << "/include/Libs -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant "
-                         "-Wl,--gc-sections -Wl,--lto-O2 -mlto-zp=200 "
+                         "-Wl,--gc-sections -Wl,--lto-O2 "
                       << srcFile << " " << tempDir << "/Linker/bios.s " << tempDir << "/include/Libs/BIOS.c";
             if (code.find("SD.h") != std::string::npos) {
                 cmdStream << " " << tempDir << "/include/Libs/SD.c " << tempDir << "/include/Libs/fatfs/ff.c "

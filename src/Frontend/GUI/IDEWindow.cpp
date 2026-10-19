@@ -645,6 +645,23 @@ static void HandleCompileAndRun(Control::AppState& state) {
             }
         } else {
             state.emulator.Pause();
+            state.emulator.SetCartridge(Core::Cartridge{});
+            if (result.hardware.gpu) {
+                state.emulation.gpuEnabled = true;
+                state.emulator.SetGPUEnabled(true);
+            }
+            if (result.hardware.sid) {
+                state.emulator.GetSID().EnableSound(true);
+                state.emulator.SetSIDEnabled(true);
+            }
+            if (result.hardware.net) {
+                state.emulation.espEnabled = true;
+                state.emulator.SetESPEnabled(true);
+            }
+            if (result.hardware.sd) {
+                state.emulation.sdEnabled = true;
+                state.emulator.SetSDEnabled(true);
+            }
             std::string errorMsg;
             if (state.emulator.InitFromMemory(result.binary, "compiled.bin", errorMsg)) {
                 state.rom.bin = "compiled.bin";
