@@ -517,7 +517,13 @@ static void ComputeFFT(std::vector<std::complex<float>>& a) {
 static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrumOut, bool should_update) {
     static std::array<float, 32> smoothedSpectrum{};
     if (!should_update) {
-        spectrumOut = smoothedSpectrum;
+        for (size_t i = 0; i < 32; ++i) {
+            smoothedSpectrum.at(i) *= 0.88F;
+            if (smoothedSpectrum.at(i) < 0.005F) {
+                smoothedSpectrum.at(i) = 0.0F;
+            }
+            spectrumOut.at(i) = smoothedSpectrum.at(i);
+        }
         return;
     }
 
@@ -533,9 +539,9 @@ static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrum
     ComputeFFT(fftData);
 
     for (size_t i = 0; i < 32; ++i) {
-        float mag = std::abs(fftData.at(i + 1)) * 4.0F;
-        smoothedSpectrum.at(i) = std::max(mag, smoothedSpectrum.at(i) * 0.82F);
-        spectrumOut.at(i) = std::clamp(smoothedSpectrum.at(i), 0.0F, 1.0F);
+        float mag = (std::abs(fftData.at(i + 1)) / (static_cast<float>(FFT_SIZE) * 0.5F)) * 1.5F;
+        smoothedSpectrum.at(i) = std::clamp(std::max(mag, smoothedSpectrum.at(i) * 0.82F), 0.0F, 1.0F);
+        spectrumOut.at(i) = smoothedSpectrum.at(i);
     }
 }
 
@@ -547,8 +553,9 @@ static void DrawCompactSpectrum(const std::array<float, 32>& spectrum) {
 
     drawList->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barH), ImColor(Theme::Surface));
     const float barW = (availW - 4.0F) / 32.0F;
+    const float maxH = barH - 2.0F;
     for (size_t i = 0; i < 32; ++i) {
-        float h = spectrum.at(i) * (barH - 2.0F);
+        float h = std::clamp(spectrum.at(i) * maxH, 0.0F, maxH);
         float bx0 = p0.x + 2.0F + (static_cast<float>(i) * barW);
         float by1 = p0.y + barH - 1.0F;
         drawList->AddRectFilled(ImVec2(bx0, by1 - h), ImVec2(bx0 + barW - 1.0F, by1), ImColor(Theme::AccentPrimary));
@@ -578,8 +585,9 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
     drawList->AddRect(p0, ImVec2(p0.x + availW, p0.y + barHeight), ImColor(Theme::BorderSubtle));
 
     const float barWidth = (availW - 4.0F) / 32.0F;
+    const float maxBarH = barHeight - 6.0F;
     for (size_t i = 0; i < 32; ++i) {
-        float h = spectrum.at(i) * (barHeight - 6.0F);
+        float h = std::clamp(spectrum.at(i) * maxBarH, 0.0F, maxBarH);
         float bx0 = p0.x + 2.0F + (static_cast<float>(i) * barWidth);
         float by1 = p0.y + barHeight - 3.0F;
         float by0 = by1 - h;
@@ -594,8 +602,9 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
     ImGui::Dummy(ImVec2(availW, barHeight + 4.0F));
 
     ImGui::TextUnformatted("Waterfall Spectrogram (Time vs Freq):");
-    constexpr int WATERFALL_ROWS = 14;
-    static std::array<std::array<float, 32>, WATERFALL_ROWS> waterfallGrid{};
+    constexpr int WATERFALL_COLS = 32;
+    constexpr int WATERFALL_ROWS = 28;
+    static std::array<std::array<float, WATERFALL_COLS>, WATERFALL_ROWS> waterfallGrid{};
     if (should_update) {
         for (int r = WATERFALL_ROWS - 1; r > 0; --r) {
             waterfallGrid.at(r) = waterfallGrid.at(r - 1);
@@ -604,19 +613,26 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
     }
 
     const ImVec2 wp0 = ImGui::GetCursorScreenPos();
-    const float cellH = 5.0F;
-    for (int r = 0; r < WATERFALL_ROWS; ++r) {
-        for (size_t c = 0; c < 32; ++c) {
-            float val = waterfallGrid.at(r).at(c);
-            float cx0 = wp0.x + 2.0F + (static_cast<float>(c) * barWidth);
-            float cy0 = wp0.y + (static_cast<float>(r) * cellH);
-            ImVec2 cp0(cx0, cy0);
-            ImVec2 cp1(cx0 + barWidth - 1.0F, cy0 + cellH - 0.5F);
+    const float availH = ImGui::GetContentRegionAvail().y;
+    const float totalWaterfallH = std::max(60.0F, availH - 4.0F);
+    const float cellW = availW / static_cast<float>(WATERFALL_COLS);
+    const float cellH = totalWaterfallH / static_cast<float>(WATERFALL_ROWS);
 
-            ImU32 cellColor = IM_COL32(11, 29, 40, 200);
+    drawList->AddRectFilled(wp0, ImVec2(wp0.x + availW, wp0.y + totalWaterfallH), ImColor(Theme::Surface));
+    drawList->AddRect(wp0, ImVec2(wp0.x + availW, wp0.y + totalWaterfallH), ImColor(Theme::BorderSubtle));
+
+    for (int r = 0; r < WATERFALL_ROWS; ++r) {
+        for (size_t c = 0; c < WATERFALL_COLS; ++c) {
+            float val = waterfallGrid.at(r).at(c);
+            float cx0 = wp0.x + (static_cast<float>(c) * cellW);
+            float cy0 = wp0.y + (static_cast<float>(r) * cellH);
+            ImVec2 cp0(cx0 + 0.5F, cy0 + 0.5F);
+            ImVec2 cp1(cx0 + cellW - 0.5F, cy0 + cellH - 0.5F);
+
+            ImU32 cellColor = IM_COL32(11, 29, 40, 220);
             if (val > 0.75F) {
                 cellColor = IM_COL32(255, 235, 59, 255);
-            } else if (val > 0.5F) {
+            } else if (val > 0.50F) {
                 cellColor = IM_COL32(0, 230, 200, 240);
             } else if (val > 0.25F) {
                 cellColor = IM_COL32(0, 150, 180, 220);
@@ -626,7 +642,7 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
             drawList->AddRectFilled(cp0, cp1, cellColor);
         }
     }
-    ImGui::Dummy(ImVec2(availW, (static_cast<float>(WATERFALL_ROWS) * cellH) + 4.0F));
+    ImGui::Dummy(ImVec2(availW, totalWaterfallH));
     ImGui::PopID();
 }
 
