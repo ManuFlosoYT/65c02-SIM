@@ -348,7 +348,7 @@ namespace {
     }
 
     std::string GetDebugTooltip(Control::AppState& state, const std::string& word) {
-        if (!state.emulator.IsPaused() || word.empty()) {
+        if ((state.emulator.IsRunning() && !state.emulator.IsPaused()) || word.empty()) {
             return {};
         }
 
@@ -634,6 +634,10 @@ static void HandleCompileAndRun(Control::AppState& state) {
             if (out) {
                 for (const auto byte : result.binary) {
                     out.put(static_cast<char>(byte));
+                }
+                if (!result.symbolFile.empty() && std::filesystem::exists(result.symbolFile)) {
+                    state.rom.symbols.Clear();
+                    state.rom.symbols.LoadFromFile(result.symbolFile);
                 }
                 state.ide.outputLog += "\nMicroDOS app built successfully: " + targetApp;
             } else {

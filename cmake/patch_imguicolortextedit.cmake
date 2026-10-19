@@ -14,6 +14,10 @@ endif()
 
 if(EXISTS "TextEditor.cpp")
     file(READ "TextEditor.cpp" CPP_CONTENT)
+    if(NOT CPP_CONTENT MATCHES "IsWindowHovered")
+        string(REPLACE "if (ImGui::IsMousePosValid())" "if (ImGui::IsWindowHovered() && ImGui::IsMousePosValid())" CPP_CONTENT "${CPP_CONTENT}")
+        file(WRITE "TextEditor.cpp" "${CPP_CONTENT}")
+    endif()
     if(NOT CPP_CONTENT MATCHES "mTooltipCallback")
         set(SEARCH_STR "				auto it = mLanguageDefinition.mIdentifiers.find(id);
 				if (it != mLanguageDefinition.mIdentifiers.end())
