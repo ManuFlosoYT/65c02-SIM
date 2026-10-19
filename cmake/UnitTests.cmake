@@ -12,6 +12,7 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
         "src/UnitTests/System_Savestate_Test.cpp"
         "src/UnitTests/System_WAI_Threading_Test.cpp"
         "src/UnitTests/System_Cartridge_Test.cpp"
+        "src/UnitTests/RasterBeam_Test.cpp"
         "src/Frontend/Control/Console.cpp"
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
     )
