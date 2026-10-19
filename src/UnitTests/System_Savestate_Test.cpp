@@ -3,12 +3,6 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 
-// Stubs for Frontend/Console methods required by Hardware/Core/Emulator
-namespace Console {
-    bool SaveState(std::ostream& out) { return true; }
-    bool LoadState(std::istream& inputStream) { return true; }
-}
-
 using namespace Core;
 
 class System_Savestate_Test : public ::testing::Test {

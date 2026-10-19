@@ -2,7 +2,7 @@ enable_testing()
 file(GLOB_RECURSE TEST_SOURCES "src/UnitTests/*.cpp")
 
 if(TEST_SOURCES AND NOT EMSCRIPTEN)
-    add_executable(unit_tests ${TEST_SOURCES})
+    add_executable(unit_tests ${TEST_SOURCES} "${CMAKE_SOURCE_DIR}/src/Frontend/Control/Console.cpp")
     set_target_properties(unit_tests PROPERTIES
         UNITY_BUILD ON
         UNITY_BUILD_BATCH_SIZE 16
@@ -12,6 +12,7 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
         "src/UnitTests/System_Savestate_Test.cpp"
         "src/UnitTests/System_WAI_Threading_Test.cpp"
         "src/UnitTests/System_Cartridge_Test.cpp"
+        "src/Frontend/Control/Console.cpp"
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
     )
     target_precompile_headers(unit_tests PRIVATE

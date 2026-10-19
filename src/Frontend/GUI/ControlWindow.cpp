@@ -1,6 +1,8 @@
 #include "Frontend/GUI/ControlWindow.h"
 #include "Frontend/UI/CustomFileDialog.h"
 #include <imgui.h>
+#include <imgui_internal.h>
+#include "Frontend/GUI/Style/Style.h"
 
 using Frontend::CustomFileDialog;
 
@@ -24,19 +26,34 @@ namespace GUI {
 
 static void DrawPlaybackControls(AppState& state) {
     ImGui::BeginDisabled((!state.rom.loaded && !state.script.loaded) || state.emulator.IsHalted());
-    if (ImGui::Button(state.emulator.IsPaused() ? "Run" : "Pause")) {
-        if (state.emulator.IsPaused()) {
+    const bool isPaused = state.emulator.IsPaused();
+    if (isPaused) {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::RunBg);
+        ImGui::PushStyleColor(ImGuiCol_Border, Theme::AccentActive);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
+    }
+    if (ImGui::Button(isPaused ? "Run" : "Pause")) {
+        if (isPaused) {
             state.emulator.Resume();
         } else {
             state.emulator.Pause();
         }
     }
+    if (isPaused) {
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(2);
+    }
     ImGui::SameLine();
     bool stepDisabled = !state.emulator.IsPaused() || state.emulator.IsHalted();
     ImGui::BeginDisabled(stepDisabled);
+    ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
+    ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     if (ImGui::Button("Step")) {
         state.emulator.Step();
     }
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
     if (stepDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
         ImGui::TextUnformatted("Emulator must be paused to use Step.");
@@ -46,9 +63,14 @@ static void DrawPlaybackControls(AppState& state) {
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(!state.emulator.CanRewind() || !state.emulator.IsRunning() || !state.emulator.IsPaused());
+    ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
+    ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     if (ImGui::Button("Rewind")) {
         state.emulator.Rewind();
     }
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
         ImGui::TextUnformatted(
@@ -109,6 +131,9 @@ static void DrawAudioVideoControls(AppState& state) {
 }
 
 static void DrawControlButtonBar(AppState& state) {
+    ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
+    ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     if (ImGui::Button("Settings")) {
         state.debugger.open = true;
     }
@@ -116,6 +141,8 @@ static void DrawControlButtonBar(AppState& state) {
     if (ImGui::Button("Reset")) {
         Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Reset);
     }
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
 
     ImGui::SameLine();
     DrawPlaybackControls(state);
@@ -158,6 +185,10 @@ static void DrawActualIPS(AppState& state) {
     const char* unitM = state.emulation.cycleAccurate ? "MHz" : "MIPS";
     const char* unitK = state.emulation.cycleAccurate ? "KHz" : "KIPS";
     const char* unitH = state.emulation.cycleAccurate ? "Hz" : "IPS";
+    const auto targetRate = static_cast<uint64_t>(state.emulator.GetTargetIPS());
+    const bool isLate = state.emulator.IsRunning() && !state.emulator.IsPaused() &&
+                        (displayedRate < static_cast<uint64_t>(static_cast<double>(targetRate) * 0.95));
+    ImGui::PushStyleColor(ImGuiCol_Text, isLate ? Theme::RecActive : Theme::AccentPrimary);
     if (displayedRate >= 1000000) {
         ImGui::Text("Sim: %.2f %s", static_cast<double>(displayedRate) / 1000000.0, unitM);
     } else if (displayedRate >= 1000) {
@@ -165,6 +196,7 @@ static void DrawActualIPS(AppState& state) {
     } else {
         ImGui::Text("Sim: %llu %s", static_cast<unsigned long long>(displayedRate), unitH);
     }
+    ImGui::PopStyleColor();
 
     if (ImGui::IsItemHovered()) {
         if (ImGui::BeginItemTooltip()) {
@@ -307,8 +339,11 @@ static void DrawRecordingControls(AppState& state) {
     ImGui::BeginDisabled(!state.rom.loaded);
 
     if (isRecording) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8F, 0.0F, 0.0F, 1.0F));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0F, 0.2F, 0.2F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::RecActive);
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::RecIdle);
+        ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     }
 
 #ifdef TARGET_WASM
@@ -333,6 +368,9 @@ static void DrawRecordingControls(AppState& state) {
 #endif
 
     if (isRecording) {
+        ImGui::PopStyleColor();
+    } else {
+        ImGui::PopStyleVar();
         ImGui::PopStyleColor(2);
     }
 
@@ -345,7 +383,7 @@ static void DrawIPSSection(AppState& state, float mainColWidth) {
     DrawTargetIPS(state, mainColWidth);
 
     ImGui::SameLine();
-    ImGui::TextUnformatted(" || ");
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
     ImGui::SameLine();
     DrawActualIPS(state);

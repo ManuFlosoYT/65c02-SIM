@@ -1,4 +1,5 @@
 #include "Frontend/GUI/ConsoleView.h"
+#include "Frontend/GUI/Style/Style.h"
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
@@ -158,6 +159,8 @@ void DrawConsoleView(Control::AppState& state) {
     float totalWidth = charWidth * static_cast<float>(Console::TERMINAL_COLS);
     float totalHeight = charHeight * static_cast<float>(scrollbackCount + Console::TERMINAL_ROWS);
 
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, Theme::DeepBg);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0F, 6.0F));
     ImGui::BeginChild("TerminalRegion", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -276,6 +279,8 @@ void DrawConsoleView(Control::AppState& state) {
     }
 
     ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
 }
 
 }  // namespace GUI

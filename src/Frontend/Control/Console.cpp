@@ -13,6 +13,77 @@ static constexpr std::array<uint32_t, 16> ANSI_PALETTE = {
     0xFF000000, 0xFF2B31CD, 0xFF79BC0D, 0xFF10E5E5, 0xFFC87224, 0xFFBC3FBC, 0xFFCDA811, 0xFFE5E5E5,
     0xFF666666, 0xFF4C4CF1, 0xFF8BD123, 0xFF43F5F5, 0xFFEA8E3B, 0xFFD670D6, 0xFFDBB829, 0xFFFFFFFF};
 
+static constexpr std::array<uint8_t, 6> CUBE_STEPS = {0, 95, 135, 175, 215, 255};
+
+static uint32_t GetColor256(int index) {
+    if (index < 0 || index > 255) {
+        return DEFAULT_FG;
+    }
+    if (index < 16) {
+        return ANSI_PALETTE[index];
+    }
+    if (index < 232) {
+        int cubeIdx = index - 16;
+        int rIdx = cubeIdx / 36;
+        int gIdx = (cubeIdx / 6) % 6;
+        int bIdx = cubeIdx % 6;
+        uint32_t r = CUBE_STEPS[rIdx];
+        uint32_t g = CUBE_STEPS[gIdx];
+        uint32_t b = CUBE_STEPS[bIdx];
+        return 0xFF000000 | (b << 16) | (g << 8) | r;
+    }
+    auto gray = static_cast<uint32_t>(8 + 10 * (index - 232));
+    return 0xFF000000 | (gray << 16) | (gray << 8) | gray;
+}
+
+static bool ParseColor(std::string_view str, uint32_t& outColor) {
+    if (str.starts_with('#')) {
+        str.remove_prefix(1);
+    } else if (str.starts_with("rgb:")) {
+        str.remove_prefix(4);
+    }
+    if (str.length() == 6) {
+        auto fromHex = [](char c) -> int {
+            if (c >= '0' && c <= '9') {
+                return c - '0';
+            }
+            if (c >= 'a' && c <= 'f') {
+                return c - 'a' + 10;
+            }
+            if (c >= 'A' && c <= 'F') {
+                return c - 'A' + 10;
+            }
+            return -1;
+        };
+        int r1 = fromHex(str[0]);
+        int r2 = fromHex(str[1]);
+        int g1 = fromHex(str[2]);
+        int g2 = fromHex(str[3]);
+        int b1 = fromHex(str[4]);
+        int b2 = fromHex(str[5]);
+        if (r1 >= 0 && r2 >= 0 && g1 >= 0 && g2 >= 0 && b1 >= 0 && b2 >= 0) {
+            auto r = static_cast<uint32_t>((r1 << 4) | r2);
+            auto g = static_cast<uint32_t>((g1 << 4) | g2);
+            auto b = static_cast<uint32_t>((b1 << 4) | b2);
+            outColor = 0xFF000000 | (b << 16) | (g << 8) | r;
+            return true;
+        }
+    }
+    bool allDigits = !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+    if (allDigits) {
+        int idx = 0;
+        for (char c : str) {
+            idx = idx * 10 + (c - '0');
+            if (idx > 255) {
+                return false;
+            }
+        }
+        outColor = GetColor256(idx);
+        return true;
+    }
+    return false;
+}
+
 static uint32_t MapDecGraphics(char chr) {
     switch (chr) {
         case '`':
@@ -74,7 +145,7 @@ static uint32_t MapDecGraphics(char chr) {
     }
 }
 
-enum class ParserState { Ground, Escape, Csi, CharsetG0, CharsetG1 };
+enum class ParserState { Ground, Escape, Csi, CharsetG0, CharsetG1, Osc };
 
 struct ConsoleState {
     std::vector<std::vector<Cell>> screen;
@@ -92,6 +163,8 @@ struct ConsoleState {
 
     uint32_t currentFg = DEFAULT_FG;
     uint32_t currentBg = DEFAULT_BG;
+    uint32_t defaultFg = DEFAULT_FG;
+    uint32_t defaultBg = DEFAULT_BG;
     uint8_t currentAttrs = 0;
     uint32_t savedFg = DEFAULT_FG;
     uint32_t savedBg = DEFAULT_BG;
@@ -101,6 +174,7 @@ struct ConsoleState {
     std::function<void(char)> responseCallback;
 
     ParserState parserState = ParserState::Ground;
+    std::string oscBuffer;
     std::vector<int> csiParams;
     int currentParam = 0;
     bool hasCurrentParam = false;
@@ -115,8 +189,12 @@ struct ConsoleState {
     ConsoleState() { ResetBuffer(); }
 
     void ResetBuffer() {
-        screen.assign(TERMINAL_ROWS, std::vector<Cell>(TERMINAL_COLS));
-        altScreen.assign(TERMINAL_ROWS, std::vector<Cell>(TERMINAL_COLS));
+        screen.assign(TERMINAL_ROWS,
+                      std::vector<Cell>(TERMINAL_COLS,
+                                        Cell{.codepoint = ' ', .fg = defaultFg, .bg = defaultBg, .attributes = 0}));
+        altScreen.assign(TERMINAL_ROWS,
+                         std::vector<Cell>(TERMINAL_COLS,
+                                           Cell{.codepoint = ' ', .fg = defaultFg, .bg = defaultBg, .attributes = 0}));
         useAltScreen = false;
         scrollbackLines.clear();
         cursorX = 0;
@@ -126,12 +204,37 @@ struct ConsoleState {
         altSavedCursorX = 0;
         altSavedCursorY = 0;
         cursorVisible = true;
-        currentFg = DEFAULT_FG;
-        currentBg = DEFAULT_BG;
+        currentFg = defaultFg;
+        currentBg = defaultBg;
         currentAttrs = 0;
         decSpecialGraphics = false;
         parserState = ParserState::Ground;
         utf8Remaining = 0;
+        oscBuffer.clear();
+    }
+
+    void ExecuteOsc() {
+        auto sep = oscBuffer.find(';');
+        if (sep == std::string::npos) {
+            if (oscBuffer == "110") {
+                defaultFg = DEFAULT_FG;
+                currentFg = defaultFg;
+            } else if (oscBuffer == "111") {
+                defaultBg = DEFAULT_BG;
+                currentBg = defaultBg;
+            }
+            return;
+        }
+        std::string_view cmd = std::string_view(oscBuffer).substr(0, sep);
+        std::string_view val = std::string_view(oscBuffer).substr(sep + 1);
+        uint32_t col = 0;
+        if (cmd == "10" && ParseColor(val, col)) {
+            defaultFg = col;
+            currentFg = col;
+        } else if (cmd == "11" && ParseColor(val, col)) {
+            defaultBg = col;
+            currentBg = col;
+        }
     }
 
     [[nodiscard]] std::vector<std::vector<Cell>>& ActiveScreen() { return useAltScreen ? altScreen : screen; }
@@ -223,10 +326,11 @@ struct ConsoleState {
         if (csiParams.empty()) {
             csiParams.push_back(0);
         }
-        for (int param : csiParams) {
+        for (size_t i = 0; i < csiParams.size(); ++i) {
+            int param = csiParams[i];
             if (param == 0) {
-                currentFg = DEFAULT_FG;
-                currentBg = DEFAULT_BG;
+                currentFg = defaultFg;
+                currentBg = defaultBg;
                 currentAttrs = 0;
             } else if (param == 1) {
                 currentAttrs |= ATTR_BOLD;
@@ -242,12 +346,36 @@ struct ConsoleState {
                 currentAttrs &= ~ATTR_INVERSE;
             } else if (param >= 30 && param <= 37) {
                 currentFg = ANSI_PALETTE[param - 30];
+            } else if (param == 38 || param == 48) {
+                bool isFg = (param == 38);
+                if (i + 1 < csiParams.size()) {
+                    if (csiParams[i + 1] == 5 && i + 2 < csiParams.size()) {
+                        uint32_t col = GetColor256(csiParams[i + 2]);
+                        if (isFg) {
+                            currentFg = col;
+                        } else {
+                            currentBg = col;
+                        }
+                        i += 2;
+                    } else if (csiParams[i + 1] == 2 && i + 4 < csiParams.size()) {
+                        auto r = static_cast<uint32_t>(std::clamp(csiParams[i + 2], 0, 255));
+                        auto g = static_cast<uint32_t>(std::clamp(csiParams[i + 3], 0, 255));
+                        auto b = static_cast<uint32_t>(std::clamp(csiParams[i + 4], 0, 255));
+                        uint32_t col = 0xFF000000 | (b << 16) | (g << 8) | r;
+                        if (isFg) {
+                            currentFg = col;
+                        } else {
+                            currentBg = col;
+                        }
+                        i += 4;
+                    }
+                }
             } else if (param == 39) {
-                currentFg = DEFAULT_FG;
+                currentFg = defaultFg;
             } else if (param >= 40 && param <= 47) {
                 currentBg = ANSI_PALETTE[param - 40];
             } else if (param == 49) {
-                currentBg = DEFAULT_BG;
+                currentBg = defaultBg;
             } else if (param >= 90 && param <= 97) {
                 currentFg = ANSI_PALETTE[param - 90 + 8];
             } else if (param >= 100 && param <= 107) {
@@ -403,6 +531,8 @@ const std::string& GetScrollbackLine(size_t index) {
     return lines[index];
 }
 bool IsAlternateScreen() { return GetState().useAltScreen; }
+uint32_t GetDefaultFg() { return GetState().defaultFg; }
+uint32_t GetDefaultBg() { return GetState().defaultBg; }
 
 void SetInputResponseCallback(std::function<void(char)> callback) {
     std::lock_guard<std::mutex> lock(GetMutex());
@@ -545,6 +675,9 @@ static void ProcessCharUnlocked(char character) {
             state.currentParam = 0;
             state.hasCurrentParam = false;
             state.isPrivateMode = false;
+        } else if (character == ']') {
+            state.parserState = ParserState::Osc;
+            state.oscBuffer.clear();
         } else if (character == '(') {
             state.parserState = ParserState::CharsetG0;
         } else if (character == ')') {
@@ -566,6 +699,18 @@ static void ProcessCharUnlocked(char character) {
         } else if (character == 'c') {
             state.ResetBuffer();
             state.parserState = ParserState::Ground;
+        } else {
+            state.parserState = ParserState::Ground;
+        }
+    } else if (state.parserState == ParserState::Osc) {
+        if (character == 0x07) {
+            state.ExecuteOsc();
+            state.parserState = ParserState::Ground;
+        } else if (character == 0x1B) {
+            state.ExecuteOsc();
+            state.parserState = ParserState::Escape;
+        } else if (state.oscBuffer.size() < 128) {
+            state.oscBuffer.push_back(character);
         } else {
             state.parserState = ParserState::Ground;
         }
@@ -617,6 +762,8 @@ bool SaveState(std::ostream& out) {
 
     Hardware::ISerializable::Serialize(out, state.cursorX);
     Hardware::ISerializable::Serialize(out, state.cursorY);
+    Hardware::ISerializable::Serialize(out, state.defaultFg);
+    Hardware::ISerializable::Serialize(out, state.defaultBg);
 
     return out.good();
 }
@@ -657,6 +804,12 @@ bool LoadState(std::istream& inputStream) {
     Hardware::ISerializable::Deserialize(inputStream, state.cursorX);
     if (inputStream.good()) {
         Hardware::ISerializable::Deserialize(inputStream, state.cursorY);
+    }
+    if (inputStream.good() && inputStream.peek() != std::char_traits<char>::eof()) {
+        Hardware::ISerializable::Deserialize(inputStream, state.defaultFg);
+        Hardware::ISerializable::Deserialize(inputStream, state.defaultBg);
+        state.currentFg = state.defaultFg;
+        state.currentBg = state.defaultBg;
     }
 
     return inputStream.good();

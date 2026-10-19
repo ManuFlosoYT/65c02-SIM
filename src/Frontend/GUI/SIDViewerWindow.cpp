@@ -1,8 +1,11 @@
 #include "Frontend/GUI/SIDViewerWindow.h"
 
 #include <cmath>
+#include <format>
 #include <random>
+#include <string_view>
 
+#include "Frontend/GUI/Style/Style.h"
 #include "Hardware/Audio/SIDWaveTables.h"
 
 using namespace Control;
@@ -143,18 +146,79 @@ static void DrawVoiceWaveform(const Core::SID& sid, int voiceIndex, double sid_t
     return wave;
 }
 
+static void DrawColoredText(const ImVec4& color, std::string_view text) {
+    ImGui::PushStyleColor(ImGuiCol_Text, color);
+    ImGui::TextUnformatted(text.data(), text.data() + text.size());
+    ImGui::PopStyleColor();
+}
+
+static void DrawControlBadge(const char* label, bool active) {
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_Border, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImColor(Theme::LcdPetroleumBg).Value);
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::Surface);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::Surface);
+        ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0F);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0F, 1.0F));
+
+    ImGui::Button(label);
+
+    ImGui::PopStyleVar(3);
+    ImGui::PopStyleColor(5);
+}
+
 static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     const auto& voice = sid.GetVoice(voiceIndex);
 
     ImGui::BeginGroup();
-    ImGui::Text("Freq: %04X  PW: %03X (%s)", voice.frequency, voice.pulseWidth, GetWaveformText(voice.control).c_str());
-    ImGui::Text("A:%X D:%X S:%X R:%X", static_cast<int>(voice.env.attackRate),
-                static_cast<int>(voice.env.decayRate), static_cast<int>(voice.env.sustainLevel),
-                static_cast<int>(voice.env.releaseRate));
+    DrawColoredText(Theme::TextSecondary, "Freq:");
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawColoredText(Theme::AccentPrimary, std::format("{:04X}", voice.frequency));
     ImGui::SameLine();
-    ImGui::Text("Ctrl: %02X (G:%d S:%d R:%d T:%d)", static_cast<int>(voice.control),
-                voice.control & 1, (voice.control & 2) >> 1, (voice.control & 4) >> 2,
-                (voice.control & 8) >> 3);
+    DrawColoredText(Theme::TextSecondary, "PW:");
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawColoredText(Theme::AccentPrimary, std::format("{:03X}", voice.pulseWidth));
+    ImGui::SameLine();
+    DrawColoredText(Theme::TextMain, std::format("({})", GetWaveformText(voice.control)));
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0F, 1.0F));
+    ImGui::AlignTextToFramePadding();
+    ImGui::PopStyleVar();
+
+    DrawColoredText(Theme::TextSecondary, "A:");
+    ImGui::SameLine(0.0F, 2.0F);
+    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.attackRate));
+    ImGui::SameLine();
+    DrawColoredText(Theme::TextSecondary, "D:");
+    ImGui::SameLine(0.0F, 2.0F);
+    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.decayRate));
+    ImGui::SameLine();
+    DrawColoredText(Theme::TextSecondary, "S:");
+    ImGui::SameLine(0.0F, 2.0F);
+    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.sustainLevel));
+    ImGui::SameLine();
+    DrawColoredText(Theme::TextSecondary, "R:");
+    ImGui::SameLine(0.0F, 2.0F);
+    DrawColoredText(Theme::TextMain, std::format("{:X}", voice.env.releaseRate));
+
+    ImGui::SameLine();
+    DrawControlBadge("GATE", (voice.control & 1) != 0);
+    ImGui::SameLine();
+    DrawControlBadge("SYNC", (voice.control & 2) != 0);
+    ImGui::SameLine();
+    DrawControlBadge("RING", (voice.control & 4) != 0);
+    ImGui::SameLine();
+    DrawControlBadge("TEST", (voice.control & 8) != 0);
     ImGui::EndGroup();
 }
 

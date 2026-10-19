@@ -9,7 +9,8 @@ class CompilerFrontend {
 public:
     enum class BuildType : std::uint8_t {
         C,
-        Assembly
+        Assembly,
+        MicroDOS
     };
 
     struct BuildResult {
@@ -22,6 +23,7 @@ public:
     
 private:
     static std::string GenerateLinkerScript(const std::string& code);
+    static std::string GenerateAppLinkerScript();
 };
 
 #endif

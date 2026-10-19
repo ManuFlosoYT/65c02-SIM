@@ -10,11 +10,15 @@ llvm_mos_root = sys.argv[1]
 linker_dir = sys.argv[2]
 libs_dir = sys.argv[3]
 out_header = sys.argv[4]
+microdos_libs_dir = sys.argv[5] if len(sys.argv) > 5 else None
 
 embed_dirs = {
     linker_dir: "Linker",
     libs_dir: "include/Libs"
 }
+
+if microdos_libs_dir and os.path.exists(microdos_libs_dir):
+    embed_dirs[microdos_libs_dir] = "include/Libs"
 
 if llvm_mos_root and os.path.exists(llvm_mos_root):
     common_platform = os.path.join(llvm_mos_root, "mos-platform", "common")

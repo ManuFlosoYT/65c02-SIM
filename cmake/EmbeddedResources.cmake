@@ -10,9 +10,11 @@ if(NOT EMSCRIPTEN)
 				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker" 
 				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/src/Libs" 
 				"${EMBEDDED_LLVM_MOS_H}"
+				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/microdos/Libs"
 		DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedLLVMMOS.py"
 				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/link.ld"
 				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/bios.s"
+				"${CMAKE_CURRENT_SOURCE_DIR}/sdk/microdos/Libs/app-bios.h"
 		COMMENT "Generating embedded LLVM-MOS VFS header (embedded_llvm_mos.h)"
 		VERBATIM
 	)

@@ -1,4 +1,5 @@
 #include "Frontend/GUI/LCDWindow.h"
+#include "Frontend/GUI/Style/Style.h"
 
 using namespace Control;
 using namespace Core;
@@ -18,15 +19,18 @@ void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top
     const auto& screen = lcd.GetScreen();
     bool is_initialized = lcd.IsInitialized();
 
-    ImU32 cellColor = is_initialized ? IM_COL32(0, 230, 0, 255) : IM_COL32(0, 50, 0, 255);
+    ImU32 cellColor = is_initialized ? Theme::LcdCellInactive : Theme::LcdPetroleumBg;
 
-    ImU32 textColor = IM_COL32(0, 0, 0, 255);
+    ImU32 textColor = Theme::LcdActivePixel;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 cursorPos = ImGui::GetCursorScreenPos();
 
     float avail_w = ImGui::GetContentRegionAvail().x;
     float avail_h = ImGui::GetContentRegionAvail().y;
+
+    draw_list->AddRectFilled(cursorPos, ImVec2(cursorPos.x + avail_w, cursorPos.y + avail_h), Theme::LcdPetroleumBg);
+    draw_list->AddRect(cursorPos, ImVec2(cursorPos.x + avail_w, cursorPos.y + avail_h), Theme::LcdBevelBorder);
 
     float cell_w = avail_w / 16.0F;
     float cell_h = avail_h / 2.0F;

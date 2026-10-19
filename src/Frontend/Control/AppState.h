@@ -138,6 +138,12 @@ struct SDKState {
     std::string extractedVersion;
 };
 
+enum class IDEMode : std::uint8_t {
+    C = 0,
+    ASM = 1,
+    MicroDOS = 2
+};
+
 struct IDEState {
     bool open = false;
     std::string code;
@@ -145,6 +151,7 @@ struct IDEState {
     std::string currentFilePath;
     std::vector<uint8_t> exportBinary;
     bool isCMode = true;
+    IDEMode mode = IDEMode::C;
 };
 
 struct AppState {

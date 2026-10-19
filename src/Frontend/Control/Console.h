@@ -37,6 +37,8 @@ struct Cell {
 [[nodiscard]] size_t GetScrollbackCount();
 [[nodiscard]] const std::string& GetScrollbackLine(size_t index);
 [[nodiscard]] bool IsAlternateScreen();
+[[nodiscard]] uint32_t GetDefaultFg();
+[[nodiscard]] uint32_t GetDefaultBg();
 [[nodiscard]] std::mutex& GetMutex();
 
 void Clear();
