@@ -427,7 +427,7 @@ namespace {
                 bool open = true;
                 bool* pOpen = &open;
 
-                std::string tabLabel = tab.title + "###Tab_" + std::to_string(tab.id);
+                std::string tabLabel = tab.title + (tab.isReadOnly ? " (read-only)" : "") + "###Tab_" + std::to_string(tab.id);
                 if (ImGui::BeginTabItem(tabLabel.c_str(), pOpen, flags)) {
                     activeIndex = i;
                     tab.editor.SetTooltipCallback([&state](const std::string& word) {
