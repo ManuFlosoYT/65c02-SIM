@@ -86,7 +86,22 @@ void DrawProfilerTooltip(std::span<const uint32_t> counts, std::span<const uint3
     }
 }
 
-void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std::span<unsigned char> pixels,
+std::string GenerateProfilerRawData(std::span<const uint32_t> readCounts, std::span<const uint32_t> writeCounts) {
+    std::ostringstream oss;
+    oss << "DIR: R/W\n";
+    for (std::size_t i = 0; i < readCounts.size(); i++) {
+        uint32_t r = readCounts[i];
+        uint32_t w = writeCounts[i];
+        if (r > 0 || w > 0) {
+            oss << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << i
+                << ": " << std::dec << r << '/' << w << '\n';
+        }
+    }
+    return oss.str();
+}
+
+void DrawProfilerButtons(AppState& state, std::span<const uint32_t> readCounts,
+                         std::span<const uint32_t> writeCounts, std::span<unsigned char> pixels,
                          bool& profilerDirty) {
     ImGui::SetCursorPos(ImVec2(10, 5));
     if (ImGui::Button("Clear Data")) {
@@ -96,12 +111,7 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
     ImGui::SameLine();
 #ifdef TARGET_WASM
     if (ImGui::Button("Export RAW")) {
-        std::ostringstream oss;
-        for (std::size_t i = 0; i < counts.size(); i++) {
-            if (i > 0) oss << '\n';
-            oss << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << i << ": " << std::dec << counts[i];
-        }
-        std::string raw = oss.str();
+        std::string raw = GenerateProfilerRawData(readCounts, writeCounts);
         WebFileUtils::download_file("profiler_raw.txt", std::bit_cast<const uint8_t*>(raw.data()), raw.size());
     }
     ImGui::SameLine();
@@ -118,7 +128,8 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
         }
     }
 #else
-    (void)counts;
+    (void)readCounts;
+    (void)writeCounts;
     (void)pixels;
     if (ImGui::Button("Export RAW")) {
         if (!Frontend::CustomFileDialog::IsOpened()) {
@@ -153,7 +164,8 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> counts, std:
 }
 
 #ifndef TARGET_WASM
-void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned char> pixels) {
+void HandleProfilerDialogs(std::span<const uint32_t> readCounts, std::span<const uint32_t> writeCounts,
+                           std::span<unsigned char> pixels) {
     // Profiler Image Save Dialog
     if (Frontend::CustomFileDialog::Display("SaveProfilerImageKey")) {
         if (Frontend::CustomFileDialog::IsOk()) {
@@ -175,13 +187,7 @@ void HandleProfilerDialogs(std::span<const uint32_t> counts, std::span<unsigned 
 
             std::ofstream outFile(filePath);
             if (outFile.is_open()) {
-                for (std::size_t i = 0; i < counts.size(); i++) {
-                    if (i > 0) {
-                        outFile << '\n';
-                    }
-                    outFile << "0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << i << ": "
-                            << std::dec << counts[i];
-                }
+                outFile << GenerateProfilerRawData(readCounts, writeCounts);
                 outFile.close();
             }
         }
@@ -214,9 +220,9 @@ void DrawProfilerWindow(AppState& state) {
         DrawProfilerTooltip(counts, readCounts, writeCounts, size, size);
     }
 
-    DrawProfilerButtons(state, counts, pixels, profilerDirty);
+    DrawProfilerButtons(state, readCounts, writeCounts, pixels, profilerDirty);
 #ifndef TARGET_WASM
-    HandleProfilerDialogs(counts, pixels);
+    HandleProfilerDialogs(readCounts, writeCounts, pixels);
 #endif
 }
 
