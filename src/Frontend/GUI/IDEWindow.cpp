@@ -88,6 +88,12 @@ namespace {
     }
 
     void InitTabs(Control::AppState& state) {
+        static bool initialized = false;
+        if (initialized) {
+            return;
+        }
+        initialized = true;
+
         auto& tabs = GetTabs();
         if (tabs.empty()) {
             IDETab defaultTab;
@@ -404,9 +410,10 @@ namespace {
     void DrawTabsAndEditor(Control::AppState& state, float width, float height) {
         ImGui::BeginChild("##EditorChild", ImVec2(width, height), false);
 
+        auto& tabs = GetTabs();
+        auto& activeIndex = GetActiveTabIndex();
+
         if (ImGui::BeginTabBar("##IDETabs", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable)) {
-            auto& tabs = GetTabs();
-            auto& activeIndex = GetActiveTabIndex();
             std::optional<size_t> tabToClose;
 
             for (size_t i = 0; i < tabs.size(); ++i) {
@@ -418,7 +425,7 @@ namespace {
                 }
 
                 bool open = true;
-                bool* pOpen = (tabs.size() > 1 || tab.isReadOnly) ? &open : nullptr;
+                bool* pOpen = &open;
 
                 std::string tabLabel = tab.title + "###Tab_" + std::to_string(tab.id);
                 if (ImGui::BeginTabItem(tabLabel.c_str(), pOpen, flags)) {
@@ -443,7 +450,7 @@ namespace {
                     ImGui::EndTabItem();
                 }
 
-                if (pOpen != nullptr && !open) {
+                if (!open) {
                     tabToClose = i;
                 }
             }
@@ -461,6 +468,8 @@ namespace {
                 newTab.requestSelect = true;
                 tabs.push_back(std::move(newTab));
                 activeIndex = tabs.size() - 1;
+                state.ide.currentFilePath.clear();
+                state.ide.code.clear();
             }
 
             ImGui::EndTabBar();
@@ -470,11 +479,21 @@ namespace {
                 if (activeIndex >= tabs.size()) {
                     activeIndex = tabs.empty() ? 0 : tabs.size() - 1;
                 }
-                if (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly) {
+                if (tabs.empty()) {
+                    state.ide.code.clear();
+                    state.ide.currentFilePath.clear();
+                } else if (!tabs.at(activeIndex).isReadOnly) {
                     state.ide.code = tabs.at(activeIndex).code;
                     state.ide.currentFilePath = tabs.at(activeIndex).filePath;
+                } else {
+                    state.ide.currentFilePath.clear();
                 }
             }
+        }
+
+        if (tabs.empty()) {
+            ImGui::Spacing();
+            ImGui::TextDisabled("No file open. Click '+' or 'Open File' to start editing.");
         }
 
         ImGui::EndChild();
@@ -486,12 +505,15 @@ static void DrawFileToolbar(Control::AppState& state) {
         CustomFileDialog::OpenDialog("IDE_OpenFile", "Open Source File", ".c,.s,.asm,.*", ".");
     }
     ImGui::SameLine();
+    auto& tabs = GetTabs();
+    auto& activeIndex = GetActiveTabIndex();
+    bool canSave = (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly);
+
+    ImGui::BeginDisabled(!canSave);
     if (ImGui::Button("Save")) {
         if (state.ide.currentFilePath.empty()) {
             CustomFileDialog::OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
         } else {
-            auto& tabs = GetTabs();
-            auto& activeIndex = GetActiveTabIndex();
             if (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly) {
                 tabs.at(activeIndex).code = tabs.at(activeIndex).editor.GetText();
                 state.ide.code = tabs.at(activeIndex).code;
@@ -509,12 +531,15 @@ static void DrawFileToolbar(Control::AppState& state) {
     if (ImGui::Button("Save As")) {
         CustomFileDialog::OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
     }
+    ImGui::EndDisabled();
     
     ImGui::SameLine();
     ImGui::TextUnformatted("|");
     ImGui::SameLine();
 
-    if (!state.ide.currentFilePath.empty()) {
+    if (tabs.empty()) {
+        ImGui::TextUnformatted("File: (None)");
+    } else if (!state.ide.currentFilePath.empty()) {
         std::string label = "File: " + state.ide.currentFilePath;
         ImGui::TextUnformatted(label.c_str());
     } else {
@@ -526,11 +551,13 @@ static bool SaveCurrentFileForCompile(Control::AppState& state) {
     state.ide.outputLog.clear();
     auto& tabs = GetTabs();
     auto& activeIndex = GetActiveTabIndex();
-    if (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly) {
-        state.ide.code = tabs.at(activeIndex).editor.GetText();
-        tabs.at(activeIndex).code = state.ide.code;
-        state.ide.currentFilePath = tabs.at(activeIndex).filePath;
+    if (activeIndex >= tabs.size() || tabs.at(activeIndex).isReadOnly) {
+        state.ide.outputLog = "Error: No active source file to compile.";
+        return false;
     }
+    state.ide.code = tabs.at(activeIndex).editor.GetText();
+    tabs.at(activeIndex).code = state.ide.code;
+    state.ide.currentFilePath = tabs.at(activeIndex).filePath;
     if (state.ide.currentFilePath.empty()) {
         state.ide.outputLog = "Error: Please save your file before compiling.";
         return false;
@@ -652,6 +679,11 @@ static void DrawCompilerToolbar(Control::AppState& state) {
     ImGui::Spacing();
     ImGui::SameLine();
 
+    auto& tabs = GetTabs();
+    auto& activeIndex = GetActiveTabIndex();
+    bool canCompile = (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly);
+
+    ImGui::BeginDisabled(!canCompile);
     if (ImGui::Button("Compile & Run", ImVec2(180.0F, 0.0F))) {
         HandleCompileAndRun(state);
     }
@@ -660,6 +692,7 @@ static void DrawCompilerToolbar(Control::AppState& state) {
     if (ImGui::Button("Compile & Export", ImVec2(180.0F, 0.0F))) {
         HandleCompileAndExport(state);
     }
+    ImGui::EndDisabled();
 }
 
 static void DrawToolbar(Control::AppState& state) {
