@@ -32,6 +32,18 @@ namespace Core {
 
 enum class SavestateLoadResult : std::uint8_t { Success, HashMismatch, VersionMismatch, StructuralError, GenericError };
 
+struct SnapshotDelta {
+    struct Chunk {
+        uint32_t offset = 0;
+        std::vector<uint8_t> xorData;
+    };
+    std::vector<Chunk> chunks;
+    std::string fullState;
+    bool isKeyframe = false;
+    uint64_t totalCycles = 0;
+    uint64_t totalInstructions = 0;
+};
+
 using namespace Hardware;
 
 class Emulator {
@@ -64,6 +76,7 @@ class Emulator {
 
     void Rewind();
     bool CanRewind() const;
+    void StepBack();
 
     int Step();
     template <bool Debug>
@@ -153,6 +166,9 @@ class Emulator {
 
     void SetupHardware();
     void SetRewindSnapshotsEnabled(bool enabled);
+    void SetRewindInterval(int n);
+    [[nodiscard]] int GetRewindInterval() const;
+    void ClearRewindBuffer();
 
    private:
     void ThreadLoop();
@@ -271,8 +287,13 @@ class Emulator {
     SavestateLoadResult lastLoadResult = SavestateLoadResult::Success;
     std::string lastLoadVersion;
 
-    std::deque<std::string> rewindBuffer;
-    static constexpr size_t MAX_REWIND_STATES = 255;
+    std::deque<SnapshotDelta> rewindBuffer;
+    std::string lastCapturedState;
+    uint64_t lastCapturedCycles = 0;
+    uint64_t lastCapturedInstructions = 0;
+    mutable std::mutex rewindMutex;
+    static constexpr size_t MAX_REWIND_STATES = 600;
+    int rewindInterval = 1;
 
     Cartridge cartridge;
 };
@@ -366,10 +387,28 @@ inline Core::SavestateLoadResult Core::Emulator::GetLastLoadResult() const { ret
 inline std::string Core::Emulator::GetLastLoadVersion() const { return lastLoadVersion; }
 inline std::string Core::Emulator::GetCurrentBinPath() const { return currentBinPath; }
 
+inline void Core::Emulator::StepBack() { Rewind(); }
+
+inline void Core::Emulator::SetRewindInterval(int n) {
+    if (n > 0) {
+        rewindInterval = n;
+    }
+}
+
+inline int Core::Emulator::GetRewindInterval() const { return rewindInterval; }
+
+inline void Core::Emulator::ClearRewindBuffer() {
+    std::scoped_lock lock(rewindMutex);
+    rewindBuffer.clear();
+    lastCapturedState.clear();
+    lastCapturedCycles = 0;
+    lastCapturedInstructions = 0;
+    rewindSliceCounter = 0;
+}
+
 inline void Core::Emulator::SetRewindSnapshotsEnabled(bool enabled) {
     rewindSnapshotsEnabled = enabled;
     if (!rewindSnapshotsEnabled) {
-        rewindSliceCounter = 0;
-        rewindBuffer.clear();
+        ClearRewindBuffer();
     }
 }

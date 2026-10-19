@@ -74,7 +74,7 @@ static void DrawPlaybackControls(AppState& state) {
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
         ImGui::TextUnformatted(
-            "Rewind to the previous state (max 255 states).\nOnly available when the emulator is paused.");
+            "Rewind to previous frame / instruction state.\nOnly available when the emulator is paused.");
         ImGui::EndTooltip();
     }
     ImGui::EndDisabled();

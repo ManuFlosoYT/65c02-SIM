@@ -106,6 +106,18 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
 }
 
 int Emulator::Step() {
+    bool recordSnapshot = rewindSnapshotsEnabled && (paused.load() || !running.load());
+    if (recordSnapshot) {
+        std::scoped_lock lock(rewindMutex);
+        std::stringstream ss;
+        if (SaveComponentsState(ss)) {
+            SaveInternalState(ss);
+            lastCapturedState = ss.str();
+            lastCapturedCycles = totalCycles.load(std::memory_order_relaxed);
+            lastCapturedInstructions = totalInstructions.load(std::memory_order_relaxed);
+        }
+    }
+
     EnsureWatchpointWriteHook();
 
     int res = 0;
@@ -134,6 +146,10 @@ int Emulator::Step() {
         }
 #endif
         halted = true;
+    }
+
+    if (recordSnapshot) {
+        SaveStateToBuffer();
     }
     return res;
 }
@@ -483,8 +499,7 @@ void Emulator::SetupHardware() {
     pendingInterruptAny.store(false, std::memory_order_relaxed);
     totalCycles = 0;
     totalInstructions = 0;
-    rewindBuffer.clear();
-    rewindSliceCounter = 0;
+    ClearRewindBuffer();
 
     try {
         if (!RegisterCartridgeLayout()) {

@@ -175,10 +175,10 @@ Emulator::SliceResult Emulator::EmulateSlice(int instructionsPerSlice) {
     uint64_t localInstructionDelta = 0;
     bool totalsCommitted = false;
 
-    // Save rewind state roughly every 1s only when rewind snapshots are enabled.
+    // Save rewind state every N slices when rewind snapshots are enabled.
     if (rewindSnapshotsEnabled) {
         rewindSliceCounter++;
-        if (rewindSliceCounter >= (1000 / 10)) {
+        if (rewindSliceCounter >= rewindInterval) {
             SaveStateToBuffer();
             rewindSliceCounter = 0;
         }

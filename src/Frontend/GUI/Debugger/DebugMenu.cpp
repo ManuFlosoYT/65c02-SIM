@@ -59,7 +59,7 @@ void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
 
 void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     float buttonHeight = ImGui::GetFrameHeightWithSpacing();
-    float totalBottomSpace = (buttonHeight * 6.0F);
+    float totalBottomSpace = (buttonHeight * 7.0F);
     float horizontalPadding = 5.0F;
     float adjustedWidth = sidebarWidth - (horizontalPadding * 2.0F);
 
@@ -87,6 +87,18 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         state.emulator.Step();
         state.emulator.GetSID().SetEmulationPaused(true);
     }
+
+    // Step Back
+    bool canStepBack = state.emulator.CanRewind() && state.emulator.IsPaused();
+    ImGui::BeginDisabled(!canStepBack);
+    ImGui::SetCursorPosX(horizontalPadding);
+    if (ImGui::Button("Step Back", ImVec2(adjustedWidth, 0))) {
+        state.emulator.GetSID().SetEmulationPaused(false);
+        state.emulator.Pause();
+        state.emulator.StepBack();
+        state.emulator.GetSID().SetEmulationPaused(true);
+    }
+    ImGui::EndDisabled();
     ImGui::EndDisabled();
 
     // Reset
