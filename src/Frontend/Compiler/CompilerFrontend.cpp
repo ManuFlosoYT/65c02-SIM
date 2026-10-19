@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -150,6 +151,51 @@ static bool IsSizeOverflowError(const std::string& log) {
     return log.find("will not fit in region") != std::string::npos ||
            log.find("overflowed by") != std::string::npos ||
            log.find("address range overlaps with") != std::string::npos;
+}
+
+static bool GenerateDbgFromMap(const std::string& mapPath, const std::string& dbgPath) {
+    std::ifstream in(mapPath);
+    if (!in) {
+        return false;
+    }
+    std::ofstream out(dbgPath);
+    if (!out) {
+        return false;
+    }
+
+    std::unordered_set<std::string> seen;
+    std::string line;
+    unsigned int id = 0;
+    while (std::getline(in, line)) {
+        std::stringstream stringStream(line);
+        std::string vmaStr;
+        std::string lmaStr;
+        std::string sizeStr;
+        std::string alignStr;
+        std::string symName;
+        if (stringStream >> vmaStr >> lmaStr >> sizeStr >> alignStr >> symName) {
+            if (symName.empty() || symName.find('=') != std::string::npos ||
+                symName.find('.') != std::string::npos || symName.find(':') != std::string::npos ||
+                symName.find('<') != std::string::npos || symName.find('/') != std::string::npos ||
+                symName.find('>') != std::string::npos || symName.find('(') != std::string::npos ||
+                symName.find(')') != std::string::npos) {
+                continue;
+            }
+            if (!seen.insert(symName).second) {
+                continue;
+            }
+            try {
+                size_t idx = 0;
+                unsigned long addr = std::stoul(vmaStr, &idx, 16);
+                if (idx == vmaStr.size()) {
+                    out << "sym\tid=" << id++ << ",name=\"" << symName << "\",val=0x"
+                        << std::hex << std::uppercase << addr << "\n";
+                }
+            } catch (...) {
+            }
+        }
+    }
+    return id > 0;
 }
 
 std::string CompilerFrontend::GenerateLinkerScript(const std::string& code) {
@@ -386,6 +432,8 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     }
 
     std::string binFile = tempDir + "/out.bin";
+    std::string mapFile = tempDir + "/out.map";
+    std::string dbgFile = tempDir + "/out.dbg";
     std::string compiler = CompilerVFS::GetCompilerExecutable();
 
     const std::array<const char*, 2> optLevels = {"-Os", "-Oz"};
@@ -400,11 +448,11 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
             cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -std=c23 -T " << linkScript
                       << " -I " << tempDir << "/include -I " << tempDir
                       << "/include/Libs -linit-stack -lcopy-data -lzero-bss " << tempDir
-                      << "/Linker/App-Runtime.s " << srcFile << " -o " << binFile;
+                      << "/Linker/App-Runtime.s " << srcFile << " -Wl,-Map=" << mapFile << " -o " << binFile;
         } else if (type == BuildType::Assembly) {
             cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -T " << linkScript
                       << " -I " << tempDir << "/include -I " << tempDir
-                      << "/include/Libs -nostartfiles " << srcFile << " -o " << binFile;
+                      << "/include/Libs -nostartfiles " << srcFile << " -Wl,-Map=" << mapFile << " -o " << binFile;
         } else {
             cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -T " << linkScript
                       << " -I " << tempDir << "/include -I " << tempDir
@@ -415,7 +463,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
                 cmdStream << " " << tempDir << "/include/Libs/SD.c " << tempDir << "/include/Libs/fatfs/ff.c "
                           << tempDir << "/include/Libs/fatfs/diskio.c -D ENABLE_SD_SUPPORT=1";
             }
-            cmdStream << " -o " << binFile;
+            cmdStream << " -Wl,-Map=" << mapFile << " -o " << binFile;
         }
         std::string cmd = cmdStream.str();
 
@@ -447,6 +495,10 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     if (res.binary.empty()) {
         res.log += "Error: Output binary is empty.\n";
         return res;
+    }
+
+    if (GenerateDbgFromMap(mapFile, dbgFile)) {
+        res.symbolFile = dbgFile;
     }
 
     res.success = true;

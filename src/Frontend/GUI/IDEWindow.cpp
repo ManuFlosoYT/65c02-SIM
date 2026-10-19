@@ -639,8 +639,34 @@ static void HandleCompileAndRun(Control::AppState& state) {
             if (state.emulator.InitFromMemory(result.binary, "compiled.bin", errorMsg)) {
                 state.rom.bin = "compiled.bin";
                 state.rom.data = result.binary;
-                state.rom.loaded = true;
                 state.rom.symbols.Clear();
+                bool symbolsLoaded = false;
+                if (!result.symbolFile.empty() && std::filesystem::exists(result.symbolFile)) {
+                    symbolsLoaded = state.rom.symbols.LoadFromFile(result.symbolFile);
+                }
+                if (!symbolsLoaded && !state.ide.currentFilePath.empty()) {
+                    std::filesystem::path srcPath(state.ide.currentFilePath);
+                    std::string stem = srcPath.stem().string();
+                    const std::vector<std::filesystem::path> dbgCandidates = {
+                        srcPath.parent_path() / (stem + ".dbg"),
+                        srcPath.parent_path() / "build" / (stem + ".dbg"),
+                        srcPath.parent_path().parent_path() / "build" / (stem + ".dbg"),
+                        std::filesystem::path("output/rom") / (stem + ".dbg"),
+                        std::filesystem::path("sdk/src/build") / (stem + ".dbg")
+                    };
+                    for (const auto& candidate : dbgCandidates) {
+                        if (std::filesystem::exists(candidate)) {
+                            if (state.rom.symbols.LoadFromFile(candidate.string())) {
+                                symbolsLoaded = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (symbolsLoaded) {
+                    state.ide.outputLog += "\nLoaded " + std::to_string(state.rom.symbols.GetSymbolCount()) +
+                                           " debug symbols into Disassembly.";
+                }
                 state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                 state.emulator.ClearProfiler();
                 state.ide.outputLog += "\nSuccessfully loaded to emulator and Reset.";
