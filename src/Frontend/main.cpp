@@ -29,6 +29,8 @@
 #include <memory>
 #ifndef TARGET_WASM
 #include "Frontend/Compiler/CompilerVFS.h"
+#include "Frontend/Compiler/CompilerFrontend.h"
+#include "Frontend/Control/SymbolTable.h"
 #endif
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/CartridgeUtils.h"
@@ -551,6 +553,7 @@ int main(int argc, char* argv[]) {
 
 #ifndef TARGET_WASM
     CompilerVFS::Initialize();
+    Control::SymbolTable::SetElfLoader(&CompilerFrontend::LoadELF);
 #endif
 
     if (args.headless) {

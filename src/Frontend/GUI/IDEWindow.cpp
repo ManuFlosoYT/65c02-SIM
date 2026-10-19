@@ -641,7 +641,9 @@ static void HandleCompileAndRun(Control::AppState& state) {
                 for (const auto byte : result.binary) {
                     out.put(static_cast<char>(byte));
                 }
-                if (!result.symbolFile.empty() && std::filesystem::exists(result.symbolFile)) {
+                if (result.symbols.IsLoaded()) {
+                    state.rom.symbols = std::move(result.symbols);
+                } else if (!result.symbolFile.empty() && std::filesystem::exists(result.symbolFile)) {
                     state.rom.symbols.Clear();
                     state.rom.symbols.LoadFromFile(result.symbolFile);
                 }
@@ -675,7 +677,10 @@ static void HandleCompileAndRun(Control::AppState& state) {
                 state.rom.loaded = true;
                 state.rom.symbols.Clear();
                 bool symbolsLoaded = false;
-                if (!result.symbolFile.empty() && std::filesystem::exists(result.symbolFile)) {
+                if (result.symbols.IsLoaded()) {
+                    state.rom.symbols = std::move(result.symbols);
+                    symbolsLoaded = true;
+                } else if (!result.symbolFile.empty() && std::filesystem::exists(result.symbolFile)) {
                     symbolsLoaded = state.rom.symbols.LoadFromFile(result.symbolFile);
                 }
                 if (!symbolsLoaded && !state.ide.currentFilePath.empty()) {

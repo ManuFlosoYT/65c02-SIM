@@ -9,6 +9,7 @@
 
 #include "Hardware/CPU/Disassembler.h"
 #include <cstdlib>
+#include <filesystem>
 
 namespace GUI {
 
@@ -83,7 +84,7 @@ static void ResolveSymbolsForInstruction(const Control::AppState& state, uint16_
 void DrawDisassemblerContent(Control::AppState& state) {
 #ifdef TARGET_WASM
     ImGui::BeginDisabled();
-    if (ImGui::Button("Load Symbols (.dbg)")) {
+    if (ImGui::Button("Load Symbols (.dbg / .elf)")) {
         WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
             std::string virtualPath = "/tmp/" + std::string(filename);
             FILE* f = fopen(virtualPath.c_str(), "wb");
@@ -93,17 +94,21 @@ void DrawDisassemblerContent(Control::AppState& state) {
             }
             state.rom.symbols.LoadFromFile(virtualPath);
         };
-        WebFileUtils::open_browser_file_picker(".dbg");
+        WebFileUtils::open_browser_file_picker(".dbg,.elf");
     }
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Debug symbols (.dbg) are not supported in the web build.");
+        ImGui::SetTooltip("Debug symbols are not supported in the web build.");
     }
 #else
-    if (ImGui::Button("Load Symbols (.dbg)")) {
-        Frontend::CustomFileDialog::OpenDialog("LoadDbgDlgKey", "Load Debug Symbols", ".dbg", ".");
+    if (ImGui::Button("Load Symbols (.dbg / .elf)")) {
+        Frontend::CustomFileDialog::OpenDialog("LoadDbgDlgKey", "Load Debug Symbols", ".dbg,.elf", ".");
     }
 #endif
+
+    static bool showHybrid = true;
+    ImGui::SameLine();
+    ImGui::Checkbox("Hybrid C/ASM", &showHybrid);
     
     if (state.rom.symbols.IsLoaded()) {
         ImGui::SameLine();
@@ -143,6 +148,9 @@ void DrawDisassemblerContent(Control::AppState& state) {
         // This is heuristic, but for short ranges it usually works
         uint16_t currentAddr = (progCounter > 32) ? progCounter - 32 : 0;
 
+        int lastLineNumber = -1;
+        unsigned int lastFileId = 0;
+
         // Dissassemble a block around PC
         for (int i = 0; i < 50; i++) {
             Hardware::DisassembledInstruction instr =
@@ -153,6 +161,37 @@ void DrawDisassemblerContent(Control::AppState& state) {
             std::string opText = instr.operands;
 
             ResolveSymbolsForInstruction(state, currentAddr, labelText, opText, sourceText);
+
+            if (showHybrid && state.rom.symbols.IsLoaded()) {
+                if (const auto* line = state.rom.symbols.GetLineForAddress(currentAddr)) {
+                    if (line->line > 0 && (line->line != static_cast<unsigned int>(lastLineNumber) || line->fileId != lastFileId)) {
+                        lastLineNumber = static_cast<int>(line->line);
+                        lastFileId = line->fileId;
+
+                        std::string srcCode = state.rom.symbols.GetSourceLine(line->fileId, line->line);
+                        size_t startPos = srcCode.find_first_not_of(" \t\r\n");
+                        if (startPos != std::string::npos) {
+                            srcCode = srcCode.substr(startPos);
+                        }
+
+                        const auto* file = state.rom.symbols.GetFile(line->fileId);
+                        std::string fname = file ? std::filesystem::path(file->name).filename().string() : "";
+
+                        ImGui::TableNextRow();
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImVec4(0.12F, 0.22F, 0.16F, 0.85F)));
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4F, 0.85F, 0.5F, 1.0F));
+                        if (!fname.empty()) {
+                            ImGui::Text("// %s:%u", fname.c_str(), line->line);
+                        } else {
+                            ImGui::Text("// Line %u", line->line);
+                        }
+                        ImGui::TableSetColumnIndex(5);
+                        ImGui::TextUnformatted(srcCode.c_str());
+                        ImGui::PopStyleColor();
+                    }
+                }
+            }
 
             ImGui::TableNextRow();
             if (currentAddr == progCounter) {

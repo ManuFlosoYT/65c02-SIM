@@ -147,6 +147,40 @@ static int RunSysCommand(const std::string& cmd, std::string& log) {
     return result;
 }
 
+int CompilerFrontend::RunCommand(const std::string& cmd, std::string& output) {
+    std::string tempLog = CompilerVFS::GetTempDir() + "/temp.log";
+    int result = PlatformRunCommand(cmd, tempLog);
+    output = ReadFile(tempLog);
+    return result;
+}
+
+bool CompilerFrontend::LoadELF(Control::SymbolTable& table, const std::string& elfPath) {
+    Control::SymbolTable::SetElfLoader(&CompilerFrontend::LoadELF);
+
+    std::string compiler = CompilerVFS::GetCompilerExecutable();
+    fs::path binDir = fs::path(compiler).parent_path();
+
+    std::string dwarfdump = (binDir / "llvm-dwarfdump").string();
+    std::string nm = (binDir / "llvm-nm").string();
+#ifdef _WIN32
+    dwarfdump += ".exe";
+    nm += ".exe";
+#endif
+    if (!fs::exists(dwarfdump)) {
+        dwarfdump = "llvm-dwarfdump";
+    }
+    if (!fs::exists(nm)) {
+        nm = "llvm-nm";
+    }
+
+    std::string lineDump;
+    std::string nmDump;
+    RunCommand(dwarfdump + " --debug-line \"" + elfPath + "\"", lineDump);
+    RunCommand(nm + " -n \"" + elfPath + "\"", nmDump);
+
+    return table.LoadFromDebugInfo(lineDump, nmDump);
+}
+
 static bool IsSizeOverflowError(const std::string& log) {
     return log.find("will not fit in region") != std::string::npos ||
            log.find("overflowed by") != std::string::npos ||
@@ -301,9 +335,6 @@ std::string CompilerFrontend::GenerateLinkerScript(const std::string& code) {
 
     uint32_t stackStart = ram.back().end;
     ld << "__stack = 0x" << std::hex << std::uppercase << stackStart << ";\n\n";
-    ld << "OUTPUT_FORMAT {\n";
-    ld << "    FULL(rom)\n";
-    ld << "}\n";
 
     return ld.str();
 }
@@ -388,10 +419,7 @@ std::string CompilerFrontend::GenerateAppLinkerScript() {
            << addr << ");\n";
     }
 
-    ld << "\nOUTPUT_FORMAT {\n";
-    ld << "    TRIM(core)\n";
-    ld << "}\n";
-
+    ld << "\n";
     return ld.str();
 }
 
@@ -440,6 +468,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     }
 
     std::string binFile = tempDir + "/out.bin";
+    std::string elfFile = tempDir + "/out.elf";
     std::string mapFile = tempDir + "/out.map";
     std::string dbgFile = tempDir + "/out.dbg";
     std::string compiler = CompilerVFS::GetCompilerExecutable();
@@ -450,19 +479,20 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     for (const auto* opt : optLevels) {
         std::error_code ec;
         fs::remove(binFile, ec);
+        fs::remove(elfFile, ec);
 
         std::ostringstream cmdStream;
         if (type == BuildType::MicroDOS) {
-            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -std=c23 -T " << linkScript
+            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -g -std=c23 -T " << linkScript
                       << " -I " << tempDir << "/include -I " << tempDir
                       << "/include/Libs -linit-stack -lcopy-data -lzero-bss " << tempDir
-                      << "/Linker/App-Runtime.s " << srcFile << " -Wl,-Map=" << mapFile << " -o " << binFile;
+                      << "/Linker/App-Runtime.s " << srcFile << " -Wl,-Map=" << mapFile << " -o " << elfFile;
         } else if (type == BuildType::Assembly) {
-            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -T " << linkScript
+            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -g -T " << linkScript
                       << " -I " << tempDir << "/include -I " << tempDir
-                      << "/include/Libs -nostartfiles " << srcFile << " -Wl,-Map=" << mapFile << " -o " << binFile;
+                      << "/include/Libs -nostartfiles " << srcFile << " -Wl,-Map=" << mapFile << " -o " << elfFile;
         } else {
-            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -T " << linkScript
+            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -g -T " << linkScript
                       << " -I " << tempDir << "/include -I " << tempDir
                       << "/include/Libs -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant "
                          "-Wl,--gc-sections -Wl,--lto-O2 "
@@ -471,7 +501,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
                 cmdStream << " " << tempDir << "/include/Libs/SD.c " << tempDir << "/include/Libs/fatfs/ff.c "
                           << tempDir << "/include/Libs/fatfs/diskio.c -D ENABLE_SD_SUPPORT=1";
             }
-            cmdStream << " -Wl,-Map=" << mapFile << " -o " << binFile;
+            cmdStream << " -Wl,-Map=" << mapFile << " -o " << elfFile;
         }
         std::string cmd = cmdStream.str();
 
@@ -480,10 +510,25 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
         int exitCode = RunSysCommand(cmd, stepLog);
         res.log += stepLog;
 
-        if (exitCode == 0 && fs::exists(binFile) && fs::file_size(binFile) > 0) {
-            buildOk = true;
-            res.log += "Optimization " + std::string(opt) + " succeeded.\n";
-            break;
+        if (exitCode == 0 && fs::exists(elfFile) && fs::file_size(elfFile) > 0) {
+            std::string binDir = fs::path(compiler).parent_path().string();
+            std::string objcopy = (fs::path(binDir) / "llvm-objcopy").string();
+#ifdef _WIN32
+            objcopy += ".exe";
+#endif
+            if (!fs::exists(objcopy)) {
+                objcopy = "llvm-objcopy";
+            }
+            std::string copyCmd = objcopy + " -O binary " + elfFile + " " + binFile;
+            std::string copyLog;
+            int copyResult = RunSysCommand(copyCmd, copyLog);
+            res.log += copyLog;
+
+            if (copyResult == 0 && fs::exists(binFile) && fs::file_size(binFile) > 0) {
+                buildOk = true;
+                res.log += "Optimization " + std::string(opt) + " succeeded.\n";
+                break;
+            }
         }
 
         if (IsSizeOverflowError(stepLog)) {
@@ -505,6 +550,8 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
         return res;
     }
 
+    res.elfPath = elfFile;
+    LoadELF(res.symbols, elfFile);
     if (GenerateDbgFromMap(mapFile, dbgFile)) {
         res.symbolFile = dbgFile;
     }

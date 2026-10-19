@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include "Frontend/Control/SymbolTable.h"
 
 #ifndef TARGET_WASM
 
@@ -25,10 +26,14 @@ public:
         std::string log;
         std::vector<uint8_t> binary;
         std::string symbolFile;
+        std::string elfPath;
+        Control::SymbolTable symbols;
         HardwareRequirements hardware;
     };
 
     static BuildResult Compile(BuildType type, const std::string& code, const std::string& sourceName = "test.c");
+    static int RunCommand(const std::string& cmd, std::string& output);
+    static bool LoadELF(Control::SymbolTable& table, const std::string& elfPath);
     
 private:
     static std::string GenerateLinkerScript(const std::string& code);

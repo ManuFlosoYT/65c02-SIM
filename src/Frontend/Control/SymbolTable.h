@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <functional>
+
 namespace Control {
 
 struct DbgFile {
@@ -68,6 +70,9 @@ struct DbgSeg {
 
 class SymbolTable {
 public:
+    using ElfLoader = std::function<bool(SymbolTable& table, const std::string& elfPath)>;
+    static void SetElfLoader(ElfLoader loader);
+
     SymbolTable() = default;
     ~SymbolTable() = default;
     SymbolTable(const SymbolTable&) = default;
@@ -77,6 +82,8 @@ public:
 
     void Clear();
     bool LoadFromFile(const std::string& path);
+    bool LoadFromELF(const std::string& elfPath);
+    bool LoadFromDebugInfo(const std::string& debugLineOutput, const std::string& nmOutput);
 
     // Get exact symbol mapping at a specific address
     const DbgSym* GetSymbolAtAddress(uint16_t address) const;
@@ -86,12 +93,14 @@ public:
 
     const DbgFile* GetFile(unsigned int fileId) const;
     const DbgSym* FindSymbol(const std::string& name) const;
+    const std::string& GetSourceLine(unsigned int fileId, unsigned int line) const;
 
     bool IsLoaded() const { return loaded; }
     std::size_t GetSymbolCount() const { return syms.size(); }
     std::size_t GetLabelCount() const { return addrToSymId.size(); }
 
 private:
+    static ElfLoader s_elfLoader;
     bool loaded = false;
 
     std::unordered_map<unsigned int, DbgFile> files;
@@ -99,6 +108,7 @@ private:
     std::unordered_map<unsigned int, DbgSpan> spans;
     std::unordered_map<unsigned int, DbgLine> lines;
     std::unordered_map<unsigned int, DbgSeg> segs;
+    mutable std::unordered_map<unsigned int, std::vector<std::string>> fileLines;
 
     // Fast lookups
     std::unordered_map<uint16_t, unsigned int> addrToSymId; 
