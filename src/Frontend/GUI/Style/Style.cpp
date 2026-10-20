@@ -76,12 +76,13 @@ void SetupImGuiStyle() {
     style.Colors[ImGuiCol_ResizeGrip] = Theme::BorderSubtle;
     style.Colors[ImGuiCol_ResizeGripHovered] = Theme::AccentPrimary;
     style.Colors[ImGuiCol_ResizeGripActive] = Theme::AccentPrimary;
-    style.Colors[ImGuiCol_Tab] = ImVec4(0.0784313753247261F, 0.08627451211214066F, 0.1019607856869698F, 1.0F);
-    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.1176470592617989F, 0.1333333402872086F, 0.1490196138620377F, 1.0F);
-    style.Colors[ImGuiCol_TabSelected] = ImVec4(0.1176470592617989F, 0.1333333402872086F, 0.1490196138620377F, 1.0F);
-    style.Colors[ImGuiCol_TabDimmed] = ImVec4(0.0784313753247261F, 0.08627451211214066F, 0.1019607856869698F, 1.0F);
-    style.Colors[ImGuiCol_TabDimmedSelected] =
-        ImVec4(0.1249424293637276F, 0.2735691666603088F, 0.5708154439926147F, 1.0F);
+    style.Colors[ImGuiCol_Tab] = Theme::Surface;
+    style.Colors[ImGuiCol_TabHovered] = Theme::SurfaceHover;
+    style.Colors[ImGuiCol_TabSelected] = Theme::SurfaceHover;
+    style.Colors[ImGuiCol_TabSelectedOverline] = Theme::AccentPrimary;
+    style.Colors[ImGuiCol_TabDimmed] = Theme::Surface;
+    style.Colors[ImGuiCol_TabDimmedSelected] = Theme::SurfaceHover;
+    style.Colors[ImGuiCol_TabDimmedSelectedOverline] = Theme::AccentPrimary;
     style.Colors[ImGuiCol_PlotLines] = Theme::AccentPrimary;
     style.Colors[ImGuiCol_PlotLinesHovered] =
         ImVec4(0.03921568766236305F, 0.9803921580314636F, 0.9803921580314636F, 1.0F);
@@ -113,9 +114,11 @@ void SetupModernStyle() {
     style.PopupRounding = 6.0F;
     style.ScrollbarRounding = 6.0F;
     style.GrabRounding = 4.0F;
+    style.TabRounding = 6.0F;
 
     style.WindowBorderSize = 1.0F;
     style.FrameBorderSize = 1.0F;
+    style.TabBorderSize = 1.0F;
 
     style.ItemSpacing = ImVec2(8.0F, 6.0F);
     style.WindowPadding = ImVec2(12.0F, 12.0F);
