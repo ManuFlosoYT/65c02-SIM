@@ -143,7 +143,7 @@ void DrawDebugMenu(Control::AppState& state) {
     }
 
     // Left sidebar
-    const float sidebarWidth = 140.0F;
+    const float sidebarWidth = 165.0F;
     DrawDebugSidebar(state, sidebarWidth);
     DrawDebugControlButtons(state, sidebarWidth);
 
