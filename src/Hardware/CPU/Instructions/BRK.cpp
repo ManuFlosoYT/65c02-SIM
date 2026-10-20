@@ -2,6 +2,7 @@
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
+#include "Hardware/Core/SubroutineProfiler.h"
 
 namespace Hardware::Instructions {
 
@@ -15,6 +16,12 @@ void BRK::Execute(CPU& cpu, Bus& bus) {
     cpu.D = 0;
     cpu.PC = cpu.ReadWord<Debug>(0xFFFE, bus);
     cpu.UpdatePagePtr(bus);
+
+    if constexpr (Debug) {
+        if (cpu.GetProfiler() != nullptr) {
+            cpu.GetProfiler()->OnBRK(cpu.PC, cpu.PC, cpu.GetCycleCount());
+        }
+    }
 }
 
 template void BRK::Execute<true>(CPU&, Bus&);

@@ -27,6 +27,7 @@
 #include "Hardware/Core/ISerializable.h"
 #include "Hardware/Core/Cartridge.h"
 #include "Hardware/Core/LogicAnalyzer.h"
+#include "Hardware/Core/SubroutineProfiler.h"
 #include "Frontend/Control/Console.h"
 
 namespace Core {
@@ -151,6 +152,8 @@ class Emulator {
 
     void SetProfilingEnabled(bool enabled);
     void ClearProfiler();
+    Hardware::SubroutineProfiler& GetSubroutineProfiler();
+    const Hardware::SubroutineProfiler& GetSubroutineProfiler() const;
     uint32_t* GetProfilerCounts();
     uint32_t* GetProfilerReadCounts();
     uint32_t* GetProfilerWriteCounts();
@@ -244,6 +247,7 @@ class Emulator {
     Hardware::ScriptEngine scriptEngine;
     Hardware::BreakpointManager breakpointManager;
     Hardware::LogicAnalyzer logicAnalyzer;
+    Hardware::SubroutineProfiler subroutineProfiler;
     std::atomic<bool> logicAnalyzerEnabled{false};
     bool watchpointWriteHookInstalled = false;
 
@@ -379,8 +383,16 @@ inline Core::Emulator::RuntimeStats Core::Emulator::GetRuntimeStats() const {
     };
 }
 
-inline void Core::Emulator::SetProfilingEnabled(bool enabled) { bus.SetProfilingEnabled(enabled); }
-inline void Core::Emulator::ClearProfiler() { bus.ClearProfiler(); }
+inline void Core::Emulator::SetProfilingEnabled(bool enabled) {
+    bus.SetProfilingEnabled(enabled);
+    subroutineProfiler.SetEnabled(enabled);
+}
+inline void Core::Emulator::ClearProfiler() {
+    bus.ClearProfiler();
+    subroutineProfiler.Clear();
+}
+inline Hardware::SubroutineProfiler& Core::Emulator::GetSubroutineProfiler() { return subroutineProfiler; }
+inline const Hardware::SubroutineProfiler& Core::Emulator::GetSubroutineProfiler() const { return subroutineProfiler; }
 inline uint32_t* Core::Emulator::GetProfilerCounts() { return bus.GetProfilerCounts(); }
 inline uint32_t* Core::Emulator::GetProfilerReadCounts() { return bus.GetProfilerReadCounts(); }
 inline uint32_t* Core::Emulator::GetProfilerWriteCounts() { return bus.GetProfilerWriteCounts(); }

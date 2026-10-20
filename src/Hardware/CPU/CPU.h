@@ -5,6 +5,7 @@
 
 #include "Hardware/Core/Bus.h"
 #include "Hardware/Core/ISerializable.h"
+#include "Hardware/Core/SubroutineProfiler.h"
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -12,6 +13,7 @@ using Word = uint16_t;
 namespace Hardware {
 
 class CPU;
+class SubroutineProfiler;
 namespace CPUDispatch {
 template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus);
@@ -44,6 +46,8 @@ class CPU : public ISerializable {
 
     int remainingCycles = 0;
     bool cycleAccurate = true;
+    uint64_t cycleCount = 0;
+    SubroutineProfiler* profiler = nullptr;
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inputStream) override;
@@ -75,6 +79,10 @@ class CPU : public ISerializable {
     [[nodiscard]] bool IsCycleAccurate() const;
     void SetCycleAccurate(bool enabled);
     [[nodiscard]] int GetRemainingCycles() const;
+
+    void SetProfiler(SubroutineProfiler* prof) { profiler = prof; }
+    [[nodiscard]] SubroutineProfiler* GetProfiler() const { return profiler; }
+    [[nodiscard]] uint64_t GetCycleCount() const { return cycleCount; }
 
     void AddPageCrossPenalty(Word baseAddr, Word effectiveAddr);
 
@@ -125,6 +133,10 @@ inline void Hardware::CPU::Reset() {
     isInit = false;
     waiting = false;
     remainingCycles = 0;
+    cycleCount = 0;
+    if (profiler != nullptr) {
+        profiler->Reset();
+    }
 }
 
 inline int Hardware::CPU::Execute(Bus& bus) {
@@ -156,6 +168,9 @@ inline int Hardware::CPU::Step(Bus& bus) {
 
 template <bool Debug>
 inline int Hardware::CPU::StepCycleAccurate(Bus& bus) {
+    if constexpr (Debug) {
+        cycleCount++;
+    }
     if (!isInit) {
         PC = ReadWord<Debug>(0xFFFC, bus);
         UpdatePagePtr(bus);
@@ -256,6 +271,9 @@ inline int Hardware::CPU::GetRemainingCycles() const { return remainingCycles; }
 inline void Hardware::CPU::AddPageCrossPenalty(Word baseAddr, Word effectiveAddr) {
     if (cycleAccurate && ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))) {
         remainingCycles++;
+        if (profiler != nullptr && profiler->IsEnabled()) [[unlikely]] {
+            profiler->OnPageCross(PC, baseAddr, effectiveAddr);
+        }
     }
 }
 

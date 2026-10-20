@@ -1,4 +1,5 @@
 #include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/SubroutineProfiler.h"
 
 #include <cstring>
 #include <filesystem>
@@ -21,6 +22,7 @@ Emulator::Emulator() : cpu(), scriptEngine(*this) {
             acia.ReceiveData(b);
         }
     });
+    cpu.SetProfiler(&subroutineProfiler);
     SetupHardware();
 }
 
@@ -501,6 +503,7 @@ void Emulator::SetupHardware() {
     bus.ClearDevices();
     bus.Init();
     watchpointWriteHookInstalled = false;
+    cpu.SetProfiler(&subroutineProfiler);
     cpu.Reset();
     pendingIRQ.store(false, std::memory_order_relaxed);
     pendingNMI.store(false, std::memory_order_relaxed);
