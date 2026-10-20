@@ -147,6 +147,12 @@ for midi_file in "${files[@]}"; do
             mkdir -p "$out_dir"
             if [ -f "output/rom/$clean_name.bin" ]; then
                 mv "output/rom/$clean_name.bin" "$out_dir/$clean_name.bin"
+                if [ -f "output/rom/$clean_name.elf" ]; then
+                    mv "output/rom/$clean_name.elf" "$out_dir/$clean_name.elf"
+                fi
+                if [ -f "output/rom/$clean_name.dbg" ]; then
+                    mv "output/rom/$clean_name.dbg" "$out_dir/$clean_name.dbg"
+                fi
                 echo "   [OK] Compilation SUCCESS with mode '$mode'! Moved to $out_dir/$clean_name.bin"
                 success=true
                 rm -f "$compile_log"
