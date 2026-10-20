@@ -110,19 +110,16 @@ fi
 # Create SDK.zip
 echo "Creating SDK.zip..."
 rm -f SDK.zip 2> /dev/null
-zip -r SDK.zip sdk/ tools/ assets/ output/ \
+OUTPUT_DIRS=()
+for d in output/apps output/cartridge output/midi output/nsf output/rom output/vram; do
+  [ -d "$d" ] && OUTPUT_DIRS+=("$d")
+done
+zip -r SDK.zip sdk/ tools/ assets/ "${OUTPUT_DIRS[@]}" \
     -x "sdk/src/build/*" \
     -x "create-sdk.sh" \
     -x "tools/sid/__pycache__/*" \
     -x "tools/sid/build/*" \
     -x "sdk/linker/*.o" \
-    -x "sdk/msbasic/tmp/*" \
-    -x "output/SIM_65C02*" \
-    -x "output/web/*" \
-    -x "output/video/*" \
-    -x "output/savestate/*" \
-    -x "output/img/*" \
-    -x "output/flac/*" \
-    -x "output/SDK/*"
+    -x "sdk/msbasic/tmp/*"
 
 echo "SDK Build Complete!"
