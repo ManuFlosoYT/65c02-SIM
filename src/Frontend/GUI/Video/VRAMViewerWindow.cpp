@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
+#include <imgui_internal.h>
 #include <bit>
 
 #include "Frontend/UI/CustomFileDialog.h"
@@ -110,7 +111,7 @@ static void DrawVRAMControls(AppState& state) {
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Capture VRAM")) {
+    if (ImGui::Button("Export VRAM")) {
         std::string tempPath = "/tmp/vram_capture.bmp";
         std::vector<unsigned char> pixels;
         int capW = GPU::VRAM_WIDTH;
@@ -144,7 +145,7 @@ static void DrawVRAMControls(AppState& state) {
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Capture VRAM")) {
+    if (ImGui::Button("Export VRAM")) {
         if (!Frontend::CustomFileDialog::IsOpened()) {
             time_t currentTime = time(nullptr);
             struct tm* tmInfo = localtime(&currentTime);
@@ -160,35 +161,39 @@ static void DrawVRAMControls(AppState& state) {
     }
 #endif
 
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!hasPixelSelection);
+    if (ImGui::Button("Clear")) {
+        hasPixelSelection = false;
+    }
+    ImGui::EndDisabled();
+
     if (hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
         selectedPixelY < GPU::VRAM_HEIGHT) {
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
         Byte val = state.emulator.GetGPU().GetVRAM().at(static_cast<size_t>(selectedPixelY)).at(static_cast<size_t>(selectedPixelX));
-        uint8_t r = (val >> 4) & 0x03;
-        uint8_t g = (val >> 2) & 0x03;
-        uint8_t b = val & 0x03;
         ImVec4 col = VRAMColorToRGBA(val);
 
         bool isMapped = false;
         Word busAddr = GetVRAMBusAddress(state, selectedPixelX, selectedPixelY, isMapped);
 
         ImGui::SameLine();
-        ImGui::Text("| Pixel: (%d, %d)", selectedPixelX, selectedPixelY);
-        ImGui::SameLine();
         if (isMapped) {
-            ImGui::Text("| Bus: $%04X", busAddr);
+            ImGui::Text("$%04X (%02d, %02d)", busAddr, selectedPixelX, selectedPixelY);
         } else {
-            ImGui::Text("| Bus: $%04X (Unmapped)", busAddr);
+            ImGui::Text("$%04X (%02d, %02d) [Unmapped]", busAddr, selectedPixelX, selectedPixelY);
         }
+
         ImGui::SameLine();
-        ImGui::Text("| Palette: 0x%02X (%u)", static_cast<unsigned int>(val & 0x3FU),
-                    static_cast<unsigned int>(val & 0x3FU));
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+        ImGui::SameLine();
+        ImGui::Text("RGB: 0x%02X", static_cast<unsigned int>(val & 0x3FU));
         ImGui::SameLine();
         ImGui::ColorButton("##selected_color", col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs,
                            ImVec2(14, 14));
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Clear")) {
-            hasPixelSelection = false;
-        }
     }
 
     ImGui::Separator();
