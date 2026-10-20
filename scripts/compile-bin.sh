@@ -28,7 +28,7 @@ compile_with_opt_fallback() {
         echo "  [LLVM-MOS] Compiling with $opt..."
         local err_log
         err_log=$(mktemp)
-        if "$MOS_CLANG" -mcpu=mosw65c02 $opt -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
+        if "$MOS_CLANG" -mcpu=mosw65c02 $opt -g -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
             cat "$err_log"
             rm -f "$err_log"
             echo "  [LLVM-MOS] Successfully compiled with $opt."
@@ -144,19 +144,33 @@ if [ "$NAME" == "eater" ]; then
     elif [ -f "output/rom/eater.bin" ]; then
         cp output/rom/eater.bin sdk/src/build/eater.bin
     fi
+    if [ -f "sdk/msbasic/tmp/eater.dbg" ]; then
+        mkdir -p output/rom
+        cp sdk/msbasic/tmp/eater.dbg output/rom/eater.dbg
+    fi
     exit 0
 
 elif [ -f "tools/sid/build/$NAME.s" ]; then
     echo "--- Assembling $NAME.s (ASM from tools/sid/build/) ---"
-    "$MOS_CLANG" -mcpu=mosw65c02 -nostartfiles -T sdk/linker/link.ld -o "sdk/src/build/$NAME.bin" "tools/sid/build/$NAME.s"
+    "$MOS_CLANG" -mcpu=mosw65c02 -g -nostartfiles -T sdk/linker/link.ld -o "sdk/src/build/$NAME.bin" "tools/sid/build/$NAME.s"
     mkdir -p output/rom
     cp "sdk/src/build/$NAME.bin" "output/rom/$NAME.bin"
+    if [ -f "sdk/src/build/$NAME.bin.elf" ]; then
+        cp "sdk/src/build/$NAME.bin.elf" "output/rom/$NAME.elf"
+    elif [ -f "sdk/src/build/$NAME.elf" ]; then
+        cp "sdk/src/build/$NAME.elf" "output/rom/$NAME.elf"
+    fi
 
 elif [ -f "sdk/src/$NAME.s" ]; then
     echo "--- Assembling $NAME.s (ASM with LLVM-MOS) ---"
-    "$MOS_CLANG" -mcpu=mosw65c02 -nostartfiles -T sdk/linker/link.ld -o "sdk/src/build/$NAME.bin" "sdk/src/$NAME.s"
+    "$MOS_CLANG" -mcpu=mosw65c02 -g -nostartfiles -T sdk/linker/link.ld -o "sdk/src/build/$NAME.bin" "sdk/src/$NAME.s"
     mkdir -p output/rom
     cp "sdk/src/build/$NAME.bin" "output/rom/$NAME.bin"
+    if [ -f "sdk/src/build/$NAME.bin.elf" ]; then
+        cp "sdk/src/build/$NAME.bin.elf" "output/rom/$NAME.elf"
+    elif [ -f "sdk/src/build/$NAME.elf" ]; then
+        cp "sdk/src/build/$NAME.elf" "output/rom/$NAME.elf"
+    fi
 
 elif [ "$NAME" == "microDOS" ]; then
     echo "--- Compiling microDOS (Multi-module C with LLVM-MOS) ---"
@@ -194,6 +208,11 @@ elif [ "$NAME" == "microDOS" ]; then
 
     mkdir -p output/rom
     cp "sdk/src/build/microDOS.bin" "output/rom/microDOS.bin"
+    if [ -f "sdk/src/build/microDOS.bin.elf" ]; then
+        cp "sdk/src/build/microDOS.bin.elf" "output/rom/microDOS.elf"
+    elif [ -f "sdk/src/build/microDOS.elf" ]; then
+        cp "sdk/src/build/microDOS.elf" "output/rom/microDOS.elf"
+    fi
 
 elif [ -f "sdk/src/$NAME.c" ]; then
     echo "--- Compiling $NAME.c (C with LLVM-MOS) ---"
@@ -233,6 +252,11 @@ elif [ -f "sdk/src/$NAME.c" ]; then
 
     mkdir -p output/rom
     cp "sdk/src/build/$NAME.bin" "output/rom/$NAME.bin"
+    if [ -f "sdk/src/build/$NAME.bin.elf" ]; then
+        cp "sdk/src/build/$NAME.bin.elf" "output/rom/$NAME.elf"
+    elif [ -f "sdk/src/build/$NAME.elf" ]; then
+        cp "sdk/src/build/$NAME.elf" "output/rom/$NAME.elf"
+    fi
 
 else
     echo "Error: sdk/src/$NAME.c or sdk/src/$NAME.s does not exist"
