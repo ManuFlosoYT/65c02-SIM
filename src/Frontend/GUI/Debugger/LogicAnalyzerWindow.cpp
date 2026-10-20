@@ -68,6 +68,24 @@ std::string FormatFreq(double hz) {
     return std::format("{:.1f} Hz", hz);
 }
 
+void AddTextRotated(ImDrawList* drawList, ImVec2 center, float angle, ImU32 col, const char* text) {
+    int vtx_idx_1 = drawList->VtxBuffer.Size;
+    ImVec2 text_size = ImGui::CalcTextSize(text);
+    drawList->AddText(ImVec2(center.x - text_size.x * 0.5F, center.y - text_size.y * 0.5F), col, text);
+    int vtx_idx_2 = drawList->VtxBuffer.Size;
+
+    float cos_a = std::cos(angle);
+    float sin_a = std::sin(angle);
+
+    for (int i = vtx_idx_1; i < vtx_idx_2; i++) {
+        ImDrawVert& v = drawList->VtxBuffer[i];
+        float rx = v.pos.x - center.x;
+        float ry = v.pos.y - center.y;
+        v.pos.x = center.x + (rx * cos_a - ry * sin_a);
+        v.pos.y = center.y + (rx * sin_a + ry * cos_a);
+    }
+}
+
 struct PinInfo {
     int number = 0;
     const char* label = "";
@@ -221,9 +239,10 @@ void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
 }
 
 void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 4));
 
-    // Run / Freeze toggle
+    // --- Row 1: Controls ---
     bool isFrozen = analyzer.IsFrozen();
     if (isFrozen) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15F, 0.60F, 0.25F, 1.0F));
@@ -248,24 +267,30 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     }
 
     ImGui::SameLine();
-    ImGui::TextUnformatted("|");
+    ImGui::TextDisabled("|");
     ImGui::SameLine();
 
     // View mode selector
     const char* viewModes[] = {"Waveforms", "IC Pinout", "Split View"};
-    ImGui::SetNextItemWidth(120.0F);
-    ImGui::Combo("View", &uiState.viewMode, viewModes, IM_ARRAYSIZE(viewModes));
+    ImGui::TextUnformatted("View:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(100.0F);
+    ImGui::Combo("##ViewMode", &uiState.viewMode, viewModes, IM_ARRAYSIZE(viewModes));
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(140.0F);
-    ImGui::SliderInt("Zoom", &uiState.visibleCycles, 32, 1024, "%d cyc");
+    ImGui::TextUnformatted("Zoom:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(90.0F);
+    ImGui::SliderInt("##Zoom", &uiState.visibleCycles, 32, 1024, "%d cyc");
 
     size_t count = analyzer.GetCount();
     if (count > static_cast<size_t>(uiState.visibleCycles)) {
         ImGui::SameLine();
         int maxOffset = static_cast<int>(count - static_cast<size_t>(uiState.visibleCycles));
-        ImGui::SetNextItemWidth(130.0F);
-        ImGui::SliderInt("Scroll", &uiState.scrollOffset, 0, maxOffset, "%d ago");
+        ImGui::TextUnformatted("Scroll:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(85.0F);
+        ImGui::SliderInt("##Scroll", &uiState.scrollOffset, 0, maxOffset, "%d");
         if (uiState.scrollOffset > 0) {
             ImGui::SameLine();
             if (ImGui::SmallButton("Live")) {
@@ -276,26 +301,24 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
         uiState.scrollOffset = 0;
     }
 
-    // Timebase Info
+    ImGui::SameLine();
+    ImGui::Checkbox("Bit-Level Ports", &uiState.showPortBits);
+
+    // --- Row 2: Status & Measurement Cursors ---
     int targetIPS = state.emulator.GetTargetIPS();
     if (targetIPS <= 0) {
         targetIPS = 1000000;
     }
     double cycleSec = 1.0 / static_cast<double>(targetIPS);
-    ImGui::SameLine();
-    ImGui::TextDisabled("Timebase: %s/cyc (%.2f MHz)",
-                        FormatTime(cycleSec).c_str(),
-                        static_cast<double>(targetIPS) / 1e6);
+    ImGui::TextDisabled("Clock: %.2f MHz (%s/cyc)", static_cast<double>(targetIPS) / 1e6, FormatTime(cycleSec).c_str());
 
-    // Cursors toggle
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
     ImGui::SameLine();
     ImGui::Checkbox("Cursors", &uiState.enableCursors);
 
     if (uiState.enableCursors && count > 0) {
         ImGui::SameLine();
-        ImGui::TextUnformatted("|");
-        ImGui::SameLine();
-
         int numVis = std::min(uiState.visibleCycles, static_cast<int>(count));
         int cA = std::clamp(uiState.cursorA, 0, numVis - 1);
         int cB = std::clamp(uiState.cursorB, 0, numVis - 1);
@@ -319,14 +342,16 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
                     FormatFreq(freq).c_str());
     }
 
-    ImGui::PopStyleVar();
+    ImGui::PopStyleVar(2);
     ImGui::Separator();
 }
 
 void DrawICPinout(const Hardware::LogicSample& sample, float availWidth, float availHeight) {
     const char* chips[] = {"W65C02S (CPU)", "W65C22 (VIA)", "W65C51N (ACIA)"};
-    ImGui::SetNextItemWidth(180.0F);
-    ImGui::Combo("Select IC", &uiState.selectedChip, chips, IM_ARRAYSIZE(chips));
+    ImGui::TextUnformatted("Chip:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(140.0F);
+    ImGui::Combo("##SelectIC", &uiState.selectedChip, chips, IM_ARRAYSIZE(chips));
     ImGui::SameLine();
     ImGui::TextDisabled("Cycle: #%llu", static_cast<unsigned long long>(sample.cycle));
 
@@ -336,14 +361,14 @@ void DrawICPinout(const Hardware::LogicSample& sample, float availWidth, float a
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     ImVec2 canvasPos = ImGui::GetCursorScreenPos();
-    float canvasWidth = std::max(availWidth, 340.0F);
+    float canvasWidth = std::max(availWidth, 260.0F);
 
     const size_t pinCount = leftPins.size();
     constexpr float pinPitch = 21.0F;
-    constexpr float stubLen = 16.0F;
+    constexpr float stubLen = 14.0F;
     constexpr float stubThick = 6.0F;
     constexpr float ledRadius = 4.0F;
-    constexpr float chipWidth = 110.0F;
+    constexpr float chipWidth = 100.0F;
     float chipHeight = static_cast<float>(pinCount) * pinPitch + 26.0F;
 
     float centerX = canvasPos.x + canvasWidth * 0.5F;
@@ -365,14 +390,10 @@ void DrawICPinout(const Hardware::LogicSample& sample, float availWidth, float a
     // Orientation dot
     drawList->AddCircleFilled(ImVec2(chipX + 11.0F, chipY + 14.0F), 3.0F, IM_COL32(45, 50, 62, 255));
 
-    // Center Chip Labels
+    // Vertical Center Chip Label (rotated 90 degrees along vertical axis)
     const char* chipTitle = (uiState.selectedChip == 0) ? "W65C02S" : (uiState.selectedChip == 1 ? "W65C22" : "W65C51N");
-    const char* chipSub = (uiState.selectedChip == 0) ? "40-PIN MPU" : (uiState.selectedChip == 1 ? "40-PIN VIA" : "28-PIN ACIA");
-    ImVec2 tSz1 = ImGui::CalcTextSize(chipTitle);
-    ImVec2 tSz2 = ImGui::CalcTextSize(chipSub);
-    float textCenterY = chipY + chipHeight * 0.45F;
-    drawList->AddText(ImVec2(centerX - tSz1.x * 0.5F, textCenterY - 10.0F), IM_COL32(220, 225, 235, 255), chipTitle);
-    drawList->AddText(ImVec2(centerX - tSz2.x * 0.5F, textCenterY + 8.0F), IM_COL32(110, 120, 140, 255), chipSub);
+    float textCenterY = chipY + chipHeight * 0.5F;
+    AddTextRotated(drawList, ImVec2(centerX, textCenterY), 1.5707963F, IM_COL32(220, 225, 235, 255), chipTitle);
 
     ImVec2 mousePos = ImGui::GetMousePos();
 
@@ -807,7 +828,7 @@ void DrawLogicAnalyzerWindow(Control::AppState& state) {
         ImGui::EndChild();
     } else {
         // Split View
-        float pinoutWidth = 360.0F;
+        float pinoutWidth = std::clamp(contentSize.x * 0.38F, 280.0F, 360.0F);
         ImGui::BeginChild("PinoutSplitPane", ImVec2(pinoutWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
         DrawICPinout(inspectSample, pinoutWidth - 16.0F, contentSize.y);
         ImGui::EndChild();
@@ -816,8 +837,8 @@ void DrawLogicAnalyzerWindow(Control::AppState& state) {
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
 
-        ImGui::BeginChild("WaveformSplitPane", ImVec2(0, 0), ImGuiChildFlags_None);
-        DrawWaveforms(analyzer, contentSize.x - pinoutWidth - 16.0F, contentSize.y);
+        ImGui::BeginChild("WaveformSplitPane", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+        DrawWaveforms(analyzer, contentSize.x - pinoutWidth - 24.0F, contentSize.y);
         ImGui::EndChild();
     }
 }
