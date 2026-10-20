@@ -9,6 +9,8 @@ DESCRIPTION=""
 VERSION="1.1"
 TYPE="rom"
 ROM_FILE=""
+DBG_FILE=""
+ELF_FILE=""
 VRAM_FILE=""
 SD_IMAGE=""
 IPS=1000000
@@ -26,6 +28,8 @@ while [[ "$#" -gt 0 ]]; do
         --desc) DESCRIPTION="$2"; shift 2 ;;
         --version) VERSION="$2"; shift 2 ;;
         --rom) ROM_FILE="$2"; shift 2 ;;
+        --dbg) DBG_FILE="$2"; shift 2 ;;
+        --elf) ELF_FILE="$2"; shift 2 ;;
         --vram) VRAM_FILE="$2"; shift 2 ;;
         --sd-image) SD_IMAGE="$2"; shift 2 ;;
         --ips) IPS="$2"; shift 2 ;;
@@ -52,6 +56,8 @@ if [ -z "$ROM_FILE" ] && [ -z "$VRAM_FILE" ]; then
     echo "  --name \"Game Name\""
     echo "  --author \"Author\""
     echo "  --desc \"Description\""
+    echo "  --dbg \"rom.dbg\""
+    echo "  --elf \"rom.elf\""
     echo "  --ips 2000000"
     echo "  --gpu true/false"
     echo "  --cycle true/false"
@@ -70,6 +76,37 @@ OUTPUT_DIR="$(pwd)/output/cartridge"
 mkdir -p "$OUTPUT_DIR"
 TEMP_DIR=$(mktemp -d)
 
+if [ -z "$DBG_FILE" ] && [ -z "$ELF_FILE" ] && [ -n "$ROM_FILE" ]; then
+    base_no_ext="${ROM_FILE%.*}"
+    base_name=$(basename "$base_no_ext")
+    for cand in \
+        "${base_no_ext}.dbg" \
+        "${base_no_ext}.elf" \
+        "${base_no_ext}.bin.elf" \
+        "sdk/src/build/${base_name}.bin.elf" \
+        "sdk/src/build/${base_name}.elf" \
+        "sdk/src/build/${base_name}.dbg" \
+        "tools/sid/build/${base_name}.bin.elf" \
+        "tools/sid/build/${base_name}.elf" \
+        "tools/sid/build/${base_name}.dbg"; do
+        if [ -f "$cand" ]; then
+            if [[ "$cand" == *.dbg ]]; then
+                DBG_FILE="$cand"
+            else
+                ELF_FILE="$cand"
+            fi
+            break
+        fi
+    done
+fi
+
+if [ -n "$DBG_FILE" ] && [ ! -f "$DBG_FILE" ]; then
+    DBG_FILE=""
+fi
+if [ -n "$ELF_FILE" ] && [ ! -f "$ELF_FILE" ]; then
+    ELF_FILE=""
+fi
+
 # Build manifest.json manually to handle optional fields
 {
   echo "{"
@@ -82,6 +119,8 @@ TEMP_DIR=$(mktemp -d)
   echo "    \"type\": \"$TYPE\""
   echo "  },"
   [ -n "$ROM_FILE" ] && echo "  \"rom\": \"rom.bin\","
+  [ -n "$DBG_FILE" ] && echo "  \"dbg\": \"rom.dbg\","
+  [ -n "$ELF_FILE" ] && echo "  \"elf\": \"rom.elf\","
   [ -n "$VRAM_FILE" ] && echo "  \"vram\": \"vram.bin\","
   echo "  \"config\": {"
   echo "    \"target_ips\": $IPS,"
@@ -109,6 +148,16 @@ FILES_TO_ZIP="manifest.json"
 if [ -n "$ROM_FILE" ] && [ -f "$ROM_FILE" ]; then
     cp "$ROM_FILE" "$TEMP_DIR/rom.bin"
     FILES_TO_ZIP="$FILES_TO_ZIP rom.bin"
+fi
+
+if [ -n "$DBG_FILE" ] && [ -f "$DBG_FILE" ]; then
+    cp "$DBG_FILE" "$TEMP_DIR/rom.dbg"
+    FILES_TO_ZIP="$FILES_TO_ZIP rom.dbg"
+fi
+
+if [ -n "$ELF_FILE" ] && [ -f "$ELF_FILE" ]; then
+    cp "$ELF_FILE" "$TEMP_DIR/rom.elf"
+    FILES_TO_ZIP="$FILES_TO_ZIP rom.elf"
 fi
 
 if [ -n "$VRAM_FILE" ]; then
