@@ -40,7 +40,6 @@ static void HandleSDKFileLoading(AppState& state, const std::string& filename, c
                                               errorMsg)) {
                 state.rom.bin = filename;
                 state.rom.loaded = true;
-                state.rom.symbols.Clear();
                 state.emulator.ClearProfiler();
             }
         } else {
@@ -92,7 +91,6 @@ static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files
                     Console::Clear();
                     state.rom.bin = path;
                     state.rom.loaded = true;
-                    state.rom.symbols.Clear();
                     state.emulator.ClearProfiler();
                     ImGui::OpenPopup("Cartridge Loaded");
                 } else {

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
 #include <nlohmann/json.hpp>
 #include <unordered_map>
 #include <vector>
@@ -142,6 +143,54 @@ bool CartridgeLoader::LoadInternal(void* zip_archive_ptr, Cartridge& outCartridg
         if (outCartridge.romFileName.empty() && outCartridge.vramFileName.empty()) {
             errorMsg = "Cartridge is missing ROM/VRAM data";
             return false;
+        }
+
+        if (manifestJson.contains("dbg") && manifestJson["dbg"].is_string()) {
+            outCartridge.dbgFileName = manifestJson["dbg"].get<std::string>();
+        } else if (manifestJson.contains("elf") && manifestJson["elf"].is_string()) {
+            outCartridge.dbgFileName = manifestJson["elf"].get<std::string>();
+        } else if (manifestJson.contains("symbols") && manifestJson["symbols"].is_string()) {
+            outCartridge.dbgFileName = manifestJson["symbols"].get<std::string>();
+        }
+
+        if (outCartridge.dbgFileName.empty()) {
+            if (mz_zip_reader_locate_file(zip_archive, "rom.dbg", nullptr, 0) >= 0) {
+                outCartridge.dbgFileName = "rom.dbg";
+            } else if (mz_zip_reader_locate_file(zip_archive, "rom.elf", nullptr, 0) >= 0) {
+                outCartridge.dbgFileName = "rom.elf";
+            }
+        }
+
+        if (!outCartridge.dbgFileName.empty()) {
+            size_t dbgSize = 0;
+            void* dbgData = mz_zip_reader_extract_file_to_heap(zip_archive, outCartridge.dbgFileName.c_str(), &dbgSize, 0);
+            if (dbgData != nullptr) {
+                outCartridge.dbgData.resize(dbgSize);
+                std::memcpy(outCartridge.dbgData.data(), dbgData, dbgSize);
+
+                std::string tempDbgPath;
+#ifdef TARGET_WASM
+                tempDbgPath = "/tmp/" + outCartridge.dbgFileName;
+#else
+                std::string prefix = "cart";
+                if (!outCartridge.sourceZipPath.empty()) {
+                    std::string stem = std::filesystem::path(outCartridge.sourceZipPath).stem().string();
+                    if (!stem.empty()) {
+                        prefix = stem;
+                    }
+                }
+                tempDbgPath = std::filesystem::temp_directory_path().string() + "/65c02sim_" + prefix + "_" +
+                              outCartridge.dbgFileName;
+#endif
+                gsl::owner<FILE*> dbgFile = fopen(tempDbgPath.c_str(), "wb");
+                if (dbgFile != nullptr) {
+                    if (fwrite(dbgData, 1, dbgSize, dbgFile) == dbgSize) {
+                        outCartridge.dbgFilePath = tempDbgPath;
+                    }
+                    fclose(dbgFile);
+                }
+                mz_free(dbgData);
+            }
         }
 
         // Look for sdcard.img if version >= 3.0 or just generally for convenience

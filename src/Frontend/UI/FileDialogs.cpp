@@ -44,7 +44,6 @@ static void HandleCartridgeFilePicker(AppState& state) {
                 if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
                     state.rom.bin = filePathName;
                     state.rom.loaded = true;
-                    state.rom.symbols.Clear();
                     state.emulator.ClearProfiler();
                 } else {
                     ImGui::OpenPopup("ErrorLoadingROM");

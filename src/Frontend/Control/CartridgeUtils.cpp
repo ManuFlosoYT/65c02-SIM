@@ -59,6 +59,11 @@ void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
     if (!cart.vramData.empty() && state.emulation.gpuEnabled) {
         ::GUI::ForceRefreshVRAM(state);
     }
+
+    state.rom.symbols.Clear();
+    if (!cart.dbgFilePath.empty()) {
+        state.rom.symbols.LoadFromFile(cart.dbgFilePath);
+    }
 }
 
 bool ShouldPromptCartridgeSDSave(const AppState& state) {
@@ -125,6 +130,7 @@ void ExecuteReset(AppState& state) {
 void ExecuteEjectCartridge(AppState& state) {
     state.emulator.GetSDCard().Unmount();
     state.emulator.ClearCartridge();
+    state.rom.symbols.Clear();
     state.rom.loaded = false;
     state.rom.bin = "";
     state.emulator.Reset();

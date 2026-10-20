@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <miniz.h>
 #include <nlohmann/json.hpp>
 
 using namespace Core;
@@ -128,4 +129,51 @@ TEST(System_Cartridge_Test, CartridgeLayout_LCDRegisteredByDefault) {
     emulator.GetMem().Write(0x6000, 0x02 | 0x40);
     emulator.GetMem().Write(0x6000, 0x02);
     EXPECT_TRUE(emulator.GetLCD().IsInitialized());
+}
+
+TEST(System_Cartridge_Test, Load_Debug_Symbols) {
+    std::filesystem::path tempZipPath = std::filesystem::temp_directory_path() / "65c02sim_test_dbg.65c";
+
+    mz_zip_archive zip;
+    memset(&zip, 0, sizeof(zip));
+    ASSERT_TRUE(mz_zip_writer_init_file(&zip, tempZipPath.string().c_str(), 0));
+
+    nlohmann::json manifest = {
+        {"version", "1.0"},
+        {"rom", "rom.bin"},
+        {"dbg", "rom.dbg"},
+        {"bus", {
+            {{"name", "RAM"}, {"start", 0x0000}, {"end", 0x7FFF}},
+            {{"name", "ROM"}, {"start", 0x8000}, {"end", 0xFFFF}}
+        }}
+    };
+    std::string manifestStr = manifest.dump();
+    ASSERT_TRUE(mz_zip_writer_add_mem(&zip, "manifest.json", manifestStr.data(), manifestStr.size(), MZ_DEFAULT_COMPRESSION));
+
+    std::vector<uint8_t> fakeRom(0x8000, 0xEA);
+    ASSERT_TRUE(mz_zip_writer_add_mem(&zip, "rom.bin", fakeRom.data(), fakeRom.size(), MZ_DEFAULT_COMPRESSION));
+
+    std::string fakeDbg = "DBGSYMBOLS_TEST_PAYLOAD";
+    ASSERT_TRUE(mz_zip_writer_add_mem(&zip, "rom.dbg", fakeDbg.data(), fakeDbg.size(), MZ_DEFAULT_COMPRESSION));
+
+    ASSERT_TRUE(mz_zip_writer_finalize_archive(&zip));
+    ASSERT_TRUE(mz_zip_writer_end(&zip));
+
+    Cartridge cart;
+    std::string errorMsg;
+    bool success = CartridgeLoader::Load(tempZipPath.string(), cart, errorMsg);
+    EXPECT_TRUE(success) << errorMsg;
+    EXPECT_TRUE(cart.loaded);
+    EXPECT_EQ(cart.dbgFileName, "rom.dbg");
+    EXPECT_EQ(cart.dbgData.size(), fakeDbg.size());
+    std::string extractedContent(cart.dbgData.begin(), cart.dbgData.end());
+    EXPECT_EQ(extractedContent, fakeDbg);
+    EXPECT_FALSE(cart.dbgFilePath.empty());
+    EXPECT_TRUE(std::filesystem::exists(cart.dbgFilePath));
+
+    std::error_code ec;
+    if (!cart.dbgFilePath.empty()) {
+        std::filesystem::remove(cart.dbgFilePath, ec);
+    }
+    std::filesystem::remove(tempZipPath, ec);
 }
