@@ -1,5 +1,6 @@
 #include "Frontend/GUI/ControlWindow.h"
 #include "Frontend/UI/CustomFileDialog.h"
+#include <filesystem>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include "Frontend/GUI/Style/Style.h"
@@ -435,6 +436,27 @@ static void HandleMountSDDialog(AppState& state) {
     }
 }
 
+static void HandleMountFolderDialog(AppState& state) {
+    if (CustomFileDialog::Display("MountFolderDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string folderPath = CustomFileDialog::GetFilePathName();
+            if (!folderPath.empty() && std::filesystem::is_directory(folderPath)) {
+                if (!GUI::IsSDCardEnabled(state)) {
+                    state.popups.sdCardDisabled = true;
+                } else {
+                    if (std::filesystem::exists(std::filesystem::path(folderPath) / ".65C02_SIM_mount")) {
+                        GUI::MountFolder(state, folderPath, true);
+                    } else {
+                        state.popups.sdCardMountSentinelWarning = true;
+                        state.popups.sdCardPendingMountFolder = folderPath;
+                    }
+                }
+            }
+        }
+        CustomFileDialog::Close();
+    }
+}
+
 static void HandleLoadScriptDialog(AppState& state) {
     if (CustomFileDialog::Display("LoadScriptDlgKey")) {
         if (CustomFileDialog::IsOk()) {
@@ -474,6 +496,7 @@ static void HandleRecordVideoDialog(AppState& state) {
 static void HandleDialogs(AppState& state) {
     HandleCreateSDDialog(state);
     HandleMountSDDialog(state);
+    HandleMountFolderDialog(state);
     HandleLoadScriptDialog(state);
     HandleRecordAudioDialog(state);
     HandleRecordVideoDialog(state);

@@ -746,6 +746,10 @@ static void HandleCompileAndRun(Control::AppState& state) {
                     state.rom.symbols.LoadFromFile(result.symbolFile);
                 }
                 state.ide.outputLog += "\nMicroDOS app built successfully: " + targetApp;
+                if (state.emulator.GetSDCard().IsMounted() && state.emulator.GetSDCard().IsFolderMount()) {
+                    state.emulator.GetSDCard().SyncFromHost();
+                    state.ide.outputLog += "\nSD Card synchronized with host folder.";
+                }
             } else {
                 state.ide.outputLog += "\nFailed to write MicroDOS app: " + targetApp;
             }

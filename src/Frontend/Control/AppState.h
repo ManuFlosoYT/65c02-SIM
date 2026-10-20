@@ -138,6 +138,8 @@ enum class PendingCartridgeAction : std::uint8_t {
 struct PopupState {
     bool sdCardDisabled = false;
     bool sdCardWebWarning = false;
+    bool sdCardMountSentinelWarning = false;
+    std::string sdCardPendingMountFolder;
     bool showCartridgeSavePrompt = false;
     PendingCartridgeAction pendingCartridgeAction = PendingCartridgeAction::None;
 };

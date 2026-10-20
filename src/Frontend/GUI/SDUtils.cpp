@@ -110,4 +110,28 @@ bool CreateFAT16Image(const std::string& path) {
     return file.good();
 }
 
+bool MountFolder(Control::AppState& state, const std::string& folderPath, bool allowDeletion) {
+    if (!IsSDCardEnabled(state)) {
+        return false;
+    }
+    return state.emulator.GetSDCard().MountFolder(folderPath, allowDeletion);
+}
+
+bool CreateFAT16FromFolder(const std::string& folderPath, const std::string& outputPath) {
+    Hardware::SDCard sd;
+    if (!sd.MountFolder(folderPath, false)) {
+        return false;
+    }
+    const auto& disk = sd.GetVirtualDisk();
+    if (disk.empty()) {
+        return false;
+    }
+    std::ofstream out(outputPath, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        return false;
+    }
+    out.write(reinterpret_cast<const char*>(disk.data()), static_cast<std::streamsize>(disk.size()));
+    return out.good();
+}
+
 }  // namespace GUI

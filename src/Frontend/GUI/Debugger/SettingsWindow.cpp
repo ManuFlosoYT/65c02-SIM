@@ -122,37 +122,56 @@ static void DrawSDCardSettings(AppState& state) {
     bool cartridgeHasSD = !state.emulator.GetCartridge().sdCardPath.empty();
     bool sdMounted = state.emulator.GetSDCard().IsMounted();
     if (sdMounted) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
-        ImGui::TextUnformatted("SD Card Mounted");
-        ImGui::PopStyleColor();
+        if (state.emulator.GetSDCard().IsFolderMount()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
+            ImGui::TextUnformatted("SD Host Folder Mounted");
+            ImGui::PopStyleColor();
+            ImGui::Text("Path: %s", state.emulator.GetSDCard().GetMountedPath().c_str());
+            if (state.emulator.GetSDCard().IsDeletionAllowed()) {
+                ImGui::TextUnformatted("Host Deletions: Allowed");
+            } else {
+                ImGui::TextUnformatted("Host Deletions: Restricted");
+            }
+            if (ImGui::Button("Sync Folder", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
+                state.emulator.GetSDCard().SyncFromHost();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Unmount SD Card", ImVec2(-FLT_MIN, 0))) {
+                state.emulator.GetSDCard().Unmount();
+            }
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
+            ImGui::TextUnformatted("SD Card Mounted");
+            ImGui::PopStyleColor();
 #ifdef TARGET_WASM
-        if (ImGui::Button("Save Changes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
-            std::string path = state.emulator.GetSDCard().GetMountedPath();
-            if (!path.empty()) {
-                std::ifstream ifs(path, std::ios::binary);
-                if (ifs.is_open()) {
-                    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-                    std::string filename = std::filesystem::path(path).filename().string();
-                    WebFileUtils::download_file(filename.c_str(), buffer.data(), buffer.size());
+            if (ImGui::Button("Save Changes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
+                std::string path = state.emulator.GetSDCard().GetMountedPath();
+                if (!path.empty()) {
+                    std::ifstream ifs(path, std::ios::binary);
+                    if (ifs.is_open()) {
+                        std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                        std::string filename = std::filesystem::path(path).filename().string();
+                        WebFileUtils::download_file(filename.c_str(), buffer.data(), buffer.size());
+                    }
                 }
             }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Unmount", ImVec2(-FLT_MIN, 0))) {
-            state.emulator.GetSDCard().Unmount();
-        }
+            ImGui::SameLine();
+            if (ImGui::Button("Unmount", ImVec2(-FLT_MIN, 0))) {
+                state.emulator.GetSDCard().Unmount();
+            }
 #else
-        if (ImGui::Button("Unmount SD Card", ImVec2(-FLT_MIN, 0))) {
-            state.emulator.GetSDCard().Unmount();
-        }
+            if (ImGui::Button("Unmount SD Card", ImVec2(-FLT_MIN, 0))) {
+                state.emulator.GetSDCard().Unmount();
+            }
 #endif
+        }
     } else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
         ImGui::TextUnformatted("SD Card Not Mounted");
         ImGui::PopStyleColor();
         ImGui::BeginDisabled(cartridgeHasSD);
-        if (ImGui::Button("Create New", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
 #ifdef TARGET_WASM
+        if (ImGui::Button("Create New", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
             std::string tempPath = "/tmp/new_sd.img";
             if (GUI::CreateFAT16Image(tempPath)) {
                 std::ifstream ifs(tempPath, std::ios::binary);
@@ -164,14 +183,9 @@ static void DrawSDCardSettings(AppState& state) {
                     state.popups.sdCardWebWarning = true;
                 }
             }
-#else
-            Frontend::CustomFileDialog::OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", "", 1, nullptr,
-                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
-#endif
         }
         ImGui::SameLine();
         if (ImGui::Button("Mount IMG", ImVec2(-FLT_MIN, 0))) {
-#ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
                 std::string virtualPath = "/tmp/" + std::string(filename);
                 FILE* f = fopen(virtualPath.c_str(), "wb");
@@ -188,11 +202,22 @@ static void DrawSDCardSettings(AppState& state) {
                 }
             };
             WebFileUtils::open_browser_file_picker(".img");
+        }
 #else
+        if (ImGui::Button("Create New", ImVec2(ImGui::GetContentRegionAvail().x * 0.33F, 0))) {
+            Frontend::CustomFileDialog::OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", "", 1, nullptr,
+                                                    ImGuiFileDialogFlags_ConfirmOverwrite);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Mount IMG", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
             Frontend::CustomFileDialog::OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", "", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
-#endif
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Mount Folder", ImVec2(-FLT_MIN, 0))) {
+            Frontend::CustomFileDialog::OpenDialog("MountFolderDlgKey", "Mount Host Folder", nullptr, ".");
+        }
+#endif
         ImGui::EndDisabled();
         if (cartridgeHasSD && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             if (ImGui::BeginItemTooltip()) {

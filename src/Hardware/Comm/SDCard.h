@@ -26,6 +26,13 @@ class SDCard : public IBusDevice {
     void Unmount();
     [[nodiscard]] bool IsMounted() const { return mounted; }
     [[nodiscard]] std::string GetMountedPath() const { return currentPath; }
+    bool MountFolder(const std::string& folderPath, bool allowDeletion = false);
+    [[nodiscard]] bool IsFolderMount() const { return is_folder_mount; }
+    [[nodiscard]] bool IsDeletionAllowed() const { return allow_host_deletion; }
+    void SetDeletionAllowed(bool allow) { allow_host_deletion = allow; }
+    bool SyncFromHost();
+    bool SyncToHost();
+    [[nodiscard]] const std::vector<uint8_t>& GetVirtualDisk() const { return virtual_disk; }
 
     // IBusDevice overrides
     Byte Read(Word address) override;
@@ -58,6 +65,11 @@ class SDCard : public IBusDevice {
     std::fstream imageFile;
     bool mounted = false;
     std::string currentPath;
+    bool is_folder_mount = false;
+    bool allow_host_deletion = false;
+    std::vector<uint8_t> virtual_disk;
+    bool BuildVirtualFAT();
+    void ExtractVirtualFAT();
 
     bool is_modified = false;
     bool is_read_only = false;

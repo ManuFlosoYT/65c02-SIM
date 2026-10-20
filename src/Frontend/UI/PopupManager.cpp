@@ -1,6 +1,8 @@
 #include "Frontend/UI/UIModules.h"
 #include <SDL3/SDL.h>
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <imgui.h>
 #include "Frontend/Control/AppState.h"
 #include "Frontend/Control/CartridgeUtils.h"
@@ -10,6 +12,7 @@
 #include "Frontend/GUI/RegistersWindow.h"
 #include "Frontend/GUI/ScriptConsoleWindow.h"
 #include "Frontend/GUI/SIDViewerWindow.h"
+#include "Frontend/GUI/SDUtils.h"
 #include "Frontend/GUI/UpdatePopup.h"
 #include "Frontend/GUI/SDKUpdatePopup.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
@@ -115,6 +118,39 @@ static void DrawSDCardPopups(AppState& state) {
         ImGui::TextUnformatted("or the 'Save Changes' button in the Control Window.");
         ImGui::Spacing();
         if (ImGui::Button("I Understand", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (state.popups.sdCardMountSentinelWarning) {
+        ImGui::OpenPopup("SD Folder Deletion Warning");
+        state.popups.sdCardMountSentinelWarning = false;
+    }
+
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("SD Folder Deletion Warning", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::TextUnformatted("The sentinel file '.65C02_SIM_mount' was not found in:");
+        ImGui::TextUnformatted(state.popups.sdCardPendingMountFolder.c_str());
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Without this file, file deletions on the host will be restricted to prevent accidental data loss.");
+        ImGui::Spacing();
+        if (ImGui::Button("Create .65C02_SIM_mount & Allow Deletion")) {
+            std::filesystem::path sentinelPath = std::filesystem::path(state.popups.sdCardPendingMountFolder) / ".65C02_SIM_mount";
+            std::ofstream sentinel(sentinelPath);
+            GUI::MountFolder(state, state.popups.sdCardPendingMountFolder, true);
+            state.popups.sdCardPendingMountFolder.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Mount with Deletions Restricted")) {
+            GUI::MountFolder(state, state.popups.sdCardPendingMountFolder, false);
+            state.popups.sdCardPendingMountFolder.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            state.popups.sdCardPendingMountFolder.clear();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
