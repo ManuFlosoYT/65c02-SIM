@@ -37,8 +37,11 @@ struct Cartridge {
     std::vector<DeviceConfig> busDevices;
     std::vector<uint8_t> romData;
     std::vector<uint8_t> vramData;
+    std::vector<uint8_t> dbgData;
     std::string romFileName;
     std::string vramFileName;
+    std::string dbgFileName;
+    std::string dbgFilePath;
     std::string sdCardPath;
     std::string sourceZipPath;
     std::string version;

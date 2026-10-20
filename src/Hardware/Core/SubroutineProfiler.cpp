@@ -54,6 +54,31 @@ void SubroutineProfiler::Reset() { Clear(); }
 void SubroutineProfiler::SetSymbolTable(const Control::SymbolTable* symTable) {
     std::lock_guard<std::mutex> lock(profilerMutex);
     symbolTable = symTable;
+    if (symbolTable != nullptr && root != nullptr) {
+        auto updateNames = [&](auto& self, const std::shared_ptr<FlameGraphNode>& node) -> void {
+            if (!node) {
+                return;
+            }
+            if (node->address != 0 && (node->name.empty() || node->name[0] == '$')) {
+                std::string resolved = ResolveName(node->address);
+                if (!resolved.empty() && resolved[0] != '$') {
+                    node->name = std::move(resolved);
+                }
+            }
+            for (const auto& child : node->children) {
+                self(self, child);
+            }
+        };
+        updateNames(updateNames, root);
+        for (auto& alert : pageCrossAlerts) {
+            if (alert.subroutineAddr != 0 && (alert.subroutineName.empty() || alert.subroutineName[0] == '$')) {
+                std::string resolved = ResolveName(alert.subroutineAddr);
+                if (!resolved.empty() && resolved[0] != '$') {
+                    alert.subroutineName = std::move(resolved);
+                }
+            }
+        }
+    }
 }
 
 void SubroutineProfiler::OnJSR(uint16_t targetAddr, uint16_t returnAddr, uint64_t currentCycle) {
@@ -203,6 +228,12 @@ SubroutineProfiler::Snapshot SubroutineProfiler::GetSnapshot() const {
         auto dst = std::make_shared<FlameGraphNode>();
         dst->address = src->address;
         dst->name = src->name;
+        if (dst->address != 0 && (dst->name.empty() || dst->name[0] == '$') && symbolTable != nullptr) {
+            std::string resolved = ResolveName(dst->address);
+            if (!resolved.empty() && resolved[0] != '$') {
+                dst->name = std::move(resolved);
+            }
+        }
         dst->totalCycles = src->totalCycles;
         dst->selfCycles = src->selfCycles;
         dst->callCount = src->callCount;
@@ -247,6 +278,16 @@ SubroutineProfiler::Snapshot SubroutineProfiler::GetSnapshot() const {
     snapshot.totalCycles = sumChildren;
 
     snapshot.pageCrossAlerts = pageCrossAlerts;
+    if (symbolTable != nullptr) {
+        for (auto& alert : snapshot.pageCrossAlerts) {
+            if (alert.subroutineAddr != 0 && (alert.subroutineName.empty() || alert.subroutineName[0] == '$')) {
+                std::string resolved = ResolveName(alert.subroutineAddr);
+                if (!resolved.empty() && resolved[0] != '$') {
+                    alert.subroutineName = std::move(resolved);
+                }
+            }
+        }
+    }
     return snapshot;
 }
 

@@ -172,8 +172,18 @@ void DrawProfilerButtons(AppState& state, std::span<const uint32_t> readCounts,
 }
 
 #ifndef TARGET_WASM
-void HandleProfilerDialogs(std::span<const uint32_t> readCounts, std::span<const uint32_t> writeCounts,
-                           std::span<unsigned char> pixels) {
+void HandleProfilerDialogs(AppState& state, std::span<const uint32_t> readCounts,
+                           std::span<const uint32_t> writeCounts, std::span<unsigned char> pixels) {
+    // Load Debug Symbols Dialog (.dbg / .elf)
+    if (Frontend::CustomFileDialog::Display("ProfilerLoadDbgKey")) {
+        if (Frontend::CustomFileDialog::IsOk()) {
+            std::string filePath = Frontend::CustomFileDialog::GetFilePathName();
+            if (state.rom.symbols.LoadFromFile(filePath)) {
+                state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+            }
+        }
+        Frontend::CustomFileDialog::Close();
+    }
     // Profiler Image Save Dialog
     if (Frontend::CustomFileDialog::Display("SaveProfilerImageKey")) {
         if (Frontend::CustomFileDialog::IsOk()) {
@@ -707,11 +717,44 @@ void DrawPageCrossAlertsTab(AppState& state, const SubroutineProfiler::Snapshot&
     }
 }
 
+void DrawSymbolLoader(AppState& state) {
+#ifdef TARGET_WASM
+    if (ImGui::Button("Load Symbols (.dbg / .elf)")) {
+        WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+            std::string virtualPath = "/tmp/" + std::string(filename);
+            FILE* f = fopen(virtualPath.c_str(), "wb");
+            if (f) {
+                fwrite(data, 1, size, f);
+                fclose(f);
+            }
+            if (state.rom.symbols.LoadFromFile(virtualPath)) {
+                state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+            }
+        };
+        WebFileUtils::open_browser_file_picker(".dbg,.elf");
+    }
+#else
+    if (ImGui::Button("Load Symbols (.dbg / .elf)")) {
+        Frontend::CustomFileDialog::OpenDialog("ProfilerLoadDbgKey", "Load Debug Symbols", ".dbg,.elf", ".");
+    }
+#endif
+    ImGui::SameLine();
+    if (state.rom.symbols.IsLoaded()) {
+        std::string loadedText = "Symbols: " + std::to_string(state.rom.symbols.GetSymbolCount()) + " loaded";
+        ImGui::TextColored(ImVec4(0.4F, 0.85F, 0.4F, 1.0F), "%s", loadedText.c_str());
+    } else {
+        ImGui::TextColored(ImVec4(0.7F, 0.7F, 0.7F, 1.0F), "No symbols loaded");
+    }
+}
+
 }  // namespace
 
 void DrawProfilerWindow(AppState& state) {
     state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
     auto snapshot = state.emulator.GetSubroutineProfiler().GetSnapshot();
+
+    DrawSymbolLoader(state);
+    ImGui::Spacing();
 
     std::span<const uint32_t> counts(state.emulator.GetProfilerCounts(), 65536);
     std::span<const uint32_t> readCounts(state.emulator.GetProfilerReadCounts(), 65536);
@@ -757,7 +800,7 @@ void DrawProfilerWindow(AppState& state) {
     }
 
 #ifndef TARGET_WASM
-    HandleProfilerDialogs(readCounts, writeCounts, pixels);
+    HandleProfilerDialogs(state, readCounts, writeCounts, pixels);
 #endif
 }
 

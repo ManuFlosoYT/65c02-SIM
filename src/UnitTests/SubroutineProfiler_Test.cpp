@@ -297,3 +297,42 @@ TEST(SubroutineProfilerTest, SymbolResolution) {
     std::error_code ec;
     std::filesystem::remove(dbgPath, ec);
 }
+
+TEST(SubroutineProfilerTest, RetroactiveSymbolResolution) {
+    auto dbgPath = std::filesystem::temp_directory_path() / "profiler_retro_symbols.dbg";
+    {
+        std::ofstream ofs(dbgPath, std::ios::trunc);
+        ofs << "sym\tid=0,name=\"RetroMain\",val=0x4000\n";
+        ofs << "sym\tid=1,name=\"RetroDraw\",val=0x5000\n";
+    }
+
+    Hardware::SubroutineProfiler profiler;
+    profiler.SetEnabled(true);
+
+    profiler.OnJSR(0x4000, 0x0200, 100);
+    profiler.OnJSR(0x5000, 0x4010, 120);
+    profiler.OnPageCross(0x5020, 0x20F0, 0x2100);
+    profiler.OnRTS(180);
+    profiler.OnRTS(250);
+
+    auto snapshotBefore = profiler.GetSnapshot();
+    ASSERT_EQ(snapshotBefore.root->children.size(), 1u);
+    EXPECT_EQ(snapshotBefore.root->children[0]->name, "$4000");
+    ASSERT_EQ(snapshotBefore.pageCrossAlerts.size(), 1u);
+    EXPECT_EQ(snapshotBefore.pageCrossAlerts[0].subroutineName, "$5000");
+
+    Control::SymbolTable symTable;
+    ASSERT_TRUE(symTable.LoadFromFile(dbgPath.string()));
+    profiler.SetSymbolTable(&symTable);
+
+    auto snapshotAfter = profiler.GetSnapshot();
+    ASSERT_EQ(snapshotAfter.root->children.size(), 1u);
+    EXPECT_EQ(snapshotAfter.root->children[0]->name, "RetroMain");
+    ASSERT_EQ(snapshotAfter.root->children[0]->children.size(), 1u);
+    EXPECT_EQ(snapshotAfter.root->children[0]->children[0]->name, "RetroDraw");
+    ASSERT_EQ(snapshotAfter.pageCrossAlerts.size(), 1u);
+    EXPECT_EQ(snapshotAfter.pageCrossAlerts[0].subroutineName, "RetroDraw");
+
+    std::error_code ec;
+    std::filesystem::remove(dbgPath, ec);
+}
