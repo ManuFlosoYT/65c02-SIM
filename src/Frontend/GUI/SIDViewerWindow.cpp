@@ -259,10 +259,11 @@ static void DrawVoiceADSR(const Oscillator& voice, int voiceIndex) {
     const float totalW = x4 - x0;
 
     const bool isConfigured = (rateA != 0 || rateD != 0 || rateS != 0 || rateR != 0 || voice.env.level != 0);
-    const ImU32 curveColor = IM_COL32(110, 130, 150, 160);
+    const ImU32 vCol = VOICE_COLORS.at(voiceIndex);
+    const ImU32 curveColor = (vCol & 0x00FFFFFF) | 0x70000000;
 
     if (!isConfigured) {
-        drawList->AddLine(ImVec2(x0, y0), ImVec2(x4, y0), curveColor, 1.2F);
+        drawList->AddLine(ImVec2(x0, y0), ImVec2(x4, y0), IM_COL32(110, 130, 150, 160), 1.2F);
         ImGui::Dummy(size);
         return;
     }
@@ -348,19 +349,20 @@ static void DrawVoiceADSR(const Oscillator& voice, int voiceIndex) {
 
 static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     const auto& voice = sid.GetVoice(voiceIndex);
+    const ImVec4 voiceColor = ImColor(VOICE_COLORS.at(voiceIndex)).Value;
 
     ImGui::BeginGroup();
     DrawColoredText(Theme::TextSecondary, "Freq:");
     ImGui::SameLine(0.0F, 4.0F);
-    DrawColoredText(ImColor(VOICE_COLORS.at(voiceIndex)).Value, std::format("{:04X}", voice.frequency));
+    DrawColoredText(voiceColor, std::format("{:04X}", voice.frequency));
     ImGui::SameLine(0.0F, 34.0F);
     DrawColoredText(Theme::TextSecondary, "PW:");
     ImGui::SameLine(0.0F, 4.0F);
-    DrawColoredText(Theme::AccentPrimary, std::format("{:03X}", voice.pulseWidth));
+    DrawColoredText(voiceColor, std::format("{:03X}", voice.pulseWidth));
     ImGui::SameLine(0.0F, 34.0F);
     DrawColoredText(Theme::TextSecondary, "Wave:");
     ImGui::SameLine(0.0F, 4.0F);
-    DrawColoredText(Theme::TextMain, GetWaveformText(voice.control));
+    DrawColoredText(voiceColor, GetWaveformText(voice.control));
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0F, 1.0F));
     ImGui::AlignTextToFramePadding();
@@ -373,19 +375,19 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
 
     DrawColoredText(Theme::TextSecondary, "A:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", dispA));
+    DrawColoredText(voiceColor, std::format("{:X}", dispA));
     ImGui::SameLine(0.0F, 12.0F);
     DrawColoredText(Theme::TextSecondary, "D:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", dispD));
+    DrawColoredText(voiceColor, std::format("{:X}", dispD));
     ImGui::SameLine(0.0F, 12.0F);
     DrawColoredText(Theme::TextSecondary, "S:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", dispS));
+    DrawColoredText(voiceColor, std::format("{:X}", dispS));
     ImGui::SameLine(0.0F, 12.0F);
     DrawColoredText(Theme::TextSecondary, "R:");
     ImGui::SameLine(0.0F, 2.0F);
-    DrawColoredText(Theme::TextMain, std::format("{:X}", dispR));
+    DrawColoredText(voiceColor, std::format("{:X}", dispR));
 
     ImGui::SameLine(0.0F, 26.0F);
     DrawVoiceADSR(voice, voiceIndex);
