@@ -36,13 +36,14 @@ static void DrawFlagBadge(const char* label, bool active) {
 void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                          ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
-    float lcdHeight = work_size.y * 0.162F;
+    float lcdHeight = work_size.y * 0.144F;
     float availTop = top_section_height - lcdHeight;
-    float controlHeight = std::round(availTop * 0.55F);
+    float controlHeight = std::round((top_section_height - (work_size.y * 0.162F)) * 0.55F);
     float regHeight = availTop - controlHeight;
 
     ImGui::SetNextWindowPos(ImVec2(work_pos.x, work_pos.y + controlHeight), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, regHeight), ImGuiCond_Always);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0F, 6.0F));
     ImGui::Begin("Registers", nullptr, window_flags);
     const auto& cpu = state.emulator.GetCPU();
     auto printHex16 = [](const char* prefix, uint16_t val) {
@@ -92,6 +93,7 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     ImGui::SameLine(0.0F, 4.0F);
     DrawFlagBadge("C", cpu.C != 0);
     ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 }  // namespace GUI

@@ -10,7 +10,7 @@ namespace GUI {
 void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                    ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
-    float lcdHeight = work_size.y * 0.162F;
+    float lcdHeight = work_size.y * 0.144F;
     float controlAndRegHeight = top_section_height - lcdHeight;
     ImGui::SetNextWindowPos(ImVec2(work_pos.x, work_pos.y + controlAndRegHeight), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, lcdHeight), ImGuiCond_Always);

@@ -72,29 +72,30 @@ static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_tim
     ImGui::SameLine(0.0F, 4.0F);
     DrawMuteSoloButtons(sid, voiceIndex);
 
-    static std::array<std::array<float, 50>, 3> noise_buffer{};
+    constexpr size_t WAVE_POINTS = 80;
+    static std::array<std::array<float, WAVE_POINTS>, 3> noise_buffer{};
     static bool initialized = false;
     static std::mt19937 randomGenerator{std::random_device{}()};
     static std::uniform_real_distribution<float> dist(-1.0F, 1.0F);
 
     if (!initialized) {
         for (size_t voiceIdx = 0; voiceIdx < 3; voiceIdx++) {
-            for (size_t nIdx = 0; nIdx < 50; nIdx++) {
+            for (size_t nIdx = 0; nIdx < WAVE_POINTS; nIdx++) {
                 noise_buffer.at(voiceIdx).at(nIdx) = dist(randomGenerator);
             }
         }
         initialized = true;
     }
 
-    std::array<float, 50> points{};
+    std::array<float, WAVE_POINTS> points{};
     double time = sid_time;
     float speed = 2.0F;
-    float freqScale = 1.0F + ((float)voice.frequency / 4000.0F);
+    float freqScale = 1.0F + (static_cast<float>(voice.frequency) / 4000.0F);
     auto envLevel = static_cast<float>(voice.env.level) / 255.0F;
 
-    for (size_t nIdx = 0; nIdx < 50; nIdx++) {
-        float timeRatio = (float)nIdx / 49.0F;
-        float phase = (timeRatio * freqScale) - (float)(time * speed * freqScale);
+    for (size_t nIdx = 0; nIdx < WAVE_POINTS; nIdx++) {
+        float timeRatio = static_cast<float>(nIdx) / static_cast<float>(WAVE_POINTS - 1);
+        float phase = (timeRatio * freqScale) - static_cast<float>(time * speed * freqScale);
         phase -= std::floor(phase);
 
         float val = 0.0F;
@@ -162,8 +163,8 @@ static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_tim
     }
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-    ImGui::BeginChild(ImGui::GetID(voiceIndex), ImVec2(100, 30), 0, ImGuiWindowFlags_NoInputs);
-    ImGui::PlotLines("##Wave", points.data(), 50, 0, nullptr, -1.1F, 1.1F, ImVec2(100, 30));
+    ImGui::BeginChild(ImGui::GetID(voiceIndex), ImVec2(210.0F, 30.0F), 0, ImGuiWindowFlags_NoInputs);
+    ImGui::PlotLines("##Wave", points.data(), static_cast<int>(WAVE_POINTS), 0, nullptr, -1.1F, 1.1F, ImVec2(210.0F, 30.0F));
     ImGui::EndChild();
     ImGui::PopStyleVar(2);
     ImGui::EndGroup();
@@ -221,7 +222,7 @@ static void DrawControlBadge(const char* label, bool active) {
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0F);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0F, 1.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0F, 1.5F));
 
     ImGui::Button(label);
 
@@ -230,7 +231,7 @@ static void DrawControlBadge(const char* label, bool active) {
 }
 
 static void DrawVoiceADSR(const Oscillator& voice) {
-    const ImVec2 size(80.0F, 24.0F);
+    const ImVec2 size(240.0F, 26.0F);
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
     const ImVec2 p1 = ImVec2(p0.x + size.x, p0.y + size.y);
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -344,12 +345,14 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     DrawColoredText(Theme::TextSecondary, "Freq:");
     ImGui::SameLine(0.0F, 4.0F);
     DrawColoredText(Theme::AccentPrimary, std::format("{:04X}", voice.frequency));
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 34.0F);
     DrawColoredText(Theme::TextSecondary, "PW:");
     ImGui::SameLine(0.0F, 4.0F);
     DrawColoredText(Theme::AccentPrimary, std::format("{:03X}", voice.pulseWidth));
-    ImGui::SameLine();
-    DrawColoredText(Theme::TextMain, std::format("({})", GetWaveformText(voice.control)));
+    ImGui::SameLine(0.0F, 34.0F);
+    DrawColoredText(Theme::TextSecondary, "Wave:");
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawColoredText(Theme::TextMain, GetWaveformText(voice.control));
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0F, 1.0F));
     ImGui::AlignTextToFramePadding();
@@ -363,36 +366,36 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     DrawColoredText(Theme::TextSecondary, "A:");
     ImGui::SameLine(0.0F, 2.0F);
     DrawColoredText(Theme::TextMain, std::format("{:X}", dispA));
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 12.0F);
     DrawColoredText(Theme::TextSecondary, "D:");
     ImGui::SameLine(0.0F, 2.0F);
     DrawColoredText(Theme::TextMain, std::format("{:X}", dispD));
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 12.0F);
     DrawColoredText(Theme::TextSecondary, "S:");
     ImGui::SameLine(0.0F, 2.0F);
     DrawColoredText(Theme::TextMain, std::format("{:X}", dispS));
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 12.0F);
     DrawColoredText(Theme::TextSecondary, "R:");
     ImGui::SameLine(0.0F, 2.0F);
     DrawColoredText(Theme::TextMain, std::format("{:X}", dispR));
 
-    ImGui::SameLine(0.0F, 6.0F);
+    ImGui::SameLine(0.0F, 26.0F);
     DrawVoiceADSR(voice);
 
-    ImGui::SameLine(0.0F, 6.0F);
+    ImGui::SameLine(0.0F, 32.0F);
     DrawControlBadge("GATE", (voice.control & 1) != 0);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 10.0F);
     DrawControlBadge("SYNC", (voice.control & 2) != 0);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 10.0F);
     DrawControlBadge("RING", (voice.control & 4) != 0);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 10.0F);
     DrawControlBadge("TEST", (voice.control & 8) != 0);
     ImGui::EndGroup();
 }
 
 static void DrawPianoRoll(const Core::SID& sid) {
+    const float fullAvailW = ImGui::GetContentRegionAvail().x;
     ImGui::TextUnformatted("Piano Roll:");
-    ImGui::SameLine();
 
     static constexpr const char* NOTE_NAMES[12] = {
         "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
@@ -405,15 +408,13 @@ static void DrawPianoRoll(const Core::SID& sid) {
 
     std::array<int, 3> activeNotes = {-1, -1, -1};
     for (int v = 0; v < 3; ++v) {
+        ImGui::SameLine(0.0F, 28.0F);
         const auto& voice = sid.GetVoice(v);
         if (voice.frequency > 0 && voice.env.level > 0 && (voice.control & 0x08) == 0) {
             float freqHz = static_cast<float>(voice.frequency) * (1000000.0F / 16777216.0F);
             if (freqHz >= 16.0F) {
                 activeNotes.at(v) = static_cast<int>(std::round(69.0F + (12.0F * std::log2(freqHz / 440.0F))));
             }
-        }
-        if (v > 0) {
-            ImGui::SameLine(0.0F, 6.0F);
         }
         if (activeNotes.at(v) >= 0) {
             int noteVal = activeNotes.at(v);
@@ -428,10 +429,10 @@ static void DrawPianoRoll(const Core::SID& sid) {
 
     constexpr int START_NOTE = 24;
     constexpr int NUM_WHITE_KEYS = 35;
-    constexpr float WHITE_KEY_W = 10.0F;
-    constexpr float WHITE_KEY_H = 18.0F;
-    constexpr float BLACK_KEY_W = 6.0F;
-    constexpr float BLACK_KEY_H = 11.0F;
+    const float whiteKeyW = std::clamp(std::floor((fullAvailW - 4.0F) / static_cast<float>(NUM_WHITE_KEYS)), 11.0F, 30.0F);
+    constexpr float whiteKeyH = 20.0F;
+    const float blackKeyW = std::round(whiteKeyW * 0.60F);
+    constexpr float blackKeyH = 12.0F;
 
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -441,8 +442,8 @@ static void DrawPianoRoll(const Core::SID& sid) {
     };
 
     for (int i = 0; i < NUM_WHITE_KEYS; ++i) {
-        ImVec2 kp0(p0.x + (static_cast<float>(i) * WHITE_KEY_W), p0.y);
-        ImVec2 kp1(kp0.x + WHITE_KEY_W, kp0.y + WHITE_KEY_H);
+        ImVec2 kp0(p0.x + (static_cast<float>(i) * whiteKeyW), p0.y);
+        ImVec2 kp1(kp0.x + whiteKeyW, p0.y + whiteKeyH);
         drawList->AddRectFilled(kp0, kp1, IM_COL32(230, 230, 230, 255));
         drawList->AddRect(kp0, kp1, IM_COL32(60, 60, 60, 255));
     }
@@ -451,9 +452,9 @@ static void DrawPianoRoll(const Core::SID& sid) {
         int baseW = oct * 7;
         const std::array<int, 5> blackOffsets = {0, 1, 3, 4, 5};
         for (int b : blackOffsets) {
-            float kx = p0.x + (static_cast<float>(baseW + b) * WHITE_KEY_W) + (WHITE_KEY_W * 0.65F);
+            float kx = p0.x + (static_cast<float>(baseW + b) * whiteKeyW) + (whiteKeyW * 0.68F);
             ImVec2 kp0(kx, p0.y);
-            ImVec2 kp1(kx + BLACK_KEY_W, p0.y + BLACK_KEY_H);
+            ImVec2 kp1(kx + blackKeyW, p0.y + blackKeyH);
             drawList->AddRectFilled(kp0, kp1, IM_COL32(35, 35, 35, 255));
         }
     }
@@ -470,20 +471,20 @@ static void DrawPianoRoll(const Core::SID& sid) {
 
         if (whiteIdx >= 0) {
             int keyIdx = (oct * 7) + whiteIdx;
-            ImVec2 kp0(p0.x + (static_cast<float>(keyIdx) * WHITE_KEY_W), p0.y + BLACK_KEY_H);
-            ImVec2 kp1(kp0.x + WHITE_KEY_W, p0.y + WHITE_KEY_H);
+            ImVec2 kp0(p0.x + (static_cast<float>(keyIdx) * whiteKeyW), p0.y + blackKeyH);
+            ImVec2 kp1(kp0.x + whiteKeyW, p0.y + whiteKeyH);
             drawList->AddRectFilled(kp0, kp1, VOICE_COLORS.at(v));
         } else {
             int prevWhite = NOTE_TO_WHITE.at(nInOct - 1);
             int keyIdx = (oct * 7) + prevWhite;
-            float kx = p0.x + (static_cast<float>(keyIdx) * WHITE_KEY_W) + (WHITE_KEY_W * 0.65F);
+            float kx = p0.x + (static_cast<float>(keyIdx) * whiteKeyW) + (whiteKeyW * 0.68F);
             ImVec2 kp0(kx, p0.y);
-            ImVec2 kp1(kx + BLACK_KEY_W, p0.y + BLACK_KEY_H);
+            ImVec2 kp1(kx + blackKeyW, p0.y + blackKeyH);
             drawList->AddRectFilled(kp0, kp1, VOICE_COLORS.at(v));
         }
     }
 
-    ImGui::Dummy(ImVec2(static_cast<float>(NUM_WHITE_KEYS) * WHITE_KEY_W, WHITE_KEY_H));
+    ImGui::Dummy(ImVec2(static_cast<float>(NUM_WHITE_KEYS) * whiteKeyW, whiteKeyH));
 }
 
 static void ComputeFFT(std::vector<std::complex<float>>& a) {
@@ -659,7 +660,7 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
                 }
 
                 DrawVoiceWaveform(state.emulator.GetSID(), voiceIndex, sid_time, should_update);
-                ImGui::SameLine();
+                ImGui::SameLine(0.0F, 28.0F);
                 DrawVoiceParameters(state.emulator.GetSID(), voiceIndex);
 
                 ImGui::PopID();
@@ -688,6 +689,7 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     float sidWidth = work_size.x - leftWidth;
     ImGui::SetNextWindowPos(ImVec2(work_pos.x + leftWidth, work_pos.y), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(sidWidth, top_section_height), ImGuiCond_Always);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F, 2.0F));
     ImGui::Begin("SID Viewer", nullptr, window_flags | ImGuiWindowFlags_NoMove);
 
     state.render.sidWindowPos[0] = ImGui::GetWindowPos().x;
@@ -704,6 +706,7 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     DrawSIDViewerContent(state, sid_time, should_update);
 
     ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 }  // namespace GUI

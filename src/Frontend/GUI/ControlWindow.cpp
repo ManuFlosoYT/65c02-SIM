@@ -482,9 +482,7 @@ static void HandleDialogs(AppState& state) {
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                        ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
-    float lcdHeight = work_size.y * 0.162F;
-    float availTop = top_section_height - lcdHeight;
-    float controlHeight = std::round(availTop * 0.55F);
+    float controlHeight = std::round((top_section_height - (work_size.y * 0.162F)) * 0.55F);
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, controlHeight), ImGuiCond_Always);
