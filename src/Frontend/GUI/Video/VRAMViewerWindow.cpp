@@ -161,15 +161,13 @@ static void DrawVRAMControls(AppState& state) {
     }
 #endif
 
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!hasPixelSelection);
-    if (ImGui::Button("Clear")) {
-        hasPixelSelection = false;
-    }
-    ImGui::EndDisabled();
-
     if (hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
         selectedPixelY < GPU::VRAM_HEIGHT) {
+        ImGui::SameLine();
+        if (ImGui::Button("Clear")) {
+            hasPixelSelection = false;
+        }
+
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
