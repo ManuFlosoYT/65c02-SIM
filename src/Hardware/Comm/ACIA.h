@@ -43,6 +43,11 @@ class ACIA : public IBusDevice {
     [[nodiscard]] int GetBaudRate() const;
     [[nodiscard]] int GetFrameBits() const;
 
+    [[nodiscard]] inline bool GetTxPin() const { return !isShifting || ((shiftRegisterData & 0x01) != 0); }
+    [[nodiscard]] inline bool GetRxPin() const { return true; }
+    [[nodiscard]] inline Byte GetTxData() const { return txData; }
+    [[nodiscard]] inline Byte GetRxData() const { return rxData; }
+
     inline void Clock(int ips = 1000000);
     [[nodiscard]] bool IsIdle() const;
 

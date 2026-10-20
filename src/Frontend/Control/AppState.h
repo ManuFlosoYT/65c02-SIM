@@ -67,7 +67,8 @@ enum class DebuggerMode : std::uint8_t {
     Debugger = 3,
     Breakpoints = 4,
     MemoryLayout = 5,
-    NetworkSniffer = 6
+    LogicAnalyzer = 6,
+    NetworkSniffer = 7
 };
 
 struct NetworkSnifferState {

@@ -121,7 +121,8 @@ int Emulator::Step() {
     EnsureWatchpointWriteHook();
 
     int res = 0;
-    bool hooks = bus.HasActiveHooks() || breakpointManager.HasAnyBreakpointsFast();
+    bool hooks = bus.HasActiveHooks() || breakpointManager.HasAnyBreakpointsFast() ||
+                 logicAnalyzerEnabled.load(std::memory_order_relaxed);
 
     if (!gpuEnabled || rasterBeamSlowMotion.load(std::memory_order_relaxed)) {
         res = hooks ? Step<true>() : Step<false>();
@@ -286,6 +287,7 @@ int Emulator::StepInternal(int ips) {
     int res = 0;
     bool cpuStepped = false;
     bool isNewInstruction = true;
+    Word sampleAddr = cpu.PC;
 
     if constexpr (CycleAccurateMode) {
         isNewInstruction = (cpu.remainingCycles == 0);
@@ -304,6 +306,12 @@ int Emulator::StepInternal(int ips) {
 
     if (hasInput.load(std::memory_order_relaxed)) [[unlikely]] {
         HandleSerialInput<Debug>();
+    }
+
+    if constexpr (Debug) {
+        if (logicAnalyzerEnabled.load(std::memory_order_relaxed)) [[unlikely]] {
+            SampleLogicAnalyzer(sampleAddr, bus.ReadDirect(sampleAddr), true, isNewInstruction);
+        }
     }
 
     return res;
@@ -557,6 +565,31 @@ void Emulator::HandleVIAPortB(Byte val) {
             return;
         }
     }
+}
+
+void Emulator::SampleLogicAnalyzer(Word addr, Byte data, bool rw, bool sync) {
+    if (!logicAnalyzerEnabled.load(std::memory_order_relaxed)) {
+        return;
+    }
+    LogicSample sample;
+    sample.cycle = totalCycles.load(std::memory_order_relaxed);
+    sample.address = addr;
+    sample.data = data;
+    sample.rw = rw ? 1 : 0;
+    sample.sync = sync ? 1 : 0;
+    sample.rdy = 1;
+    sample.irq = (via.isIRQAsserted() || acia.HasIRQ() || pendingIRQ.load(std::memory_order_relaxed)) ? 1 : 0;
+    sample.nmi = pendingNMI.load(std::memory_order_relaxed) ? 1 : 0;
+    sample.ca1 = via.GetCA1() ? 1 : 0;
+    sample.ca2 = via.GetCA2() ? 1 : 0;
+    sample.cb1 = via.GetCB1() ? 1 : 0;
+    sample.cb2 = via.GetCB2() ? 1 : 0;
+    sample.spiCs = !sdcard.IsCSActive();
+    sample.uartTx = acia.GetTxPin() ? 1 : 0;
+    sample.uartRx = acia.GetRxPin() ? 1 : 0;
+    sample.portA = via.GetPortA();
+    sample.portB = via.GetPortB();
+    logicAnalyzer.RecordSample(sample);
 }
 
 }  // namespace Core

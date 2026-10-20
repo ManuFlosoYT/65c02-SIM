@@ -36,6 +36,11 @@ class VIA : public IBusDevice {
     void SetCB1(bool val);
     void SetCB2(bool val);
 
+    [[nodiscard]] inline bool GetCA1() const { return ca1_in; }
+    [[nodiscard]] inline bool GetCA2() const { return (((pcr >> 1) & 0x07) >= 4) ? ca2_out : ca2_in; }
+    [[nodiscard]] inline bool GetCB1() const { Byte m = (acr >> 2) & 0x07; return (m == 1 || m == 2 || m == 4 || m == 5 || m == 6) ? cb1_out : cb1_in; }
+    [[nodiscard]] inline bool GetCB2() const { Byte m = (acr >> 2) & 0x07; return (m != 0) ? sr_out_cb2 : (((pcr >> 5) & 0x07) >= 4 ? cb2_out : cb2_in); }
+
     inline void Clock();
     inline void Clock(uint32_t cycles);
     [[nodiscard]] inline bool isIRQAsserted() const;

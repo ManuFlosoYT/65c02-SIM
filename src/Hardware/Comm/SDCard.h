@@ -47,6 +47,9 @@ class SDCard : public IBusDevice {
     [[nodiscard]] bool IsModified() const { return is_modified; }
     void SetModified(bool modified) { is_modified = modified; }
 
+    [[nodiscard]] inline bool IsCSActive() const { return cs_active; }
+    [[nodiscard]] inline Byte GetLastMISO() const { return last_miso; }
+
     // State management
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;

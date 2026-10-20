@@ -26,6 +26,7 @@
 #include "Hardware/Video/LCD.h"
 #include "Hardware/Core/ISerializable.h"
 #include "Hardware/Core/Cartridge.h"
+#include "Hardware/Core/LogicAnalyzer.h"
 #include "Frontend/Control/Console.h"
 
 namespace Core {
@@ -122,6 +123,12 @@ class Emulator {
     const Hardware::SDCard& GetSDCard() const;
     Hardware::ScriptEngine& GetScriptEngine();
     Hardware::BreakpointManager& GetBreakpointManager();
+
+    void SetLogicAnalyzerEnabled(bool enabled);
+    [[nodiscard]] bool IsLogicAnalyzerEnabled() const;
+    Hardware::LogicAnalyzer& GetLogicAnalyzer();
+    [[nodiscard]] const Hardware::LogicAnalyzer& GetLogicAnalyzer() const;
+    void SampleLogicAnalyzer(Word addr, Byte data, bool rw, bool sync);
 
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
@@ -236,6 +243,8 @@ class Emulator {
     Hardware::ESP8266 esp8266;
     Hardware::ScriptEngine scriptEngine;
     Hardware::BreakpointManager breakpointManager;
+    Hardware::LogicAnalyzer logicAnalyzer;
+    std::atomic<bool> logicAnalyzerEnabled{false};
     bool watchpointWriteHookInstalled = false;
 
     ConsoleSerializable consoleSerializable;
@@ -411,4 +420,17 @@ inline void Core::Emulator::SetRewindSnapshotsEnabled(bool enabled) {
     if (!rewindSnapshotsEnabled) {
         ClearRewindBuffer();
     }
+}
+
+inline void Core::Emulator::SetLogicAnalyzerEnabled(bool enabled) {
+    logicAnalyzerEnabled.store(enabled, std::memory_order_relaxed);
+}
+inline bool Core::Emulator::IsLogicAnalyzerEnabled() const {
+    return logicAnalyzerEnabled.load(std::memory_order_relaxed);
+}
+inline Hardware::LogicAnalyzer& Core::Emulator::GetLogicAnalyzer() {
+    return logicAnalyzer;
+}
+inline const Hardware::LogicAnalyzer& Core::Emulator::GetLogicAnalyzer() const {
+    return logicAnalyzer;
 }

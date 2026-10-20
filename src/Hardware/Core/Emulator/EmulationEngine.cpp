@@ -187,7 +187,7 @@ Emulator::SliceResult Emulator::EmulateSlice(int instructionsPerSlice) {
     EnsureWatchpointWriteHook();
     bool hasBreakpoints = breakpointManager.HasAnyBreakpointsFast();
     bool hasComplex = breakpointManager.HasComplexBreakpoints();
-    bool hooks = bus.HasActiveHooks() || hasBreakpoints;
+    bool hooks = bus.HasActiveHooks() || hasBreakpoints || logicAnalyzerEnabled.load(std::memory_order_relaxed);
 
     while (remaining > 0) {
         int currentBatchSize = std::min(remaining, MAX_BATCH_SIZE);
