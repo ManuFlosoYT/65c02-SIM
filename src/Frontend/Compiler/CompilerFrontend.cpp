@@ -94,10 +94,22 @@ static int PlatformRunCommand(const std::string& cmd, const std::string& logFile
 #else
 static int PlatformRunCommand(const std::string& cmd, const std::string& logFile) {
     std::vector<std::string> args;
-    std::stringstream stringStream(cmd);
-    std::string item;
-    while (stringStream >> item) {
-        args.push_back(item);
+    std::string current;
+    bool inQuotes = false;
+    for (char c : cmd) {
+        if (c == '"') {
+            inQuotes = !inQuotes;
+        } else if (std::isspace(static_cast<unsigned char>(c)) && !inQuotes) {
+            if (!current.empty()) {
+                args.push_back(current);
+                current.clear();
+            }
+        } else {
+            current.push_back(c);
+        }
+    }
+    if (!current.empty()) {
+        args.push_back(current);
     }
 
     if (args.empty()) {

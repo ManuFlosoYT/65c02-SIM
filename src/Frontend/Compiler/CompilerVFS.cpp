@@ -173,10 +173,18 @@ void CompilerVFS::Cleanup() {
 }
 
 std::string CompilerVFS::GetTempDir() {
+    if (tempDir.empty()) {
+        fs::path tempRoot = fs::temp_directory_path() / "65c02_sim_toolchain";
+        fs::create_directories(tempRoot);
+        tempDir = tempRoot.string();
+    }
     return tempDir;
 }
 
 std::string CompilerVFS::GetCompilerExecutable() {
+    if (compilerPath.empty()) {
+        compilerPath = FindCompiler();
+    }
     return compilerPath;
 }
 

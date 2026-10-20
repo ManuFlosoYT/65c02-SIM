@@ -63,6 +63,7 @@ void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
     state.rom.symbols.Clear();
     if (!cart.dbgFilePath.empty()) {
         state.rom.symbols.LoadFromFile(cart.dbgFilePath);
+        state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
     }
 }
 
