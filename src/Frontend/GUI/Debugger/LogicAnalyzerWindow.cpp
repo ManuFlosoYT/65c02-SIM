@@ -239,8 +239,9 @@ void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
 }
 
 void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 4));
+    ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX() + 8.0F, ImGui::GetCursorPosY() + 6.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 6));
 
     // --- Row 1: Controls ---
     bool isFrozen = analyzer.IsFrozen();
@@ -272,9 +273,15 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
 
     // View mode selector
     const char* viewModes[] = {"Waveforms", "IC Pinout", "Split View"};
+    float maxViewW = 0.0F;
+    for (const char* vm : viewModes) {
+        maxViewW = std::max(maxViewW, ImGui::CalcTextSize(vm).x);
+    }
+    float viewComboWidth = maxViewW + ImGui::GetFrameHeight() + ImGui::GetStyle().FramePadding.x * 2.0F + 14.0F;
+
     ImGui::TextUnformatted("View:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(100.0F);
+    ImGui::SetNextItemWidth(viewComboWidth);
     ImGui::Combo("##ViewMode", &uiState.viewMode, viewModes, IM_ARRAYSIZE(viewModes));
 
     ImGui::SameLine();
@@ -305,6 +312,7 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     ImGui::Checkbox("Bit-Level Ports", &uiState.showPortBits);
 
     // --- Row 2: Status & Measurement Cursors ---
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0F);
     int targetIPS = state.emulator.GetTargetIPS();
     if (targetIPS <= 0) {
         targetIPS = 1000000;
@@ -343,17 +351,28 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     }
 
     ImGui::PopStyleVar(2);
+    ImGui::Spacing();
     ImGui::Separator();
+    ImGui::Spacing();
 }
 
 void DrawICPinout(const Hardware::LogicSample& sample, float availWidth, float availHeight) {
     const char* chips[] = {"W65C02S (CPU)", "W65C22 (VIA)", "W65C51N (ACIA)"};
+    float maxChipW = 0.0F;
+    for (const char* ch : chips) {
+        maxChipW = std::max(maxChipW, ImGui::CalcTextSize(ch).x);
+    }
+    float chipComboWidth = maxChipW + ImGui::GetFrameHeight() + ImGui::GetStyle().FramePadding.x * 2.0F + 16.0F;
+
+    ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX() + 10.0F, ImGui::GetCursorPosY() + 4.0F));
     ImGui::TextUnformatted("Chip:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(140.0F);
+    ImGui::SetNextItemWidth(chipComboWidth);
     ImGui::Combo("##SelectIC", &uiState.selectedChip, chips, IM_ARRAYSIZE(chips));
-    ImGui::SameLine();
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0F);
     ImGui::TextDisabled("Cycle: #%llu", static_cast<unsigned long long>(sample.cycle));
+    ImGui::Spacing();
 
     std::vector<PinInfo> leftPins;
     std::vector<PinInfo> rightPins;
@@ -373,7 +392,13 @@ void DrawICPinout(const Hardware::LogicSample& sample, float availWidth, float a
 
     float centerX = canvasPos.x + canvasWidth * 0.5F;
     float chipX = centerX - chipWidth * 0.5F;
-    float chipY = canvasPos.y + 12.0F;
+
+    // Center the chip vertically in the remaining pane space
+    float remainingPaneHeight = ImGui::GetContentRegionAvail().y;
+    float chipY = canvasPos.y + 6.0F;
+    if (remainingPaneHeight > chipHeight + 14.0F) {
+        chipY = canvasPos.y + (remainingPaneHeight - chipHeight) * 0.5F;
+    }
 
     // Background body
     drawList->AddRectFilled(ImVec2(chipX, chipY),
@@ -494,7 +519,10 @@ void DrawICPinout(const Hardware::LogicSample& sample, float availWidth, float a
         }
     }
 
-    ImGui::Dummy(ImVec2(canvasWidth, chipHeight + 24.0F));
+    float totalNeeded = (chipY + chipHeight + 14.0F) - canvasPos.y;
+    if (totalNeeded > remainingPaneHeight) {
+        ImGui::Dummy(ImVec2(canvasWidth, totalNeeded));
+    }
 }
 
 enum class ChannelFormat {
@@ -560,7 +588,11 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
     channels.push_back({"UART RX", ChannelFormat::DigitalBit, IM_COL32(250, 204, 21, 255), [](const auto& s) { return s.uartRx; }});
 
     const int numVisible = std::min(uiState.visibleCycles, static_cast<int>(count));
-    constexpr float labelWidth = 84.0F;
+    float maxLabelW = 0.0F;
+    for (const auto& ch : channels) {
+        maxLabelW = std::max(maxLabelW, ImGui::CalcTextSize(ch.name).x);
+    }
+    const float labelWidth = std::max(maxLabelW + 16.0F, 110.0F);
     constexpr float rulerHeight = 22.0F;
     constexpr float trackHeight = 20.0F;
     constexpr float trackSpacing = 3.0F;
@@ -823,14 +855,14 @@ void DrawLogicAnalyzerWindow(Control::AppState& state) {
         DrawWaveforms(analyzer, contentSize.x, contentSize.y);
     } else if (uiState.viewMode == 1) {
         // IC Pinout only
-        ImGui::BeginChild("PinoutOnlyScroll", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        ImGui::BeginChild("PinoutOnlyScroll", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_None);
         DrawICPinout(inspectSample, contentSize.x, contentSize.y);
         ImGui::EndChild();
     } else {
         // Split View
-        float pinoutWidth = std::clamp(contentSize.x * 0.38F, 280.0F, 360.0F);
-        ImGui::BeginChild("PinoutSplitPane", ImVec2(pinoutWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-        DrawICPinout(inspectSample, pinoutWidth - 16.0F, contentSize.y);
+        float pinoutWidth = std::clamp(contentSize.x * 0.38F, 300.0F, 400.0F);
+        ImGui::BeginChild("PinoutSplitPane", ImVec2(pinoutWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_None);
+        DrawICPinout(inspectSample, pinoutWidth - 12.0F, contentSize.y);
         ImGui::EndChild();
 
         ImGui::SameLine();
