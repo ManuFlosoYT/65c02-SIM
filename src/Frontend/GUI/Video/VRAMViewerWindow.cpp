@@ -19,6 +19,43 @@ using namespace Hardware;
 
 namespace GUI {
 
+namespace {
+
+int selectedPixelX = -1;
+int selectedPixelY = -1;
+bool hasPixelSelection = false;
+
+Word GetVRAMBusAddress(AppState& state, int x, int y, bool& isMapped) {
+    Word baseAddr = 0x2000;
+    Word endAddr = 0x3FFF;
+    isMapped = true;
+
+    for (const auto& reg : state.emulator.GetMem().GetRegisteredDevices()) {
+        if (reg.device == &state.emulator.GetGPU() && !reg.isVirtual) {
+            baseAddr = reg.startAddress;
+            endAddr = reg.endAddress;
+            isMapped = reg.enabled;
+            break;
+        }
+    }
+
+    Word offset = static_cast<Word>((static_cast<Word>(y) << 7U) | static_cast<Word>(x));
+    Word fullAddr = baseAddr + offset;
+    if (fullAddr > endAddr) {
+        isMapped = false;
+    }
+    return fullAddr;
+}
+
+ImVec4 VRAMColorToRGBA(Byte val) {
+    float r = static_cast<float>((val >> 4) & 0x03) / 3.0F;
+    float g = static_cast<float>((val >> 2) & 0x03) / 3.0F;
+    float b = static_cast<float>(val & 0x03) / 3.0F;
+    return {r, g, b, 1.0F};
+}
+
+}  // namespace
+
 static void ConvertVRAMToRGB(const Hardware::GPU& gpu, uint8_t* dst) {
     for (size_t yIndex = 0; yIndex < GPU::VRAM_HEIGHT; yIndex++) {
         for (size_t xIndex = 0; xIndex < GPU::VRAM_WIDTH; xIndex++) {
@@ -122,6 +159,37 @@ static void DrawVRAMControls(AppState& state) {
         }
     }
 #endif
+
+    if (hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
+        selectedPixelY < GPU::VRAM_HEIGHT) {
+        Byte val = state.emulator.GetGPU().GetVRAM().at(static_cast<size_t>(selectedPixelY)).at(static_cast<size_t>(selectedPixelX));
+        uint8_t r = (val >> 4) & 0x03;
+        uint8_t g = (val >> 2) & 0x03;
+        uint8_t b = val & 0x03;
+        ImVec4 col = VRAMColorToRGBA(val);
+
+        bool isMapped = false;
+        Word busAddr = GetVRAMBusAddress(state, selectedPixelX, selectedPixelY, isMapped);
+
+        ImGui::SameLine();
+        ImGui::Text("| Pixel: (%d, %d)", selectedPixelX, selectedPixelY);
+        ImGui::SameLine();
+        if (isMapped) {
+            ImGui::Text("| Bus: $%04X", busAddr);
+        } else {
+            ImGui::Text("| Bus: $%04X (Unmapped)", busAddr);
+        }
+        ImGui::SameLine();
+        ImGui::Text("| Palette: 0x%02X (%u)", static_cast<unsigned int>(val & 0x3FU),
+                    static_cast<unsigned int>(val & 0x3FU));
+        ImGui::SameLine();
+        ImGui::ColorButton("##selected_color", col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs,
+                           ImVec2(14, 14));
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Clear")) {
+            hasPixelSelection = false;
+        }
+    }
 
     ImGui::Separator();
 }
@@ -330,8 +398,61 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         }
 
         ImGui::Image((ImTextureID)(intptr_t)displayTex, ImVec2(imgW, imgH));
+        ImVec2 imgMin = ImGui::GetItemRectMin();
+
+        if (ImGui::IsItemHovered()) {
+            ImVec2 mousePos = ImGui::GetMousePos();
+            int hoveredX = std::clamp(static_cast<int>((mousePos.x - imgMin.x) / imgW * static_cast<float>(GPU::VRAM_WIDTH)),
+                                      0, static_cast<int>(GPU::VRAM_WIDTH - 1));
+            int hoveredY = std::clamp(static_cast<int>((mousePos.y - imgMin.y) / imgH * static_cast<float>(GPU::VRAM_HEIGHT)),
+                                      0, static_cast<int>(GPU::VRAM_HEIGHT - 1));
+
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                selectedPixelX = hoveredX;
+                selectedPixelY = hoveredY;
+                hasPixelSelection = true;
+            }
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                hasPixelSelection = false;
+            }
+
+            if (ImGui::BeginItemTooltip()) {
+                Byte val = state.emulator.GetGPU().GetVRAM().at(static_cast<size_t>(hoveredY)).at(static_cast<size_t>(hoveredX));
+                uint8_t r = (val >> 4) & 0x03;
+                uint8_t g = (val >> 2) & 0x03;
+                uint8_t b = val & 0x03;
+                ImVec4 col = VRAMColorToRGBA(val);
+
+                bool isMapped = false;
+                Word busAddr = GetVRAMBusAddress(state, hoveredX, hoveredY, isMapped);
+
+                ImGui::Text("Pixel: (%d, %d)", hoveredX, hoveredY);
+                if (isMapped) {
+                    ImGui::Text("Bus: $%04X", busAddr);
+                } else {
+                    ImGui::Text("Bus: $%04X (Unmapped)", busAddr);
+                }
+                ImGui::Text("Palette: 0x%02X (%u) [R:%u G:%u B:%u]", static_cast<unsigned int>(val & 0x3FU),
+                            static_cast<unsigned int>(val & 0x3FU), r, g, b);
+                ImGui::SameLine();
+                ImGui::ColorButton("##hover_color", col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs,
+                                   ImVec2(14, 14));
+                ImGui::EndTooltip();
+            }
+        }
+
+        if (hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
+            selectedPixelY < GPU::VRAM_HEIGHT) {
+            float scaleF = static_cast<float>(scale);
+            float px = imgMin.x + static_cast<float>(selectedPixelX) * scaleF;
+            float py = imgMin.y + static_cast<float>(selectedPixelY) * scaleF;
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            drawList->AddRect(ImVec2(px, py), ImVec2(px + scaleF, py + scaleF),
+                              IM_COL32(255, 255, 0, 255), 0.0F, 0, 1.5F);
+        }
+
         if (state.crt.rasterBeam) {
-            DrawRasterBeamOverlay(state, ImGui::GetItemRectMin(), scale, imgW, imgH);
+            DrawRasterBeamOverlay(state, imgMin, scale, imgW, imgH);
         }
 
         ImGui::End();
