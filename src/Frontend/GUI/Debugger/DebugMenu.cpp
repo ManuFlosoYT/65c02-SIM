@@ -28,11 +28,6 @@ void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2));
     for (size_t i = 0; i < modes.size(); i++) {
         bool selected = (state.debugger.mode == static_cast<Control::DebuggerMode>(i));
-        bool isDisabled = (i == 5 && state.emulator.GetCartridge().loaded); // Disable Memory Layout for cartridges
-
-        if (isDisabled) {
-            ImGui::BeginDisabled();
-        }
 
         if (selected) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -44,16 +39,6 @@ void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
             state.debugger.mode = static_cast<Control::DebuggerMode>(i);
         }
         ImGui::PopStyleColor(2);
-
-        if (isDisabled) {
-            ImGui::EndDisabled();
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                if (ImGui::BeginTooltip()) {
-                    ImGui::TextUnformatted("Memory Layout is not available for custom cartridges");
-                    ImGui::EndTooltip();
-                }
-            }
-        }
     }
     ImGui::PopStyleVar(2);
 }
