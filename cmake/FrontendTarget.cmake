@@ -114,7 +114,7 @@ if(EMSCRIPTEN)
         "-sMAX_WEBGL_VERSION=2"
         "-pthread"
         "-sPTHREAD_POOL_SIZE=8"
-        "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main','_Wasm_OnFilePicked']"
+        "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main','_Wasm_OnFilePicked','_Wasm_CheckURLHash','_Wasm_LoadSharedData']"
         "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString','stringToUTF8','lengthBytesUTF8','HEAPU8','ccall','cwrap']"
         "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/web/shell.html"
     )

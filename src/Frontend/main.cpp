@@ -619,6 +619,7 @@ int main(int argc, char* argv[]) {
 #endif
 
 #ifdef TARGET_WASM
+    WebFileUtils::init_url_loader(&state);
     static MainLoopArgs loopArgs = { .window = window, .gl_context = gl_context, .state = &state, .mediaExporter = nullptr, .done = &done };
     emscripten_set_main_loop_arg(MainLoop, &loopArgs, 0, 1);
 #else

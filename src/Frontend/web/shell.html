@@ -62,6 +62,7 @@
     </div>
 
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="toast" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(20,20,20,0.92); border:1px solid #4a9eff; color:#e0e0e0; padding:10px 20px; border-radius:8px; font-size:14px; box-shadow:0 4px 16px rgba(0,0,0,0.6); z-index:1000; pointer-events:none; transition:opacity 0.3s ease;"></div>
 
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');
@@ -110,6 +111,28 @@
         }
       };
       Module.setStatus('Downloading...');
+      window.showToast = function(msg) {
+        var toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        toast.style.opacity = '1';
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(function() {
+          toast.style.opacity = '0';
+          setTimeout(function() { toast.style.display = 'none'; }, 300);
+        }, 3000);
+      };
+      Module.postRun.push(function() {
+        if (Module._Wasm_CheckURLHash) {
+          Module._Wasm_CheckURLHash();
+        }
+      });
+      window.addEventListener('hashchange', function() {
+        if (Module._Wasm_CheckURLHash) {
+          Module._Wasm_CheckURLHash();
+        }
+      });
       window.onerror = function() {
         Module.setStatus('Exception thrown, see JavaScript console');
         loaderElement.style.display = 'flex';
