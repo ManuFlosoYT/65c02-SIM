@@ -24,29 +24,30 @@ compile_with_opt_fallback() {
     local sources=("$@")
 
     local last_err=""
-    for opt in -Os -Oz; do
-        echo "  [LLVM-MOS] Compiling with $opt..."
-        local err_log
-        err_log=$(mktemp)
-        if "$MOS_CLANG" -mcpu=mosw65c02 $opt -g -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
-            cat "$err_log"
+    for gflag in "-g" ""; do
+        for opt in -Os -Oz; do
+            echo "  [LLVM-MOS] Compiling with $opt $gflag..."
+            local err_log
+            err_log=$(mktemp)
+            if "$MOS_CLANG" -mcpu=mosw65c02 $opt $gflag -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
+                cat "$err_log"
+                rm -f "$err_log"
+                echo "  [LLVM-MOS] Successfully compiled with $opt $gflag."
+                return 0
+            fi
+
+            last_err=$(cat "$err_log")
             rm -f "$err_log"
-            echo "  [LLVM-MOS] Successfully compiled with $opt."
-            return 0
-        fi
 
-        last_err=$(cat "$err_log")
-        rm -f "$err_log"
-
-        if echo "$last_err" | grep -E -q "will not fit in region|overflowed by|address range overlaps with"; then
-            echo "  [LLVM-MOS] $opt binary too large (memory overflow):"
-            echo "$last_err"
-            echo "  [LLVM-MOS] Falling back to next optimization level..."
-        else
-            echo "  [LLVM-MOS] Compilation error at $opt (not a size issue):"
-            echo "$last_err"
-            return 1
-        fi
+            if echo "$last_err" | grep -E -q "will not fit in region|overflowed by|address range overlaps with"; then
+                echo "  [LLVM-MOS] $opt $gflag binary too large (memory overflow):"
+                echo "  [LLVM-MOS] Falling back to next optimization level..."
+            else
+                echo "  [LLVM-MOS] Compilation error at $opt $gflag (not a size issue):"
+                echo "$last_err"
+                return 1
+            fi
+        done
     done
 
     echo "Error: Binary too large for all optimization levels (-Os, -Oz)."
