@@ -19,6 +19,12 @@ using namespace Hardware;
 
 namespace GUI {
 
+static constexpr std::array<ImU32, 3> VOICE_COLORS = {
+    IM_COL32(79, 195, 247, 240),
+    IM_COL32(255, 183, 77, 240),
+    IM_COL32(240, 98, 146, 240)
+};
+
 static void DrawMuteSoloButtons(Hardware::SID& sid, int voiceIndex) {
     ImGui::PushID(voiceIndex);
     bool isMuted = sid.IsVoiceMuted(voiceIndex);
@@ -68,7 +74,7 @@ static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_tim
     const auto& voice = sid.GetVoice(voiceIndex);
 
     ImGui::BeginGroup();
-    ImGui::Text("V%d", voiceIndex + 1);
+    ImGui::TextColored(ImColor(VOICE_COLORS.at(voiceIndex)).Value, "V%d", voiceIndex + 1);
     ImGui::SameLine(0.0F, 4.0F);
     DrawMuteSoloButtons(sid, voiceIndex);
 
@@ -163,9 +169,11 @@ static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_tim
     }
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+    ImGui::PushStyleColor(ImGuiCol_PlotLines, ImColor(VOICE_COLORS.at(voiceIndex)).Value);
     ImGui::BeginChild(ImGui::GetID(voiceIndex), ImVec2(210.0F, 30.0F), 0, ImGuiWindowFlags_NoInputs);
     ImGui::PlotLines("##Wave", points.data(), static_cast<int>(WAVE_POINTS), 0, nullptr, -1.1F, 1.1F, ImVec2(210.0F, 30.0F));
     ImGui::EndChild();
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar(2);
     ImGui::EndGroup();
 }
@@ -230,7 +238,7 @@ static void DrawControlBadge(const char* label, bool active) {
     ImGui::PopStyleColor(5);
 }
 
-static void DrawVoiceADSR(const Oscillator& voice) {
+static void DrawVoiceADSR(const Oscillator& voice, int voiceIndex) {
     const ImVec2 size(240.0F, 26.0F);
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
     const ImVec2 p1 = ImVec2(p0.x + size.x, p0.y + size.y);
@@ -312,7 +320,7 @@ static void DrawVoiceADSR(const Oscillator& voice) {
     }
 
     if (voice.env.level > 0 || voice.env.state != ADSREnvelope::IDLE) {
-        const ImU32 activeColor = ImColor(Theme::AccentActive);
+        const ImU32 activeColor = VOICE_COLORS.at(voiceIndex);
 
         if (voice.env.state == ADSREnvelope::ATTACK) {
             drawList->AddLine(ImVec2(x0, y0), ImVec2(curX, curY), activeColor, 2.0F);
@@ -330,8 +338,8 @@ static void DrawVoiceADSR(const Oscillator& voice) {
             drawList->AddLine(ImVec2(x3, ySus), ImVec2(curX, curY), activeColor, 2.0F);
         }
 
-        drawList->AddLine(ImVec2(curX, y0), ImVec2(curX, curY), ImColor(Theme::AccentPrimary), 1.5F);
-        drawList->AddCircleFilled(ImVec2(curX, curY), 4.0F, IM_COL32(79, 195, 247, 100));
+        drawList->AddLine(ImVec2(curX, y0), ImVec2(curX, curY), activeColor, 1.5F);
+        drawList->AddCircleFilled(ImVec2(curX, curY), 4.0F, (activeColor & 0x00FFFFFF) | 0x60000000);
         drawList->AddCircleFilled(ImVec2(curX, curY), 2.5F, activeColor);
     }
 
@@ -344,7 +352,7 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     ImGui::BeginGroup();
     DrawColoredText(Theme::TextSecondary, "Freq:");
     ImGui::SameLine(0.0F, 4.0F);
-    DrawColoredText(Theme::AccentPrimary, std::format("{:04X}", voice.frequency));
+    DrawColoredText(ImColor(VOICE_COLORS.at(voiceIndex)).Value, std::format("{:04X}", voice.frequency));
     ImGui::SameLine(0.0F, 34.0F);
     DrawColoredText(Theme::TextSecondary, "PW:");
     ImGui::SameLine(0.0F, 4.0F);
@@ -380,7 +388,7 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     DrawColoredText(Theme::TextMain, std::format("{:X}", dispR));
 
     ImGui::SameLine(0.0F, 26.0F);
-    DrawVoiceADSR(voice);
+    DrawVoiceADSR(voice, voiceIndex);
 
     ImGui::SameLine(0.0F, 32.0F);
     DrawControlBadge("GATE", (voice.control & 1) != 0);
@@ -399,11 +407,6 @@ static void DrawPianoRoll(const Core::SID& sid) {
 
     static constexpr const char* NOTE_NAMES[12] = {
         "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
-    };
-    static constexpr std::array<ImU32, 3> VOICE_COLORS = {
-        IM_COL32(79, 195, 247, 240),
-        IM_COL32(255, 183, 77, 240),
-        IM_COL32(240, 98, 146, 240)
     };
 
     std::array<int, 3> activeNotes = {-1, -1, -1};
@@ -429,9 +432,10 @@ static void DrawPianoRoll(const Core::SID& sid) {
 
     constexpr int START_NOTE = 24;
     constexpr int NUM_WHITE_KEYS = 35;
-    const float whiteKeyW = std::clamp(std::floor((fullAvailW - 4.0F) / static_cast<float>(NUM_WHITE_KEYS)), 11.0F, 30.0F);
+    const float totalPianoW = fullAvailW;
+    const float keyStep = totalPianoW / static_cast<float>(NUM_WHITE_KEYS);
     constexpr float whiteKeyH = 20.0F;
-    const float blackKeyW = std::round(whiteKeyW * 0.60F);
+    const float blackKeyW = std::max(5.0F, std::round(keyStep * 0.58F));
     constexpr float blackKeyH = 12.0F;
 
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
@@ -442,17 +446,17 @@ static void DrawPianoRoll(const Core::SID& sid) {
     };
 
     for (int i = 0; i < NUM_WHITE_KEYS; ++i) {
-        ImVec2 kp0(p0.x + (static_cast<float>(i) * whiteKeyW), p0.y);
-        ImVec2 kp1(kp0.x + whiteKeyW, p0.y + whiteKeyH);
-        drawList->AddRectFilled(kp0, kp1, IM_COL32(230, 230, 230, 255));
-        drawList->AddRect(kp0, kp1, IM_COL32(60, 60, 60, 255));
+        float x0 = p0.x + std::round(static_cast<float>(i) * keyStep);
+        float x1 = (i == NUM_WHITE_KEYS - 1) ? (p0.x + totalPianoW) : (p0.x + std::round(static_cast<float>(i + 1) * keyStep));
+        drawList->AddRectFilled(ImVec2(x0, p0.y), ImVec2(x1, p0.y + whiteKeyH), IM_COL32(230, 230, 230, 255));
+        drawList->AddRect(ImVec2(x0, p0.y), ImVec2(x1, p0.y + whiteKeyH), IM_COL32(60, 60, 60, 255));
     }
 
     for (int oct = 0; oct < 5; ++oct) {
         int baseW = oct * 7;
         const std::array<int, 5> blackOffsets = {0, 1, 3, 4, 5};
         for (int b : blackOffsets) {
-            float kx = p0.x + (static_cast<float>(baseW + b) * whiteKeyW) + (whiteKeyW * 0.68F);
+            float kx = p0.x + std::round((static_cast<float>(baseW + b) * keyStep) + (keyStep * 0.68F));
             ImVec2 kp0(kx, p0.y);
             ImVec2 kp1(kx + blackKeyW, p0.y + blackKeyH);
             drawList->AddRectFilled(kp0, kp1, IM_COL32(35, 35, 35, 255));
@@ -471,20 +475,18 @@ static void DrawPianoRoll(const Core::SID& sid) {
 
         if (whiteIdx >= 0) {
             int keyIdx = (oct * 7) + whiteIdx;
-            ImVec2 kp0(p0.x + (static_cast<float>(keyIdx) * whiteKeyW), p0.y + blackKeyH);
-            ImVec2 kp1(kp0.x + whiteKeyW, p0.y + whiteKeyH);
-            drawList->AddRectFilled(kp0, kp1, VOICE_COLORS.at(v));
+            float x0 = p0.x + std::round(static_cast<float>(keyIdx) * keyStep);
+            float x1 = (keyIdx == NUM_WHITE_KEYS - 1) ? (p0.x + totalPianoW) : (p0.x + std::round(static_cast<float>(keyIdx + 1) * keyStep));
+            drawList->AddRectFilled(ImVec2(x0, p0.y + blackKeyH), ImVec2(x1, p0.y + whiteKeyH), VOICE_COLORS.at(v));
         } else {
             int prevWhite = NOTE_TO_WHITE.at(nInOct - 1);
             int keyIdx = (oct * 7) + prevWhite;
-            float kx = p0.x + (static_cast<float>(keyIdx) * whiteKeyW) + (whiteKeyW * 0.68F);
-            ImVec2 kp0(kx, p0.y);
-            ImVec2 kp1(kx + blackKeyW, p0.y + blackKeyH);
-            drawList->AddRectFilled(kp0, kp1, VOICE_COLORS.at(v));
+            float kx = p0.x + std::round((static_cast<float>(keyIdx) * keyStep) + (keyStep * 0.68F));
+            drawList->AddRectFilled(ImVec2(kx, p0.y), ImVec2(kx + blackKeyW, p0.y + blackKeyH), VOICE_COLORS.at(v));
         }
     }
 
-    ImGui::Dummy(ImVec2(static_cast<float>(NUM_WHITE_KEYS) * whiteKeyW, whiteKeyH));
+    ImGui::Dummy(ImVec2(totalPianoW, whiteKeyH));
 }
 
 static void ComputeFFT(std::vector<std::complex<float>>& a) {
@@ -540,8 +542,10 @@ static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrum
     ComputeFFT(fftData);
 
     for (size_t i = 0; i < 32; ++i) {
-        float mag = (std::abs(fftData.at(i + 1)) / (static_cast<float>(FFT_SIZE) * 0.5F)) * 1.5F;
-        smoothedSpectrum.at(i) = std::clamp(std::max(mag, smoothedSpectrum.at(i) * 0.82F), 0.0F, 1.0F);
+        float rawMag = (std::abs(fftData.at(i + 1)) / (static_cast<float>(FFT_SIZE) * 0.25F));
+        float db = (rawMag > 1e-4F) ? (20.0F * std::log10(rawMag)) : -60.0F;
+        float norm = std::clamp((db + 38.0F) / 38.0F, 0.0F, 1.0F);
+        smoothedSpectrum.at(i) = std::clamp(std::max(norm, smoothedSpectrum.at(i) * 0.82F), 0.0F, 1.0F);
         spectrumOut.at(i) = smoothedSpectrum.at(i);
     }
 }
@@ -559,7 +563,13 @@ static void DrawCompactSpectrum(const std::array<float, 32>& spectrum) {
         float h = std::clamp(spectrum.at(i) * maxH, 0.0F, maxH);
         float bx0 = p0.x + 2.0F + (static_cast<float>(i) * barW);
         float by1 = p0.y + barH - 1.0F;
-        drawList->AddRectFilled(ImVec2(bx0, by1 - h), ImVec2(bx0 + barW - 1.0F, by1), ImColor(Theme::AccentPrimary));
+        ImU32 col = ImColor(Theme::AccentPrimary);
+        if (spectrum.at(i) > 0.65F) {
+            col = IM_COL32(255, 100, 100, 255);
+        } else if (spectrum.at(i) > 0.40F) {
+            col = IM_COL32(255, 200, 50, 255);
+        }
+        drawList->AddRectFilled(ImVec2(bx0, by1 - h), ImVec2(bx0 + barW - 1.0F, by1), col);
     }
     ImGui::Dummy(ImVec2(availW, barH));
 }
@@ -569,7 +579,7 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
     ImGui::TextUnformatted("Mute/Solo:");
     for (int v = 0; v < 3; ++v) {
         ImGui::SameLine(0.0F, 12.0F);
-        ImGui::Text("V%d", v + 1);
+        ImGui::TextColored(ImColor(VOICE_COLORS.at(v)).Value, "V%d", v + 1);
         ImGui::SameLine(0.0F, 4.0F);
         DrawMuteSoloButtons(sid, v);
     }
@@ -593,9 +603,9 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
         float by1 = p0.y + barHeight - 3.0F;
         float by0 = by1 - h;
         ImU32 col = ImColor(Theme::AccentPrimary);
-        if (spectrum.at(i) > 0.7F) {
+        if (spectrum.at(i) > 0.65F) {
             col = IM_COL32(255, 100, 100, 255);
-        } else if (spectrum.at(i) > 0.4F) {
+        } else if (spectrum.at(i) > 0.40F) {
             col = IM_COL32(255, 200, 50, 255);
         }
         drawList->AddRectFilled(ImVec2(bx0, by0), ImVec2(bx0 + barWidth - 1.0F, by1), col);
@@ -631,13 +641,13 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
             ImVec2 cp1(cx0 + cellW - 0.5F, cy0 + cellH - 0.5F);
 
             ImU32 cellColor = IM_COL32(11, 29, 40, 220);
-            if (val > 0.75F) {
+            if (val > 0.65F) {
                 cellColor = IM_COL32(255, 235, 59, 255);
-            } else if (val > 0.50F) {
+            } else if (val > 0.40F) {
                 cellColor = IM_COL32(0, 230, 200, 240);
-            } else if (val > 0.25F) {
+            } else if (val > 0.18F) {
                 cellColor = IM_COL32(0, 150, 180, 220);
-            } else if (val > 0.05F) {
+            } else if (val > 0.04F) {
                 cellColor = IM_COL32(20, 70, 95, 200);
             }
             drawList->AddRectFilled(cp0, cp1, cellColor);
