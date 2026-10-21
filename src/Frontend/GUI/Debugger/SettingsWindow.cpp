@@ -204,16 +204,15 @@ static void DrawSDCardSettings(AppState& state) {
             WebFileUtils::open_browser_file_picker(".img");
         }
 #else
-        if (ImGui::Button("Create New", ImVec2(ImGui::GetContentRegionAvail().x * 0.33F, 0))) {
+        if (ImGui::Button("Create New", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
             Frontend::CustomFileDialog::OpenDialog("CreateSDDlgKey", "Save New SD Image", ".img", ".", "", 1, nullptr,
                                                     ImGuiFileDialogFlags_ConfirmOverwrite);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Mount IMG", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
+        if (ImGui::Button("Mount IMG", ImVec2(-FLT_MIN, 0))) {
             Frontend::CustomFileDialog::OpenDialog("MountSDDlgKey", "Mount SD Image", ".img", ".", "", 1, nullptr,
                                                     ImGuiFileDialogFlags_None);
         }
-        ImGui::SameLine();
         if (ImGui::Button("Mount Folder", ImVec2(-FLT_MIN, 0))) {
             Frontend::CustomFileDialog::OpenDialog("MountFolderDlgKey", "Mount Host Folder", nullptr, ".");
         }
