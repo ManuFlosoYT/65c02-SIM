@@ -440,11 +440,12 @@ static void HandleMountFolderDialog(AppState& state) {
     if (CustomFileDialog::Display("MountFolderDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string folderPath = CustomFileDialog::GetFilePathName();
-            if (!folderPath.empty() && std::filesystem::is_directory(folderPath)) {
+            const std::filesystem::path hostFolder(std::u8string(folderPath.begin(), folderPath.end()));
+            if (!folderPath.empty() && std::filesystem::is_directory(hostFolder)) {
                 if (!GUI::IsSDCardEnabled(state)) {
                     state.popups.sdCardDisabled = true;
                 } else {
-                    if (std::filesystem::exists(std::filesystem::path(folderPath) / ".65C02_SIM_mount")) {
+                    if (std::filesystem::exists(hostFolder / ".65C02_SIM_mount")) {
                         GUI::MountFolder(state, folderPath, true);
                     } else {
                         state.popups.sdCardMountSentinelWarning = true;

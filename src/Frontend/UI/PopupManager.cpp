@@ -136,7 +136,8 @@ static void DrawSDCardPopups(AppState& state) {
         ImGui::TextUnformatted("Without this file, file deletions on the host will be restricted to prevent accidental data loss.");
         ImGui::Spacing();
         if (ImGui::Button("Create .65C02_SIM_mount & Allow Deletion")) {
-            std::filesystem::path sentinelPath = std::filesystem::path(state.popups.sdCardPendingMountFolder) / ".65C02_SIM_mount";
+            const auto& pending = state.popups.sdCardPendingMountFolder;
+            std::filesystem::path sentinelPath = std::filesystem::path(std::u8string(pending.begin(), pending.end())) / ".65C02_SIM_mount";
             std::ofstream sentinel(sentinelPath);
             GUI::MountFolder(state, state.popups.sdCardPendingMountFolder, true);
             state.popups.sdCardPendingMountFolder.clear();

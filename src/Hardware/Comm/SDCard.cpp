@@ -9,12 +9,22 @@
 #include <filesystem>
 #include <iostream>
 #include <set>
+#include <string_view>
 
 #ifndef PROJECT_VERSION
 #define PROJECT_VERSION "unknown"
 #endif
 
 namespace Hardware {
+
+namespace {
+
+// Paths are stored as UTF-8; on Windows std::string -> path would use the ANSI code page.
+std::filesystem::path PathFromUtf8(std::string_view str) {
+    return std::filesystem::path(std::u8string(str.begin(), str.end()));
+}
+
+}  // namespace
 
 SDCard::SDCard() { Reset(); }
 
@@ -40,7 +50,8 @@ void SDCard::Reset() {
 }
 
 bool SDCard::Mount(const std::string& imagePath) {
-    if (std::filesystem::is_directory(imagePath)) {
+    const std::filesystem::path fsPath = PathFromUtf8(imagePath);
+    if (std::filesystem::is_directory(fsPath)) {
         return MountFolder(imagePath);
     }
 
@@ -48,22 +59,22 @@ bool SDCard::Mount(const std::string& imagePath) {
         Unmount();
     }
 
-    imageFile.open(imagePath, std::ios::in | std::ios::out | std::ios::binary);
+    imageFile.open(fsPath, std::ios::in | std::ios::out | std::ios::binary);
     if (imageFile.is_open()) {
         is_read_only = false;
     } else {
         // Try opening read-only if read-write failed
         imageFile.clear();
-        imageFile.open(imagePath, std::ios::in | std::ios::binary);
+        imageFile.open(fsPath, std::ios::in | std::ios::binary);
         if (imageFile.is_open()) {
             is_read_only = true;
         } else {
             // Try creating it if it doesn't exist
             imageFile.clear();
-            imageFile.open(imagePath, std::ios::out | std::ios::binary);
+            imageFile.open(fsPath, std::ios::out | std::ios::binary);
             if (imageFile.is_open()) {
                 imageFile.close();
-                imageFile.open(imagePath, std::ios::in | std::ios::out | std::ios::binary);
+                imageFile.open(fsPath, std::ios::in | std::ios::out | std::ios::binary);
                 is_read_only = false;
             }
         }
@@ -245,41 +256,51 @@ std::string GenerateSFN(const std::string& filename, std::set<std::string>& used
 
 }  // namespace
 
+static bool IsProtectedHostPath(const std::filesystem::path& canPath) {
+    if (canPath.empty() || canPath == canPath.root_path()) {
+        return true;
+    }
+
+    std::vector<std::filesystem::path> protectedDirs;
+#if defined(_WIN32)
+    for (const char* env : {"SystemRoot", "WINDIR", "ProgramFiles", "ProgramFiles(x86)", "ProgramData", "USERPROFILE"}) {
+        if (const char* val = std::getenv(env)) {
+            protectedDirs.push_back(PathFromUtf8(val));
+        }
+    }
+#else
+    for (const char* dir : {"/home", "/root", "/usr", "/bin", "/sbin", "/lib", "/etc", "/var", "/tmp", "/sys", "/proc",
+                            "/dev", "/boot", "/opt", "/Users", "/System", "/Library", "/Applications"}) {
+        protectedDirs.emplace_back(dir);
+    }
+    if (const char* home = std::getenv("HOME")) {
+        protectedDirs.push_back(PathFromUtf8(home));
+    }
+#endif
+
+    for (const auto& dir : protectedDirs) {
+        std::error_code ec;
+        std::filesystem::path canDir = std::filesystem::canonical(dir, ec);
+        if (!ec && std::filesystem::equivalent(canPath, canDir, ec) && !ec) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool SDCard::MountFolder(const std::string& folderPath, bool allowDeletion) {
-    if (!std::filesystem::exists(folderPath) || !std::filesystem::is_directory(folderPath)) {
+    const std::filesystem::path hostFolder = PathFromUtf8(folderPath);
+    if (!std::filesystem::exists(hostFolder) || !std::filesystem::is_directory(hostFolder)) {
         return false;
     }
 
     std::error_code ec;
-    std::filesystem::path canPath = std::filesystem::canonical(folderPath, ec);
-    if (ec) {
+    std::filesystem::path canPath = std::filesystem::canonical(hostFolder, ec);
+    if (ec || IsProtectedHostPath(canPath)) {
         return false;
     }
 
-    std::string pathStr = canPath.lexically_normal().string();
-
-    static const std::vector<std::string> blacklist = {
-        "/", "/home", "/root", "/usr", "/bin", "/sbin", "/etc", "/var", "/tmp",
-        "C:\\", "C:/", "C:\\Windows", "C:/Windows"
-    };
-
-    for (const auto& item : blacklist) {
-        std::filesystem::path bPath(item);
-        std::filesystem::path canBPath = std::filesystem::canonical(bPath, ec);
-        if (!ec) {
-            if (canPath == canBPath) {
-                return false;
-            }
-        } else if (pathStr == item || (canPath.has_root_path() && canPath == canPath.root_path())) {
-            return false;
-        }
-    }
-
-    if (canPath.empty() || canPath == canPath.root_path()) {
-        return false;
-    }
-
-    if (std::filesystem::exists(std::filesystem::path(folderPath) / ".65C02_SIM_mount")) {
+    if (std::filesystem::exists(hostFolder / ".65C02_SIM_mount")) {
         allow_host_deletion = true;
     } else {
         allow_host_deletion = allowDeletion;
@@ -413,7 +434,7 @@ bool SDCard::BuildVirtualFAT() {
                     continue;
                 }
                 if (std::filesystem::is_symlink(entry.symlink_status())) {
-                    if (!IsPathContained(entry.path(), currentPath)) {
+                    if (!IsPathContained(entry.path(), PathFromUtf8(currentPath))) {
                         continue;
                     }
                 }
@@ -519,7 +540,7 @@ bool SDCard::BuildVirtualFAT() {
         }
     };
 
-    buildDir(buildDir, currentPath, 0, 0);
+    buildDir(buildDir, PathFromUtf8(currentPath), 0, 0);
     return true;
 }
 
@@ -529,7 +550,7 @@ void SDCard::ExtractVirtualFAT() {
     }
 
     std::error_code ec;
-    std::filesystem::path root_host = std::filesystem::canonical(currentPath, ec);
+    std::filesystem::path root_host = std::filesystem::canonical(PathFromUtf8(currentPath), ec);
     if (ec) {
         return;
     }
@@ -1428,13 +1449,13 @@ bool SDCard::LoadState(std::istream& inStream) {
         imageFile.close();
     }
     if (mounted && !currentPath.empty()) {
-        if (std::filesystem::is_directory(currentPath)) {
+        if (std::filesystem::is_directory(PathFromUtf8(currentPath))) {
             MountFolder(currentPath);
         } else {
-            imageFile.open(currentPath, std::ios::in | std::ios::out | std::ios::binary);
+            imageFile.open(PathFromUtf8(currentPath), std::ios::in | std::ios::out | std::ios::binary);
             if (!imageFile.is_open()) {
                 imageFile.clear();
-                imageFile.open(currentPath, std::ios::in | std::ios::binary);
+                imageFile.open(PathFromUtf8(currentPath), std::ios::in | std::ios::binary);
                 if (imageFile.is_open()) {
                     is_read_only = true;
                 }
