@@ -439,7 +439,7 @@ static void HandleMountSDDialog(AppState& state) {
 static void HandleMountFolderDialog(AppState& state) {
     if (CustomFileDialog::Display("MountFolderDlgKey")) {
         if (CustomFileDialog::IsOk()) {
-            std::string folderPath = CustomFileDialog::GetFilePathName();
+            std::string folderPath = CustomFileDialog::GetCurrentPath();
             const std::filesystem::path hostFolder(std::u8string(folderPath.begin(), folderPath.end()));
             if (!folderPath.empty() && std::filesystem::is_directory(hostFolder)) {
                 if (!GUI::IsSDCardEnabled(state)) {

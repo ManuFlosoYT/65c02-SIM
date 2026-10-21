@@ -18,6 +18,7 @@ public:
     [[nodiscard]] static bool IsOpened();
     [[nodiscard]] static bool IsOk();
     [[nodiscard]] static std::string GetFilePathName();
+    [[nodiscard]] static std::string GetCurrentPath();
     static void Close();
 
 private:

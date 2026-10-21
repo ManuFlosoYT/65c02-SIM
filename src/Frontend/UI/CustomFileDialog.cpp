@@ -31,6 +31,10 @@ std::string CustomFileDialog::GetFilePathName() {
     return ImGuiFileDialog::Instance()->GetFilePathName();
 }
 
+std::string CustomFileDialog::GetCurrentPath() {
+    return ImGuiFileDialog::Instance()->GetCurrentPath();
+}
+
 void CustomFileDialog::Close() {
     ImGuiFileDialog::Instance()->Close();
 }
