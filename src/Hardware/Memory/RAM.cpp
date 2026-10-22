@@ -1,6 +1,7 @@
 #include "Hardware/Memory/RAM.h"
 
 #include <algorithm>
+#include <random>
 
 namespace Hardware {
 
@@ -19,7 +20,14 @@ void RAM::Write(Word address, Byte data) {
     }
 }
 
-void RAM::Reset() { std::ranges::fill(data, 0); }
+void RAM::Reset() {
+    if (!powerOnPattern) {
+        std::ranges::fill(data, 0);
+        return;
+    }
+    std::mt19937 rng{std::random_device{}()};
+    std::ranges::generate(data, [&] { return static_cast<Byte>(rng()); });
+}
 
 bool RAM::SaveState(std::ostream& out) const {
     auto sz = static_cast<Word>(data.size());

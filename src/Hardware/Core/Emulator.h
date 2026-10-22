@@ -121,6 +121,7 @@ class Emulator {
     Hardware::VIA& GetVIA();
     Hardware::ROM& GetROM();
     Hardware::SDCard& GetSDCard();
+    Hardware::RAM& GetRAM() { return ram; }
     const Hardware::SDCard& GetSDCard() const;
     Hardware::ScriptEngine& GetScriptEngine();
     Hardware::BreakpointManager& GetBreakpointManager();

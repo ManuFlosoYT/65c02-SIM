@@ -64,6 +64,10 @@ static void DrawEmulationSettings(AppState& state) {
     if (ImGui::Checkbox("Simulate SD Read Latency", &state.emulation.sdLatencyEnabled)) {
         state.emulator.GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
     }
+    if (ImGui::Checkbox("Random RAM at Power-On", &state.emulation.ramPowerOnPattern)) {
+        state.emulator.GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
+    }
+    ImGui::SetItemTooltip("Fills RAM with random bytes on next Reset to catch uninitialized variables.");
 }
 
 static void DrawScriptingSettings(AppState& state) {

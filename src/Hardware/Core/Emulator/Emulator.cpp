@@ -457,6 +457,9 @@ void Emulator::RegisterDefaultLayout() {
 }
 
 void Emulator::ResetHardwareDevices() {
+    if (ram.IsPowerOnPattern()) {
+        ram.Reset();
+    }
     acia.Reset();
     via.Reset();
     sid.Reset();

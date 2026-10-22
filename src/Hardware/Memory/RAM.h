@@ -18,6 +18,8 @@ class RAM : public IBusDevice {
     void Write(Word address, Byte data) override;
     [[nodiscard]] std::string GetName() const override;
     void Reset() override;
+    void SetPowerOnPattern(bool enabled) { powerOnPattern = enabled; }
+    [[nodiscard]] bool IsPowerOnPattern() const { return powerOnPattern; }
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inputStream) override;
 
@@ -26,6 +28,7 @@ class RAM : public IBusDevice {
 
    private:
     std::vector<Byte> data;
+    bool powerOnPattern = false;
 };
 
 }  // namespace Hardware
