@@ -11,6 +11,7 @@
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
 #include "Frontend/GUI/Debugger/MemoryLayoutWindow.h"
 #include "Frontend/GUI/Debugger/DataInspectorWindow.h"
+#include "Frontend/GUI/Debugger/MemoryScannerWindow.h"
 #include "Frontend/GUI/Debugger/ProfilerWindow.h"
 #include "Frontend/GUI/Debugger/BreakpointWindow.h"
 #include "Frontend/GUI/Debugger/LogicAnalyzerWindow.h"
@@ -22,8 +23,9 @@ namespace GUI {
 namespace {
 
 void DrawDebugSidebar(Control::AppState& state, float sidebarWidth) {
-    constexpr std::array<const char*, 9> modes = {"Settings", "Disassembly", "Profiler", "Debugger", "Breakpoints",
-                                                   "Memory Layout", "Data Inspector", "Logic Analyzer", "Network Sniffer"};
+    constexpr std::array<const char*, 10> modes = {"Settings", "Disassembly", "Profiler", "Debugger", "Breakpoints",
+                                                   "Memory Layout", "Data Inspector", "Logic Analyzer", "Network Sniffer",
+                                                   "Memory Scanner"};
     ImGui::BeginChild("DebugSidebar", ImVec2(sidebarWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2));
@@ -165,6 +167,8 @@ void DrawDebugMenu(Control::AppState& state) {
         DrawDataInspectorWindow(state);
     } else if (state.debugger.mode == Control::DebuggerMode::LogicAnalyzer) {
         DrawLogicAnalyzerWindow(state);
+    } else if (state.debugger.mode == Control::DebuggerMode::MemoryScanner) {
+        DrawMemoryScannerWindow(state);
     } else {  // Network Sniffer
         DrawNetworkSnifferContent(state);
     }
