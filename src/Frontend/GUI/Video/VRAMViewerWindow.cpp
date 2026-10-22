@@ -357,7 +357,8 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
                       state.crt.blur || state.crt.shadowMask || state.crt.vignette || state.crt.cornerRounding ||
                       state.crt.glassGlare || state.crt.colorBleeding || state.crt.noise || state.crt.vsyncJitter ||
                       state.crt.phosphorDecay || state.crt.bloom || state.crt.ghosting || state.crt.halation || 
-                      state.crt.moire || state.crt.gamma != 2.2F;
+                      state.crt.moire || state.crt.sharpPixels || state.crt.humBar ||
+                      state.crt.monitorType != GUI::CRTMonitorType::RGB || state.crt.gamma != 2.2F;
 
         GLuint displayTex = state.render.vramTexture;
         if (anyCRT) {
@@ -380,6 +381,9 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             params.halation = state.crt.halation;
             params.moire = state.crt.moire;
             params.gamma = state.crt.gamma;
+            params.sharpPixels = state.crt.sharpPixels;
+            params.humBar = state.crt.humBar;
+            params.monitorType = state.crt.monitorType;
             params.time = state.crt.time;
 
             // We use a high internal resolution (1080p height) for better recording quality

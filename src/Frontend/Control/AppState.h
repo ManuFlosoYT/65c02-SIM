@@ -113,6 +113,9 @@ struct CRTSettings {
     bool halation = true;
     bool moire = true;
     bool rasterBeam = false;
+    bool sharpPixels = true;
+    bool humBar = true;
+    GUI::CRTMonitorType monitorType = GUI::CRTMonitorType::RGB;
     float gamma = 2.75F;
     float time = 0.0F;
 };

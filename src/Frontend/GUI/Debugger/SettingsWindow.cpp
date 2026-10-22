@@ -296,10 +296,10 @@ static void DrawSettingsCRTPart1(AppState& state) {
         state.crt.scanlines = state.crt.interlacing = state.crt.curvature = state.crt.chromatic = state.crt.blur =
             state.crt.shadowMask = state.crt.vignette = state.crt.cornerRounding = state.crt.glassGlare =
                 state.crt.colorBleeding = state.crt.noise = state.crt.vsyncJitter = state.crt.phosphorDecay =
-                    state.crt.bloom = state.crt.ghosting = state.crt.halation = state.crt.moire = val;
-        if (!val) {
-            state.crt.gamma = 2.2F;
-        }
+                    state.crt.bloom = state.crt.ghosting = state.crt.halation = state.crt.moire =
+                        state.crt.sharpPixels = state.crt.humBar = val;
+        state.crt.monitorType = CRTMonitorType::RGB;
+        state.crt.gamma = val ? 2.75F : 2.2F;
     };
     if (ImGui::Button("All On", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
         setCRTAll(true);
@@ -338,6 +338,15 @@ static void DrawSettingsCRTPart2(AppState& state) {
     ImGui::Checkbox("Ghosting (Echo)", &state.crt.ghosting);
     ImGui::Checkbox("Moiré Pattern", &state.crt.moire);
     ImGui::SliderFloat("Gamma", &state.crt.gamma, 1.0F, 3.5F, "%.2f");
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Display Config");
+    ImGui::Checkbox("Sharp Pixels", &state.crt.sharpPixels);
+    ImGui::Checkbox("Hum Bar", &state.crt.humBar);
+    static constexpr std::array<const char*, 4> monitorTypes = {"RGB", "Green P1", "Amber P3", "White P4"};
+    int monitorIdx = static_cast<int>(state.crt.monitorType);
+    if (ImGui::Combo("Monitor", &monitorIdx, monitorTypes.data(), static_cast<int>(monitorTypes.size()))) {
+        state.crt.monitorType = static_cast<CRTMonitorType>(monitorIdx);
+    }
     ImGui::Spacing();
     ImGui::TextUnformatted("Electron Beam");
     if (ImGui::Checkbox("Raster Beam Visualization", &state.crt.rasterBeam)) {

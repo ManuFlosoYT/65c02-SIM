@@ -1,8 +1,16 @@
 #pragma once
 
 #include <glad/gl.h>
+#include <array>
 
 namespace GUI {
+
+enum class CRTMonitorType : int {
+    RGB = 0,
+    GreenP1 = 1,  // Green phosphor (525nm)
+    AmberP3 = 2,  // Amber phosphor (590nm)
+    WhiteP4 = 3   // White phosphor P4
+};
 
 struct CRTParams {
     // Essentials
@@ -31,6 +39,14 @@ struct CRTParams {
     bool moire = false;
     float gamma = 2.75F;
 
+    // Display Config
+    bool sharpPixels = true;
+    bool humBar = false;
+    CRTMonitorType monitorType = CRTMonitorType::RGB;
+    int nativeWidth = 100;
+    int nativeHeight = 75;
+    int internalScale = 8; // 100x75 -> 800x600 FBO (8x8 subpixels/pixel on VRAM)
+
     // Animated effects time source
     float time = 0.0F;
 };
@@ -44,8 +60,10 @@ class CRTFilter {
     GLuint Apply(GLuint inputTex, int width, int height, const CRTParams& params);
 
    private:
-    GLuint m_fbo = 0;
-    GLuint m_outputTex = 0;
+    std::array<GLuint, 2> m_fbo = {0, 0};
+    std::array<GLuint, 2> m_outputTex = {0, 0};
+    int m_pingPong = 0;
+
     GLuint m_shader = 0;
     GLuint m_vao = 0;
     GLuint m_vbo = 0;
@@ -53,7 +71,9 @@ class CRTFilter {
     int m_h = 0;
 
     GLint m_uTexture = -1;
-    GLint m_uTexelSize = -1;
+    GLint m_uPrevFrame = -1;
+    GLint m_uNativeSize = -1;
+    GLint m_uOutputSize = -1;
     GLint m_uTime = -1;
     GLint m_uScanlines = -1;
     GLint m_uInterlacing = -1;
@@ -73,6 +93,9 @@ class CRTFilter {
     GLint m_uHalation = -1;
     GLint m_uMoire = -1;
     GLint m_uGamma = -1;
+    GLint m_uSharpPixels = -1;
+    GLint m_uHumBar = -1;
+    GLint m_uMonitorType = -1;
 
     void CreateFBO(int width, int height);
     void Resize(int width, int height);
