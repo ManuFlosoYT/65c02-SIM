@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
 
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #include <fstream>

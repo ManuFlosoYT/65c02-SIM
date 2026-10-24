@@ -1,7 +1,7 @@
 #include "Frontend/Control/CartridgeUtils.h"
 #include <iostream>
 #ifndef TARGET_WASM
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #endif
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"

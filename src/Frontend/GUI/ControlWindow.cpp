@@ -1,5 +1,5 @@
 #include "Frontend/GUI/ControlWindow.h"
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #include <filesystem>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -9,8 +9,8 @@ using Frontend::CustomFileDialog;
 
 #include "Frontend/Control/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
-#include "Frontend/GUI/SDUtils.h"
-#include "Hardware/Core/Emulator.h"
+#include "Frontend/Control/SDUtils.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #ifdef TARGET_WASM

@@ -3,7 +3,7 @@
 #include "Hardware/Comm/ACIA.h"
 #include "Hardware/Comm/SDCard.h"
 #include "Hardware/Comm/VIA.h"
-#include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Core/LogicAnalyzer.h"
 
 TEST(LogicAnalyzerTest, RingBufferOperations) {

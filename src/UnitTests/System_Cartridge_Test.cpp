@@ -1,5 +1,5 @@
 #include "Hardware/Core/CartridgeLoader.h"
-#include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Comm/SDCard.h"
 #include <filesystem>
 #include <fstream>

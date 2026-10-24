@@ -1,9 +1,9 @@
-#include "Hardware/Comm/ESP8266.h"
+#include "Hardware/Comm/ESP8266/ESP8266.h"
 
 #include <gtest/gtest.h>
 
 #include "Hardware/Core/Bus.h"
-#include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Memory/RAM.h"
 
 using namespace Hardware;

@@ -34,7 +34,7 @@
 #endif
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/CartridgeUtils.h"
-#include "Frontend/UI/UIModules.h"
+#include "Frontend/GUI/UIModules.h"
 #include "Frontend/Control/SDKManager.h"
 
 // Dedicated GPU

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 
 using namespace Core;
 

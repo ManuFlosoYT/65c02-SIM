@@ -135,7 +135,7 @@ void SetupFont(){
     };
     
     ImFont* mainFont = imguiio.Fonts->AddFontFromMemoryCompressedBase85TTF(
-        CascadiaMono_compressed_data_base85.data(),
+        GetCascadiaMonoCompressedBase85(),
         14.0F,
         nullptr,
         glyph_ranges

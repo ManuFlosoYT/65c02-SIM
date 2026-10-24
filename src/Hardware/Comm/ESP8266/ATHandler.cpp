@@ -2,7 +2,7 @@
 #include <cctype>
 #include <cstdio>
 
-#include "Hardware/Comm/ESP8266.h"
+#include "Hardware/Comm/ESP8266/ESP8266.h"
 
 namespace Hardware {
 

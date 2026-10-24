@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include "../../Hardware/Scripting/Lang/Lexer.h"
-#include "../../Hardware/Scripting/Lang/Parser.h"
-#include "../../Hardware/Scripting/Lang/Interpreter.h"
+#include "Core/Scripting/Lang/Lexer.h"
+#include "Core/Scripting/Lang/Parser.h"
+#include "Core/Scripting/Lang/Interpreter.h"
 
 using namespace System::Hardware::Scripting::Lang;
 

@@ -1,6 +1,6 @@
 #include "IDEWindow.h"
 #include <bit>
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #include "Frontend/GUI/IDEUtils.h"
 #include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 #include <fstream>

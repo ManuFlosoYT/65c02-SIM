@@ -2,7 +2,7 @@
 #include "Frontend/GUI/ConsoleView.h"
 #include "Frontend/GUI/Style/Style.h"
 
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
 
 #include <string>

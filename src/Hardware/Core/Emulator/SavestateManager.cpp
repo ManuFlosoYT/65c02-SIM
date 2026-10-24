@@ -1,4 +1,4 @@
-#include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Core/ISerializable.h"
 #include <picosha2.h>
 

@@ -9,7 +9,7 @@
 
 #include "Frontend/Control/SymbolTable.h"
 #include "Frontend/GUI/Video/CRTFilter.h"
-#include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 
 namespace Control {
 

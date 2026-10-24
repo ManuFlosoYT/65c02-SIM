@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Debugger/DebugMenu.h"
 
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #include <imgui.h>
 
 #include <array>

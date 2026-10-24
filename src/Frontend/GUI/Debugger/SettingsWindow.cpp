@@ -1,6 +1,6 @@
 #include "Frontend/GUI/Debugger/SettingsWindow.h"
 
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 
@@ -15,7 +15,7 @@
 #include <nlohmann/json.hpp>
 #include <iostream>
 
-#include "Frontend/GUI/SDUtils.h"
+#include "Frontend/Control/SDUtils.h"
 #ifdef TARGET_WASM
 #include <fstream>
 #include "Frontend/web/WebFileUtils.h"

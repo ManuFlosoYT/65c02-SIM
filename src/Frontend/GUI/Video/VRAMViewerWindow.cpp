@@ -2,7 +2,7 @@
 #include <imgui_internal.h>
 #include <bit>
 
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #include <fstream>

@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "Frontend/GUI/Style/Style.h"
-#include "Hardware/Comm/ESP8266.h"
+#include "Hardware/Comm/ESP8266/ESP8266.h"
 
 namespace GUI {
 

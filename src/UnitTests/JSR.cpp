@@ -7,7 +7,7 @@
 
 using namespace Hardware;
 
-class PruebaJSR : public ::testing::Test {
+class JSR_Test : public ::testing::Test {
 protected:
     void SetUp() override {
         bus.RegisterDevice(0x0000, 0xFFFF, &ram);
@@ -19,7 +19,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
+TEST_F(JSR_Test, SaltaASubrutinaCorrecto) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_JSR);
@@ -43,7 +43,7 @@ TEST_F(PruebaJSR, SaltaASubrutinaCorrecto) {
     EXPECT_EQ(RetornoLow, PC_RetornoEsperado & 0xFF);
 }
 
-TEST_F(PruebaJSR, JSRAnidado) {
+TEST_F(JSR_Test, JSRAnidado) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_JSR);

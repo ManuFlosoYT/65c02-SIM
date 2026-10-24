@@ -16,7 +16,7 @@
 #include "Frontend/GUI/MIDI/MIDIFile.h"
 #include "Frontend/GUI/MIDI/MIDISoundBank.h"
 #include "Frontend/GUI/Style/Style.h"
-#include "Frontend/UI/CustomFileDialog.h"
+#include "Frontend/GUI/CustomFileDialog.h"
 
 #ifndef TARGET_WASM
 #include "Frontend/Compiler/CompilerFrontend.h"

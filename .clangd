@@ -2,4 +2,13 @@ If:
   PathMatch: src/UnitTests/.*
 
 Diagnostics:
-  Suppress: '*'
+  Suppress:
+    - cert-err58-cpp
+    - cppcoreguidelines-avoid-non-const-global-variables
+    - cppcoreguidelines-owning-memory
+    - cppcoreguidelines-avoid-magic-numbers
+    - readability-magic-numbers
+    - readability-function-cognitive-complexity
+    - readability-identifier-length
+    - modernize-use-trailing-return-type
+    - bugprone-easily-swappable-parameters

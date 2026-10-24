@@ -7,7 +7,7 @@
 
 using namespace Hardware;
 
-class PruebaNOP : public ::testing::Test {
+class NOP_Test : public ::testing::Test {
 protected:
     void SetUp() override {
         bus.RegisterDevice(0x0000, 0xFFFF, &ram);
@@ -19,7 +19,7 @@ protected:
     CPU cpu;
 };
 
-TEST_F(PruebaNOP, NoHaceNada) {
+TEST_F(NOP_Test, NoHaceNada) {
     // Programa en memoria:
     // 0xFFFC: NOP (0xEA)
     // 0xFFFD: Opcode desconocido (0xFF) para detener la ejecución
@@ -45,7 +45,7 @@ TEST_F(PruebaNOP, NoHaceNada) {
     // before)
 }
 
-TEST_F(PruebaNOP, NoModificaEstado) {
+TEST_F(NOP_Test, NoModificaEstado) {
     cpu.A = 0x42;
     cpu.X = 0x42;
     cpu.Y = 0x42;

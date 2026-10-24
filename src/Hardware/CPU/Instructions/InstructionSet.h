@@ -266,6 +266,8 @@ constexpr static Byte INS_TSB_ABS = 0x0C;  // TSB ABS
 constexpr static Byte INS_TSB_ZP = 0x04;   // TSB ZP
 
 // Cycle counts for each instruction
+constexpr static Byte CYC_INS_WAI = 3;
+constexpr static Byte CYC_INS_STP = 3;
 constexpr static Byte CYC_INS_NOP = 2;
 constexpr static Byte CYC_INS_NOP_IM = 2;
 constexpr static Byte CYC_INS_NOP_ZP = 3;

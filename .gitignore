@@ -15,3 +15,4 @@ SDK.zip
 /assets/
 /wiki/
 cmake_test_discovery_e0a22a9269.json
+/cmake/__pycache__

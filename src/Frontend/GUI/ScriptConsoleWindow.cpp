@@ -1,7 +1,7 @@
 #include "Frontend/GUI/ScriptConsoleWindow.h"
 
 #include "Frontend/Control/AppState.h"
-#include "Hardware/Core/Emulator.h"
+#include "Hardware/Core/Emulator/Emulator.h"
 
 namespace GUI {
 

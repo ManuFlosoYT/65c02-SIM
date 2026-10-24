@@ -29,75 +29,16 @@ inline int Dispatch(CPU& cpu, Bus& bus);
 #include <array>
 
 #include "Hardware/CPU/CPU.h"
-#include "Hardware/CPU/Instructions/ADC.h"
-#include "Hardware/CPU/Instructions/AND.h"
-#include "Hardware/CPU/Instructions/ASL.h"
-#include "Hardware/CPU/Instructions/BBR.h"
-#include "Hardware/CPU/Instructions/BBS.h"
-#include "Hardware/CPU/Instructions/BCC.h"
-#include "Hardware/CPU/Instructions/BCS.h"
-#include "Hardware/CPU/Instructions/BEQ.h"
-#include "Hardware/CPU/Instructions/BIT.h"
-#include "Hardware/CPU/Instructions/BMI.h"
-#include "Hardware/CPU/Instructions/BNE.h"
-#include "Hardware/CPU/Instructions/BPL.h"
-#include "Hardware/CPU/Instructions/BRA.h"
-#include "Hardware/CPU/Instructions/BRK.h"
-#include "Hardware/CPU/Instructions/BVC.h"
-#include "Hardware/CPU/Instructions/BVS.h"
-#include "Hardware/CPU/Instructions/CLC.h"
-#include "Hardware/CPU/Instructions/CLD.h"
-#include "Hardware/CPU/Instructions/CLI.h"
-#include "Hardware/CPU/Instructions/CLV.h"
-#include "Hardware/CPU/Instructions/CMP.h"
-#include "Hardware/CPU/Instructions/CPX.h"
-#include "Hardware/CPU/Instructions/CPY.h"
-#include "Hardware/CPU/Instructions/DEC.h"
-#include "Hardware/CPU/Instructions/DEX.h"
-#include "Hardware/CPU/Instructions/DEY.h"
-#include "Hardware/CPU/Instructions/EOR.h"
-#include "Hardware/CPU/Instructions/INC.h"
-#include "Hardware/CPU/Instructions/INX.h"
-#include "Hardware/CPU/Instructions/INY.h"
+#include "Hardware/CPU/Instructions/Arithmetic.h"
+#include "Hardware/CPU/Instructions/BitManipulation.h"
+#include "Hardware/CPU/Instructions/Branch.h"
+#include "Hardware/CPU/Instructions/ControlFlow.h"
+#include "Hardware/CPU/Instructions/Flags.h"
 #include "Hardware/CPU/Instructions/InstructionSet.h"
-#include "Hardware/CPU/Instructions/JMP.h"
-#include "Hardware/CPU/Instructions/JSR.h"
-#include "Hardware/CPU/Instructions/LDA.h"
-#include "Hardware/CPU/Instructions/LDX.h"
-#include "Hardware/CPU/Instructions/LDY.h"
-#include "Hardware/CPU/Instructions/LSR.h"
-#include "Hardware/CPU/Instructions/NOP.h"
-#include "Hardware/CPU/Instructions/ORA.h"
-#include "Hardware/CPU/Instructions/PHA.h"
-#include "Hardware/CPU/Instructions/PHP.h"
-#include "Hardware/CPU/Instructions/PHX.h"
-#include "Hardware/CPU/Instructions/PHY.h"
-#include "Hardware/CPU/Instructions/PLA.h"
-#include "Hardware/CPU/Instructions/PLP.h"
-#include "Hardware/CPU/Instructions/PLX.h"
-#include "Hardware/CPU/Instructions/PLY.h"
-#include "Hardware/CPU/Instructions/RMB.h"
-#include "Hardware/CPU/Instructions/ROL.h"
-#include "Hardware/CPU/Instructions/ROR.h"
-#include "Hardware/CPU/Instructions/RTI.h"
-#include "Hardware/CPU/Instructions/RTS.h"
-#include "Hardware/CPU/Instructions/SBC.h"
-#include "Hardware/CPU/Instructions/SEC.h"
-#include "Hardware/CPU/Instructions/SED.h"
-#include "Hardware/CPU/Instructions/SEI.h"
-#include "Hardware/CPU/Instructions/SMB.h"
-#include "Hardware/CPU/Instructions/STA.h"
-#include "Hardware/CPU/Instructions/STX.h"
-#include "Hardware/CPU/Instructions/STY.h"
-#include "Hardware/CPU/Instructions/STZ.h"
-#include "Hardware/CPU/Instructions/TAX.h"
-#include "Hardware/CPU/Instructions/TAY.h"
-#include "Hardware/CPU/Instructions/TRB.h"
-#include "Hardware/CPU/Instructions/TSB.h"
-#include "Hardware/CPU/Instructions/TSX.h"
-#include "Hardware/CPU/Instructions/TXA.h"
-#include "Hardware/CPU/Instructions/TXS.h"
-#include "Hardware/CPU/Instructions/TYA.h"
+#include "Hardware/CPU/Instructions/LoadStore.h"
+#include "Hardware/CPU/Instructions/Logical.h"
+#include "Hardware/CPU/Instructions/Registers.h"
+#include "Hardware/CPU/Instructions/Stack.h"
 
 using namespace Hardware::Instructions;
 
@@ -110,8 +51,8 @@ constexpr std::array<OpcodeEntry<Debug>, 256> BuildDispatchTable() {
         entry = {nullptr, 0, -1};
     }
 
-    table[INS_WAI] = {[](CPU& cpu, Bus&) { cpu.waiting = true; }, 0, 0};
-    table[INS_STP] = {nullptr, 0, 1};
+    table[INS_WAI] = {&WAI::Execute<Debug>, 0, 0};
+    table[INS_STP] = {&STP::Execute<Debug>, 0, 1};
     table[INS_NOP_IM_02] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
     table[INS_JMP_IND] = {&JMP::ExecuteIND<Debug>, CYC_INS_JMP_IND, 0};
     table[INS_JMP_ABSX] = {&JMP::ExecuteABSX<Debug>, CYC_INS_JMP_ABSX, 0};
@@ -261,7 +202,7 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     X(INS_STA_ABSY, STA::ExecuteABSY, CYC_INS_STA_ABSY)                                                                \
     X(INS_STA_INDX, STA::ExecuteINDX, CYC_INS_STA_INDX)                                                                \
     X(INS_STA_INDY, STA::ExecuteINDY, CYC_INS_STA_INDY)                                                                \
-    X(INS_STA_IND_ZP, STA::ExecuteINDZP, CYC_INS_STA_IND_ZP)                                                           \
+    X(INS_STA_IND_ZP, STA::ExecuteIND_ZP, CYC_INS_STA_IND_ZP)                                                          \
     X(INS_STX_ZP, STX::ExecuteZP, CYC_INS_STX_ZP)                                                                      \
     X(INS_STX_ZPY, STX::ExecuteZPY, CYC_INS_STX_ZPY)                                                                   \
     X(INS_STX_ABS, STX::ExecuteABS, CYC_INS_STX_ABS)                                                                   \

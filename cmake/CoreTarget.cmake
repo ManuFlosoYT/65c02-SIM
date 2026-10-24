@@ -1,4 +1,6 @@
 file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
+    "src/Core/*.cpp"
+    "src/Core/*.h"
     "src/Hardware/*.cpp"
     "src/Hardware/*.h"
 )
