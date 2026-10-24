@@ -1,12 +1,143 @@
+#include "Hardware/Comm/ESP8266/ATHandler.h"
+#include "Hardware/Comm/ESP8266/NetworkLoop.h"
+#include "Hardware/Comm/ESP8266/ESP8266.h"
+
 #include <algorithm>
 #include <cctype>
-#include <cstdio>
-
-#include "Hardware/Comm/ESP8266/ESP8266.h"
 
 namespace Hardware {
 
-void ESP8266::ProcessCommand() {
+ATHandler::ATHandler(ESP8266* espPtr)
+    : esp(espPtr) {
+    Reset();
+}
+
+void ATHandler::Reset() {
+    currentState = ATState::Idle;
+    commandBuffer.clear();
+    cipsendBuffer.clear();
+    cipsendLinkId = 0;
+    cipsendLength = 0;
+    cipsendReceived = 0;
+    echoEnabled = true;
+    muxEnabled.store(false);
+    wifiConnected = false;
+    connectedSSID.clear();
+    cwMode = CWMode::Station;
+}
+
+void ATHandler::SetNetworkLoop(NetworkLoop* loop) { networkLoop = loop; }
+
+NetworkLoop* ATHandler::GetNetworkLoop() const { return networkLoop; }
+
+bool ATHandler::IsMuxEnabled() const { return muxEnabled.load(std::memory_order_relaxed); }
+
+void ATHandler::SetMuxEnabled(bool enabled) { muxEnabled.store(enabled, std::memory_order_relaxed); }
+
+CWMode ATHandler::GetCWMode() const { return cwMode; }
+
+void ATHandler::SetCWMode(CWMode mode) { cwMode = mode; }
+
+bool ATHandler::IsWifiConnected() const { return wifiConnected; }
+
+void ATHandler::SetWifiConnected(bool connected) { wifiConnected = connected; }
+
+const std::string& ATHandler::GetConnectedSSID() const { return connectedSSID; }
+
+void ATHandler::SetConnectedSSID(const std::string& ssid) { connectedSSID = ssid; }
+
+bool ATHandler::IsEchoEnabled() const { return echoEnabled; }
+
+void ATHandler::SetEchoEnabled(bool enabled) { echoEnabled = enabled; }
+
+ATState ATHandler::GetState() const { return currentState; }
+
+void ATHandler::SetState(ATState state) { currentState = state; }
+
+const std::string& ATHandler::GetCommandBuffer() const { return commandBuffer; }
+
+void ATHandler::SetCommandBuffer(const std::string& buf) { commandBuffer = buf; }
+
+void ATHandler::SetResponseCallback(std::function<void(const std::string&)> cb) {
+    responseCallback = std::move(cb);
+}
+
+const std::string& ATHandler::GetLastResponse() const { return lastResponse; }
+
+void ATHandler::EnqueueResponse(const std::string& response) {
+    if (esp) {
+        esp->EnqueueResponse(response);
+    } else {
+        lastResponse = response;
+        if (responseCallback) {
+            responseCallback(response);
+        }
+    }
+}
+
+void ATHandler::RecordTraffic(TrafficDirection dir, TrafficChannel ch, int linkId, const std::string& tag,
+                              const std::string& payload) {
+    if (esp) {
+        esp->RecordTraffic(dir, ch, linkId, tag, payload);
+    }
+}
+
+bool ATHandler::SaveState(std::ostream& out) const {
+    ISerializable::Serialize(out, commandBuffer);
+    ISerializable::Serialize(out, echoEnabled);
+    bool mux = muxEnabled.load();
+    ISerializable::Serialize(out, mux);
+    ISerializable::Serialize(out, wifiConnected);
+    ISerializable::Serialize(out, cwMode);
+    ISerializable::Serialize(out, connectedSSID);
+    return out.good();
+}
+
+bool ATHandler::LoadState(std::istream& inStream) {
+    ISerializable::Deserialize(inStream, commandBuffer);
+    ISerializable::Deserialize(inStream, echoEnabled);
+    bool mux = false;
+    ISerializable::Deserialize(inStream, mux);
+    muxEnabled.store(mux);
+    ISerializable::Deserialize(inStream, wifiConnected);
+    ISerializable::Deserialize(inStream, cwMode);
+    ISerializable::Deserialize(inStream, connectedSSID);
+    currentState = ATState::Idle;
+    return inStream.good();
+}
+
+void ATHandler::HandleWrite(Byte data) {
+    if (currentState == ATState::WaitingCIPSENDData) {
+        cipsendBuffer += static_cast<char>(data);
+        cipsendReceived++;
+        if (cipsendReceived >= cipsendLength) {
+            RecordTraffic(TrafficDirection::TX, TrafficChannel::DataPayload, cipsendLinkId,
+                          "CIPSEND (" + std::to_string(cipsendLength) + " B)", cipsendBuffer);
+            if (networkLoop) {
+                networkLoop->SendDataOnLink(cipsendLinkId, cipsendBuffer);
+            }
+            EnqueueResponse("\r\nSEND OK\r\n");
+            currentState = ATState::Idle;
+            cipsendBuffer.clear();
+        }
+    } else {
+        if (data == '\n') {
+            ProcessCurrentCommandBuffer();
+        } else if (data != '\r') {
+            commandBuffer += static_cast<char>(data);
+        }
+    }
+}
+
+void ATHandler::ProcessCommand(const std::string& cmd) {
+    commandBuffer = cmd;
+    while (!commandBuffer.empty() && (commandBuffer.back() == '\r' || commandBuffer.back() == '\n')) {
+        commandBuffer.pop_back();
+    }
+    ProcessCurrentCommandBuffer();
+}
+
+void ATHandler::ProcessCurrentCommandBuffer() {
     if (commandBuffer.empty()) {
         return;
     }
@@ -32,7 +163,7 @@ void ESP8266::ProcessCommand() {
     commandBuffer.clear();
 }
 
-void ESP8266::DispatchATCommand(const std::string& upper, const std::string& original) {
+void ATHandler::DispatchATCommand(const std::string& upper, const std::string& original) {
     if (upper == "AT+GMR") {
         HandleGMR();
     } else if (upper.starts_with("AT+CWMODE")) {
@@ -62,14 +193,18 @@ void ESP8266::DispatchATCommand(const std::string& upper, const std::string& ori
     } else if (upper.starts_with("AT+PING")) {
         HandlePing(original);
     } else if (upper == "AT+RST") {
-        Reset();
+        if (esp) {
+            esp->Reset();
+        } else {
+            Reset();
+        }
         EnqueueResponse("\r\nOK\r\n");
     } else {
         EnqueueResponse("\r\nERROR\r\n");
     }
 }
 
-void ESP8266::HandleCWMode(const std::string& cmd) {
+void ATHandler::HandleCWMode(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
         EnqueueResponse("\r\n+CWMODE:" + std::to_string(static_cast<int>(cwMode)) + "\r\nOK\r\n");
@@ -87,7 +222,7 @@ void ESP8266::HandleCWMode(const std::string& cmd) {
     EnqueueResponse("\r\nOK\r\n");
 }
 
-void ESP8266::HandleCWJAP(const std::string& cmd) {
+void ATHandler::HandleCWJAP(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
         if (wifiConnected) {
@@ -100,7 +235,6 @@ void ESP8266::HandleCWJAP(const std::string& cmd) {
 
     size_t start = pos + 1;
     std::string ssid = ParseQuotedParam(cmd, start);
-    // std::string pwd = ParseQuotedParam(cmd, start); // Password ignored in simulation
 
     if (ssid.empty()) {
         EnqueueResponse("\r\nERROR\r\n");
@@ -112,35 +246,27 @@ void ESP8266::HandleCWJAP(const std::string& cmd) {
     EnqueueResponse("\r\nWIFI CONNECTED\r\nWIFI GOT IP\r\nOK\r\n");
 }
 
-void ESP8266::HandleCWLAP() {
+void ATHandler::HandleCWLAP() {
     EnqueueResponse("\r\n+CWLAP:(3,\"Simulator_AP\",-40,\"00:11:22:33:44:55\",1)\r\nOK\r\n");
 }
 
-void ESP8266::HandleCWQAP() {
+void ATHandler::HandleCWQAP() {
     wifiConnected = false;
-    connectedSSID = "";
+    connectedSSID.clear();
     EnqueueResponse("\r\nOK\r\n");
 }
 
-void ESP8266::HandleCIFSR() {
+void ATHandler::HandleCIFSR() {
     if (!wifiConnected) {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }
-    
-    std::string localIp = "127.0.0.1";
-    try {
-        asio::ip::udp::socket socket(ioContext);
-        socket.connect(asio::ip::udp::endpoint(asio::ip::make_address("8.8.8.8"), 53));
-        localIp = socket.local_endpoint().address().to_string();
-    } catch (...) {
-        // Fallback to 127.0.0.1 if routing fails
-    }
 
+    std::string localIp = networkLoop ? networkLoop->GetLocalIP() : "127.0.0.1";
     EnqueueResponse("\r\n+CIFSR:STAIP,\"" + localIp + "\"\r\n+CIFSR:STAMAC,\"00:11:22:33:44:55\"\r\nOK\r\n");
 }
 
-void ESP8266::HandleCIPSTART(const std::string& cmd) {
+void ATHandler::HandleCIPSTART(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
         EnqueueResponse("\r\nERROR\r\n");
@@ -156,7 +282,7 @@ void ESP8266::HandleCIPSTART(const std::string& cmd) {
     int port = 0;
 
     try {
-        if (muxEnabled) {
+        if (muxEnabled.load(std::memory_order_relaxed)) {
             linkId = ParseIntParam(params, ppos);
             if (ppos < params.size() && params[ppos] == ',') {
                 ppos++;
@@ -192,10 +318,15 @@ void ESP8266::HandleCIPSTART(const std::string& cmd) {
     }
 }
 
-void ESP8266::PerformConnection(int linkId, const std::string& type, const std::string& host, int port,
-                                const std::string& params, size_t pos) {
+void ATHandler::PerformConnection(int linkId, const std::string& type, const std::string& host, int port,
+                                  const std::string& params, size_t pos) {
+    if (!networkLoop) {
+        EnqueueResponse("\r\nERROR\r\n");
+        return;
+    }
+
     if (type == "TCP") {
-        ConnectTCP(linkId, host, port);
+        networkLoop->ConnectTCP(linkId, host, port);
     } else if (type == "UDP") {
         int localPort = 0;
         int mode = 0;
@@ -207,10 +338,10 @@ void ESP8266::PerformConnection(int linkId, const std::string& type, const std::
                 mode = ParseIntParam(params, pos);
             }
         }
-        ConnectUDP(linkId, host, port, localPort, mode);
+        networkLoop->ConnectUDP(linkId, host, port, localPort, mode);
     } else if (type == "SSL" || type == "HTTPS") {
 #ifndef TARGET_WASM
-        ConnectSSL(linkId, host, port);
+        networkLoop->ConnectSSL(linkId, host, port);
 #else
         EnqueueResponse("\r\nSSL/HTTPS not supported in WASM\r\nERROR\r\n");
 #endif
@@ -219,7 +350,7 @@ void ESP8266::PerformConnection(int linkId, const std::string& type, const std::
     }
 }
 
-void ESP8266::HandleCIPSEND(const std::string& cmd) {
+void ATHandler::HandleCIPSEND(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
         EnqueueResponse("\r\nERROR\r\n");
@@ -229,7 +360,7 @@ void ESP8266::HandleCIPSEND(const std::string& cmd) {
     std::string params = cmd.substr(pos + 1);
     size_t ppos = 0;
 
-    if (muxEnabled) {
+    if (muxEnabled.load(std::memory_order_relaxed)) {
         cipsendLinkId = ParseIntParam(params, ppos);
         if (ppos < params.size() && params[ppos] == ',') {
             ppos++;
@@ -245,7 +376,8 @@ void ESP8266::HandleCIPSEND(const std::string& cmd) {
         return;
     }
 
-    if (cipsendLinkId < 0 || cipsendLinkId >= kMaxConnections || !connections.at(cipsendLinkId).active) {
+    if (cipsendLinkId < 0 || cipsendLinkId >= kMaxConnections ||
+        !networkLoop || !networkLoop->IsConnectionActive(cipsendLinkId)) {
         EnqueueResponse("\r\nlink is not valid\r\nERROR\r\n");
         return;
     }
@@ -256,13 +388,15 @@ void ESP8266::HandleCIPSEND(const std::string& cmd) {
     EnqueueResponse("\r\nOK\r\n> ");
 }
 
-void ESP8266::HandleCIPCLOSE(const std::string& cmd) {
+void ATHandler::HandleCIPCLOSE(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
-        if (muxEnabled) {
+        if (muxEnabled.load(std::memory_order_relaxed)) {
             EnqueueResponse("\r\nERROR\r\n");
         } else {
-            DisconnectLink(0);
+            if (networkLoop) {
+                networkLoop->DisconnectLink(0);
+            }
             EnqueueResponse("\r\nCLOSED\r\nOK\r\n");
         }
         return;
@@ -276,20 +410,24 @@ void ESP8266::HandleCIPCLOSE(const std::string& cmd) {
         return;
     }
     if (linkId == 5) {
-        DisconnectAll();
+        if (networkLoop) {
+            networkLoop->DisconnectAll();
+        }
         EnqueueResponse("\r\nOK\r\n");
     } else if (linkId >= 0 && linkId < kMaxConnections) {
-        DisconnectLink(linkId);
+        if (networkLoop) {
+            networkLoop->DisconnectLink(linkId);
+        }
         EnqueueResponse("\r\nOK\r\n");
     } else {
         EnqueueResponse("\r\nERROR\r\n");
     }
 }
 
-void ESP8266::HandleCIPMUX(const std::string& cmd) {
+void ATHandler::HandleCIPMUX(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
-        EnqueueResponse("\r\n+CIPMUX:" + std::to_string(muxEnabled ? 1 : 0) + "\r\nOK\r\n");
+        EnqueueResponse("\r\n+CIPMUX:" + std::to_string(muxEnabled.load(std::memory_order_relaxed) ? 1 : 0) + "\r\nOK\r\n");
         return;
     }
 
@@ -300,29 +438,31 @@ void ESP8266::HandleCIPMUX(const std::string& cmd) {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }
-    if (mode == 1 && IsAnyConnectionActive()) {
+    if (mode == 1 && networkLoop && networkLoop->IsAnyConnectionActive()) {
         EnqueueResponse("\r\nLink is builded\r\nERROR\r\n");
         return;
     }
 
-    muxEnabled = (mode == 1);
+    muxEnabled.store(mode == 1, std::memory_order_relaxed);
     EnqueueResponse("\r\nOK\r\n");
 }
 
-void ESP8266::HandleCIPSTATUS() {
-    std::string resp = "\r\nSTATUS:2\r\n";  // 2 = Got IP
-    for (int i = 0; i < kMaxConnections; ++i) {
-        auto& conn = connections.at(i);
-        if (conn.active) {
-            resp += "+CIPSTATUS:" + std::to_string(i) + ",\"" + conn.protocol + "\",\"" + conn.remoteHost + "\"," +
-                    std::to_string(conn.remotePort) + ",0\r\n";
+void ATHandler::HandleCIPSTATUS() {
+    std::string resp = "\r\nSTATUS:2\r\n";
+    if (networkLoop) {
+        for (int i = 0; i < kMaxConnections; ++i) {
+            const auto& conn = networkLoop->GetConnection(i);
+            if (conn.active) {
+                resp += "+CIPSTATUS:" + std::to_string(i) + ",\"" + conn.protocol + "\",\"" + conn.remoteHost + "\"," +
+                        std::to_string(conn.remotePort) + ",0\r\n";
+            }
         }
     }
     resp += "OK\r\n";
     EnqueueResponse(resp);
 }
 
-void ESP8266::HandleCIPSERVER(const std::string& cmd) {
+void ATHandler::HandleCIPSERVER(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
         EnqueueResponse("\r\nERROR\r\n");
@@ -331,7 +471,7 @@ void ESP8266::HandleCIPSERVER(const std::string& cmd) {
 
     size_t start = pos + 1;
     int mode = ParseIntParam(cmd, start);
-    int port = 333;  // Default
+    int port = 333;
 
     if (start < cmd.size() && cmd[start] == ',') {
         start++;
@@ -339,120 +479,41 @@ void ESP8266::HandleCIPSERVER(const std::string& cmd) {
     }
 
     if (mode == 1) {
-        StartServer(port);
+        if (networkLoop) {
+            networkLoop->StartServer(port);
+        } else {
+            EnqueueResponse("\r\nOK\r\n");
+        }
     } else {
-        StopServer();
+        if (networkLoop) {
+            networkLoop->StopServer();
+        }
         EnqueueResponse("\r\nOK\r\n");
     }
 }
 
-void ESP8266::HandleGMR() {
+void ATHandler::HandleGMR() {
     EnqueueResponse(
         "\r\nAT version:1.7.4.0(May 11 2020 19:13:04)\r\nSDK version:3.0.4(57c2371)\r\ncompile time:May 27 2020 "
         "10:35:14\r\nBin version(Wroom 02):1.7.4\r\nOK\r\n");
 }
 
-void ESP8266::HandlePing(const std::string& cmd) {
+void ATHandler::HandlePing(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }
 
-    if (pingThread.joinable()) {
-        stopPing.store(true);
-        pingThread.join();
-    }
-    stopPing.store(false);
-
     std::string host = ParseQuotedParam(cmd, pos);
-    pingThread = std::thread(&ESP8266::PingTask, this, host);
+    if (networkLoop) {
+        networkLoop->StartPing(host);
+    } else {
+        EnqueueResponse("\r\n+71\r\nOK\r\n");
+    }
 }
 
-void ESP8266::PingTask(const std::string& host) {
-    bool valid = true;
-    for (char c : host) {
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '-')) {
-            valid = false;
-            break;
-        }
-    }
-
-    if (!valid || host.empty() || host.front() == '-') {
-        EnqueueResponse("\r\nERROR\r\n");
-        return;
-    }
-
-#if defined(__EMSCRIPTEN__)
-    int loops = 50;
-    while (loops-- > 0) {
-        if (stopPing.load()) {
-            return;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    EnqueueResponse("\r\n+71\r\nOK\r\n");
-#else
-    std::string command;
-#if defined(_WIN32)
-    command = "ping -n 1 -w 2000 " + host;
-#else
-    command = "ping -c 1 -W 2 " + host;
-#endif
-
-#if defined(_WIN32)
-    FILE* pipe = _popen(command.c_str(), "r");
-#else
-    FILE* pipe = popen(command.c_str(), "r");
-#endif
-
-    if (!pipe) {
-        EnqueueResponse("\r\nERROR\r\n");
-        return;
-    }
-
-    char buffer[128];
-    std::string result = "";
-    while (!feof(pipe)) {
-        if (fgets(buffer, 128, pipe) != nullptr) {
-            result += buffer;
-        }
-        if (stopPing.load()) {
-#if defined(_WIN32)
-            _pclose(pipe);
-#else
-            pclose(pipe);
-#endif
-            return;
-        }
-    }
-#if defined(_WIN32)
-    _pclose(pipe);
-#else
-    pclose(pipe);
-#endif
-
-    size_t timePos = result.find("time=");
-    if (timePos == std::string::npos) {
-        timePos = result.find("time<");
-    }
-
-    if (timePos != std::string::npos) {
-        size_t start = timePos + 5;
-        size_t end = result.find("ms", start);
-        if (end != std::string::npos) {
-            std::string timeStr = result.substr(start, end - start);
-            timeStr.erase(0, timeStr.find_first_not_of(" \t"));
-            timeStr.erase(timeStr.find_last_not_of(" \t") + 1);
-            EnqueueResponse("\r\n+" + timeStr + "\r\nOK\r\n");
-            return;
-        }
-    }
-    EnqueueResponse("\r\n+TIMEOUT\r\nERROR\r\n");
-#endif
-}
-
-std::string ESP8266::ParseQuotedParam(const std::string& cmd, size_t& pos) {
+std::string ATHandler::ParseQuotedParam(const std::string& cmd, size_t& pos) {
     size_t firstQuote = cmd.find('"', pos);
     if (firstQuote == std::string::npos) {
         return "";
@@ -465,7 +526,7 @@ std::string ESP8266::ParseQuotedParam(const std::string& cmd, size_t& pos) {
     return cmd.substr(firstQuote + 1, lastQuote - firstQuote - 1);
 }
 
-int ESP8266::ParseIntParam(const std::string& cmd, size_t& pos) {
+int ATHandler::ParseIntParam(const std::string& cmd, size_t& pos) {
     size_t nextComma = cmd.find(',', pos);
     std::string valStr = cmd.substr(pos, nextComma - pos);
     if (nextComma != std::string::npos) {
@@ -480,15 +541,7 @@ int ESP8266::ParseIntParam(const std::string& cmd, size_t& pos) {
     }
 }
 
-void ESP8266::EnqueueLinkClosedResponse(int linkId) {
-    if (muxEnabled) {
-        EnqueueResponse(std::to_string(linkId) + ",CLOSED\r\n");
-    } else {
-        EnqueueResponse("CLOSED\r\n");
-    }
-}
-
-void ESP8266::HandleHTTPCLIENT(const std::string& cmd) {
+void ATHandler::HandleHTTPCLIENT(const std::string& cmd) {
     size_t eqPos = cmd.find('=');
     if (eqPos == std::string::npos) {
         EnqueueResponse("\r\nERROR\r\n");
@@ -531,30 +584,14 @@ void ESP8266::HandleHTTPCLIENT(const std::string& cmd) {
     (void)dataType;
 
 #ifndef TARGET_WASM
-    if (httpClientThread.joinable()) {
-        httpClientThread.join();
+    if (networkLoop) {
+        networkLoop->StartHttpClientRequest(opt, contentType, url, host, path, postData);
+    } else {
+        EnqueueResponse("\r\nERROR\r\n");
     }
-    httpClientThread = std::thread(&ESP8266::PerformHttpClientRequest, this, opt, contentType, url, host, path, postData);
 #else
     EnqueueResponse("\r\nHTTPCLIENT not supported in WASM\r\nERROR\r\n");
 #endif
-}
-
-void ESP8266::EnqueueResponse(const std::string& response) {
-    RecordTraffic(TrafficDirection::RX, TrafficChannel::ATResponse, -1, "RESPONSE", response);
-    std::lock_guard<std::mutex> lock(rxMutex);
-    if (rxQueue.size() + response.length() > 65536) {
-        return;  // Prevent OOM from excessive unchecked UART output
-    }
-    for (char chr : response) {
-        rxQueue.push(static_cast<Byte>(chr));
-        if (rxByteCallback) {
-            rxByteCallback(static_cast<Byte>(chr));
-        }
-    }
-    if (!rxQueue.empty()) {
-        statusReg.fetch_or(0x80);
-    }
 }
 
 }  // namespace Hardware

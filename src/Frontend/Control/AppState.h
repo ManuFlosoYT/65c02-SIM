@@ -7,7 +7,7 @@
 #include <string>
 #include <array>
 
-#include "Frontend/Control/SymbolTable.h"
+#include "Hardware/Core/SymbolTable.h"
 #include "Frontend/GUI/Video/CRTFilter.h"
 #include "Hardware/Core/Emulator/Emulator.h"
 

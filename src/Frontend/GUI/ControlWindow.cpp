@@ -7,7 +7,7 @@
 
 using Frontend::CustomFileDialog;
 
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
 #include "Frontend/Control/SDUtils.h"
 #include "Hardware/Core/Emulator/Emulator.h"

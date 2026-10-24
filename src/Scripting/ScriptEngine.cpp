@@ -1,4 +1,4 @@
-#include "Core/Scripting/ScriptEngine.h"
+#include "Scripting/ScriptEngine.h"
 
 #include <fstream>
 #include <iostream>
@@ -7,9 +7,9 @@
 #include <string>
 
 #include "Hardware/Core/Emulator/Emulator.h"
-#include "Core/Scripting/Lang/Lexer.h"
-#include "Core/Scripting/Lang/Parser.h"
-#include "Core/Scripting/Lang/Interpreter.h"
+#include "Scripting/Lang/Lexer.h"
+#include "Scripting/Lang/Parser.h"
+#include "Scripting/Lang/Interpreter.h"
 
 using namespace Hardware;
 using namespace System::Hardware::Scripting::Lang;

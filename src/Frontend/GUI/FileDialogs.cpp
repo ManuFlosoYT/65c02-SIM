@@ -1,7 +1,7 @@
-#include "Frontend/GUI/UIModules.h"
+#include "Frontend/GUI/FileDialogs.h"
 #include "Frontend/GUI/CustomFileDialog.h"
 #include "Frontend/Control/AppState.h"
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #include "Hardware/Core/CartridgeLoader.h"
 #include <iostream>

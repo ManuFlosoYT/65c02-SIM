@@ -1,64 +1,36 @@
 #include "Hardware/Comm/ESP8266/ESP8266.h"
 
+#include <chrono>
+
 namespace Hardware {
 
 ESP8266::ESP8266()
     : statusReg(0),
-      ctrlReg(0)
-#ifndef TARGET_WASM
-      ,
-      sslContext(asio::ssl::context::sslv23)
-#endif
-{
-#ifndef TARGET_WASM
-    sslContext.set_default_verify_paths();
-#endif
+      ctrlReg(0),
+      networkLoop(*this),
+      atHandler(this) {
+    atHandler.SetNetworkLoop(&networkLoop);
     Reset();
 }
 
-ESP8266::~ESP8266() {
-    if (pingThread.joinable()) {
-        stopPing.store(true);
-        pingThread.join();
-    }
-    if (httpClientThread.joinable()) {
-        httpClientThread.join();
-    }
-    StopServer();
-    DisconnectAll();
-}
+ESP8266::~ESP8266() = default;
 
 void ESP8266::Reset() {
-    if (pingThread.joinable()) {
-        stopPing.store(true);
-        pingThread.join();
-    }
-    if (httpClientThread.joinable()) {
-        httpClientThread.join();
-    }
+    networkLoop.Reset();
     statusReg = 0;
     ctrlReg = 0;
-    currentState = ATState::Idle;
-    commandBuffer.clear();
     {
         std::lock_guard<std::mutex> lock(rxMutex);
         while (!rxQueue.empty()) {
             rxQueue.pop();
         }
     }
-    cipsendBuffer.clear();
-    echoEnabled = true;
-    muxEnabled = false;
-    wifiConnected = false;
-    connectedSSID = "";
-    cwMode = CWMode::Station;
-    StopServer();
-    DisconnectAll();
+    atHandler.Reset();
 }
 
 Byte ESP8266::Read(Word address) {
     switch (address & 0x03) {
-        case 0: {  // Data Register
+        case 0: {
             std::lock_guard<std::mutex> lock(rxMutex);
             if (rxQueue.empty()) {
                 statusReg.fetch_and(0x7F);
@@ -71,9 +43,9 @@ Byte ESP8266::Read(Word address) {
             }
             return data;
         }
-        case 1:  // Status Register
+        case 1:
             return statusReg.load(std::memory_order_relaxed);
-        case 2:  // Control Register
+        case 2:
             return ctrlReg;
         default:
             return 0;
@@ -95,29 +67,12 @@ Byte ESP8266::ReadDirect(Word address) {
 
 void ESP8266::Write(Word address, Byte data) {
     switch (address & 0x03) {
-        case 0:  // Command Register
-            if (currentState == ATState::WaitingCIPSENDData) {
-                cipsendBuffer += static_cast<char>(data);
-                cipsendReceived++;
-                if (cipsendReceived >= cipsendLength) {
-                    RecordTraffic(TrafficDirection::TX, TrafficChannel::DataPayload, cipsendLinkId,
-                                  "CIPSEND (" + std::to_string(cipsendLength) + " B)", cipsendBuffer);
-                    SendDataOnLink(cipsendLinkId, cipsendBuffer);
-                    EnqueueResponse("\r\nSEND OK\r\n");
-                    currentState = ATState::Idle;
-                    cipsendBuffer.clear();
-                }
-            } else {
-                if (data == '\n') {
-                    ProcessCommand();
-                } else if (data != '\r') {
-                    commandBuffer += static_cast<char>(data);
-                }
-            }
+        case 0:
+            atHandler.HandleWrite(data);
             break;
-        case 2:  // Control Register
+        case 2:
             ctrlReg = data;
-            if ((data & 0x01) != 0) {  // Reset bit
+            if ((data & 0x01) != 0) {
                 Reset();
             }
             break;
@@ -132,37 +87,19 @@ bool ESP8266::SaveState(std::ostream& out) const {
     Byte sReg = statusReg.load();
     ISerializable::Serialize(out, sReg);
     ISerializable::Serialize(out, ctrlReg);
-    ISerializable::Serialize(out, commandBuffer);
-    
-    ISerializable::Serialize(out, echoEnabled);
-    bool mux = muxEnabled.load();
-    ISerializable::Serialize(out, mux);
-    ISerializable::Serialize(out, wifiConnected);
-    ISerializable::Serialize(out, cwMode);
-    ISerializable::Serialize(out, connectedSSID);
-
+    atHandler.SaveState(out);
     return out.good();
 }
 
 bool ESP8266::LoadState(std::istream& inStream) {
-    DisconnectAll();
-    StopServer();
+    networkLoop.Reset();
 
     Byte sReg = 0;
     ISerializable::Deserialize(inStream, sReg);
     statusReg.store(sReg);
     ISerializable::Deserialize(inStream, ctrlReg);
-    ISerializable::Deserialize(inStream, commandBuffer);
+    atHandler.LoadState(inStream);
 
-    ISerializable::Deserialize(inStream, echoEnabled);
-    bool mux = false;
-    ISerializable::Deserialize(inStream, mux);
-    muxEnabled.store(mux);
-    ISerializable::Deserialize(inStream, wifiConnected);
-    ISerializable::Deserialize(inStream, cwMode);
-    ISerializable::Deserialize(inStream, connectedSSID);
-
-    currentState = ATState::Idle;
     return inStream.good();
 }
 
@@ -197,5 +134,66 @@ void ESP8266::SetSnifferPaused(bool paused) { snifferPaused.store(paused, std::m
 bool ESP8266::IsSnifferPaused() const { return snifferPaused.load(std::memory_order_relaxed); }
 
 void ESP8266::SetRxByteCallback(std::function<void(Byte)> callback) { rxByteCallback = std::move(callback); }
+
+void ESP8266::EnqueueResponse(const std::string& response) {
+    RecordTraffic(TrafficDirection::RX, TrafficChannel::ATResponse, -1, "RESPONSE", response);
+    std::lock_guard<std::mutex> lock(rxMutex);
+    if (rxQueue.size() + response.length() > 65536) {
+        return;
+    }
+    for (char chr : response) {
+        rxQueue.push(static_cast<Byte>(chr));
+        if (rxByteCallback) {
+            rxByteCallback(static_cast<Byte>(chr));
+        }
+    }
+    if (!rxQueue.empty()) {
+        statusReg.fetch_or(0x80);
+    }
+}
+
+void ESP8266::EnqueueIPD(int linkId, const char* data, size_t bytesRead) {
+    RecordTraffic(TrafficDirection::RX, TrafficChannel::DataPayload, linkId, "+IPD (" + std::to_string(bytesRead) + " B)",
+                  std::string(data, bytesRead));
+
+    std::string header;
+    if (IsMuxEnabled()) {
+        header = "+IPD," + std::to_string(linkId) + "," + std::to_string(bytesRead) + ":";
+    } else {
+        header = "+IPD," + std::to_string(bytesRead) + ":";
+    }
+
+    std::lock_guard<std::mutex> lock(rxMutex);
+    for (char chr : header) {
+        rxQueue.push(static_cast<Byte>(chr));
+        if (rxByteCallback) {
+            rxByteCallback(static_cast<Byte>(chr));
+        }
+    }
+    for (size_t i = 0; i < bytesRead; ++i) {
+        rxQueue.push(static_cast<Byte>(data[i]));
+        if (rxByteCallback) {
+            rxByteCallback(static_cast<Byte>(data[i]));
+        }
+    }
+    statusReg.fetch_or(0x80);
+}
+
+void ESP8266::EnqueueLinkClosedResponse(int linkId) {
+    if (IsMuxEnabled()) {
+        EnqueueResponse(std::to_string(linkId) + ",CLOSED\r\n");
+    } else {
+        EnqueueResponse("CLOSED\r\n");
+    }
+}
+
+bool ESP8266::IsRxBufferFull() const {
+    std::lock_guard<std::mutex> lock(rxMutex);
+    return rxQueue.size() >= 2048;
+}
+
+bool ESP8266::IsMuxEnabled() const {
+    return atHandler.IsMuxEnabled();
+}
 
 }  // namespace Hardware

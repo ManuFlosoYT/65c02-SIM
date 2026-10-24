@@ -1,6 +1,6 @@
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Hardware/Core/Emulator/Emulator.h"
-#include "Hardware/Comm/SDCard.h"
+#include "Hardware/Storage/SDCard.h"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>

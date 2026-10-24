@@ -116,3 +116,23 @@ if(NOT EMSCRIPTEN)
         COMMENT "Embedding SDK.zip (if found)"
     )
 endif()
+
+set(CASCADIA_MONO_BASE85 "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Assets/CascadiaMono.base85")
+set(CASCADIA_MONO_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/CascadiaMono.cpp")
+
+target_embed_resource(cascadia_mono
+    OUTPUT "${CASCADIA_MONO_CPP}"
+    ARGS --mode cascadia --input "${CASCADIA_MONO_BASE85}"
+    DEPENDS "${CASCADIA_MONO_BASE85}"
+    COMMENT "Generating CascadiaMono.cpp from base85"
+)
+
+set(SID_WAVETABLES_BIN "${CMAKE_CURRENT_SOURCE_DIR}/src/Hardware/Audio/SIDWaveTables.bin")
+set(SID_WAVETABLES_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/SIDWaveTables.cpp")
+
+target_embed_resource(sid_wavetables
+    OUTPUT "${SID_WAVETABLES_CPP}"
+    ARGS --mode sid_wavetables --input "${SID_WAVETABLES_BIN}"
+    DEPENDS "${SID_WAVETABLES_BIN}"
+    COMMENT "Generating SIDWaveTables.cpp from binary"
+)

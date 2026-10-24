@@ -18,7 +18,7 @@
 #include <string>
 
 #include "Frontend/Control/AppState.h"
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 #include "Frontend/GUI/Style/Style.h"
 #include "UpdateChecker.h"
 #include "Frontend/MediaExporter.h"
@@ -30,7 +30,7 @@
 #ifndef TARGET_WASM
 #include "Frontend/Compiler/CompilerVFS.h"
 #include "Frontend/Compiler/CompilerFrontend.h"
-#include "Frontend/Control/SymbolTable.h"
+#include "Hardware/Core/SymbolTable.h"
 #endif
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/CartridgeUtils.h"

@@ -1,4 +1,4 @@
-#include "Frontend/Control/MemoryScanner.h"
+#include "Hardware/Core/MemoryScanner.h"
 
 #include <gtest/gtest.h>
 

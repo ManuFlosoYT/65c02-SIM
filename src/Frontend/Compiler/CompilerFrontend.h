@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include "Frontend/Control/SymbolTable.h"
+#include "Hardware/Core/SymbolTable.h"
 
 #ifndef TARGET_WASM
 

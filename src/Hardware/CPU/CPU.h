@@ -43,6 +43,7 @@ class CPU : public ISerializable {
 
     bool isInit = false;
     bool waiting = false;
+    bool pendingNMI = false;
 
     int remainingCycles = 0;
     bool cycleAccurate = true;
@@ -83,6 +84,10 @@ class CPU : public ISerializable {
     void SetProfiler(SubroutineProfiler* prof) { profiler = prof; }
     [[nodiscard]] SubroutineProfiler* GetProfiler() const { return profiler; }
     [[nodiscard]] uint64_t GetCycleCount() const { return cycleCount; }
+
+    [[nodiscard]] bool HasPendingNMI() const { return pendingNMI; }
+    void TriggerNMI() { pendingNMI = true; }
+    void ClearPendingNMI() { pendingNMI = false; }
 
     void AddPageCrossPenalty(Word baseAddr, Word effectiveAddr);
 
@@ -132,6 +137,7 @@ inline void Hardware::CPU::Reset() {
     N = 0;
     isInit = false;
     waiting = false;
+    pendingNMI = false;
     remainingCycles = 0;
     cycleCount = 0;
     if (profiler != nullptr) {
@@ -227,6 +233,7 @@ template <bool Debug>
 inline void Hardware::CPU::NMI(Bus& bus) {
     if (cycleAccurate) { remainingCycles += 7; }
     waiting = false;
+    pendingNMI = false;
     PushWord<Debug>(PC, bus);
     B = 0;
     PushByte<Debug>(GetStatus(), bus);

@@ -41,37 +41,11 @@ class LogicAnalyzer {
         frozen = false;
     }
 
-    void RecordSample(const LogicSample& sample) {
-        if (frozen) {
-            return;
-        }
-        uint64_t idx = writeIndex.fetch_add(1, std::memory_order_relaxed);
-        buffer[idx % BUFFER_SIZE] = sample;
-    }
-
+    void RecordSample(const LogicSample& sample);
     [[nodiscard]] uint64_t GetTotalSamples() const { return writeIndex.load(std::memory_order_relaxed); }
-
-    [[nodiscard]] size_t GetCount() const {
-        uint64_t total = writeIndex.load(std::memory_order_relaxed);
-        return total > BUFFER_SIZE ? BUFFER_SIZE : static_cast<size_t>(total);
-    }
-
-    [[nodiscard]] LogicSample GetSample(size_t reverseOffset) const {
-        uint64_t total = writeIndex.load(std::memory_order_relaxed);
-        if (total == 0) {
-            return {};
-        }
-        if (reverseOffset >= BUFFER_SIZE || reverseOffset >= total) {
-            reverseOffset = (total > BUFFER_SIZE ? BUFFER_SIZE - 1 : static_cast<size_t>(total - 1));
-        }
-        uint64_t target = total - 1 - reverseOffset;
-        return buffer[target % BUFFER_SIZE];
-    }
-
-    [[nodiscard]] LogicSample GetSampleByIndex(uint64_t absoluteIndex) const {
-        return buffer[absoluteIndex % BUFFER_SIZE];
-    }
-
+    [[nodiscard]] size_t GetCount() const;
+    [[nodiscard]] LogicSample GetSample(size_t reverseOffset) const;
+    [[nodiscard]] LogicSample GetSampleByIndex(uint64_t absoluteIndex) const;
     [[nodiscard]] bool IsFrozen() const { return frozen; }
     void SetFrozen(bool freeze) { frozen = freeze; }
     void Clear() { writeIndex.store(0, std::memory_order_relaxed); }

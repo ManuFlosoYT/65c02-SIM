@@ -152,3 +152,19 @@ TEST_F(ESP8266_Test, HTTPClientCommandSyntax) {
     }
     EXPECT_TRUE(foundCmd);
 }
+
+TEST(ATHandlerTest, DeterministicStandalone) {
+    ATHandler handler;
+    handler.ProcessCommand("AT\r\n");
+    EXPECT_NE(handler.GetLastResponse().find("OK"), std::string::npos);
+
+    handler.ProcessCommand("AT+CWMODE=1\r\n");
+    EXPECT_EQ(handler.GetCWMode(), CWMode::Station);
+
+    handler.ProcessCommand("AT+CWJAP=\"MyWifi\",\"pass123\"\r\n");
+    EXPECT_TRUE(handler.IsWifiConnected());
+    EXPECT_EQ(handler.GetConnectedSSID(), "MyWifi");
+
+    handler.ProcessCommand("AT+CWQAP\r\n");
+    EXPECT_FALSE(handler.IsWifiConnected());
+}

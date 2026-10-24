@@ -43,7 +43,12 @@ void BRK::Execute(CPU& cpu, Bus& bus) {
     cpu.PushByte<Debug>(processorStatus, bus);
     cpu.I = 1;
     cpu.D = 0;
-    cpu.PC = cpu.ReadWord<Debug>(0xFFFE, bus);
+    Word vectorAddr = 0xFFFE;
+    if (cpu.HasPendingNMI()) {
+        vectorAddr = 0xFFFA;
+        cpu.ClearPendingNMI();
+    }
+    cpu.PC = cpu.ReadWord<Debug>(vectorAddr, bus);
     cpu.UpdatePagePtr(bus);
 
     if constexpr (Debug) {

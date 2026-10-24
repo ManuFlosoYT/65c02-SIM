@@ -6,7 +6,7 @@
 #include <array>
 
 #include "Frontend/Control/CartridgeUtils.h"
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 #include "Frontend/GUI/Debugger/DebuggerWindow.h"
 #include "Frontend/GUI/Debugger/DisassemblerWindow.h"
 #include "Frontend/GUI/Debugger/MemoryLayoutWindow.h"

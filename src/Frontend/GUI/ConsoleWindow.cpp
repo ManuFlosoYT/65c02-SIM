@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 
 using namespace Control;
 using namespace Core;

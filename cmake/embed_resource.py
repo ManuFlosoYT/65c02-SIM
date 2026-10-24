@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import struct
 import subprocess
 import sys
 
@@ -152,9 +153,70 @@ def embed_icon(magick_exec: str, input_png: str, output_header: str) -> None:
     print(f"Generated {output_header} ({len(data)} bytes)")
 
 
+def embed_cascadia(input_file: str, output_file: str) -> None:
+    with open(input_file, "r", encoding="utf-8") as f:
+        data = "".join(line.strip() for line in f)
+
+    data = data.replace("??", r"?\?")
+
+    chunk_size = 140
+    out = [
+        '#include "Frontend/GUI/Style/CascadiaMono.h"\n\n',
+        "static const char kCascadiaMonoCompressedBase85[] =\n",
+    ]
+    for i in range(0, len(data), chunk_size):
+        chunk = data[i : i + chunk_size]
+        out.append(f'    "{chunk}"\n')
+    out.append(";\n\n")
+    out.append("const char* GetCascadiaMonoCompressedBase85() noexcept {\n")
+    out.append("    return kCascadiaMonoCompressedBase85;\n")
+    out.append("}\n")
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.writelines(out)
+
+    print(f"Generated {output_file} ({len(data)} base85 characters)")
+
+
+def embed_sid_wavetables(input_file: str, output_file: str) -> None:
+    with open(input_file, "rb") as f:
+        data = f.read()
+
+    expected_bytes = 4 * 4096 * 2
+    if len(data) != expected_bytes:
+        sys.exit(f"Error: {input_file} size {len(data)} != expected {expected_bytes} bytes.")
+
+    arrays = ["wave6581_PST", "wave6581_PS_", "wave6581_P_T", "wave6581__ST"]
+    out = [
+        '#include "Hardware/Audio/SIDWaveTables.h"\n\n',
+        "namespace Hardware {\n\n",
+    ]
+
+    offset = 0
+    chunk_size = 8
+    for arr_name in arrays:
+        values = struct.unpack_from("<4096H", data, offset)
+        offset += 4096 * 2
+        out.append(f"extern const uint16_t {arr_name}[4096] = {{\n")
+        for i in range(0, len(values), chunk_size):
+            chunk = values[i : i + chunk_size]
+            hex_str = ", ".join(f"0x{v:04x}" for v in chunk)
+            out.append(f"    {hex_str},\n")
+        out.append("};\n\n")
+
+    out.append("}  // namespace Hardware\n")
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.writelines(out)
+
+    print(f"Generated {output_file} (4 SID wave tables)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Embed build resources into C++ headers.")
-    parser.add_argument("--mode", required=True, choices=["binary", "vfs", "shaders", "icon"])
+    parser.add_argument("--mode", required=True, choices=["binary", "vfs", "shaders", "icon", "cascadia", "sid_wavetables"])
     parser.add_argument("--output", required=True, help="Output header path")
     parser.add_argument("--input", help="Input file path (binary / icon modes)")
     parser.add_argument("--var", help="C++ variable name (binary mode)")
@@ -176,6 +238,10 @@ def main() -> None:
         embed_shaders(args.vert, args.frag, args.output)
     elif args.mode == "icon":
         embed_icon(args.magick, args.input, args.output)
+    elif args.mode == "cascadia":
+        embed_cascadia(args.input, args.output)
+    elif args.mode == "sid_wavetables":
+        embed_sid_wavetables(args.input, args.output)
 
 
 if __name__ == "__main__":

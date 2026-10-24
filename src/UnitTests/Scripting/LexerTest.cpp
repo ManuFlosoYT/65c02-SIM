@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "Core/Scripting/Lang/Lexer.h"
+#include "Scripting/Lang/Lexer.h"
 
 using namespace System::Hardware::Scripting::Lang;
 

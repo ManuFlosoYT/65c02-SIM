@@ -13,7 +13,7 @@ using namespace Hardware;
 
 namespace Core {
 
-Emulator::Emulator() : cpu(), scriptEngine(*this) {
+Emulator::Emulator() : cpu(), scriptEngine(*this), engine(*this), savestateManager(*this) {
     components = {&bus, &cpu, &ram, &rom, &via, &sid, &acia, &sdcard, &esp8266, &lcd, &gpu, &consoleSerializable};
     esp8266.SetRxByteCallback([this](Byte b) {
         if (aciaEspBridge) {
@@ -96,7 +96,7 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
     try {
 #ifndef TARGET_WASM
         if (std::filesystem::exists(name)) {
-            lastBinModificationTime = std::filesystem::last_write_time(name);
+            engine.SetLastBinModificationTime(std::filesystem::last_write_time(name));
         }
 #endif
     } catch (const std::exception& e) {
@@ -108,16 +108,9 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
 }
 
 int Emulator::Step() {
-    bool recordSnapshot = rewindSnapshotsEnabled && (paused.load() || !running.load());
+    bool recordSnapshot = savestateManager.IsRewindSnapshotsEnabled() && (engine.IsPaused() || !engine.IsRunning());
     if (recordSnapshot) {
-        std::scoped_lock lock(rewindMutex);
-        std::stringstream ss;
-        if (SaveComponentsState(ss)) {
-            SaveInternalState(ss);
-            lastCapturedState = ss.str();
-            lastCapturedCycles = totalCycles.load(std::memory_order_relaxed);
-            lastCapturedInstructions = totalInstructions.load(std::memory_order_relaxed);
-        }
+        savestateManager.CapturePreStepSnapshot();
     }
 
     EnsureWatchpointWriteHook();
@@ -142,17 +135,11 @@ int Emulator::Step() {
     }
 
     if (res != 0) {
-        Pause();
-#ifndef TARGET_WASM
-        if (totalCycles > totalCyclesAtLastResume) {
-            sid.StopRecording();
-        }
-#endif
-        halted = true;
+        engine.HandleStop(res);
     }
 
     if (recordSnapshot) {
-        SaveStateToBuffer();
+        savestateManager.SaveStateToBuffer();
     }
     return res;
 }
@@ -223,6 +210,9 @@ void Emulator::HandleInterrupts() {
         return;
     }
 
+    if (!cpu.HasPendingNMI()) {
+        this->pendingNMI.store(false, std::memory_order_relaxed);
+    }
     bool nmiPending = this->pendingNMI.load(std::memory_order_relaxed);
     bool irqPending = this->pendingIRQ.load(std::memory_order_relaxed) || acia.HasIRQ() || via.isIRQAsserted();
 
@@ -238,10 +228,13 @@ void Emulator::HandleInterrupts() {
             cpu.NMI<Debug>(bus);
         }
     } else if (irqPending) {
+        bool wasWaiting = cpu.waiting;
         cpu.waiting = false;
         if (cpu.remainingCycles == 0) {
             if (cpu.I == 0) {
                 cpu.IRQ<Debug>(bus);
+                this->pendingIRQ.store(false, std::memory_order_relaxed);
+            } else if (wasWaiting) {
                 this->pendingIRQ.store(false, std::memory_order_relaxed);
             }
         }
@@ -274,7 +267,7 @@ void Emulator::HandleSerialInput() {
         
         int baudRate = acia.GetBaudRate();
         if (baudRate <= 0) baudRate = 19200;
-        int ips = targetIPS.load(std::memory_order_relaxed);
+        int ips = engine.GetTargetIPS();
         if (ips <= 0) ips = 1000000;
         baudDelay = (ips * 10) / baudRate;
     }
@@ -321,7 +314,7 @@ int Emulator::StepInternal(int ips) {
 
 template <bool Debug>
 int Emulator::Step() {
-    int ips = targetIPS.load(std::memory_order_relaxed);
+    int ips = engine.GetTargetIPS();
     if (ips <= 0) {
         ips = 1000000;
     }
@@ -377,6 +370,7 @@ void Emulator::TriggerIRQ() {
 void Emulator::TriggerNMI() {
     this->pendingNMI.store(true, std::memory_order_relaxed);
     this->pendingInterruptAny.store(true, std::memory_order_relaxed);
+    cpu.TriggerNMI();
 }
 
 void Emulator::Reset() {
@@ -499,10 +493,10 @@ void Emulator::MountSDCardIfPresent() {
 }
 
 void Emulator::SetupHardware() {
-    if (running && std::this_thread::get_id() != emulatorThread.get_id() && !isActuallyPaused.load()) {
+    if (engine.IsRunning() && std::this_thread::get_id() != engine.GetThreadId() && !engine.IsActuallyPaused()) {
         WaitUntilSafeToMutate();
     }
-    halted = false;
+    engine.SetHalted(false);
     bus.ClearDevices();
     bus.Init();
     watchpointWriteHookInstalled = false;
@@ -513,7 +507,7 @@ void Emulator::SetupHardware() {
     pendingInterruptAny.store(false, std::memory_order_relaxed);
     totalCycles = 0;
     totalInstructions = 0;
-    ClearRewindBuffer();
+    savestateManager.ClearRewindBuffer();
 
     try {
         if (!RegisterCartridgeLayout()) {

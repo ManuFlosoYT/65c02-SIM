@@ -1,6 +1,6 @@
 file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
-    "src/Core/*.cpp"
-    "src/Core/*.h"
+    "src/Scripting/*.cpp"
+    "src/Scripting/*.h"
     "src/Hardware/*.cpp"
     "src/Hardware/*.h"
 )
@@ -9,6 +9,8 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 # Main Core Library
 add_library(65c02_core STATIC ${CORE_SOURCES})
+target_sources(65c02_core PRIVATE "${SID_WAVETABLES_CPP}")
+add_dependencies(65c02_core sid_wavetables)
 target_compile_definitions(65c02_core PUBLIC ASIO_STANDALONE)
 if(EMSCRIPTEN)
     target_compile_definitions(65c02_core PUBLIC TARGET_WASM)

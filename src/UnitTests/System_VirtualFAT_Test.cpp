@@ -1,4 +1,4 @@
-#include "Hardware/Comm/SDCard.h"
+#include "Hardware/Storage/SDCard.h"
 #include <gtest/gtest.h>
 #include <array>
 #include <cstdint>

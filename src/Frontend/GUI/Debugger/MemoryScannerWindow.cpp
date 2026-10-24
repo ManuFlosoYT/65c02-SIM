@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "Frontend/Control/MemoryScanner.h"
+#include "Hardware/Core/MemoryScanner.h"
 
 using namespace Control;
 

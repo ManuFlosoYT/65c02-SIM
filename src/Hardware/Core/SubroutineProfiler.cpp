@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "Frontend/Control/SymbolTable.h"
+#include "Hardware/Core/SymbolTable.h"
 
 namespace Hardware {
 

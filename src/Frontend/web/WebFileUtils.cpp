@@ -9,7 +9,7 @@
 #include <cstdio>
 #include <miniz.h>
 #include "Frontend/Control/AppState.h"
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #include "Hardware/Core/CartridgeLoader.h"
 

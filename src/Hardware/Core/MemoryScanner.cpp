@@ -1,30 +1,12 @@
-#pragma once
+#include "Hardware/Core/MemoryScanner.h"
 
 #include <algorithm>
-#include <cstdint>
-#include <string>
-#include <vector>
 
 namespace Control {
 
-enum class ScanType : std::uint8_t { U8, U16, String };
-enum class ScanFilter : std::uint8_t { Exact, Increased, Decreased, Unchanged };
+namespace {
 
-struct ScanCandidate {
-    std::uint16_t address;
-    std::uint16_t previous;  // unused for String
-};
-
-struct ScanQuery {
-    ScanType type = ScanType::U8;
-    ScanFilter filter = ScanFilter::Exact;
-    std::uint16_t value = 0;
-    std::string text;
-};
-
-namespace Detail {
-
-inline std::size_t ScanSize(const ScanQuery& query) {
+std::size_t ScanSize(const ScanQuery& query) {
     switch (query.type) {
         case ScanType::U8:
             return 1;
@@ -35,8 +17,7 @@ inline std::size_t ScanSize(const ScanQuery& query) {
     }
 }
 
-template <typename ReadFn>
-std::uint16_t ReadNumber(ScanType type, std::uint16_t addr, ReadFn& read) {
+std::uint16_t ReadNumber(ScanType type, std::uint16_t addr, const ReadFn& read) {
     auto low = static_cast<std::uint16_t>(read(addr));
     if (type == ScanType::U8) {
         return low;
@@ -44,8 +25,7 @@ std::uint16_t ReadNumber(ScanType type, std::uint16_t addr, ReadFn& read) {
     return static_cast<std::uint16_t>(low | (read(static_cast<std::uint16_t>(addr + 1)) << 8U));
 }
 
-template <typename ReadFn>
-bool MatchesText(const std::string& text, std::uint16_t addr, ReadFn& read) {
+bool MatchesText(const std::string& text, std::uint16_t addr, const ReadFn& read) {
     for (std::size_t i = 0; i < text.size(); ++i) {
         if (read(static_cast<std::uint16_t>(addr + i)) != static_cast<std::uint8_t>(text[i])) {
             return false;
@@ -54,26 +34,24 @@ bool MatchesText(const std::string& text, std::uint16_t addr, ReadFn& read) {
     return true;
 }
 
-}  // namespace Detail
+}  // namespace
 
-// read: callable (uint16_t address) -> uint8_t. unknown: snapshot every address, numeric types only.
-template <typename ReadFn>
 std::vector<ScanCandidate> FirstScan(const ScanQuery& query, std::uint16_t start, std::uint16_t end, bool unknown,
-                                     ReadFn read) {
+                                     const ReadFn& read) {
     std::vector<ScanCandidate> result;
-    const std::size_t size = Detail::ScanSize(query);
+    const std::size_t size = ScanSize(query);
     if (size == 0) {
         return result;
     }
     for (std::size_t addr = start; addr + size - 1 <= end; ++addr) {
         auto address = static_cast<std::uint16_t>(addr);
         if (query.type == ScanType::String) {
-            if (Detail::MatchesText(query.text, address, read)) {
+            if (MatchesText(query.text, address, read)) {
                 result.push_back({address, 0});
             }
             continue;
         }
-        std::uint16_t current = Detail::ReadNumber(query.type, address, read);
+        std::uint16_t current = ReadNumber(query.type, address, read);
         if (unknown || current == query.value) {
             result.push_back({address, current});
         }
@@ -81,14 +59,12 @@ std::vector<ScanCandidate> FirstScan(const ScanQuery& query, std::uint16_t start
     return result;
 }
 
-// Filters candidates in place and stores the current value as `previous`.
-template <typename ReadFn>
-void NextScan(std::vector<ScanCandidate>& candidates, const ScanQuery& query, ReadFn read) {
+void NextScan(std::vector<ScanCandidate>& candidates, const ScanQuery& query, const ReadFn& read) {
     auto keep = [&](ScanCandidate& cand) {
         if (query.type == ScanType::String) {
-            return Detail::MatchesText(query.text, cand.address, read);
+            return MatchesText(query.text, cand.address, read);
         }
-        std::uint16_t current = Detail::ReadNumber(query.type, cand.address, read);
+        std::uint16_t current = ReadNumber(query.type, cand.address, read);
         std::uint16_t before = cand.previous;
         cand.previous = current;
         switch (query.filter) {

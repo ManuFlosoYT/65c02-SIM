@@ -1,4 +1,4 @@
-#include "Frontend/Control/SymbolTable.h"
+#include "Hardware/Core/SymbolTable.h"
 
 #include <gtest/gtest.h>
 

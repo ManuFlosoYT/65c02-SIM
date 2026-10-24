@@ -9,7 +9,7 @@
 #include <mutex>
 #include <string_view>
 
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 
 namespace GUI {
 

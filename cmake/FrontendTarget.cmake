@@ -131,7 +131,8 @@ target_include_directories(SIM_65C02 PRIVATE
     ${FFMPEG_INCLUDE_DIRS}
 )
 
-add_dependencies(SIM_65C02 crt_shaders app_icons)
+target_sources(SIM_65C02 PRIVATE "${CASCADIA_MONO_CPP}")
+add_dependencies(SIM_65C02 crt_shaders app_icons cascadia_mono)
 if(NOT EMSCRIPTEN)
     add_dependencies(SIM_65C02 embedded_compilers sdk_resource)
 endif()

@@ -6,7 +6,7 @@
 #include <fstream>
 #include <system_error>
 
-#include "Frontend/Control/SymbolTable.h"
+#include "Hardware/Core/SymbolTable.h"
 
 TEST(SubroutineProfilerTest, DisabledByDefault) {
     Hardware::SubroutineProfiler profiler;

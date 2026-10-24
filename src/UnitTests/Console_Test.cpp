@@ -1,4 +1,4 @@
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
 
 #include <gtest/gtest.h>
 

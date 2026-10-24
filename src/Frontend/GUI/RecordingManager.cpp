@@ -1,4 +1,4 @@
-#include "Frontend/GUI/UIModules.h"
+#include "Frontend/GUI/RecordingManager.h"
 #include <glad/gl.h>
 #include <imgui.h>
 #include "Frontend/Control/AppState.h"

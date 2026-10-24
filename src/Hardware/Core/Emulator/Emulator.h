@@ -14,10 +14,10 @@
 #include "Hardware/Audio/SID.h"
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Comm/ACIA.h"
-#include "Hardware/Comm/SDCard.h"
+#include "Hardware/Storage/SDCard.h"
 #include "Hardware/Comm/VIA.h"
 #include "Hardware/Comm/ESP8266/ESP8266.h"
-#include "Core/Scripting/ScriptEngine.h"
+#include "Scripting/ScriptEngine.h"
 #include "Hardware/Core/BreakpointManager.h"
 #include "Hardware/Core/Bus.h"
 #include "Hardware/Memory/RAM.h"
@@ -28,38 +28,20 @@
 #include "Hardware/Core/Cartridge.h"
 #include "Hardware/Core/LogicAnalyzer.h"
 #include "Hardware/Core/SubroutineProfiler.h"
-#include "Frontend/Control/Console.h"
+#include "Hardware/Core/Console.h"
+#include "Hardware/Core/Emulator/SavestateManager.h"
+#include "Hardware/Core/Emulator/EmulationEngine.h"
 
 namespace Core {
-
-enum class SavestateLoadResult : std::uint8_t { Success, HashMismatch, VersionMismatch, StructuralError, GenericError };
-
-struct SnapshotDelta {
-    struct Chunk {
-        uint32_t offset = 0;
-        std::vector<uint8_t> xorData;
-    };
-    std::vector<Chunk> chunks;
-    std::string fullState;
-    bool isKeyframe = false;
-    uint64_t totalCycles = 0;
-    uint64_t totalInstructions = 0;
-};
 
 using namespace Hardware;
 
 class Emulator {
    public:
-    struct RuntimeStats {
-        uint64_t cyclesPerSecond = 0;
-        uint64_t cpuCyclesPerSecond = 0;
-        uint64_t gpuCyclesPerSecond = 0;
-        uint64_t instructionsPerSecond = 0;
-        uint64_t slicesPerSecond = 0;
-        uint64_t emulationNanoseconds = 0;
-        uint64_t sleepNanoseconds = 0;
-        uint64_t lateNanoseconds = 0;
-    };
+    friend class EmulationEngine;
+    friend class SavestateManager;
+
+    using RuntimeStats = EmulationEngine::RuntimeStats;
 
     Emulator();
     ~Emulator() { Stop(); }
@@ -180,10 +162,14 @@ class Emulator {
     void SetRewindInterval(int n);
     [[nodiscard]] int GetRewindInterval() const;
     void ClearRewindBuffer();
+    void SaveStateToBuffer();
+
+    EmulationEngine& GetEngine() { return engine; }
+    const EmulationEngine& GetEngine() const { return engine; }
+    SavestateManager& GetSavestateManager() { return savestateManager; }
+    const SavestateManager& GetSavestateManager() const { return savestateManager; }
 
    private:
-    void ThreadLoop();
-
     std::atomic<bool> pendingIRQ{false};
     std::atomic<bool> pendingNMI{false};
     std::atomic<bool> pendingInterruptAny{false};
@@ -206,27 +192,6 @@ class Emulator {
     void HandleInterrupts();
     template <bool Debug>
     void HandleSerialInput();
-
-
-    bool SaveComponentsState(std::ostream& stateStream);
-    void SaveInternalState(std::ostream& stateStream);
-    bool LoadComponentsState(std::istream& stateStream);
-    bool LoadInternalState(std::istream& stateStream);
-
-    struct SliceResult {
-        uint64_t cycles = 0;
-        uint64_t cpuCycles = 0;
-        uint64_t gpuCycles = 0;
-        uint64_t instructions = 0;
-    };
-
-    SliceResult EmulateSlice(int instructionsPerSlice);
-    int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
-                     uint64_t& batchCpuCycles, uint64_t& batchGpuCycles, int& stopCode);
-    void handleStop(int code);
-    void CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck);
-
-    void SaveStateToBuffer();
 
     struct ConsoleSerializable : public ISerializable {
         bool SaveState(std::ostream& out) const override { return Console::SaveState(out); }
@@ -266,50 +231,18 @@ class Emulator {
     bool espEnabled = false;
     bool sdEnabled = false;
     bool aciaEspBridge = false;
-    bool rewindSnapshotsEnabled = true;
-    int rewindSliceCounter = 0;
 
-    // Threading control
-    std::atomic<bool> running{false};
-    std::atomic<bool> paused{true};
-    std::atomic<bool> halted{false};
-    std::atomic<int> targetIPS{1000000};
-    std::atomic<uint64_t> actualCyclesPerSecond{0};
-    std::atomic<uint64_t> actualCpuCyclesPerSecond{0};
-    std::atomic<uint64_t> actualGpuCyclesPerSecond{0};
-    std::atomic<uint64_t> actualInstructionsPerSecond{0};
-    std::atomic<uint64_t> slicesPerSecond{0};
-    std::atomic<uint64_t> emulationNanoseconds{0};
-    std::atomic<uint64_t> sleepNanoseconds{0};
-    std::atomic<uint64_t> lateNanoseconds{0};
-    uint64_t lastStepCpuCycles = 0;
-    uint64_t lastStepGpuCycles = 0;
-    std::thread emulatorThread;
-    std::mutex threadMutex;
-    std::condition_variable pauseCV;
-    std::atomic<bool> isActuallyPaused{true};
     std::atomic<uint64_t> totalCycles{0};
     std::atomic<uint64_t> totalInstructions{0};
-    uint64_t totalCyclesAtLastResume{0};
+    uint64_t lastStepCpuCycles = 0;
+    uint64_t lastStepGpuCycles = 0;
 
     std::string currentBinPath;
-    std::filesystem::file_time_type lastBinModificationTime;
-    std::atomic<bool> autoReloadRequested{true};
     std::atomic<bool> rasterBeamSlowMotion{false};
-
-    // Savestate versioning
-    SavestateLoadResult lastLoadResult = SavestateLoadResult::Success;
-    std::string lastLoadVersion;
-
-    std::deque<SnapshotDelta> rewindBuffer;
-    std::string lastCapturedState;
-    uint64_t lastCapturedCycles = 0;
-    uint64_t lastCapturedInstructions = 0;
-    mutable std::mutex rewindMutex;
-    static constexpr size_t MAX_REWIND_STATES = 600;
-    int rewindInterval = 1;
-
     Cartridge cartridge;
+
+    EmulationEngine engine;
+    SavestateManager savestateManager;
 };
 
 }  // namespace Core
@@ -365,23 +298,19 @@ inline Hardware::BreakpointManager& Core::Emulator::GetBreakpointManager() { ret
 inline void Core::Emulator::SetCycleAccurate(bool enabled) { cpu.SetCycleAccurate(enabled); }
 inline bool Core::Emulator::IsCycleAccurate() const { return cpu.IsCycleAccurate(); }
 
-inline bool Core::Emulator::IsRunning() const { return running; }
-inline bool Core::Emulator::IsPaused() const { return paused; }
-inline bool Core::Emulator::IsHalted() const { return halted; }
+inline void Core::Emulator::Start() { engine.Start(); }
+inline void Core::Emulator::Stop() { engine.Stop(); }
+inline void Core::Emulator::Pause() { engine.Pause(); }
+inline void Core::Emulator::Resume() { engine.Resume(); }
+inline void Core::Emulator::WaitUntilSafeToMutate() { engine.WaitUntilSafeToMutate(); }
+inline bool Core::Emulator::IsRunning() const { return engine.IsRunning(); }
+inline bool Core::Emulator::IsPaused() const { return engine.IsPaused(); }
+inline bool Core::Emulator::IsHalted() const { return engine.IsHalted(); }
 
-inline void Core::Emulator::SetTargetIPS(int ips) { targetIPS = ips; }
-inline int Core::Emulator::GetTargetIPS() const { return targetIPS; }
+inline void Core::Emulator::SetTargetIPS(int ips) { engine.SetTargetIPS(ips); }
+inline int Core::Emulator::GetTargetIPS() const { return engine.GetTargetIPS(); }
 inline Core::Emulator::RuntimeStats Core::Emulator::GetRuntimeStats() const {
-    return {
-        .cyclesPerSecond = actualCyclesPerSecond.load(std::memory_order_relaxed),
-        .cpuCyclesPerSecond = actualCpuCyclesPerSecond.load(std::memory_order_relaxed),
-        .gpuCyclesPerSecond = actualGpuCyclesPerSecond.load(std::memory_order_relaxed),
-        .instructionsPerSecond = actualInstructionsPerSecond.load(std::memory_order_relaxed),
-        .slicesPerSecond = slicesPerSecond.load(std::memory_order_relaxed),
-        .emulationNanoseconds = emulationNanoseconds.load(std::memory_order_relaxed),
-        .sleepNanoseconds = sleepNanoseconds.load(std::memory_order_relaxed),
-        .lateNanoseconds = lateNanoseconds.load(std::memory_order_relaxed),
-    };
+    return engine.GetRuntimeStats();
 }
 
 inline void Core::Emulator::SetProfilingEnabled(bool enabled) {
@@ -402,38 +331,24 @@ inline void Core::Emulator::SetHeatmapEnabled(bool enabled) { bus.SetHeatmapEnab
 inline void Core::Emulator::ClearHeatmap() { bus.ClearHeatmap(); }
 inline void Core::Emulator::DecayHeatmap(uint8_t amount) { bus.DecayHeatmap(amount); }
 
-inline void Core::Emulator::SetAutoReload(bool enabled) { autoReloadRequested = enabled; }
-inline bool Core::Emulator::IsAutoReloadEnabled() const { return autoReloadRequested; }
+inline void Core::Emulator::SetAutoReload(bool enabled) { engine.SetAutoReload(enabled); }
+inline bool Core::Emulator::IsAutoReloadEnabled() const { return engine.IsAutoReloadEnabled(); }
 
-inline Core::SavestateLoadResult Core::Emulator::GetLastLoadResult() const { return lastLoadResult; }
-inline std::string Core::Emulator::GetLastLoadVersion() const { return lastLoadVersion; }
+inline Core::SavestateLoadResult Core::Emulator::GetLastLoadResult() const { return savestateManager.GetLastLoadResult(); }
+inline std::string Core::Emulator::GetLastLoadVersion() const { return savestateManager.GetLastLoadVersion(); }
 inline std::string Core::Emulator::GetCurrentBinPath() const { return currentBinPath; }
 
-inline void Core::Emulator::StepBack() { Rewind(); }
+inline bool Core::Emulator::SaveState(const std::string& filename) { return savestateManager.SaveState(filename); }
+inline bool Core::Emulator::LoadState(const std::string& filename, bool forceLoad) { return savestateManager.LoadState(filename, forceLoad); }
+inline void Core::Emulator::Rewind() { savestateManager.Rewind(); }
+inline bool Core::Emulator::CanRewind() const { return savestateManager.CanRewind(); }
+inline void Core::Emulator::StepBack() { savestateManager.StepBack(); }
 
-inline void Core::Emulator::SetRewindInterval(int n) {
-    if (n > 0) {
-        rewindInterval = n;
-    }
-}
-
-inline int Core::Emulator::GetRewindInterval() const { return rewindInterval; }
-
-inline void Core::Emulator::ClearRewindBuffer() {
-    std::scoped_lock lock(rewindMutex);
-    rewindBuffer.clear();
-    lastCapturedState.clear();
-    lastCapturedCycles = 0;
-    lastCapturedInstructions = 0;
-    rewindSliceCounter = 0;
-}
-
-inline void Core::Emulator::SetRewindSnapshotsEnabled(bool enabled) {
-    rewindSnapshotsEnabled = enabled;
-    if (!rewindSnapshotsEnabled) {
-        ClearRewindBuffer();
-    }
-}
+inline void Core::Emulator::SetRewindInterval(int n) { savestateManager.SetRewindInterval(n); }
+inline int Core::Emulator::GetRewindInterval() const { return savestateManager.GetRewindInterval(); }
+inline void Core::Emulator::ClearRewindBuffer() { savestateManager.ClearRewindBuffer(); }
+inline void Core::Emulator::SetRewindSnapshotsEnabled(bool enabled) { savestateManager.SetRewindSnapshotsEnabled(enabled); }
+inline void Core::Emulator::SaveStateToBuffer() { savestateManager.SaveStateToBuffer(); }
 
 inline void Core::Emulator::SetLogicAnalyzerEnabled(bool enabled) {
     logicAnalyzerEnabled.store(enabled, std::memory_order_relaxed);
