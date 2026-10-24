@@ -2,6 +2,7 @@
 #include <bit>
 #include "Frontend/UI/CustomFileDialog.h"
 #include "Frontend/GUI/IDEUtils.h"
+#include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 #include <fstream>
 #include <sstream>
 #include <array>
@@ -630,7 +631,7 @@ namespace {
 
 static void DrawFileToolbar(Control::AppState& state) {
     if (ImGui::Button("Open File")) {
-        CustomFileDialog::OpenDialog("IDE_OpenFile", "Open Source File", ".c,.s,.asm,.*", ".");
+        CustomFileDialog::OpenDialog("IDE_OpenFile", "Open Source File", ".c,.s,.asm,.mid,.midi,.*", ".");
     }
     ImGui::SameLine();
     auto& tabs = GetTabs();
@@ -862,6 +863,10 @@ static void DrawCompilerToolbar(Control::AppState& state) {
         state.ide.isCMode = true;
         UpdateActiveTabLanguageDefinition(state);
     }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("MIDI", state.ide.mode == Control::IDEMode::MIDI)) {
+        state.ide.mode = Control::IDEMode::MIDI;
+    }
 
     ImGui::SameLine();
     ImGui::Spacing();
@@ -893,6 +898,12 @@ static void HandleOpenFile(Control::AppState& state) {
     if (CustomFileDialog::Display("IDE_OpenFile")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePath = CustomFileDialog::GetFilePathName();
+            if (filePath.ends_with(".mid") || filePath.ends_with(".midi")) {
+                GUI::OpenMIDIFileInWorkspace(state, filePath);
+                state.ide.mode = Control::IDEMode::MIDI;
+                CustomFileDialog::Close();
+                return;
+            }
             std::ifstream fileIn(filePath);
             if (fileIn) {
                 std::ostringstream stringStream;

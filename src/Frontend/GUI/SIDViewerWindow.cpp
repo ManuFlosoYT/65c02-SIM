@@ -10,6 +10,7 @@
 #include <string_view>
 #include <vector>
 
+#include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 #include "Frontend/GUI/Style/Style.h"
 #include "Hardware/Audio/SIDWaveTables.h"
 
@@ -710,11 +711,12 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     state.render.sidWindowSize[1] = ImGui::GetWindowSize().y;
 
     static double sid_time = 0.0;
-    if (state.emulator.IsRunning() && !state.emulator.IsPaused()) {
+    const bool midiActive = (state.ide.open && state.ide.mode == Control::IDEMode::MIDI && GUI::IsMIDIAudioActive());
+    if ((state.emulator.IsRunning() && !state.emulator.IsPaused()) || midiActive) {
         sid_time += ImGui::GetIO().DeltaTime;
     }
 
-    bool should_update = state.emulator.IsRunning() && !state.emulator.IsPaused();
+    bool should_update = (state.emulator.IsRunning() && !state.emulator.IsPaused()) || midiActive;
     DrawSIDViewerContent(state, sid_time, should_update);
 
     ImGui::End();

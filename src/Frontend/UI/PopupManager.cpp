@@ -17,6 +17,7 @@
 #include "Frontend/GUI/SDKUpdatePopup.h"
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
 #include "Frontend/GUI/IDEWindow.h"
+#include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 
 using namespace Control;
 using namespace Core;
@@ -228,6 +229,11 @@ void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2& work_
 #ifndef TARGET_WASM
     GUI::DrawSDKUpdatePopup(state);
 #endif
+    if (state.ide.open && state.ide.mode == Control::IDEMode::MIDI) {
+        GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, static_cast<ImGuiWindowFlags>(windowFlags));
+        GUI::DrawMIDIWorkspaceWindow(state, work_pos, work_size, top_section_height, static_cast<ImGuiWindowFlags>(windowFlags));
+        return;
+    }
     GUI::DrawControlWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);

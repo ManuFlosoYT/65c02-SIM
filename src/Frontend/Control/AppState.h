@@ -162,7 +162,8 @@ struct SDKState {
 enum class IDEMode : std::uint8_t {
     C = 0,
     ASM = 1,
-    MicroDOS = 2
+    MicroDOS = 2,
+    MIDI = 3
 };
 
 struct IDEState {
