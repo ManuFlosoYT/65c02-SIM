@@ -45,16 +45,7 @@ using namespace Hardware;
 
 static constexpr int sidSampleRate = 48000;
 
-static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
-
-    #ifdef __linux__
-    // Si el usuario lanza la app con NVIDIA PRIME offload y no ha forzado un driver manual,
-    // usamos XWayland (x11) para evitar el crash de dmabuf entre NVIDIA e Intel en Wayland.
-    if (SDL_getenv("__NV_PRIME_RENDER_OFFLOAD") != nullptr && SDL_getenv("SDL_VIDEO_DRIVER") == nullptr) {
-        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
-    }
-    #endif
-
+static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
         std::cerr << "Error: " << SDL_GetError() << '\n';
         return false;
@@ -93,6 +84,8 @@ static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     gl_context = SDL_GL_CreateContext(window);
     if (gl_context == nullptr) {
         std::cerr << "Failed to create GL context: " << SDL_GetError() << '\n';
+        SDL_DestroyWindow(window);
+        window = nullptr;
         return false;
     }
     SDL_GL_MakeCurrent(window, gl_context);
@@ -102,10 +95,43 @@ static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
     if (version == 0) {
         std::cerr << "Failed to initialize OpenGL loader (gladLoadGL)!\n";
+        SDL_GL_DestroyContext(gl_context);
+        gl_context = nullptr;
+        SDL_DestroyWindow(window);
+        window = nullptr;
         return false;
     }
 
     return true;
+}
+
+static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
+    #ifdef __linux__
+    // Si el usuario lanza la app con NVIDIA PRIME offload y no ha forzado un driver manual,
+    // usamos XWayland (x11) para evitar el crash de dmabuf entre NVIDIA e Intel en Wayland.
+    if (SDL_getenv("__NV_PRIME_RENDER_OFFLOAD") != nullptr && SDL_getenv("SDL_VIDEO_DRIVER") == nullptr) {
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+    }
+    #endif
+
+    if (TryInitializeSDL(window, gl_context)) {
+        return true;
+    }
+
+    #ifdef __linux__
+    const char* envDriver = SDL_getenv("SDL_VIDEO_DRIVER");
+    const char* hintDriver = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
+    bool alreadyX11 = (envDriver != nullptr && std::string_view(envDriver) == "x11") ||
+                      (hintDriver != nullptr && std::string_view(hintDriver) == "x11");
+    if (!alreadyX11) {
+        std::cerr << "Retrying graphics initialization with SDL_VIDEO_DRIVER=x11...\n";
+        SDL_Quit();
+        SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "x11", SDL_HINT_OVERRIDE);
+        return TryInitializeSDL(window, gl_context);
+    }
+    #endif
+
+    return false;
 }
 
 static void InitializeTextures(AppState& state) {
