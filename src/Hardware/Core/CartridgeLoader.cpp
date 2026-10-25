@@ -20,6 +20,25 @@ bool IsMemoryDeviceName(const std::string& deviceName) {
     return deviceName == "RAM" || deviceName == "ROM";
 }
 
+std::optional<Hardware::SIDModel> ParseSIDModelJson(const nlohmann::json& jsonVal) {
+    std::string modelStr;
+    if (jsonVal.is_string()) {
+        modelStr = jsonVal.get<std::string>();
+    } else if (jsonVal.is_number()) {
+        modelStr = std::to_string(jsonVal.get<int>());
+    } else {
+        return std::nullopt;
+    }
+
+    if (modelStr.find("6581") != std::string::npos) {
+        return Hardware::SIDModel::MOS6581;
+    }
+    if (modelStr.find("8580") != std::string::npos) {
+        return Hardware::SIDModel::MOS8580;
+    }
+    return std::nullopt;
+}
+
 template <typename RangeCollection>
 void ValidateNoInvalidOverlaps(const RangeCollection& ranges) {
     using RangeType = typename RangeCollection::value_type;
@@ -265,12 +284,10 @@ void CartridgeLoader::ParseConfig(const nlohmann::json& manifestJson, Cartridge&
         if (configObj.contains("sd_enabled") && configObj["sd_enabled"].is_boolean()) {
             outCartridge.config.sdEnabled = configObj["sd_enabled"].get<bool>();
         }
-        if (configObj.contains("sid_model") && configObj["sid_model"].is_string()) {
-            const auto modelStr = configObj["sid_model"].get<std::string>();
-            if (modelStr.find("6581") != std::string::npos) {
-                outCartridge.config.sidModel = Hardware::SIDModel::MOS6581;
-            } else if (modelStr.find("8580") != std::string::npos) {
-                outCartridge.config.sidModel = Hardware::SIDModel::MOS8580;
+        if (configObj.contains("sid_model")) {
+            auto model = ParseSIDModelJson(configObj["sid_model"]);
+            if (model.has_value()) {
+                outCartridge.config.sidModel = model;
             }
         }
     }
@@ -284,6 +301,20 @@ void CartridgeLoader::ParseBus(const nlohmann::json& manifestJson, Cartridge& ou
     outCartridge.busDevices.clear();
     for (const auto& devJson : manifestJson["bus"]) {
         outCartridge.busDevices.push_back(ParseDeviceConfig(devJson));
+        if (!outCartridge.config.sidModel.has_value() && devJson.is_object() && devJson.value("name", "") == "SID") {
+            if (devJson.contains("model")) {
+                auto model = ParseSIDModelJson(devJson["model"]);
+                if (model.has_value()) {
+                    outCartridge.config.sidModel = model;
+                }
+            }
+            if (!outCartridge.config.sidModel.has_value() && devJson.contains("sid_model")) {
+                auto model = ParseSIDModelJson(devJson["sid_model"]);
+                if (model.has_value()) {
+                    outCartridge.config.sidModel = model;
+                }
+            }
+        }
     }
 
     ValidateBusRequirements(outCartridge.busDevices);

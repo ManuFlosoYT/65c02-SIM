@@ -177,3 +177,40 @@ TEST(System_Cartridge_Test, Load_Debug_Symbols) {
     }
     std::filesystem::remove(tempZipPath, ec);
 }
+
+TEST(System_Cartridge_Test, ParseConfig_SIDModel) {
+    Cartridge cart;
+
+    CartridgeLoader::ParseConfig({{"config", {{"sid_model", "8580"}}}}, cart);
+    EXPECT_EQ(cart.config.sidModel, Hardware::SIDModel::MOS8580);
+
+    cart.config.sidModel.reset();
+    CartridgeLoader::ParseConfig({{"config", {{"sid_model", 8580}}}}, cart);
+    EXPECT_EQ(cart.config.sidModel, Hardware::SIDModel::MOS8580);
+
+    cart.config.sidModel.reset();
+    CartridgeLoader::ParseConfig({{"config", {{"sid_model", "6581"}}}}, cart);
+    EXPECT_EQ(cart.config.sidModel, Hardware::SIDModel::MOS6581);
+
+    cart.config.sidModel.reset();
+    CartridgeLoader::ParseConfig({{"config", {{"sid_model", 6581}}}}, cart);
+    EXPECT_EQ(cart.config.sidModel, Hardware::SIDModel::MOS6581);
+}
+
+TEST(System_Cartridge_Test, ParseBus_SIDModelInDevice) {
+    Cartridge cart;
+    nlohmann::json manifest = {
+        {"bus", {
+            {{"name", "RAM"}, {"start", 0x0000}, {"end", 0x7FFF}},
+            {{"name", "ROM"}, {"start", 0x8000}, {"end", 0xFFFF}},
+            {{"name", "SID"}, {"start", 0x6400}, {"end", 0x641F}, {"model", "8580"}}
+        }}
+    };
+
+    EXPECT_NO_THROW({
+        CartridgeLoader::ParseBus(manifest, cart);
+    });
+
+    EXPECT_EQ(cart.config.sidModel, Hardware::SIDModel::MOS8580);
+}
+

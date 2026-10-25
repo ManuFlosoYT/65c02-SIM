@@ -25,7 +25,7 @@ void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
     state.emulation.sdEnabled = cart.config.sdEnabled.value_or(false);
     state.emulation.espEnabled = cart.config.espEnabled.value_or(false);
     state.emulator.GetSID().EnableSound(cart.config.sidEnabled.value_or(true));
-    state.emulator.GetSID().SetModel(cart.config.sidModel.value_or(Hardware::SIDModel::MOS6581));
+    state.emulator.GetSID().SetModel(cart.config.sidModel.value_or(Hardware::SIDModel::MOS8580));
     
     state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
     state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
