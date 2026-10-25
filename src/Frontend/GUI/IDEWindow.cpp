@@ -896,7 +896,7 @@ static void DrawCompilerToolbar(Control::AppState& state) {
     bool canCompile = (activeIndex < tabs.size() && !tabs.at(activeIndex).isReadOnly);
 
     ImGui::BeginDisabled(!canCompile);
-    if (ImGui::Button("Compile & Run", ImVec2(180.0F, 0.0F))) {
+    if (ImGui::Button("Compile & Run")) {
         HandleCompileAndRun(state);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -910,7 +910,7 @@ static void DrawCompilerToolbar(Control::AppState& state) {
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Compile & Export", ImVec2(180.0F, 0.0F))) {
+    if (ImGui::Button("Compile & Export")) {
         HandleCompileAndExport(state);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
