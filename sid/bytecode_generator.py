@@ -57,7 +57,7 @@ class Voice:
 
 
 class BytecodeGenerator:
-    def __init__(self, events, mode, chip="8580", system="NTSC", bass_channel=-1, melody_channel=-1, noise_channel=-1, clock=None, cpu_clock=None, sid_clock=None):
+    def __init__(self, events, mode, chip="8580", system="NTSC", bass_channel=-1, melody_channel=-1, noise_channel=-1, clock=None, cpu_clock=None, sid_clock=None, custom_wave_overrides=None):
         self.events = events
         self.mode = mode
         self.chip = chip
@@ -65,6 +65,7 @@ class BytecodeGenerator:
         self.bass_channel = bass_channel
         self.melody_channel = melody_channel
         self.noise_channel = noise_channel
+        self.custom_wave_overrides = custom_wave_overrides or {}
         self.voices = [Voice(i) for i in range(1, 4)]
         self.sid_state = [-1] * 25
         if sid_clock is not None:
@@ -342,6 +343,10 @@ class BytecodeGenerator:
                 vel = ev.get('velocity', 100)
                 role = ev.get('role')
                 wave, ad, sr, pw, features = get_instrument_params(prog, ev['channel'], note_val, vel, self.chip)
+                if ev['channel'] in self.custom_wave_overrides and self.custom_wave_overrides[ev['channel']] != 0:
+                    wave = self.custom_wave_overrides[ev['channel']]
+                    if self.chip == "6581" and (wave & 0x80) and (wave != 0x80):
+                        wave = 0x80
 
                 v = self._allocate_voice(note_val, ev['channel'], ev['time'], features, role)
                 if v:

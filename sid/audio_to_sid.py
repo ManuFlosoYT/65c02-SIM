@@ -26,6 +26,9 @@ def main():
     parser.add_argument("--sd-cost", type=int, default=49731, help="Cycles per 512B SD read")
     parser.add_argument("--stream-bufs", type=int, default=16, help="Target buffer budget in microDOS play.c")
     parser.add_argument("--no-verify", action='store_true', help="Skip formal lossless roundtrip verification")
+    parser.add_argument("--main-track", default=None, help="Force main melody track by index (0-based) or name")
+    parser.add_argument("--melody-channel", type=int, default=None, help="Force main melody MIDI channel (0-15)")
+    parser.add_argument("--bass-channel", type=int, default=None, help="Force bass MIDI channel (0-15)")
 
     args = parser.parse_args()
 
@@ -46,11 +49,18 @@ def main():
         processor = NsfProcessor(args.input, args.mode, duration=args.duration)
     else:
         from midi_processor import MidiProcessor
-        processor = MidiProcessor(args.input, args.mode)
+        processor = MidiProcessor(
+            args.input,
+            args.mode,
+            main_track=args.main_track,
+            melody_channel=args.melody_channel,
+            bass_channel=args.bass_channel
+        )
     events = processor.process()
 
     noise_channel = getattr(processor, 'noise_channel', -1)
-    generator = BytecodeGenerator(events, args.mode, args.chip, args.system, processor.bass_channel, processor.melody_channel, noise_channel, cpu_clock=cpu_clock, sid_clock=sid_clock)
+    custom_wave_overrides = getattr(processor, 'custom_wave_overrides', None)
+    generator = BytecodeGenerator(events, args.mode, args.chip, args.system, processor.bass_channel, processor.melody_channel, noise_channel, cpu_clock=cpu_clock, sid_clock=sid_clock, custom_wave_overrides=custom_wave_overrides)
     bytecode = generator.generate()
 
     if args.microDOS:

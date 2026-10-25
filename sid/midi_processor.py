@@ -18,9 +18,15 @@ from instruments import get_percussion_config
 
 
 class MidiProcessor:
-    def __init__(self, midi_path, mode=MODE_MAX_QUALITY):
+    def __init__(self, midi_path, mode=MODE_MAX_QUALITY, main_track=None, melody_channel=None, bass_channel=None):
         self.midi_path = midi_path
         self.mode = mode
+        self.forced_main_track = main_track
+        self.forced_melody_channel = melody_channel
+        self.forced_bass_channel = bass_channel
+        self.detected_meta_melody_tracks = set()
+        self.detected_meta_bass_tracks = set()
+        self.custom_wave_overrides = {}
         self.mid = mido.MidiFile(midi_path, clip=True)
         self.events = []
         self.bass_channel = -1
@@ -172,18 +178,26 @@ class MidiProcessor:
                         'avg_pitch': avg_pitch
                     }
 
-                best_mel = max(scores.keys(), key=lambda c: scores[c]['mel'])
+                if self.forced_melody_channel is not None and self.forced_melody_channel in scores:
+                    best_mel = self.forced_melody_channel
+                else:
+                    best_mel = max(scores.keys(), key=lambda c: scores[c]['mel'])
                 roles[best_mel] = 'melody'
                 prev_melody = best_mel
 
                 remaining = [c for c in scores.keys() if c != best_mel]
                 if remaining:
-                    best_bass = max(remaining, key=lambda c: scores[c]['bass'])
-                    if scores[best_bass]['avg_pitch'] < 65:
+                    if self.forced_bass_channel is not None and self.forced_bass_channel in remaining:
+                        best_bass = self.forced_bass_channel
                         roles[best_bass] = 'bass'
                         prev_bass = best_bass
                     else:
-                        roles[best_bass] = 'harmony'
+                        best_bass = max(remaining, key=lambda c: scores[c]['bass'])
+                        if scores[best_bass]['avg_pitch'] < 65:
+                            roles[best_bass] = 'bass'
+                            prev_bass = best_bass
+                        else:
+                            roles[best_bass] = 'harmony'
                     for c in remaining:
                         if c != best_bass:
                             roles[c] = 'harmony'
@@ -198,6 +212,9 @@ class MidiProcessor:
             ch = ev.get('channel', 0)
             if ch == 9:
                 ev['role'] = 'percussion'
+                continue
+            if ev.get('forced_role'):
+                ev['role'] = ev['forced_role']
                 continue
             t = ev['time']
             w_idx = min(len(self.window_roles) - 1, max(0, int(t / window_size)))
@@ -434,12 +451,51 @@ class MidiProcessor:
 
     def _flatten_events(self):
         track_events = []
-        for track in self.mid.tracks:
+        for track_idx, track in enumerate(self.mid.tracks):
+            track_forced_role = None
+            track_name = getattr(track, 'name', '') or ''
+            parsed_wave_override = None
+
+            for msg in track:
+                if msg.type in ['text', 'track_name', 'marker']:
+                    text = getattr(msg, 'text', '') or getattr(msg, 'name', '') or ''
+                    if msg.type == 'track_name' and text:
+                        track_name = text
+                    if '65C02_ROLE:MELODY' in text or '[MAIN]' in text:
+                        track_forced_role = 'melody'
+                        self.detected_meta_melody_tracks.add(track_idx)
+                    elif '65C02_ROLE:BASS' in text:
+                        track_forced_role = 'bass'
+                        self.detected_meta_bass_tracks.add(track_idx)
+                    elif '65C02_ROLE:HARMONY' in text:
+                        track_forced_role = 'harmony'
+                    if '65C02_WAVE:' in text:
+                        wave_str = text.split('65C02_WAVE:', 1)[1].strip().split()[0]
+                        try:
+                            parsed_wave_override = int(wave_str, 16)
+                        except ValueError:
+                            pass
+
+            if self.forced_main_track is not None:
+                if str(self.forced_main_track).isdigit():
+                    if int(self.forced_main_track) == track_idx:
+                        track_forced_role = 'melody'
+                elif isinstance(self.forced_main_track, str) and track_name and self.forced_main_track.lower() in track_name.lower():
+                    track_forced_role = 'melody'
+
             abs_ticks = 0
             for msg in track:
                 abs_ticks += msg.time
                 if msg.type in ['note_on', 'note_off', 'set_tempo', 'program_change', 'control_change', 'pitchwheel']:
-                    track_events.append((abs_ticks, msg))
+                    ch = getattr(msg, 'channel', None)
+                    if parsed_wave_override is not None and ch is not None:
+                        self.custom_wave_overrides[ch] = parsed_wave_override
+                    if msg.type == 'note_on' and msg.velocity > 0 and ch is not None and ch != 9:
+                        if track_forced_role == 'melody' and self.forced_melody_channel is None:
+                            self.forced_melody_channel = ch
+                        elif track_forced_role == 'bass' and self.forced_bass_channel is None:
+                            self.forced_bass_channel = ch
+                    track_events.append((abs_ticks, msg, track_idx, track_forced_role))
 
         track_events.sort(key=lambda x: x[0])
 
@@ -449,7 +505,7 @@ class MidiProcessor:
         last_tick = 0
         current_time = 0.0
 
-        for ticks, msg in track_events:
+        for ticks, msg, track_idx, track_forced_role in track_events:
             delta_ticks = ticks - last_tick
             current_time += delta_ticks * seconds_per_tick
             last_tick = ticks
@@ -478,7 +534,9 @@ class MidiProcessor:
                     'type': m_type,
                     'note': msg.note,
                     'velocity': vel,
-                    'channel': getattr(msg, 'channel', 0)
+                    'channel': getattr(msg, 'channel', 0),
+                    'track_idx': track_idx,
+                    'forced_role': track_forced_role
                 })
             elif msg.type == 'control_change':
                 if msg.control in [1, 7, 6, 38, 98, 99, 100, 101]: # Modulation, Volume, Data Entry, NRPN/RPN
@@ -514,6 +572,13 @@ class MidiProcessor:
         else:
             self.bass_channel = -1
             self.melody_channel = -1
+
+        if self.forced_melody_channel is not None:
+            self.melody_channel = int(self.forced_melody_channel)
+            print(f"   [Main Track Override] Locked Melody Channel -> Ch{self.melody_channel}")
+        if self.forced_bass_channel is not None:
+            self.bass_channel = int(self.forced_bass_channel)
+            print(f"   [Bass Track Override] Locked Bass Channel -> Ch{self.bass_channel}")
 
         print(f"   Detected Roles -> Bass: Ch{self.bass_channel}, Melody: Ch{self.melody_channel}")
 
