@@ -1,6 +1,7 @@
 #include "Frontend/GUI/ControlWindow.h"
 #include "Frontend/GUI/RegistersWindow.h"
 #include "Frontend/GUI/CustomFileDialog.h"
+#include <algorithm>
 #include <filesystem>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -96,7 +97,7 @@ static void DrawAudioVideoControls(AppState& state) {
         ImGui::EndTooltip();
     }
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 12.0F);
     bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
     bool sidOverridden = state.emulator.GetCartridge().config.sidEnabled.has_value();
     ImGui::BeginDisabled(sidOverridden);
@@ -112,7 +113,7 @@ static void DrawAudioVideoControls(AppState& state) {
     }
 
     if (soundEnabled) {
-        ImGui::SameLine();
+        ImGui::SameLine(0.0F, 12.0F);
         bool sidModelOverridden = state.emulator.GetCartridge().config.sidModel.has_value();
         ImGui::BeginDisabled(sidModelOverridden);
         ImGui::PushItemWidth(150);
@@ -146,10 +147,10 @@ static void DrawControlButtonBar(AppState& state) {
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 16.0F);
     DrawPlaybackControls(state);
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 20.0F);
     DrawAudioVideoControls(state);
 }
 
@@ -384,13 +385,13 @@ static void DrawRecordingControls(AppState& state) {
 static void DrawIPSSection(AppState& state, float mainColWidth) {
     DrawTargetIPS(state, mainColWidth);
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 14.0F);
     ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 14.0F);
     DrawActualIPS(state);
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0F, 20.0F);
     DrawRecordingControls(state);
 }
 
@@ -512,21 +513,28 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, controlHeight), ImGuiCond_Always);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F, 8.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0F, 10.0F));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0F, 6.0F));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0F, 5.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0F, 5.0F));
     ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     DrawControlButtonBar(state);
     DrawDebugMenu(state);
 
-    ImGui::Spacing();
+    float y1 = ImGui::GetCursorPosY();
+    constexpr float kRegHeight = 20.0F;
+    float regPosY = ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y - kRegHeight;
+    float sepPosY = regPosY - ImGui::GetStyle().ItemSpacing.y - 6.0F;
+    float midSpace = sepPosY - y1;
+    float extraY = std::max(0.0F, midSpace - ImGui::GetFrameHeight());
+
+    ImGui::SetCursorPosY(y1 + (extraY * 0.5F));
     DrawIPSSection(state, mainColWidth);
 
-    ImGui::Spacing();
+    ImGui::SetCursorPosY(sepPosY);
     ImGui::Separator();
-    ImGui::Spacing();
 
+    ImGui::SetCursorPosY(regPosY);
     DrawRegistersSection(state);
 
     HandleDialogs(state);
