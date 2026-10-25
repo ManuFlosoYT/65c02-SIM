@@ -9,7 +9,6 @@
 #include "Frontend/GUI/ConsoleWindow.h"
 #include "Frontend/GUI/ControlWindow.h"
 #include "Frontend/GUI/LCDWindow.h"
-#include "Frontend/GUI/RegistersWindow.h"
 #include "Frontend/GUI/ScriptConsoleWindow.h"
 #include "Frontend/GUI/SIDViewerWindow.h"
 #include "Frontend/Control/SDUtils.h"
@@ -237,7 +236,6 @@ void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2& work_
     GUI::DrawControlWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
-    GUI::DrawRegistersWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     GUI::DrawScriptConsoleWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
     state.crt.time = static_cast<float>(SDL_GetTicks()) / 1000.0F;

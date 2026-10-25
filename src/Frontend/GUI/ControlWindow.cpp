@@ -1,4 +1,5 @@
 #include "Frontend/GUI/ControlWindow.h"
+#include "Frontend/GUI/RegistersWindow.h"
 #include "Frontend/GUI/CustomFileDialog.h"
 #include <filesystem>
 #include <imgui.h>
@@ -506,20 +507,32 @@ static void HandleDialogs(AppState& state) {
 void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                        ImGuiWindowFlags window_flags) {
     float mainColWidth = work_size.x * 0.47F;
-    float controlHeight = std::round((top_section_height - (work_size.y * 0.162F)) * 0.55F);
+    float lcdHeight = work_size.y * 0.144F;
+    float controlHeight = top_section_height - lcdHeight;
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, controlHeight), ImGuiCond_Always);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F, 8.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0F, 6.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0F, 5.0F));
     ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     DrawControlButtonBar(state);
     DrawDebugMenu(state);
+
+    ImGui::Spacing();
     DrawIPSSection(state, mainColWidth);
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    DrawRegistersSection(state);
 
     HandleDialogs(state);
 
-    ImGui::SetScrollHereY(1.0F);
     ImGui::End();
+    ImGui::PopStyleVar(3);
 }
 
 }  // namespace GUI
