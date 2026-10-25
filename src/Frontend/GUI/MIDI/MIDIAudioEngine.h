@@ -44,6 +44,8 @@ class MIDIAudioEngine {
     void Play(Control::AppState& state, const MIDIProject& project);
     void Pause(Control::AppState& state);
     void Stop(Control::AppState& state);
+    void Reset(Control::AppState& state);
+    void Reset();
     void AllNotesOff(Hardware::SID& sid);
 
     [[nodiscard]] bool IsPlaying() const { return playing; }
@@ -89,7 +91,7 @@ class MIDIAudioEngine {
     std::vector<std::uint32_t> activeSequenceNotes;
 
     [[nodiscard]] bool AnyVoiceActive() const;
-    void EnsureSIDReady(Hardware::SID& sid);
+    void EnsureSIDReady(Control::AppState& state);
     void WriteReg(Hardware::SID& sid, std::uint8_t reg, std::uint8_t val, bool force = false);
     [[nodiscard]] std::uint16_t NoteToSIDFreq(double midiNote) const;
     [[nodiscard]] std::uint16_t FreqHzToCutoffDAC(double hz, Hardware::SIDModel model) const;

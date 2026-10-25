@@ -282,7 +282,7 @@ void DrawPointersView(Hardware::Bus& bus, const std::vector<DeviceRegistration>&
                 ImGui::TableSetColumnIndex(3);
                 const DeviceRegistration* hitDev = nullptr;
                 for (const auto& reg : devices) {
-                    if (reg.enabled && targetPtr >= reg.startAddress && targetPtr <= reg.endAddress) {
+                    if (reg.enabled && !reg.isVirtual && targetPtr >= reg.startAddress && targetPtr <= reg.endAddress) {
                         hitDev = &reg;
                         break;
                     }

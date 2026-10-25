@@ -571,12 +571,13 @@ inline void ASL::ExecuteABS(CPU& cpu, Bus& bus) {
 
 template <bool Debug>
 inline void ASL::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord<Debug>(bus);
-    Dir += cpu.X;
-    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
+    Word effectiveAddr = baseAddr + cpu.X;
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
     Byte oldA = dato;
     dato <<= 1;
-    bus.Write<Debug>(Dir, dato);
+    bus.Write<Debug>(effectiveAddr, dato);
     SetFlags(cpu, dato, oldA);
 }
 
@@ -627,12 +628,13 @@ inline void LSR::ExecuteABS(CPU& cpu, Bus& bus) {
 
 template <bool Debug>
 inline void LSR::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord<Debug>(bus);
-    Dir += cpu.X;
-    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
+    Word effectiveAddr = baseAddr + cpu.X;
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
     Byte oldA = dato;
     dato >>= 1;
-    bus.Write<Debug>(Dir, dato);
+    bus.Write<Debug>(effectiveAddr, dato);
     SetFlags(cpu, dato, oldA);
 }
 
@@ -686,13 +688,14 @@ inline void ROL::ExecuteABS(CPU& cpu, Bus& bus) {
 
 template <bool Debug>
 inline void ROL::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord<Debug>(bus);
-    Dir += cpu.X;
-    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
+    Word effectiveAddr = baseAddr + cpu.X;
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
     Byte oldA = dato;
     Byte oldCarry = cpu.C ? 1 : 0;
     dato = (dato << 1) | oldCarry;
-    bus.Write<Debug>(Dir, dato);
+    bus.Write<Debug>(effectiveAddr, dato);
     SetFlags(cpu, dato, oldA);
 }
 
@@ -747,13 +750,14 @@ inline void ROR::ExecuteABS(CPU& cpu, Bus& bus) {
 
 template <bool Debug>
 inline void ROR::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord<Debug>(bus);
-    Dir += cpu.X;
-    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
+    Word effectiveAddr = baseAddr + cpu.X;
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
     Byte oldA = dato;
     Byte oldCarry = cpu.C ? 0x80 : 0;
     dato = (dato >> 1) | oldCarry;
-    bus.Write<Debug>(Dir, dato);
+    bus.Write<Debug>(effectiveAddr, dato);
     SetFlags(cpu, dato, oldA);
 }
 

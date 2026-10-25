@@ -202,13 +202,28 @@ static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
         } else {
 #ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-                // Write to virtual FS
                 std::string virtualPath = "/tmp/";
                 virtualPath += filename;
                 FILE* f = fopen(virtualPath.c_str(), "wb");
                 if (f) {
                     fwrite(data, 1, static_cast<size_t>(size), f);
                     fclose(f);
+                }
+                state.emulator.Pause();
+                std::string errorMsg;
+                Core::Cartridge cart;
+                if (Core::CartridgeLoader::Load(virtualPath, cart, errorMsg)) {
+                    Control::ApplyCartridgeConfig(state, cart);
+                    ImGui::OpenPopup("Cartridge Loaded");
+                    if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
+                        state.rom.bin = virtualPath;
+                        state.rom.loaded = true;
+                        state.emulator.ClearProfiler();
+                    } else {
+                        ImGui::OpenPopup("ErrorLoadingROM");
+                    }
+                } else {
+                    ImGui::OpenPopup("ErrorLoadingCartridge");
                 }
             };
             WebFileUtils::open_browser_file_picker(".65c");

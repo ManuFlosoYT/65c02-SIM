@@ -176,6 +176,7 @@ void SID::EnableSound(bool enable) {
     if (!soundEnabled && enable) {
         // Clear old state before enabling
         resampler.Clear();
+        sampleBuffer.clear();
         dcBlockerState = 0.0;
         dcBlockerPrevIn = 0.0;
         filterCoefficientsDirty = true;
@@ -209,6 +210,7 @@ void SID::SetEmulationPaused(bool paused) {
     if (emulationPaused && !paused) {
         // Resuming from pause: clear stale data to prevent audio pop
         resampler.Clear();
+        sampleBuffer.clear();
         dcBlockerState = 0.0;
         dcBlockerPrevIn = 0.0;
         if (audioStream != nullptr) {
@@ -527,7 +529,6 @@ void SID::FlushAvailableOutput() {
         visualizerWriteIndex.store(wIdx + 1, std::memory_order_relaxed);
 
         if (sampleBuffer.size() >= 512) {
-            std::scoped_lock lock(sidMutex);
             if (audioStream != nullptr && !emulationPaused) {
                 SDL_PutAudioStreamData(audioStream, sampleBuffer.data(),
                                        static_cast<int>(sampleBuffer.size() * sizeof(int16_t)));
@@ -613,6 +614,7 @@ void SID::ClockInternal() {
                     std::chrono::steady_clock::now() - filterStart)
                     .count());
             const auto resamplerStart = std::chrono::steady_clock::now();
+            std::lock_guard<std::mutex> lock(sidMutex);
             resampler.PushSample(0.0);
             profilingStats.resamplerNanoseconds += static_cast<std::uint64_t>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -627,6 +629,7 @@ void SID::ClockInternal() {
                     std::chrono::steady_clock::now() - outputStart)
                     .count());
         } else {
+            std::lock_guard<std::mutex> lock(sidMutex);
             resampler.PushSample(0.0);
             if (resampler.HasOutput()) [[unlikely]] {
                 FlushAvailableOutput();
@@ -719,6 +722,7 @@ void SID::ClockInternal() {
                 .count());
 
         const auto resamplerStart = std::chrono::steady_clock::now();
+        std::lock_guard<std::mutex> lock(sidMutex);
         resampler.PushSample(filteredMix);
         profilingStats.resamplerNanoseconds += static_cast<std::uint64_t>(
             std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -734,6 +738,7 @@ void SID::ClockInternal() {
                 std::chrono::steady_clock::now() - outputStart)
                 .count());
     } else {
+        std::lock_guard<std::mutex> lock(sidMutex);
         resampler.PushSample(filteredMix);
         if (resampler.HasOutput()) [[unlikely]] {
             FlushAvailableOutput();

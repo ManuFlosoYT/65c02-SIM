@@ -88,7 +88,7 @@ void DrawMemoryLayoutTooltip(const std::vector<DeviceRegistration>& devices, flo
         ImGui::TextUnformatted(addrBuf.str().c_str());
 
         for (const auto& reg : devices) {
-            if (reg.enabled && addr >= reg.startAddress && addr <= reg.endAddress) {
+            if (reg.enabled && !reg.isVirtual && addr >= reg.startAddress && addr <= reg.endAddress) {
                 ImGui::PushStyleColor(ImGuiCol_Text, GetDeviceColor(reg.device->GetName()));
 
                 std::ostringstream txtBuf;

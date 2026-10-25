@@ -64,6 +64,8 @@ bool Bus::LoadState(std::istream& inStream) {
                           << "-0x" << reg.endAddress << "]" << std::dec << '\n';
                 return false;
             }
+            registeredDevices.at(i).enabled = enabled;
+            registeredDevices.at(i).ignoreCollision = ignoreCollision;
         } else {
             std::cerr << "Memory map mismatch! Savestate has more devices (" << deviceCount
                       << ") than current configuration (" << registeredDevices.size() << ")" << '\n';
@@ -76,6 +78,8 @@ bool Bus::LoadState(std::istream& inStream) {
                   << ", Current: " << registeredDevices.size() << '\n';
         return false;
     }
+
+    RebuildDeviceMap();
 
     return inStream.good();
 }

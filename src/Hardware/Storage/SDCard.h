@@ -2,8 +2,10 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "Hardware/Core/IBusDevice.h"
@@ -75,6 +77,7 @@ class SDCard : public IBusDevice {
     bool is_folder_mount = false;
     bool allow_host_deletion = false;
     std::vector<uint8_t> virtual_disk;
+    std::unordered_map<std::string, std::filesystem::path> sfnToHostMap;
     bool BuildVirtualFAT();
     void ExtractVirtualFAT();
 

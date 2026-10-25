@@ -224,9 +224,13 @@ void DrawDisassemblerContent(Control::AppState& state) {
                 ImGui::PopStyleColor();
             }
 
+            uint16_t prevAddr = currentAddr;
             currentAddr += instr.size;
             if (currentAddr < instr.size) {
                 break;  // Overflow
+            }
+            if (prevAddr < progCounter && currentAddr > progCounter) {
+                currentAddr = progCounter;
             }
         }
         ImGui::EndTable();

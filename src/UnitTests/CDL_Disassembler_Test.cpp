@@ -12,6 +12,7 @@ class CDL_Disassembler_Test : public ::testing::Test {
    public:
     void SetUp() override {
         bus.RegisterDevice(0x0000, 0xFFFF, &ram);
+        bus.SetProfilingEnabled(true);
         cpu.Reset();
     }
 

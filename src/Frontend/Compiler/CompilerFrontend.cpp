@@ -245,12 +245,66 @@ static bool GenerateDbgFromMap(const std::string& mapPath, const std::string& db
     return id > 0;
 }
 
+static std::string StripComments(const std::string& source) {
+    std::string clean;
+    clean.reserve(source.size());
+    bool inLineComment = false;
+    bool inBlockComment = false;
+    bool inString = false;
+    bool inChar = false;
+
+    for (size_t i = 0; i < source.size(); ++i) {
+        if (inLineComment) {
+            if (source[i] == '\n') {
+                inLineComment = false;
+                clean.push_back('\n');
+            }
+        } else if (inBlockComment) {
+            if (source[i] == '*' && i + 1 < source.size() && source[i + 1] == '/') {
+                inBlockComment = false;
+                ++i;
+            }
+        } else if (inString) {
+            clean.push_back(source[i]);
+            if (source[i] == '\\' && i + 1 < source.size()) {
+                clean.push_back(source[++i]);
+            } else if (source[i] == '"') {
+                inString = false;
+            }
+        } else if (inChar) {
+            clean.push_back(source[i]);
+            if (source[i] == '\\' && i + 1 < source.size()) {
+                clean.push_back(source[++i]);
+            } else if (source[i] == '\'') {
+                inChar = false;
+            }
+        } else {
+            if (source[i] == '/' && i + 1 < source.size() && source[i + 1] == '/') {
+                inLineComment = true;
+                ++i;
+            } else if (source[i] == '/' && i + 1 < source.size() && source[i + 1] == '*') {
+                inBlockComment = true;
+                ++i;
+            } else {
+                if (source[i] == '"') {
+                    inString = true;
+                } else if (source[i] == '\'') {
+                    inChar = true;
+                }
+                clean.push_back(source[i]);
+            }
+        }
+    }
+    return clean;
+}
+
 std::string CompilerFrontend::GenerateLinkerScript(const std::string& code) {
-    bool hasGpu = code.find("--gpu") != std::string::npos || code.find("GPU.h") != std::string::npos;
+    std::string cleanCode = StripComments(code);
+    bool hasGpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos;
     bool hasDoubleBuffer =
-        code.find("--double-buffer") != std::string::npos || code.find("GPUDoubleBuffer.h") != std::string::npos;
-    bool hasNet = code.find("--net") != std::string::npos || code.find("NET.h") != std::string::npos;
-    bool hasSid = code.find("--sid") != std::string::npos || code.find("SID.h") != std::string::npos;
+        cleanCode.find("--double-buffer") != std::string::npos || cleanCode.find("GPUDoubleBuffer.h") != std::string::npos;
+    bool hasNet = cleanCode.find("--net") != std::string::npos || cleanCode.find("NET.h") != std::string::npos;
+    bool hasSid = cleanCode.find("--sid") != std::string::npos || cleanCode.find("SID.h") != std::string::npos;
 
     struct Block {
         uint32_t start;
@@ -528,12 +582,14 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
         return res;
     }
 
-    res.hardware.gpu = code.find("--gpu") != std::string::npos || code.find("GPU.h") != std::string::npos ||
-                       code.find("--double-buffer") != std::string::npos ||
-                       code.find("GPUDoubleBuffer.h") != std::string::npos;
-    res.hardware.sid = code.find("--sid") != std::string::npos || code.find("SID.h") != std::string::npos;
-    res.hardware.net = code.find("--net") != std::string::npos || code.find("NET.h") != std::string::npos;
-    res.hardware.sd = code.find("--sd") != std::string::npos || code.find("SD.h") != std::string::npos;
+    std::string cleanCode = StripComments(code);
+
+    res.hardware.gpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos ||
+                       cleanCode.find("--double-buffer") != std::string::npos ||
+                       cleanCode.find("GPUDoubleBuffer.h") != std::string::npos;
+    res.hardware.sid = cleanCode.find("--sid") != std::string::npos || cleanCode.find("SID.h") != std::string::npos;
+    res.hardware.net = cleanCode.find("--net") != std::string::npos || cleanCode.find("NET.h") != std::string::npos;
+    res.hardware.sd = cleanCode.find("--sd") != std::string::npos || cleanCode.find("SD.h") != std::string::npos;
 
     std::string tempDir = CompilerVFS::GetTempDir();
     if (tempDir.empty()) {
@@ -581,25 +637,25 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
 
         std::ostringstream cmdStream;
         if (type == BuildType::MicroDOS) {
-            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -g -std=c23 -T " << linkScript
-                      << " -I " << tempDir << "/include -I " << tempDir
-                      << "/include/Libs -linit-stack -lcopy-data -lzero-bss " << tempDir
-                      << "/Linker/App-Runtime.s " << srcFile << " -Wl,-Map=" << mapFile << " -o " << elfFile;
+            cmdStream << "\"" << compiler << "\" -mcpu=mosw65c02 " << opt << " -g -std=c23 -T \"" << linkScript
+                      << "\" -I \"" << tempDir << "/include\" -I \"" << tempDir
+                      << "/include/Libs\" -linit-stack -lcopy-data -lzero-bss \"" << tempDir
+                      << "/Linker/App-Runtime.s\" \"" << srcFile << "\" \"-Wl,-Map=" << mapFile << "\" -o \"" << elfFile << "\"";
         } else if (type == BuildType::Assembly) {
-            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -g -T " << linkScript
-                      << " -I " << tempDir << "/include -I " << tempDir
-                      << "/include/Libs -nostartfiles " << srcFile << " -Wl,-Map=" << mapFile << " -o " << elfFile;
+            cmdStream << "\"" << compiler << "\" -mcpu=mosw65c02 " << opt << " -g -T \"" << linkScript
+                      << "\" -I \"" << tempDir << "/include\" -I \"" << tempDir
+                      << "/include/Libs\" -nostartfiles \"" << srcFile << "\" \"-Wl,-Map=" << mapFile << "\" -o \"" << elfFile << "\"";
         } else {
-            cmdStream << compiler << " -mcpu=mosw65c02 " << opt << " -g -T " << linkScript
-                      << " -I " << tempDir << "/include -I " << tempDir
-                      << "/include/Libs -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant "
-                         "-Wl,--gc-sections -Wl,--lto-O2 "
-                      << srcFile << " " << tempDir << "/Linker/bios.s " << tempDir << "/include/Libs/BIOS.c";
-            if (code.find("SD.h") != std::string::npos) {
-                cmdStream << " " << tempDir << "/include/Libs/SD.c " << tempDir << "/include/Libs/fatfs/ff.c "
-                          << tempDir << "/include/Libs/fatfs/diskio.c -D ENABLE_SD_SUPPORT=1";
+            cmdStream << "\"" << compiler << "\" -mcpu=mosw65c02 " << opt << " -g -T \"" << linkScript
+                      << "\" -I \"" << tempDir << "/include\" -I \"" << tempDir
+                      << "/include/Libs\" -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant "
+                         "-Wl,--gc-sections -Wl,--lto-O2 \""
+                      << srcFile << "\" \"" << tempDir << "/Linker/bios.s\" \"" << tempDir << "/include/Libs/BIOS.c\"";
+            if (res.hardware.sd) {
+                cmdStream << " \"" << tempDir << "/include/Libs/SD.c\" \"" << tempDir << "/include/Libs/fatfs/ff.c\" \""
+                          << tempDir << "/include/Libs/fatfs/diskio.c\" -D ENABLE_SD_SUPPORT=1";
             }
-            cmdStream << " -Wl,-Map=" << mapFile << " -o " << elfFile;
+            cmdStream << " \"-Wl,-Map=" << mapFile << "\" -o \"" << elfFile << "\"";
         }
         std::string cmd = cmdStream.str();
 
@@ -617,7 +673,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
             if (!fs::exists(objcopy)) {
                 objcopy = "llvm-objcopy";
             }
-            std::string copyCmd = objcopy + " -O binary " + elfFile + " " + binFile;
+            std::string copyCmd = "\"" + objcopy + "\" -O binary \"" + elfFile + "\" \"" + binFile + "\"";
             std::string copyLog;
             int copyResult = RunSysCommand(copyCmd, copyLog);
             res.log += copyLog;

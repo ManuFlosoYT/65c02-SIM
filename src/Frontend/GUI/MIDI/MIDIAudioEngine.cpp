@@ -128,7 +128,9 @@ bool MIDIAudioEngine::AnyVoiceActive() const {
     return voices[0].active || voices[1].active || voices[2].active;
 }
 
-void MIDIAudioEngine::EnsureSIDReady(Hardware::SID& sid) {
+void MIDIAudioEngine::EnsureSIDReady(Control::AppState& state) {
+    state.emulator.Pause();
+    Hardware::SID& sid = state.emulator.GetSID();
     if (!sid.IsSoundEnabled()) {
         sid.EnableSound(true);
     }
@@ -584,8 +586,10 @@ void MIDIAudioEngine::StepSequencerSlice(Hardware::SID& sid, const MIDIProject& 
 
 void MIDIAudioEngine::TriggerAuditionNote(Control::AppState& state, int channel, int program, int note, int velocity,
                                           std::uint8_t customWaveOverride, MIDITrackRole role) {
+    state.emulator.Pause();
+    sidRegCache.fill(-1);
+    EnsureSIDReady(state);
     Hardware::SID& sid = state.emulator.GetSID();
-    EnsureSIDReady(sid);
 
     const SIDPatchParams params =
         MIDISoundBank::GetInstrumentParams(program, channel, note, velocity, sid.GetModel(), customWaveOverride);
@@ -627,8 +631,9 @@ void MIDIAudioEngine::ReleaseAuditionNote(Control::AppState& state) {
 }
 
 void MIDIAudioEngine::Play(Control::AppState& state, const MIDIProject& project) {
-    Hardware::SID& sid = state.emulator.GetSID();
-    EnsureSIDReady(sid);
+    state.emulator.Pause();
+    sidRegCache.fill(-1);
+    EnsureSIDReady(state);
     playheadSeconds = project.BeatsToSeconds(playheadBeats);
     playing = true;
 }
@@ -644,7 +649,17 @@ void MIDIAudioEngine::Stop(Control::AppState& state) {
     auditionReleased = false;
     playheadBeats = loopEnabled ? loopStartBeats : 0.0;
     playheadSeconds = 0.0;
+    sidRegCache.fill(-1);
     AllNotesOff(state.emulator.GetSID());
+}
+
+void MIDIAudioEngine::Reset(Control::AppState& state) {
+    sidRegCache.fill(-1);
+    Stop(state);
+}
+
+void MIDIAudioEngine::Reset() {
+    sidRegCache.fill(-1);
 }
 
 void MIDIAudioEngine::AllNotesOff(Hardware::SID& sid) {
@@ -683,8 +698,8 @@ void MIDIAudioEngine::Update(Control::AppState& state, const MIDIProject& projec
         return;
     }
 
+    EnsureSIDReady(state);
     Hardware::SID& sid = state.emulator.GetSID();
-    EnsureSIDReady(sid);
 
     const double clampedDelta = static_cast<double>(std::clamp(deltaSeconds, 0.001F, 0.050F));
     constexpr double SLICE_SEC = 0.001;

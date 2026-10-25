@@ -601,11 +601,12 @@ inline void INC::ExecuteABS(CPU& cpu, Bus& bus) {
 
 template <bool Debug>
 inline void INC::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord<Debug>(bus);
-    Dir += cpu.X;
-    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
+    Word effectiveAddr = baseAddr + cpu.X;
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
     dato++;
-    bus.Write<Debug>(Dir, dato);
+    bus.Write<Debug>(effectiveAddr, dato);
     SetFlags(cpu, dato);
 }
 
@@ -650,11 +651,12 @@ inline void DEC::ExecuteABS(CPU& cpu, Bus& bus) {
 
 template <bool Debug>
 inline void DEC::ExecuteABSX(CPU& cpu, Bus& bus) {
-    Word Dir = cpu.FetchWord<Debug>(bus);
-    Dir += cpu.X;
-    Byte dato = cpu.ReadByte<Debug>(Dir, bus);
+    Word baseAddr = cpu.FetchWord<Debug>(bus);
+    Word effectiveAddr = baseAddr + cpu.X;
+    cpu.AddPageCrossPenalty(baseAddr, effectiveAddr);
+    Byte dato = cpu.ReadByte<Debug>(effectiveAddr, bus);
     dato--;
-    bus.Write<Debug>(Dir, dato);
+    bus.Write<Debug>(effectiveAddr, dato);
     SetFlags(cpu, dato);
 }
 

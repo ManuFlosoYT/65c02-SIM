@@ -98,6 +98,7 @@ bool SDCard::Mount(const std::string& imagePath) {
 }
 
 void SDCard::Unmount() {
+    sfnToHostMap.clear();
     if (is_folder_mount) {
         if (is_modified) {
             SyncToHost();
@@ -329,6 +330,7 @@ bool SDCard::MountFolder(const std::string& folderPath, bool allowDeletion) {
 }
 
 bool SDCard::BuildVirtualFAT() {
+    sfnToHostMap.clear();
     if (!is_folder_mount || currentPath.empty()) {
         return false;
     }
@@ -490,6 +492,7 @@ bool SDCard::BuildVirtualFAT() {
         for (const auto& item : items) {
             std::string fname = item.path().filename().string();
             std::string sfn = GenerateSFN(fname, used_sfns);
+            sfnToHostMap[dir_path.string() + "/" + sfn] = item.path();
 
             std::error_code ec;
             uint16_t date = 0;
@@ -542,7 +545,12 @@ bool SDCard::BuildVirtualFAT() {
         }
     };
 
-    buildDir(buildDir, PathFromUtf8(currentPath), 0, 0);
+    std::error_code ec_root;
+    std::filesystem::path root_host = std::filesystem::canonical(PathFromUtf8(currentPath), ec_root);
+    if (ec_root) {
+        root_host = PathFromUtf8(currentPath);
+    }
+    buildDir(buildDir, root_host, 0, 0);
     return true;
 }
 
@@ -623,28 +631,35 @@ void SDCard::ExtractVirtualFAT() {
             }
             std::string sfn_name = ext.empty() ? name : (name + "." + ext);
 
-            std::string target_name = sfn_name;
-            if (std::filesystem::exists(host_dir)) {
-                for (const auto& entry : std::filesystem::directory_iterator(host_dir, std::filesystem::directory_options::skip_permission_denied)) {
-                    std::string cur_name = entry.path().filename().string();
-                    if (cur_name.size() == sfn_name.size()) {
-                        bool match = true;
-                        for (size_t i = 0; i < sfn_name.size(); ++i) {
-                            if (std::tolower(static_cast<unsigned char>(cur_name[i])) !=
-                                std::tolower(static_cast<unsigned char>(sfn_name[i]))) {
-                                match = false;
+            std::string sfn(reinterpret_cast<const char*>(&virtual_disk[offset]), 11);
+            std::filesystem::path host_target;
+            auto it = sfnToHostMap.find(host_dir.string() + "/" + sfn);
+            if (it != sfnToHostMap.end() && std::filesystem::exists(it->second)) {
+                host_target = it->second;
+            } else {
+                std::string target_name = sfn_name;
+                if (std::filesystem::exists(host_dir)) {
+                    for (const auto& entry : std::filesystem::directory_iterator(host_dir, std::filesystem::directory_options::skip_permission_denied)) {
+                        std::string cur_name = entry.path().filename().string();
+                        if (cur_name.size() == sfn_name.size()) {
+                            bool match = true;
+                            for (size_t i = 0; i < sfn_name.size(); ++i) {
+                                if (std::tolower(static_cast<unsigned char>(cur_name[i])) !=
+                                    std::tolower(static_cast<unsigned char>(sfn_name[i]))) {
+                                    match = false;
+                                    break;
+                                }
+                            }
+                            if (match) {
+                                target_name = cur_name;
                                 break;
                             }
                         }
-                        if (match) {
-                            target_name = cur_name;
-                            break;
-                        }
                     }
                 }
+                host_target = host_dir / target_name;
             }
 
-            std::filesystem::path host_target = host_dir / target_name;
             std::filesystem::path weakly_target = std::filesystem::weakly_canonical(host_target, ec);
             if (ec || !IsPathContained(weakly_target, root_host)) {
                 continue;
@@ -657,12 +672,22 @@ void SDCard::ExtractVirtualFAT() {
             if ((attr & 0x10) != 0) {
                 std::filesystem::create_directories(host_target, ec);
                 synced_paths.insert(weakly_target);
+                std::error_code ec_c;
+                std::filesystem::path can_target = std::filesystem::canonical(host_target, ec_c);
+                if (!ec_c) {
+                    synced_paths.insert(can_target);
+                }
                 if (first_cluster >= 2) {
                     std::vector<size_t> sub_offsets = readClusterChain(first_cluster);
                     self(self, sub_offsets, host_target);
                 }
             } else {
                 synced_paths.insert(weakly_target);
+                std::error_code ec_c;
+                std::filesystem::path can_target = std::filesystem::canonical(host_target, ec_c);
+                if (!ec_c) {
+                    synced_paths.insert(can_target);
+                }
                 std::vector<uint8_t> file_data;
                 file_data.reserve(file_size);
                 uint16_t cur = first_cluster;

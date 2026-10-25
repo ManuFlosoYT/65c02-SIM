@@ -142,4 +142,7 @@ private:
     std::array<uint32_t, 2> pboProcessed = {0, 0};
     int pboIndex = 0;
     int pboWarmupFrames = 0;
+    size_t pboProcessedCapacity = 0;
+    std::array<int, 2> pboProcessedW = {0, 0};
+    std::array<int, 2> pboProcessedH = {0, 0};
 };

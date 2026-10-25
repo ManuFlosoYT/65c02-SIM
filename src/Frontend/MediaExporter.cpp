@@ -82,6 +82,9 @@ bool MediaExporter::Initialize(const std::string& filename,
     if (shouldRecordProcessed) {
         SetupSwsContext(&swsCtxProcessed, processedWidth, processedHeight, videoCodecCtxProcessed);
         SetupPBOs(pboProcessed, processedWidth, processedHeight);
+        pboProcessedCapacity = static_cast<size_t>(processedWidth) * static_cast<size_t>(processedHeight) * 4U;
+        pboProcessedW.fill(processedWidth);
+        pboProcessedH.fill(processedHeight);
     }
 
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
@@ -248,6 +251,17 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &actualProcH);
 
         if (actualProcW > 0 && actualProcH > 0 && actualProcW < 8192 && actualProcH < 8192) {
+            const size_t reqSize = static_cast<size_t>(actualProcW) * static_cast<size_t>(actualProcH) * 4U;
+            if (reqSize > pboProcessedCapacity) {
+                for (int i = 0; i < 2; ++i) {
+                    glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(i));
+                    glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(reqSize), nullptr, GL_STREAM_READ);
+                }
+                glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(pboIndex));
+                pboProcessedCapacity = reqSize;
+            }
+            pboProcessedW.at(pboIndex) = actualProcW;
+            pboProcessedH.at(pboIndex) = actualProcH;
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         }
@@ -276,11 +290,11 @@ void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emul
             glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(nextIndex));
             const auto* ptrProc = static_cast<const uint8_t*>(glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY));
             if (ptrProc != nullptr) {
-                // We need the dimensions from when the command was issued
-                // For simplicity, let's assume they haven't changed or use stored ones
-                frameData.processedW = processedWidth;
-                frameData.processedH = processedHeight;
-                size_t szProc = static_cast<size_t>(processedWidth) * static_cast<size_t>(processedHeight) * 4U;
+                const int curW = pboProcessedW.at(nextIndex) > 0 ? pboProcessedW.at(nextIndex) : processedWidth;
+                const int curH = pboProcessedH.at(nextIndex) > 0 ? pboProcessedH.at(nextIndex) : processedHeight;
+                frameData.processedW = curW;
+                frameData.processedH = curH;
+                size_t szProc = static_cast<size_t>(curW) * static_cast<size_t>(curH) * 4U;
                 frameData.processedPixels.resize(szProc);
                 std::memcpy(frameData.processedPixels.data(), ptrProc, szProc);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
@@ -505,6 +519,35 @@ void MediaExporter::Finalize() {
         }
 
         if (audioCodecCtx != nullptr) {
+            if (audioFifo != nullptr) {
+                int frameSize = audioCodecCtx->frame_size;
+                if (frameSize == 0) {
+                    frameSize = 4608;
+                }
+                while (av_audio_fifo_size(audioFifo) > 0) {
+                    int remaining = av_audio_fifo_size(audioFifo);
+                    int toRead = std::min(remaining, frameSize);
+                    AVFrame* padFrame = av_frame_alloc();
+                    if (padFrame == nullptr) {
+                        break;
+                    }
+                    padFrame->nb_samples = frameSize;
+                    padFrame->format = audioCodecCtx->sample_fmt;
+                    padFrame->sample_rate = audioCodecCtx->sample_rate;
+                    av_channel_layout_copy(&padFrame->ch_layout, &audioCodecCtx->ch_layout);
+                    if (av_frame_get_buffer(padFrame, 0) >= 0) {
+                        av_samples_set_silence(padFrame->data, 0, frameSize,
+                                               audioCodecCtx->ch_layout.nb_channels,
+                                               audioCodecCtx->sample_fmt);
+                        void* audioDst = padFrame->data[0];
+                        av_audio_fifo_read(audioFifo, &audioDst, toRead);
+                        padFrame->pts = nextAudioPts;
+                        nextAudioPts += frameSize;
+                        EncodeAudioFrame(padFrame);
+                    }
+                    av_frame_free(&padFrame);
+                }
+            }
             EncodeAudioFrame(nullptr);
         }
 
@@ -535,6 +578,9 @@ void MediaExporter::Finalize() {
     if (pboProcessed[0] != 0U) {
         glDeleteBuffers(2, pboProcessed.data());
         pboProcessed.fill(0U);
+        pboProcessedCapacity = 0;
+        pboProcessedW.fill(0);
+        pboProcessedH.fill(0);
     }
 }
 #endif

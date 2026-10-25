@@ -7,6 +7,7 @@
 #include <array>
 #include <chrono>
 #include <ctime>
+#include <format>
 #include <iterator>
 #include <sstream>
 #include <vector>
@@ -456,6 +457,21 @@ static bool ExportCartridgeToUrl(AppState& state, const std::string& manifestStr
     return true;
 }
 
+static nlohmann::json BuildBusJson(const AppState& state) {
+    auto busArray = nlohmann::json::array();
+    for (const auto& reg : state.emulator.GetMem().GetRegisteredDevices()) {
+        if (reg.isVirtual || !reg.device) {
+            continue;
+        }
+        busArray.push_back(nlohmann::json::object({
+            {"name", reg.device->GetName()},
+            {"start", std::format("0x{:04X}", reg.startAddress)},
+            {"end", std::format("0x{:04X}", reg.endAddress)}
+        }));
+    }
+    return busArray;
+}
+
 static void DrawExportCartridgePopup(AppState& state) {
     if (ImGui::BeginPopupModal("Export ROM to Cartridge###ExportCartridgePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::InputText("Name", nameBuf, sizeof(nameBuf));
@@ -492,6 +508,10 @@ static void DrawExportCartridgePopup(AppState& state) {
                 {"type", "rom"}
             };
             manifest["rom"] = "rom.bin";
+            const auto& cart = state.emulator.GetCartridge();
+            if (cart.loaded && !cart.vramData.empty()) {
+                manifest["vram"] = "vram.bin";
+            }
             manifest["config"] = {
                 {"target_ips", state.emulation.instructionsPerFrame},
                 {"gpu_enabled", state.emulation.gpuEnabled},
@@ -501,16 +521,7 @@ static void DrawExportCartridgePopup(AppState& state) {
                 {"esp_enabled", state.emulation.espEnabled},
                 {"sd_enabled", state.emulation.sdEnabled}
             };
-            manifest["bus"] = nlohmann::json::array({
-                {{"name", "RAM"}, {"start", "0x0000"}, {"end", "0x7FFF"}},
-                {{"name", "ROM"}, {"start", "0x8000"}, {"end", "0xFFFF"}},
-                {{"name", "ACIA"}, {"start", "0x5000"}, {"end", "0x5003"}},
-                {{"name", "VIA"}, {"start", "0x6000"}, {"end", "0x600F"}},
-                {{"name", "ESP8266"}, {"start", "0x5004"}, {"end", "0x5007"}},
-                {{"name", "SD Card"}, {"start", "0x5008"}, {"end", "0x500B"}},
-                {{"name", "SID"}, {"start", "0x4800"}, {"end", "0x481F"}},
-                {{"name", "GPU"}, {"start", "0x2000"}, {"end", "0x3FFF"}}
-            });
+            manifest["bus"] = BuildBusJson(state);
 
             pendingManifestStr = manifest.dump(2);
             
@@ -545,16 +556,7 @@ static void DrawExportCartridgePopup(AppState& state) {
                 {"esp_enabled", state.emulation.espEnabled},
                 {"sd_enabled", state.emulation.sdEnabled}
             };
-            manifest["bus"] = nlohmann::json::array({
-                {{"name", "RAM"}, {"start", "0x0000"}, {"end", "0x7FFF"}},
-                {{"name", "ROM"}, {"start", "0x8000"}, {"end", "0xFFFF"}},
-                {{"name", "ACIA"}, {"start", "0x5000"}, {"end", "0x5003"}},
-                {{"name", "VIA"}, {"start", "0x6000"}, {"end", "0x600F"}},
-                {{"name", "ESP8266"}, {"start", "0x5004"}, {"end", "0x5007"}},
-                {{"name", "SD Card"}, {"start", "0x5008"}, {"end", "0x500B"}},
-                {{"name", "SID"}, {"start", "0x4800"}, {"end", "0x481F"}},
-                {{"name", "GPU"}, {"start", "0x2000"}, {"end", "0x3FFF"}}
-            });
+            manifest["bus"] = BuildBusJson(state);
             ExportCartridgeToUrl(state, manifest.dump(2));
             ImGui::CloseCurrentPopup();
         }
@@ -635,16 +637,7 @@ void DrawSettingsContent(AppState& state) {
                     {"esp_enabled", state.emulation.espEnabled},
                     {"sd_enabled", state.emulation.sdEnabled}
                 };
-                manifest["bus"] = nlohmann::json::array({
-                    {{"name", "RAM"}, {"start", "0x0000"}, {"end", "0x7FFF"}},
-                    {{"name", "ROM"}, {"start", "0x8000"}, {"end", "0xFFFF"}},
-                    {{"name", "ACIA"}, {"start", "0x5000"}, {"end", "0x5003"}},
-                    {{"name", "VIA"}, {"start", "0x6000"}, {"end", "0x600F"}},
-                    {{"name", "ESP8266"}, {"start", "0x5004"}, {"end", "0x5007"}},
-                    {{"name", "SD Card"}, {"start", "0x5008"}, {"end", "0x500B"}},
-                    {{"name", "SID"}, {"start", "0x4800"}, {"end", "0x481F"}},
-                    {{"name", "GPU"}, {"start", "0x2000"}, {"end", "0x3FFF"}}
-                });
+                manifest["bus"] = BuildBusJson(state);
                 ExportCartridgeToUrl(state, manifest.dump(2));
             }
         }
@@ -670,10 +663,16 @@ void DrawSettingsContent(AppState& state) {
             memset(&zip_archive, 0, sizeof(zip_archive));
             if (mz_zip_writer_init_file(&zip_archive, outPath.c_str(), 0)) {
                 mz_zip_writer_add_mem(&zip_archive, "manifest.json", pendingManifestStr.c_str(), pendingManifestStr.size(), MZ_BEST_COMPRESSION);
-                if (state.rom.data.empty()) {
-                    mz_zip_writer_add_file(&zip_archive, "rom.bin", state.rom.bin.c_str(), nullptr, 0, MZ_BEST_COMPRESSION);
-                } else {
+                const auto& cart = state.emulator.GetCartridge();
+                if (cart.loaded && !cart.romData.empty()) {
+                    mz_zip_writer_add_mem(&zip_archive, "rom.bin", cart.romData.data(), cart.romData.size(), MZ_BEST_COMPRESSION);
+                } else if (!state.rom.data.empty()) {
                     mz_zip_writer_add_mem(&zip_archive, "rom.bin", state.rom.data.data(), state.rom.data.size(), MZ_BEST_COMPRESSION);
+                } else if (!state.rom.bin.empty()) {
+                    mz_zip_writer_add_file(&zip_archive, "rom.bin", state.rom.bin.c_str(), nullptr, 0, MZ_BEST_COMPRESSION);
+                }
+                if (cart.loaded && !cart.vramData.empty()) {
+                    mz_zip_writer_add_mem(&zip_archive, "vram.bin", cart.vramData.data(), cart.vramData.size(), MZ_BEST_COMPRESSION);
                 }
                 
                 if (state.emulator.GetSDCard().IsMounted()) {

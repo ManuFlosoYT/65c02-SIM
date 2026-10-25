@@ -13,6 +13,7 @@ bool CPU::SaveState(std::ostream& out) const {
     Serialize(out, waiting);
     Serialize(out, remainingCycles);
     Serialize(out, cycleAccurate);
+    Serialize(out, cycleCount);
     return out.good();
 }
 
@@ -31,6 +32,7 @@ bool CPU::LoadState(std::istream& inputStream) {
     Deserialize(inputStream, waiting);
     Deserialize(inputStream, remainingCycles);
     Deserialize(inputStream, cycleAccurate);
+    Deserialize(inputStream, cycleCount);
 
     current_page_ptr = nullptr;
 

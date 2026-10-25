@@ -320,7 +320,7 @@ constexpr static Byte CYC_INS_JSR = 6;
 constexpr static Byte CYC_INS_RTS = 6;
 
 constexpr static Byte CYC_INS_JMP_ABS = 3;
-constexpr static Byte CYC_INS_JMP_IND = 5;
+constexpr static Byte CYC_INS_JMP_IND = 6;
 constexpr static Byte CYC_INS_JMP_ABSX = 6;
 
 constexpr static Byte CYC_INS_TSX = 2;
@@ -380,13 +380,13 @@ constexpr static Byte CYC_INS_INC_A = 2;
 constexpr static Byte CYC_INS_INC_ZP = 5;
 constexpr static Byte CYC_INS_INC_ZPX = 6;
 constexpr static Byte CYC_INS_INC_ABS = 6;
-constexpr static Byte CYC_INS_INC_ABSX = 7;
+constexpr static Byte CYC_INS_INC_ABSX = 6;
 
 constexpr static Byte CYC_INS_DEC_A = 2;
 constexpr static Byte CYC_INS_DEC_ZP = 5;
 constexpr static Byte CYC_INS_DEC_ZPX = 6;
 constexpr static Byte CYC_INS_DEC_ABS = 6;
-constexpr static Byte CYC_INS_DEC_ABSX = 7;
+constexpr static Byte CYC_INS_DEC_ABSX = 6;
 
 constexpr static Byte CYC_INS_INX = 2;
 constexpr static Byte CYC_INS_DEX = 2;
@@ -435,25 +435,25 @@ constexpr static Byte CYC_INS_ASL_A = 2;
 constexpr static Byte CYC_INS_ASL_ZP = 5;
 constexpr static Byte CYC_INS_ASL_ZPX = 6;
 constexpr static Byte CYC_INS_ASL_ABS = 6;
-constexpr static Byte CYC_INS_ASL_ABSX = 7;
+constexpr static Byte CYC_INS_ASL_ABSX = 6;
 
 constexpr static Byte CYC_INS_LSR_A = 2;
 constexpr static Byte CYC_INS_LSR_ZP = 5;
 constexpr static Byte CYC_INS_LSR_ZPX = 6;
 constexpr static Byte CYC_INS_LSR_ABS = 6;
-constexpr static Byte CYC_INS_LSR_ABSX = 7;
+constexpr static Byte CYC_INS_LSR_ABSX = 6;
 
 constexpr static Byte CYC_INS_ROL_A = 2;
 constexpr static Byte CYC_INS_ROL_ZP = 5;
 constexpr static Byte CYC_INS_ROL_ZPX = 6;
 constexpr static Byte CYC_INS_ROL_ABS = 6;
-constexpr static Byte CYC_INS_ROL_ABSX = 7;
+constexpr static Byte CYC_INS_ROL_ABSX = 6;
 
 constexpr static Byte CYC_INS_ROR_A = 2;
 constexpr static Byte CYC_INS_ROR_ZP = 5;
 constexpr static Byte CYC_INS_ROR_ZPX = 6;
 constexpr static Byte CYC_INS_ROR_ABS = 6;
-constexpr static Byte CYC_INS_ROR_ABSX = 7;
+constexpr static Byte CYC_INS_ROR_ABSX = 6;
 
 constexpr static Byte CYC_INS_BCC = 2;
 constexpr static Byte CYC_INS_BCS = 2;
