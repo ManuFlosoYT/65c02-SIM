@@ -25,6 +25,8 @@ using namespace Hardware;
 
 namespace GUI {
 
+static void DrawRecordingControls(AppState& state);
+
 
 
 static void DrawPlaybackControls(AppState& state) {
@@ -81,6 +83,9 @@ static void DrawPlaybackControls(AppState& state) {
         ImGui::EndTooltip();
     }
     ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    DrawRecordingControls(state);
 }
 
 static void DrawAudioVideoControls(AppState& state) {
@@ -390,9 +395,6 @@ static void DrawIPSSection(AppState& state, float mainColWidth) {
 
     ImGui::SameLine(0.0F, 14.0F);
     DrawActualIPS(state);
-
-    ImGui::SameLine(0.0F, 20.0F);
-    DrawRecordingControls(state);
 }
 
 static void HandleCreateSDDialog(AppState& state) {
