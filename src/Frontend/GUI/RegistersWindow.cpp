@@ -76,9 +76,13 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     printHex8("X:  ", cpu.X);
     ImGui::SameLine(0.0F, 16.0F);
     printHex8("Y:  ", cpu.Y);
+    ImGui::SameLine(0.0F, 16.0F);
 
-    printHex8("Flags: ", cpu.GetStatus());
-    ImGui::SameLine(0.0F, 12.0F);
+    ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
+    ImGui::TextUnformatted("Flags:");
+    ImGui::PopStyleColor();
+    ImGui::SameLine(0.0F, 8.0F);
+    ImGui::BeginGroup();
     DrawFlagBadge("N", cpu.N != 0);
     ImGui::SameLine(0.0F, 4.0F);
     DrawFlagBadge("V", cpu.V != 0);
@@ -92,6 +96,12 @@ void DrawRegistersWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     DrawFlagBadge("Z", cpu.Z != 0);
     ImGui::SameLine(0.0F, 4.0F);
     DrawFlagBadge("C", cpu.C != 0);
+    ImGui::EndGroup();
+    if (ImGui::BeginItemTooltip()) {
+        std::string valStr = std::format("0x{:02X}", static_cast<int>(cpu.GetStatus()));
+        ImGui::TextUnformatted(valStr.c_str());
+        ImGui::EndTooltip();
+    }
     ImGui::End();
     ImGui::PopStyleVar();
 }
