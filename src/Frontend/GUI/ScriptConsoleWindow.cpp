@@ -17,9 +17,19 @@ void DrawScriptConsoleWindow(Control::AppState& state, const ImVec2& work_pos, c
         if (ImGui::Button("Clear")) {
             state.emulator.GetScriptEngine().ClearOutput();
         }
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted("Clear script console output log");
+            ImGui::EndTooltip();
+        }
         ImGui::SameLine();
         if (ImGui::Button("Close")) {
             state.script.showConsole = false;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted("Close the script console window");
+            ImGui::EndTooltip();
         }
 
         ImGui::Separator();

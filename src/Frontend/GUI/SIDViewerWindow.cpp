@@ -48,6 +48,11 @@ static void DrawMuteSoloButtons(Hardware::SID& sid, int voiceIndex) {
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(4);
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(isMuted ? "Unmute this voice" : "Mute this voice");
+        ImGui::EndTooltip();
+    }
 
     ImGui::SameLine(0.0F, 2.0F);
 
@@ -68,6 +73,11 @@ static void DrawMuteSoloButtons(Hardware::SID& sid, int voiceIndex) {
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(4);
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(isSolo ? "Unsolo this voice" : "Solo this voice");
+        ImGui::EndTooltip();
+    }
     ImGui::PopID();
 }
 

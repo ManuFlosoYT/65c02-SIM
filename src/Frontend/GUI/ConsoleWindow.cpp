@@ -185,11 +185,16 @@ static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
         }
     }
     ImGui::EndDisabled();
-    if (cartLoaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (cartLoaded) {
             ImGui::TextUnformatted("Eject cartridge first to load a different ROM");
-            ImGui::EndTooltip();
+        } else if (state.rom.loaded) {
+            ImGui::TextUnformatted("Eject currently loaded ROM");
+        } else {
+            ImGui::TextUnformatted("Open file dialog to load a 65C02 binary ROM");
         }
+        ImGui::EndTooltip();
     }
 }
 
@@ -235,11 +240,16 @@ static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
         }
     }
     ImGui::EndDisabled();
-    if (state.rom.loaded && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (state.rom.loaded && !cartLoaded) {
             ImGui::TextUnformatted("Eject ROM first to load a Cartridge");
-            ImGui::EndTooltip();
+        } else if (cartLoaded) {
+            ImGui::TextUnformatted("Eject currently loaded cartridge");
+        } else {
+            ImGui::TextUnformatted("Open file dialog to load a Cartridge file (.65c)");
         }
+        ImGui::EndTooltip();
     }
 }
 
@@ -270,6 +280,11 @@ static void DrawSDKButton(AppState& state) {
         state.sdk.showPopup = true;
 #endif
     }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Browse pre-compiled SDK sample ROMs and demos");
+        ImGui::EndTooltip();
+    }
 }
 
 #ifndef TARGET_WASM
@@ -282,11 +297,14 @@ static void DrawIDEButton(AppState& state, bool cartLoaded) {
         }
     }
     ImGui::EndDisabled();
-    if ((cartLoaded || state.rom.loaded) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (cartLoaded || state.rom.loaded) {
             ImGui::TextUnformatted("Eject cartridge/ROM first to use the IDE");
-            ImGui::EndTooltip();
+        } else {
+            ImGui::TextUnformatted("Open integrated C/Assembly code editor and compiler");
         }
+        ImGui::EndTooltip();
     }
 }
 #endif
@@ -306,6 +324,11 @@ static void DrawConsoleButtonBar(AppState& state) {
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {
         ImGui::OpenPopup("CopyConsoleOutput");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Copy console terminal text to clipboard");
+        ImGui::EndTooltip();
     }
 
 #ifndef TARGET_WASM

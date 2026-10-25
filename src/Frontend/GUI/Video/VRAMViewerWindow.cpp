@@ -103,11 +103,14 @@ static void DrawVRAMControls(AppState& state) {
         WebFileUtils::open_browser_file_picker(".bin");
     }
     ImGui::EndDisabled();
-    if ((cartLoaded || state.rom.loaded) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (cartLoaded || state.rom.loaded) {
             ImGui::TextUnformatted("Eject cartridge/ROM first to load images to VRAM");
-            ImGui::EndTooltip();
+        } else {
+            ImGui::TextUnformatted("Load a binary image file directly into VRAM");
         }
+        ImGui::EndTooltip();
     }
 
     ImGui::SameLine();
@@ -128,6 +131,11 @@ static void DrawVRAMControls(AppState& state) {
             WebFileUtils::download_file("vram_capture.bmp", buffer.data(), buffer.size());
         }
     }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Export current VRAM framebuffer to a BMP image file");
+        ImGui::EndTooltip();
+    }
 #else
     bool cartLoaded = state.emulator.GetCartridge().loaded;
     ImGui::BeginDisabled(cartLoaded || state.rom.loaded);
@@ -137,11 +145,14 @@ static void DrawVRAMControls(AppState& state) {
         }
     }
     ImGui::EndDisabled();
-    if ((cartLoaded || state.rom.loaded) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        if (ImGui::BeginItemTooltip()) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (cartLoaded || state.rom.loaded) {
             ImGui::TextUnformatted("Eject cartridge/ROM first to load images to VRAM");
-            ImGui::EndTooltip();
+        } else {
+            ImGui::TextUnformatted("Load a binary image file directly into VRAM");
         }
+        ImGui::EndTooltip();
     }
 
     ImGui::SameLine();
@@ -159,6 +170,11 @@ static void DrawVRAMControls(AppState& state) {
                                                     filenameBuffer.data());
         }
     }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Export current VRAM framebuffer to a BMP image file");
+        ImGui::EndTooltip();
+    }
 #endif
 
     if (hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
@@ -166,6 +182,11 @@ static void DrawVRAMControls(AppState& state) {
         ImGui::SameLine();
         if (ImGui::Button("Clear")) {
             hasPixelSelection = false;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted("Clear selected pixel inspection");
+            ImGui::EndTooltip();
         }
 
         ImGui::SameLine();

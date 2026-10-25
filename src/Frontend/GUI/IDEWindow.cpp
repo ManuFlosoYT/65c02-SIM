@@ -636,6 +636,11 @@ static void DrawFileToolbar(Control::AppState& state) {
     if (ImGui::Button("Open File")) {
         CustomFileDialog::OpenDialog("IDE_OpenFile", "Open Source File", ".c,.s,.asm,.mid,.midi,.*", ".");
     }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Open source code or MIDI file");
+        ImGui::EndTooltip();
+    }
     ImGui::SameLine();
     auto& tabs = GetTabs();
     auto& activeIndex = GetActiveTabIndex();
@@ -658,9 +663,27 @@ static void DrawFileToolbar(Control::AppState& state) {
             }
         }
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!canSave) {
+            ImGui::TextUnformatted("Active file is read-only or no file is open");
+        } else {
+            ImGui::TextUnformatted("Save current file to disk");
+        }
+        ImGui::EndTooltip();
+    }
     ImGui::SameLine();
     if (ImGui::Button("Save As")) {
         CustomFileDialog::OpenDialog("IDE_SaveFile", "Save File As", ".c,.s,.asm,.*", ".");
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!canSave) {
+            ImGui::TextUnformatted("Active file is read-only or no file is open");
+        } else {
+            ImGui::TextUnformatted("Save current file with a new filename");
+        }
+        ImGui::EndTooltip();
     }
     ImGui::EndDisabled();
     
@@ -876,10 +899,28 @@ static void DrawCompilerToolbar(Control::AppState& state) {
     if (ImGui::Button("Compile & Run", ImVec2(180.0F, 0.0F))) {
         HandleCompileAndRun(state);
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!canCompile) {
+            ImGui::TextUnformatted("Active tab is read-only or empty");
+        } else {
+            ImGui::TextUnformatted("Compile source code and run on simulator");
+        }
+        ImGui::EndTooltip();
+    }
 
     ImGui::SameLine();
     if (ImGui::Button("Compile & Export", ImVec2(180.0F, 0.0F))) {
         HandleCompileAndExport(state);
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!canCompile) {
+            ImGui::TextUnformatted("Active tab is read-only or empty");
+        } else {
+            ImGui::TextUnformatted("Compile source code and export binary ROM");
+        }
+        ImGui::EndTooltip();
     }
     ImGui::EndDisabled();
 }
