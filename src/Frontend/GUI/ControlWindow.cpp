@@ -2,6 +2,7 @@
 #include "Frontend/GUI/RegistersWindow.h"
 #include "Frontend/GUI/CustomFileDialog.h"
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -159,23 +160,59 @@ static void DrawControlButtonBar(AppState& state) {
     DrawAudioVideoControls(state);
 }
 
-static void DrawTargetIPS(AppState& state, float mainColWidth) {
-    int tempIPS = state.emulation.instructionsPerFrame;
-    std::string targetLabel = "Target ";
-    targetLabel += (state.emulation.cycleAccurate ? "Hz" : "IPS");
+static void DrawTargetIPS(AppState& state) {
+    static int s_currentUnit = 0;
+    static int s_lastIPS = -1;
+    static double s_displayValue = 1.0;
+
+    if (state.emulation.instructionsPerFrame != s_lastIPS) {
+        s_lastIPS = state.emulation.instructionsPerFrame;
+        double mult = (s_currentUnit == 0) ? 1'000'000.0 : (s_currentUnit == 1 ? 1'000.0 : 1.0);
+        s_displayValue = static_cast<double>(s_lastIPS) / mult;
+    }
 
     bool ipsOverridden = state.emulator.GetCartridge().config.targetIPS.has_value();
     ImGui::BeginDisabled(ipsOverridden);
-    ImGui::SetNextItemWidth(mainColWidth * 0.3F);
-    if (ImGui::InputInt(targetLabel.c_str(), &tempIPS, 1000000, 1000000)) {
-        if (state.emulation.instructionsPerFrame == 1 && tempIPS == 1000001) {
-            tempIPS = 1000000;
-        }
 
-        tempIPS = std::max(1, tempIPS);
-        state.emulation.instructionsPerFrame = tempIPS;
-        state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
+    ImGui::AlignTextToFramePadding();
+    ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
+    ImGui::TextUnformatted("Target:");
+    ImGui::PopStyleColor();
+    ImGui::SameLine();
+
+    ImGui::SetNextItemWidth(80.0F);
+    if (ImGui::InputDouble("##TargetFreq", &s_displayValue, 0.0, 0.0, "%g")) {
+        if (s_displayValue > 0.0) {
+            while (s_displayValue >= 1000.0 && s_currentUnit > 0) {
+                s_displayValue /= 1000.0;
+                s_currentUnit--;
+            }
+            while (s_displayValue < 1.0 && s_currentUnit < 2) {
+                s_displayValue *= 1000.0;
+                s_currentUnit++;
+            }
+        }
+        double mult = (s_currentUnit == 0) ? 1'000'000.0 : (s_currentUnit == 1 ? 1'000.0 : 1.0);
+        int newIPS = std::max(1, static_cast<int>(std::round(s_displayValue * mult)));
+        state.emulation.instructionsPerFrame = newIPS;
+        state.emulator.SetTargetIPS(newIPS);
+        s_lastIPS = newIPS;
     }
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(95.0F);
+    const char* unitsHz[] = { "MHz", "KHz", "Hz" };
+    const char* unitsIPS[] = { "MIPS", "KIPS", "IPS" };
+    const char** units = state.emulation.cycleAccurate ? unitsHz : unitsIPS;
+    int prevUnit = s_currentUnit;
+    if (ImGui::Combo("##TargetUnit", &s_currentUnit, units, 3)) {
+        if (s_currentUnit != prevUnit) {
+            double prevMult = (prevUnit == 0) ? 1'000'000.0 : (prevUnit == 1 ? 1'000.0 : 1.0);
+            double newMult = (s_currentUnit == 0) ? 1'000'000.0 : (s_currentUnit == 1 ? 1'000.0 : 1.0);
+            s_displayValue = (s_displayValue * prevMult) / newMult;
+        }
+    }
+
     ImGui::EndDisabled();
     if (ipsOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         if (ImGui::BeginItemTooltip()) {
@@ -387,13 +424,14 @@ static void DrawRecordingControls(AppState& state) {
     ImGui::EndDisabled();
 }
 
-static void DrawIPSSection(AppState& state, float mainColWidth) {
-    DrawTargetIPS(state, mainColWidth);
+static void DrawIPSSection(AppState& state) {
+    DrawTargetIPS(state);
 
     ImGui::SameLine(0.0F, 14.0F);
     ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
     ImGui::SameLine(0.0F, 14.0F);
+    ImGui::AlignTextToFramePadding();
     DrawActualIPS(state);
 }
 
@@ -536,7 +574,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     ImGui::Separator();
 
     ImGui::SetCursorPosY(sep1PosY + 1.0F + gap);
-    DrawIPSSection(state, mainColWidth);
+    DrawIPSSection(state);
 
     ImGui::SetCursorPosY(sep2PosY);
     ImGui::Separator();
