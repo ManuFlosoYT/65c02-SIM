@@ -36,24 +36,12 @@
 #include "Frontend/Control/CartridgeUtils.h"
 #include "Frontend/GUI/UIModules.h"
 #include "Frontend/Control/SDKManager.h"
-
-// Dedicated GPU
-#if defined(__linux__) && !defined(TARGET_WASM)
-#include <cstdlib>
-#endif
+#include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 
 using namespace Control;
 using namespace Core;
 using namespace Frontend;
 using namespace Hardware;
-
-// Dedicated GPU
-#ifdef _WIN32
-extern "C" {
-    __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
-    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
-}
-#endif
 
 static constexpr int sidSampleRate = 48000;
 
@@ -187,6 +175,13 @@ static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const 
 }
 
 static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
+#ifndef TARGET_WASM
+    const bool isIdle = state.emulator.IsPaused() && !state.emulation.isRecordingVideo &&
+                        !(state.ide.open && state.ide.mode == Control::IDEMode::MIDI && GUI::IsMIDIAudioActive());
+    if (isIdle) {
+        SDL_WaitEventTimeout(nullptr, 50);
+    }
+#endif
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
@@ -534,11 +529,6 @@ static void MainLoop(void* arg) {
 }
 
 int main(int argc, char* argv[]) {
-#if defined(__linux__) && !defined(TARGET_WASM)
-    setenv("DRI_PRIME", "1", 0);                        // Mesa (AMD/Intel)
-    setenv("__NV_PRIME_RENDER_OFFLOAD", "1", 0);        // NVIDIA Propietary
-    setenv("__GLX_VENDOR_LIBRARY_NAME", "nvidia", 0);   // NVIDIA Propietary
-#endif
     const ParseArgsResult parseResult = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
     if (parseResult.showUsage) {
         PrintHeadlessUsage(argv[0]);
