@@ -297,6 +297,7 @@ void MIDIAudioEngine::TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, int c
     v.active = true;
     v.released = false;
     v.releaseTimerSec = 0.0;
+    v.noteId = 0;
     v.maxReleaseTimeSec = SID_RELEASE_TIMES.at(static_cast<std::size_t>(params.effectiveSustainRelease & 0x0FU));
     v.priorityScore = ComputePriority(note, channel, effectiveRole, mainChannel, bassChannel);
     v.waveMask = params.waveMask;
@@ -413,6 +414,7 @@ void MIDIAudioEngine::TriggerVoiceNoteOff(Hardware::SID& sid, int voiceIdx) {
     }
     v.released = true;
     v.releaseTimerSec = 0.0;
+    v.noteId = 0;
 
     const auto base = static_cast<std::uint8_t>(voiceIdx * 7);
     auto ctrlVal = static_cast<std::uint8_t>(v.waveMask & ~SID_WAVE_GATE);
@@ -534,7 +536,7 @@ void MIDIAudioEngine::StepSequencerSlice(Hardware::SID& sid, const MIDIProject& 
                 if (!trackAudible || sliceEndSec >= noteEndSec) {
                     activeSequenceNotes.erase(activeIt);
                     for (auto& v : voices) {
-                        if (v.active && !v.released && v.channel == track.channel && v.note == note.pitch) {
+                        if (v.active && !v.released && v.noteId == note.id) {
                             TriggerVoiceNoteOff(sid, v.index);
                             break;
                         }
@@ -579,6 +581,7 @@ void MIDIAudioEngine::StepSequencerSlice(Hardware::SID& sid, const MIDIProject& 
         if (voiceIdx >= 0) {
             TriggerVoiceNoteOn(sid, voiceIdx, item.channel, item.program, item.pitch, item.velocity, item.startSec,
                                item.role, mainChannel, bassChannel, item.customWaveOverride);
+            voices.at(static_cast<std::size_t>(voiceIdx)).noteId = item.noteId;
             activeSequenceNotes.push_back(item.noteId);
         }
     }
@@ -640,7 +643,10 @@ void MIDIAudioEngine::Play(Control::AppState& state, const MIDIProject& project)
 
 void MIDIAudioEngine::Pause(Control::AppState& state) {
     playing = false;
-    AllNotesOff(state.emulator.GetSID());
+    Hardware::SID& sid = state.emulator.GetSID();
+    AllNotesOff(sid);
+    sid.SetEmulationPaused(state.emulator.IsPaused());
+    sid.SetCpuClockRate(static_cast<double>(state.emulator.GetTargetIPS()));
 }
 
 void MIDIAudioEngine::Stop(Control::AppState& state) {
@@ -650,7 +656,10 @@ void MIDIAudioEngine::Stop(Control::AppState& state) {
     playheadBeats = loopEnabled ? loopStartBeats : 0.0;
     playheadSeconds = 0.0;
     sidRegCache.fill(-1);
-    AllNotesOff(state.emulator.GetSID());
+    Hardware::SID& sid = state.emulator.GetSID();
+    AllNotesOff(sid);
+    sid.SetEmulationPaused(state.emulator.IsPaused());
+    sid.SetCpuClockRate(static_cast<double>(state.emulator.GetTargetIPS()));
 }
 
 void MIDIAudioEngine::Reset(Control::AppState& state) {
@@ -660,6 +669,9 @@ void MIDIAudioEngine::Reset(Control::AppState& state) {
 
 void MIDIAudioEngine::Reset() {
     sidRegCache.fill(-1);
+    for (auto& v : voices) {
+        v.noteId = 0;
+    }
 }
 
 void MIDIAudioEngine::AllNotesOff(Hardware::SID& sid) {
@@ -668,6 +680,7 @@ void MIDIAudioEngine::AllNotesOff(Hardware::SID& sid) {
         v.active = false;
         v.released = false;
         v.releaseTimerSec = 0.0;
+        v.noteId = 0;
         v.isModulator = false;
         v.kickSlideStep = 0;
         const auto base = static_cast<std::uint8_t>(i * 7);

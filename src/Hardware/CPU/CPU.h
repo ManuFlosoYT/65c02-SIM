@@ -182,7 +182,9 @@ inline int Hardware::CPU::Step(Bus& bus) {
     if (cycleAccurate) {
         return StepCycleAccurate<Debug>(bus);
     }
-    return StepFast<Debug>(bus);
+    int res = StepFast<Debug>(bus);
+    remainingCycles = 0;
+    return res;
 }
 
 template <bool Debug>

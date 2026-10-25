@@ -191,6 +191,7 @@ void VIA::Write(Word address, Byte data) {
         case PORTB & 0x0F: {
             Byte old_pins = (irb & ~ddrb) | (GetEffectiveORB() & ddrb);
             orb = data;
+            irb_latch_full = false;
             Byte new_pins = (irb & ~ddrb) | (GetEffectiveORB() & ddrb);
             if (port_b_callback && (old_pins != new_pins)) {
                 port_b_callback(new_pins);
@@ -214,6 +215,7 @@ void VIA::Write(Word address, Byte data) {
         }
         case PORTA & 0x0F: {
             ora = data;
+            ira_latch_full = false;
             Byte ca2_mode = (pcr >> 1) & 0x07;
             if (ca2_mode == 1 || ca2_mode == 3) {
                 ifr &= ~0x02;  // Clear CA1 only
@@ -245,6 +247,7 @@ void VIA::Write(Word address, Byte data) {
             break;
         case T1C_L & 0x0F:
             t1l_l = data;
+            t1l = (t1l & 0xFF00) | data;
             break;
         case T1C_H & 0x0F:
             t1l_h = data;
@@ -292,7 +295,12 @@ void VIA::Write(Word address, Byte data) {
             break;
         case ACR & 0x0F: {
             Byte old_acr = acr;
+            Byte old_pins = (irb & ~ddrb) | (GetEffectiveORB() & ddrb);
             acr = data;
+            Byte new_pins = (irb & ~ddrb) | (GetEffectiveORB() & ddrb);
+            if (port_b_callback && (old_pins != new_pins)) {
+                port_b_callback(new_pins);
+            }
             UpdateAnyActive();
             if ((old_acr & 0x01) != 0 && (acr & 0x01) == 0) {
                 ira_latch_full = false;

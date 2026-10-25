@@ -209,9 +209,11 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
 void DrawMemoryLayoutWindow(AppState& state) {
     Bus& bus = state.emulator.GetMem();
     static std::vector<DeviceRegistration> editDevices;
+    static std::vector<DeviceRegistration> lastBusDevices;
     static bool layoutDirty = true;
-    if (editDevices.size() != bus.GetRegisteredDevices().size()) {
-        editDevices = bus.GetRegisteredDevices();
+    if (lastBusDevices != bus.GetRegisteredDevices()) {
+        lastBusDevices = bus.GetRegisteredDevices();
+        editDevices = lastBusDevices;
         layoutDirty = true;
     }
 
@@ -260,6 +262,7 @@ void DrawMemoryLayoutWindow(AppState& state) {
         try {
             state.emulator.WaitUntilSafeToMutate();
             bus.GetRegisteredDevices() = editDevices;
+            lastBusDevices = editDevices;
             bus.RebuildDeviceMap();
             state.emulator.GetCPU().Reset();
             state.emulator.GetCPU().PC = static_cast<uint16_t>(bus.ReadDirect(0xFFFC) | (bus.ReadDirect(0xFFFD) << 8));

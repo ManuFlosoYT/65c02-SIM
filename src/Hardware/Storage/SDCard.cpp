@@ -1415,6 +1415,7 @@ bool SDCard::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, firstStr);
     
     bool is_old_format = false;
+    std::string currentPath;
     if (firstStr.find("SD_VER:") == 0) {
         ISerializable::Deserialize(inStream, currentPath);
     } else {
@@ -1478,7 +1479,71 @@ bool SDCard::LoadState(std::istream& inStream) {
     }
     if (mounted && !currentPath.empty()) {
         if (std::filesystem::is_directory(PathFromUtf8(currentPath))) {
-            MountFolder(currentPath);
+            if (!(is_folder_mount && this->currentPath == currentPath && !virtual_disk.empty())) {
+                auto saved_mounted = mounted;
+                auto saved_cs_active = cs_active;
+                auto saved_state = state;
+                auto saved_last_miso = last_miso;
+                auto saved_cmd_buffer = cmd_buffer;
+                auto saved_cmd_bytes_received = cmd_bytes_received;
+                auto saved_response_buffer = response_buffer;
+                auto saved_response_index = response_index;
+                auto saved_data_buffer = data_buffer;
+                auto saved_data_index = data_index;
+                auto saved_current_lba = current_lba;
+                auto saved_is_acmd = is_acmd;
+                auto saved_is_initialized = is_initialized;
+                auto saved_is_sdhc = is_sdhc;
+                auto saved_is_read_multiblock = is_read_multiblock;
+                auto saved_is_write_multiblock = is_write_multiblock;
+                auto saved_sd_status_byte = sd_status_byte;
+                auto saved_is_read_only = is_read_only;
+                auto saved_warmup_bytes = warmup_bytes;
+                auto saved_acmd41_attempts = acmd41_attempts;
+                auto saved_acmd41_target_attempts = acmd41_target_attempts;
+                auto saved_write_busy_bytes = write_busy_bytes;
+                auto saved_cmd12_busy_bytes = cmd12_busy_bytes;
+                auto saved_read_delay_bytes = read_delay_bytes;
+                auto saved_crc_enabled = crc_enabled;
+                auto saved_read_latency_enabled = read_latency_enabled;
+                auto saved_current_crc = current_crc;
+                auto saved_received_crc = received_crc;
+                auto saved_total_blocks = total_blocks;
+
+                if (MountFolder(currentPath)) {
+                    mounted = saved_mounted;
+                    cs_active = saved_cs_active;
+                    state = saved_state;
+                    last_miso = saved_last_miso;
+                    cmd_buffer = saved_cmd_buffer;
+                    cmd_bytes_received = saved_cmd_bytes_received;
+                    response_buffer = std::move(saved_response_buffer);
+                    response_index = saved_response_index;
+                    data_buffer = saved_data_buffer;
+                    data_index = saved_data_index;
+                    current_lba = saved_current_lba;
+                    is_acmd = saved_is_acmd;
+                    is_initialized = saved_is_initialized;
+                    is_sdhc = saved_is_sdhc;
+                    is_read_multiblock = saved_is_read_multiblock;
+                    is_write_multiblock = saved_is_write_multiblock;
+                    sd_status_byte = saved_sd_status_byte;
+                    is_read_only = saved_is_read_only;
+                    warmup_bytes = saved_warmup_bytes;
+                    acmd41_attempts = saved_acmd41_attempts;
+                    acmd41_target_attempts = saved_acmd41_target_attempts;
+                    write_busy_bytes = saved_write_busy_bytes;
+                    cmd12_busy_bytes = saved_cmd12_busy_bytes;
+                    read_delay_bytes = saved_read_delay_bytes;
+                    crc_enabled = saved_crc_enabled;
+                    read_latency_enabled = saved_read_latency_enabled;
+                    current_crc = saved_current_crc;
+                    received_crc = saved_received_crc;
+                    total_blocks = saved_total_blocks;
+                } else {
+                    mounted = false;
+                }
+            }
         } else {
             imageFile.open(PathFromUtf8(currentPath), std::ios::in | std::ios::out | std::ios::binary);
             if (!imageFile.is_open()) {
@@ -1499,6 +1564,7 @@ bool SDCard::LoadState(std::istream& inStream) {
             }
         }
     }
+    this->currentPath = currentPath;
 
     return inStream.good();
 }

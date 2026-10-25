@@ -56,7 +56,7 @@ void DrawCPURegisters(Control::AppState& state) {
     ImGui::PopItemWidth();
 }
 
-void DrawMemoryRow(Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled) {
+void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
@@ -102,6 +102,7 @@ void DrawMemoryRow(Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0F, ImGui::GetStyle().FramePadding.y));
         if (ImGui::InputScalar("##m", ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
                                ImGuiInputTextFlags_CharsHexadecimal)) {
+            emulator.WaitUntilSafeToMutate();
             bus.WriteDirect(addr, val);
         }
         ImGui::PopStyleVar();
@@ -158,7 +159,7 @@ void DrawMemoryEditor(Control::AppState& state) {
             clipper.Begin((0xFFFF + 1) / 16);
             while (clipper.Step()) {
                 for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                    DrawMemoryRow(bus, row, pc, heatmapEnabled);
+                    DrawMemoryRow(state.emulator, bus, row, pc, heatmapEnabled);
                 }
             }
             ImGui::EndTable();
@@ -185,6 +186,7 @@ void DrawTools(Core::Emulator& emulator) {
     ImGui::PopItemWidth();
     ImGui::SameLine();
     if (ImGui::Button("Fill Random Junk")) {
+        emulator.WaitUntilSafeToMutate();
         std::mt19937 rng(std::random_device{}());
         std::uniform_int_distribution<int> dist(0, 255);
         for (int i = startAddr; i <= static_cast<int>(endAddr); i++) {
@@ -195,6 +197,7 @@ void DrawTools(Core::Emulator& emulator) {
     }
 
     if (ImGui::Button("Corrupt Random Byte")) {
+        emulator.WaitUntilSafeToMutate();
         std::mt19937 rng(std::random_device{}());
         std::uniform_int_distribution<int> addrDist(0, 0xFFFF);
         std::uniform_int_distribution<int> valDist(0, 0xFF);

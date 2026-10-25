@@ -152,6 +152,7 @@ void SID::Reset() {
     isDormant = false;
     resampler.Clear();
     sampleBuffer.clear();
+    visualizerBuffer.fill(0.0F);
     
     if (audioStream != nullptr) {
         SDL_ClearAudioStream(audioStream);

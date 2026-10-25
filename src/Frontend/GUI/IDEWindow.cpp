@@ -325,7 +325,10 @@ namespace {
         }
 
         const std::string includeLine = "#include \"" + lib + "\"\n";
-        SetEditorText(targetTab->editor, includeLine + currentText);
+        auto curPos = targetTab->editor.GetCursorPosition();
+        targetTab->editor.SetCursorPosition(TextEditor::Coordinates(0, 0));
+        targetTab->editor.InsertText(includeLine);
+        targetTab->editor.SetCursorPosition(TextEditor::Coordinates(curPos.mLine + 1, curPos.mColumn));
         targetTab->code = targetTab->editor.GetText();
         state.ide.code = targetTab->code;
     }
@@ -757,22 +760,14 @@ static void HandleCompileAndRun(Control::AppState& state) {
         } else {
             state.emulator.Pause();
             state.emulator.SetCartridge(Core::Cartridge{});
-            if (result.hardware.gpu) {
-                state.emulation.gpuEnabled = true;
-                state.emulator.SetGPUEnabled(true);
-            }
-            if (result.hardware.sid) {
-                state.emulator.GetSID().EnableSound(true);
-                state.emulator.SetSIDEnabled(true);
-            }
-            if (result.hardware.net) {
-                state.emulation.espEnabled = true;
-                state.emulator.SetESPEnabled(true);
-            }
-            if (result.hardware.sd) {
-                state.emulation.sdEnabled = true;
-                state.emulator.SetSDEnabled(true);
-            }
+            state.emulation.gpuEnabled = result.hardware.gpu;
+            state.emulator.SetGPUEnabled(result.hardware.gpu);
+            state.emulator.GetSID().EnableSound(result.hardware.sid);
+            state.emulator.SetSIDEnabled(result.hardware.sid);
+            state.emulation.espEnabled = result.hardware.net;
+            state.emulator.SetESPEnabled(result.hardware.net);
+            state.emulation.sdEnabled = result.hardware.sd;
+            state.emulator.SetSDEnabled(result.hardware.sd);
             std::string errorMsg;
             if (state.emulator.InitFromMemory(result.binary, "compiled.bin", errorMsg)) {
                 state.rom.bin = "compiled.bin";
@@ -811,6 +806,7 @@ static void HandleCompileAndRun(Control::AppState& state) {
                 }
                 state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
                 state.emulator.ClearProfiler();
+                state.emulator.Resume();
                 state.ide.outputLog += "\nSuccessfully loaded to emulator and Reset.";
             } else {
                 state.ide.outputLog += "\nEmulator Load Error: " + errorMsg;

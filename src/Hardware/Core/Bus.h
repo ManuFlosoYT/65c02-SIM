@@ -54,6 +54,8 @@ struct DeviceRegistration {
     bool enabled = false;
     bool ignoreCollision = false;
     bool isVirtual = false;  // If true: UI-only, never mapped to deviceMap
+
+    bool operator==(const DeviceRegistration&) const = default;
 };
 
 struct BusSlot {

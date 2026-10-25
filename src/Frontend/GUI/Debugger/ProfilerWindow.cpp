@@ -761,6 +761,9 @@ void DrawProfilerWindow(AppState& state) {
     std::span<const uint32_t> writeCounts(state.emulator.GetProfilerWriteCounts(), 65536);
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
     static bool profilerDirty = true;
+    static uint64_t lastProfilerCycles = 0;
+    uint64_t currentCycles = state.emulator.GetTotalCycles();
+    bool cyclesChanged = (currentCycles != lastProfilerCycles);
 
     if (ImGui::BeginTabBar("ProfilerTabs", ImGuiTabBarFlags_None)) {
         if (ImGui::BeginTabItem("Flame Graph")) {
@@ -776,8 +779,9 @@ void DrawProfilerWindow(AppState& state) {
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Memory Heatmap")) {
-            if ((!state.emulator.IsPaused() && !state.emulator.IsHalted()) || profilerDirty) {
+            if ((!state.emulator.IsPaused() && !state.emulator.IsHalted()) || profilerDirty || cyclesChanged) {
                 UpdateProfilerTexture(state, readCounts, writeCounts, pixels);
+                lastProfilerCycles = currentCycles;
                 profilerDirty = false;
             }
 

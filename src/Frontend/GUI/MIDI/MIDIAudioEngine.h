@@ -20,6 +20,7 @@ struct ActiveSIDVoice {
     double releaseTimerSec = 0.0;
     double maxReleaseTimeSec = 0.05;
     int priorityScore = 0;
+    std::uint32_t noteId = 0;
     std::uint8_t waveMask = SID_WAVE_PULSE;
     std::uint16_t pulseWidth = 0x0800;
     int pwmDir = 1;

@@ -2,10 +2,15 @@
 #include "Frontend/Control/AppState.h"
 
 #include <miniz.h>
+#include <array>
 #include <filesystem>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <fstream>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #if !defined(TARGET_WASM)
 #include "sdk_zip.h"
@@ -15,11 +20,28 @@ namespace fs = std::filesystem;
 
 namespace Control {
 
+static fs::path GetSDKDir() {
+#if defined(_WIN32)
+    std::array<char, MAX_PATH> buffer{};
+    if (GetModuleFileNameA(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())) > 0) {
+        return fs::path(buffer.data()).parent_path() / "SDK";
+    }
+#elif !defined(TARGET_WASM)
+    std::error_code ec;
+    auto exePath = fs::read_symlink("/proc/self/exe", ec);
+    if (!ec && !exePath.empty()) {
+        return exePath.parent_path() / "SDK";
+    }
+#endif
+    return fs::current_path() / "SDK";
+}
+
 void SDKManager::CheckSDKStatus(AppState& state) {
 #if defined(TARGET_WASM)
     return;
 #else
-    if (!fs::exists("SDK")) {
+    const fs::path sdkDir = GetSDKDir();
+    if (!fs::exists(sdkDir)) {
         std::cout << "SDKManager: SDK folder missing. Performing initial extraction..." << "\n";
         ExtractBundledSDK();
         ScanExtractedSDK(state);
@@ -57,7 +79,8 @@ void SDKManager::ExtractBundledSDK() {
         return;
     }
 
-    fs::create_directories("SDK");
+    const fs::path sdkDir = GetSDKDir();
+    fs::create_directories(sdkDir);
 
     int extracted_count = 0;
     int file_count = (int)mz_zip_reader_get_num_files(&zip_archive);
@@ -76,7 +99,7 @@ void SDKManager::ExtractBundledSDK() {
             continue;
         }
 
-        fs::path target_path = fs::path("SDK") / filename;
+        fs::path target_path = sdkDir / filename;
 
         if (mz_zip_reader_is_file_a_directory(&zip_archive, static_cast<mz_uint>(i)) != 0) {
             fs::create_directories(target_path);
@@ -106,9 +129,10 @@ void SDKManager::ExtractBundledSDK() {
 
 void SDKManager::DeleteSDK() {
 #if !defined(TARGET_WASM)
-    if (fs::exists("SDK")) {
+    const fs::path sdkDir = GetSDKDir();
+    if (fs::exists(sdkDir)) {
         try {
-            fs::remove_all("SDK");
+            fs::remove_all(sdkDir);
             std::cout << "SDKManager: SDK folder deleted." << "\n";
         } catch (const std::exception& e) {
             std::cerr << "SDKManager: Error deleting SDK folder: " << e.what() << "\n";
@@ -122,7 +146,7 @@ void SDKManager::WriteManifest() {
     try {
         nlohmann::json manifest;
         manifest["program_version"] = std::string(PROJECT_VERSION);
-        std::ofstream ofs("SDK/manifest.json");
+        std::ofstream ofs(GetSDKDir() / "manifest.json");
         if (ofs.is_open()) {
             ofs << manifest.dump(4);
         }
@@ -137,10 +161,11 @@ std::string SDKManager::GetExtractedVersion() {
     return "";
 #else
     try {
-        if (!fs::exists("SDK/manifest.json")) {
+        const fs::path manifestPath = GetSDKDir() / "manifest.json";
+        if (!fs::exists(manifestPath)) {
             return "";
         }
-        std::ifstream ifs("SDK/manifest.json");
+        std::ifstream ifs(manifestPath);
         if (!ifs.is_open()) {
             return "";
         }
@@ -169,9 +194,10 @@ void SDKManager::ScanExtractedSDK(AppState& state) {
         std::ranges::sort(list);
     };
 
-    scan_dir("SDK/cartridge", state.sdk.roms, ".65c");
-    scan_dir("SDK/midi", state.sdk.midis, ".65c");
-    scan_dir("SDK/vram", state.sdk.vrams, ".65c");
+    const fs::path sdkDir = GetSDKDir();
+    scan_dir(sdkDir / "cartridge", state.sdk.roms, ".65c");
+    scan_dir(sdkDir / "midi", state.sdk.midis, ".65c");
+    scan_dir(sdkDir / "vram", state.sdk.vrams, ".65c");
 
     if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
         std::cerr << "SDKManager: No SDK resources found in SDK/ subfolders" << "\n";
