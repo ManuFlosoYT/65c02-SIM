@@ -49,6 +49,19 @@ static void DrawPlaybackControls(AppState& state) {
         ImGui::PopStyleVar();
         ImGui::PopStyleColor(2);
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (state.emulator.IsHalted()) {
+            ImGui::TextUnformatted("CPU is halted. Reset system to run.");
+        } else if (!state.rom.loaded && !state.script.loaded) {
+            ImGui::TextUnformatted("Load a ROM or script to start execution.");
+        } else if (isPaused) {
+            ImGui::TextUnformatted("Resume CPU execution.");
+        } else {
+            ImGui::TextUnformatted("Pause CPU execution.");
+        }
+        ImGui::EndTooltip();
+    }
     ImGui::SameLine();
     bool stepDisabled = !state.emulator.IsPaused() || state.emulator.IsHalted();
     ImGui::BeginDisabled(stepDisabled);
@@ -60,9 +73,17 @@ static void DrawPlaybackControls(AppState& state) {
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
-    if (stepDisabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
-        ImGui::TextUnformatted("Emulator must be paused to use Step.");
+        if (state.emulator.IsHalted()) {
+            ImGui::TextUnformatted("CPU is halted. Reset system to step.");
+        } else if (!state.rom.loaded && !state.script.loaded) {
+            ImGui::TextUnformatted("Load a ROM or script to step.");
+        } else if (!state.emulator.IsPaused()) {
+            ImGui::TextUnformatted("Emulator must be paused to use Step.");
+        } else {
+            ImGui::TextUnformatted("Execute a single CPU instruction.");
+        }
         ImGui::EndTooltip();
     }
     ImGui::EndDisabled();
@@ -79,8 +100,15 @@ static void DrawPlaybackControls(AppState& state) {
     ImGui::PopStyleColor(2);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
-        ImGui::TextUnformatted(
-            "Rewind to previous frame / instruction state.\nOnly available when the emulator is paused.");
+        if (!state.emulator.IsRunning()) {
+            ImGui::TextUnformatted("Rewind unavailable: Emulation has not started.");
+        } else if (!state.emulator.IsPaused()) {
+            ImGui::TextUnformatted("Rewind unavailable: Emulator must be paused.");
+        } else if (!state.emulator.CanRewind()) {
+            ImGui::TextUnformatted("Rewind unavailable: No execution history available.");
+        } else {
+            ImGui::TextUnformatted("Rewind emulation to previous instruction / frame state.");
+        }
         ImGui::EndTooltip();
     }
     ImGui::EndDisabled();
@@ -146,9 +174,19 @@ static void DrawControlButtonBar(AppState& state) {
     if (ImGui::Button("Settings")) {
         state.debugger.open = true;
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Open settings and debug menu.");
+        ImGui::EndTooltip();
+    }
     ImGui::SameLine();
     if (ImGui::Button("Reset")) {
         Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Reset);
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Reset CPU, memory, and emulation state.");
+        ImGui::EndTooltip();
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
@@ -331,11 +369,15 @@ static void DrawStartRecordingButton(AppState& state) {
 
     if (!canStart) {
         ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::BeginTooltip();
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!canStart) {
             ImGui::TextUnformatted("Select at least one video track to record.");
-            ImGui::EndTooltip();
+        } else {
+            ImGui::TextUnformatted("Start recording to file with current settings.");
         }
+        ImGui::EndTooltip();
     }
 }
 
@@ -407,9 +449,6 @@ static void DrawRecordingControls(AppState& state) {
     }
 #ifdef TARGET_WASM
     ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Recording is only supported in local builds.");
-    }
 #endif
 
     if (isRecording) {
@@ -417,6 +456,22 @@ static void DrawRecordingControls(AppState& state) {
     } else {
         ImGui::PopStyleVar();
         ImGui::PopStyleColor(2);
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+#ifdef TARGET_WASM
+        ImGui::TextUnformatted("Recording is only supported in local builds.");
+#else
+        if (!state.rom.loaded) {
+            ImGui::TextUnformatted("Load a ROM to enable recording.");
+        } else if (isRecording) {
+            ImGui::TextUnformatted("Stop active recording.");
+        } else {
+            ImGui::TextUnformatted("Configure and start audio/video recording.");
+        }
+#endif
+        ImGui::EndTooltip();
     }
 
     DrawRecordingConfigPopup(state);

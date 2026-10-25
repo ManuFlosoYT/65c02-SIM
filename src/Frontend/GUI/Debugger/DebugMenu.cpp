@@ -66,6 +66,17 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         }
         state.emulator.GetSID().SetEmulationPaused(state.emulator.IsPaused());
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!state.rom.loaded) {
+            ImGui::TextUnformatted("Load a ROM to start execution.");
+        } else if (state.emulator.IsPaused()) {
+            ImGui::TextUnformatted("Resume CPU execution.");
+        } else {
+            ImGui::TextUnformatted("Pause CPU execution.");
+        }
+        ImGui::EndTooltip();
+    }
 
     // Step
     ImGui::SetCursorPosX(horizontalPadding);
@@ -75,6 +86,15 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         state.emulator.Pause();
         state.emulator.Step();
         state.emulator.GetSID().SetEmulationPaused(true);
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!state.rom.loaded) {
+            ImGui::TextUnformatted("Load a ROM to step.");
+        } else {
+            ImGui::TextUnformatted("Execute a single CPU instruction.");
+        }
+        ImGui::EndTooltip();
     }
 
     // Step Back
@@ -87,6 +107,15 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         state.emulator.StepBack();
         state.emulator.GetSID().SetEmulationPaused(true);
     }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        if (!canStepBack) {
+            ImGui::TextUnformatted("Emulator must be paused and have history to step back.");
+        } else {
+            ImGui::TextUnformatted("Step back to previous CPU instruction.");
+        }
+        ImGui::EndTooltip();
+    }
     ImGui::EndDisabled();
     ImGui::EndDisabled();
 
@@ -94,6 +123,11 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button("Reset", ImVec2(adjustedWidth, 0))) {
         Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Reset);
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Reset CPU and system state.");
+        ImGui::EndTooltip();
     }
 
     ImGui::Spacing();
@@ -104,6 +138,11 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
     if (ImGui::Button("Exit", ImVec2(adjustedWidth, 0))) {
         state.debugger.open = false;
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Close the debug menu.");
+        ImGui::EndTooltip();
     }
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
