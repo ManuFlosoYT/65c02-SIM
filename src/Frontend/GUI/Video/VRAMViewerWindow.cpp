@@ -342,21 +342,56 @@ static void DrawRasterBeamOverlay(AppState& state, ImVec2 imgMin, int scale, flo
     drawList->AddText(textPos, textColor, hudText.data());
 }
 
+static void EnsureGPUResources(AppState& state) {
+    if (state.render.vramTexture == 0) {
+        glGenTextures(1, &state.render.vramTexture);
+        glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        std::array<unsigned char, static_cast<std::size_t>(GPU::VRAM_HEIGHT) * GPU::VRAM_WIDTH * 3> emptyPixels{};
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                     emptyPixels.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    if (!state.crtFilter.IsInitialized()) {
+        state.crtFilter.Init(1440, 1080);
+    }
+}
+
+static void ReleaseGPUResources(AppState& state) {
+    if (state.render.vramTexture != 0) {
+        glDeleteTextures(1, &state.render.vramTexture);
+        state.render.vramTexture = 0;
+    }
+    if (state.crtFilter.IsInitialized()) {
+        state.crtFilter.Destroy();
+    }
+    state.render.lastDisplayTex = 0;
+}
+
 void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top_section_height,
                           ImGuiWindowFlags window_flags) {
+    if (!state.emulation.gpuEnabled) {
+        ReleaseGPUResources(state);
+        return;
+    }
+    EnsureGPUResources(state);
+
     float leftWidth = work_size.x * 0.5F;
     float rightWidth = work_size.x - leftWidth;
     float bottomSectionHeight = work_size.y - top_section_height;
 
-    if (state.emulation.gpuEnabled) {
-        ImGui::SetNextWindowPos(ImVec2(work_pos.x + leftWidth, work_pos.y + top_section_height), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(rightWidth, bottomSectionHeight), ImGuiCond_Always);
-        ImGui::Begin("VRAM Viewer", nullptr, window_flags);
+    ImGui::SetNextWindowPos(ImVec2(work_pos.x + leftWidth, work_pos.y + top_section_height), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(rightWidth, bottomSectionHeight), ImGuiCond_Always);
+    ImGui::Begin("VRAM Viewer", nullptr, window_flags);
 
-        DrawVRAMControls(state);
-        if (state.emulator.GetGPU().ConsumeVRAMDirty()) {
-            ForceRefreshVRAM(state);
-        }
+    DrawVRAMControls(state);
+    bool vramDirty = state.emulator.GetGPU().ConsumeVRAMDirty();
+    if (vramDirty) {
+        ForceRefreshVRAM(state);
+    }
 
         ImVec2 avail = ImGui::GetContentRegionAvail();
         int scaleX = static_cast<int>(avail.x / static_cast<float>(GPU::VRAM_WIDTH));
@@ -383,41 +418,41 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
 
         GLuint displayTex = state.render.vramTexture;
         if (anyCRT) {
-            GUI::CRTParams params;
-            params.scanlines = state.crt.scanlines;
-            params.interlacing = state.crt.interlacing;
-            params.curvature = state.crt.curvature;
-            params.chromatic = state.crt.chromatic;
-            params.blur = state.crt.blur;
-            params.shadowMask = state.crt.shadowMask;
-            params.vignette = state.crt.vignette;
-            params.cornerRounding = state.crt.cornerRounding;
-            params.glassGlare = state.crt.glassGlare;
-            params.colorBleeding = state.crt.colorBleeding;
-            params.noise = state.crt.noise;
-            params.vsyncJitter = state.crt.vsyncJitter;
-            params.phosphorDecay = state.crt.phosphorDecay;
-            params.bloom = state.crt.bloom;
-            params.ghosting = state.crt.ghosting;
-            params.halation = state.crt.halation;
-            params.moire = state.crt.moire;
-            params.gamma = state.crt.gamma;
-            params.sharpPixels = state.crt.sharpPixels;
-            params.humBar = state.crt.humBar;
-            params.monitorType = state.crt.monitorType;
-            params.time = state.crt.time;
-
-            // We use a high internal resolution (1080p height) for better recording quality
-            // while keeping the aspect ratio (100:75 -> 4:3 -> 1440:1080)
             const int internalH = 1080;
             const int internalW = 1440;
+            bool isEmulating = (!state.emulator.IsPaused() && state.emulator.IsRunning());
+            if (vramDirty || state.render.lastDisplayTex == 0 || isEmulating) {
+                GUI::CRTParams params;
+                params.scanlines = state.crt.scanlines;
+                params.interlacing = state.crt.interlacing;
+                params.curvature = state.crt.curvature;
+                params.chromatic = state.crt.chromatic;
+                params.blur = state.crt.blur;
+                params.shadowMask = state.crt.shadowMask;
+                params.vignette = state.crt.vignette;
+                params.cornerRounding = state.crt.cornerRounding;
+                params.glassGlare = state.crt.glassGlare;
+                params.colorBleeding = state.crt.colorBleeding;
+                params.noise = state.crt.noise;
+                params.vsyncJitter = state.crt.vsyncJitter;
+                params.phosphorDecay = state.crt.phosphorDecay;
+                params.bloom = state.crt.bloom;
+                params.ghosting = state.crt.ghosting;
+                params.halation = state.crt.halation;
+                params.moire = state.crt.moire;
+                params.gamma = state.crt.gamma;
+                params.sharpPixels = state.crt.sharpPixels;
+                params.humBar = state.crt.humBar;
+                params.monitorType = state.crt.monitorType;
+                params.time = state.crt.time;
 
-            displayTex = state.crtFilter.Apply(state.render.vramTexture, internalW, internalH, params);
-            
-            // Keep track of what was actually displayed for the capture button
-            state.render.lastDisplayTex = displayTex;
-            state.render.lastDisplayW = internalW;
-            state.render.lastDisplayH = internalH;
+                displayTex = state.crtFilter.Apply(state.render.vramTexture, internalW, internalH, params);
+                state.render.lastDisplayTex = displayTex;
+                state.render.lastDisplayW = internalW;
+                state.render.lastDisplayH = internalH;
+            } else {
+                displayTex = state.render.lastDisplayTex;
+            }
         } else {
             // Keep track of raw VRAM texture
             state.render.lastDisplayTex = state.render.vramTexture;
@@ -484,7 +519,6 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         }
 
         ImGui::End();
-    }
 
 #ifndef TARGET_WASM
     HandleVRAMLoadDialog(state);

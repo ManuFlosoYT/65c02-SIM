@@ -55,6 +55,7 @@ class CRTFilter {
    public:
     void Init(int width, int height);
     void Destroy();
+    [[nodiscard]] bool IsInitialized() const { return m_shader != 0; }
 
     // Renders inputTex through the CRT shader and returns the output texture.
     GLuint Apply(GLuint inputTex, int width, int height, const CRTParams& params);

@@ -66,6 +66,13 @@ void UpdateMemoryLayoutTexture(AppState& state, const std::vector<DeviceRegistra
         }
     }
 
+    if (state.render.layoutTexture == 0) {
+        glGenTextures(1, &state.render.layoutTexture);
+        glBindTexture(GL_TEXTURE_2D, state.render.layoutTexture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    }
     glBindTexture(GL_TEXTURE_2D, state.render.layoutTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 256, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);

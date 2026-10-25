@@ -15,6 +15,19 @@ namespace Frontend {
 static constexpr int sidSampleRate = 48000;
 
 static void HandleSIDWindowCapture(AppState& state) {
+    if (state.render.sidFBO == 0) {
+        glGenTextures(1, &state.render.sidTexture);
+        glBindTexture(GL_TEXTURE_2D, state.render.sidTexture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+        glGenFramebuffers(1, &state.render.sidFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, state.render.sidFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, state.render.sidTexture, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
     const ImGuiIO& imguiIO = ImGui::GetIO();
     int screenHeightPixels = static_cast<int>(imguiIO.DisplaySize.y * imguiIO.DisplayFramebufferScale.y);
 

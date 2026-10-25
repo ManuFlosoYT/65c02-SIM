@@ -134,45 +134,6 @@ static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     return false;
 }
 
-static void InitializeTextures(AppState& state) {
-    glGenTextures(1, &state.render.vramTexture);
-    glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    std::array<unsigned char, static_cast<std::size_t>(GPU::VRAM_HEIGHT) * GPU::VRAM_WIDTH * 3> emptyPixels{};
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 emptyPixels.data());
-
-    glGenTextures(1, &state.render.profilerTexture);
-    glBindTexture(GL_TEXTURE_2D, state.render.profilerTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-
-    glGenTextures(1, &state.render.layoutTexture);
-    glBindTexture(GL_TEXTURE_2D, state.render.layoutTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-
-    glGenTextures(1, &state.render.sidTexture);
-    glBindTexture(GL_TEXTURE_2D, state.render.sidTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-
-    glGenFramebuffers(1, &state.render.sidFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, state.render.sidFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, state.render.sidTexture, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    state.crtFilter.Init(1440, 1080);
-}
-
 static void SetupStyle(){
     SetupImGuiStyle();
     SetupModernStyle();
@@ -201,13 +162,6 @@ static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const 
 }
 
 static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
-#ifndef TARGET_WASM
-    const bool isIdle = state.emulator.IsPaused() && !state.emulation.isRecordingVideo &&
-                        !(state.ide.open && state.ide.mode == Control::IDEMode::MIDI && GUI::IsMIDIAudioActive());
-    if (isIdle) {
-        SDL_WaitEventTimeout(nullptr, 50);
-    }
-#endif
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
@@ -229,15 +183,28 @@ static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
 static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
     state.emulator.Stop();
     state.emulator.GetSID().Close();
-    state.crtFilter.Destroy();
-    glDeleteTextures(1, &state.render.vramTexture);
-    glDeleteTextures(1, &state.render.profilerTexture);
-    glDeleteTextures(1, &state.render.layoutTexture);
+    if (state.crtFilter.IsInitialized()) {
+        state.crtFilter.Destroy();
+    }
+    if (state.render.vramTexture != 0U) {
+        glDeleteTextures(1, &state.render.vramTexture);
+        state.render.vramTexture = 0;
+    }
+    if (state.render.profilerTexture != 0U) {
+        glDeleteTextures(1, &state.render.profilerTexture);
+        state.render.profilerTexture = 0;
+    }
+    if (state.render.layoutTexture != 0U) {
+        glDeleteTextures(1, &state.render.layoutTexture);
+        state.render.layoutTexture = 0;
+    }
     if (state.render.sidTexture != 0U) {
         glDeleteTextures(1, &state.render.sidTexture);
+        state.render.sidTexture = 0;
     }
     if (state.render.sidFBO != 0U) {
         glDeleteFramebuffers(1, &state.render.sidFBO);
+        state.render.sidFBO = 0;
     }
 
     ImGui_ImplOpenGL3_Shutdown();
@@ -603,8 +570,6 @@ int main(int argc, char* argv[]) {
     });
 #endif
 
-    InitializeTextures(state);
-
 #ifdef TARGET_WASM
     const char* glsl_version = "#version 100"; // WebGL 1/2 compatible
 #else
@@ -639,19 +604,41 @@ int main(int argc, char* argv[]) {
     static MainLoopArgs loopArgs = { .window = window, .gl_context = gl_context, .state = &state, .mediaExporter = nullptr, .done = &done };
     emscripten_set_main_loop_arg(MainLoop, &loopArgs, 0, 1);
 #else
-    const int FPS = 60;
-    const int frameDelay = 1000 / FPS;
-    Uint64 frameStart = 0;
-    int frameTime = 0;
-
     MainLoopArgs loopArgs = { .window = window, .gl_context = gl_context, .state = &state, .mediaExporter = &mediaExporter, .done = &done };
+    int framesToRender = 2;
+
+    const auto isEmulationActive = [](const AppState& s) {
+        return (!s.emulator.IsPaused() && s.emulator.IsRunning()) ||
+               s.emulation.isRecordingVideo ||
+               (s.ide.open && s.ide.mode == Control::IDEMode::MIDI && GUI::IsMIDIAudioActive());
+    };
 
     while (!done) {
-        frameStart = SDL_GetTicks();
-        MainLoop(&loopArgs);
-        frameTime = (int)(SDL_GetTicks() - frameStart);
-        if (frameDelay > frameTime) {
-            SDL_Delay(frameDelay - frameTime);
+        if (!isEmulationActive(state)) {
+            if (framesToRender <= 0) {
+                SDL_Event event;
+                if (SDL_WaitEventTimeout(&event, 250)) {
+                    ImGui_ImplSDL3_ProcessEvent(&event);
+                    if (event.type == SDL_EVENT_QUIT ||
+                        (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))) {
+                        if (Control::ShouldPromptCartridgeSDSave(state)) {
+                            state.emulator.Pause();
+                            state.popups.showCartridgeSavePrompt = true;
+                            state.popups.pendingCartridgeAction = Control::PendingCartridgeAction::Exit;
+                        } else {
+                            done = true;
+                        }
+                    }
+                    framesToRender = 2;
+                }
+            }
+            if (framesToRender > 0) {
+                framesToRender--;
+                MainLoop(&loopArgs);
+            }
+        } else {
+            framesToRender = 2;
+            MainLoop(&loopArgs);
         }
     }
 

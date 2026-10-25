@@ -53,6 +53,13 @@ void UpdateProfilerTexture(AppState& state, std::span<const uint32_t> readCounts
         pixels.fill(0);
     }
 
+    if (state.render.profilerTexture == 0) {
+        glGenTextures(1, &state.render.profilerTexture);
+        glBindTexture(GL_TEXTURE_2D, state.render.profilerTexture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    }
     glBindTexture(GL_TEXTURE_2D, state.render.profilerTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 256, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
