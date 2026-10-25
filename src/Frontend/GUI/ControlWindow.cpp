@@ -102,7 +102,7 @@ static void DrawAudioVideoControls(AppState& state) {
         ImGui::EndTooltip();
     }
 
-    ImGui::SameLine(0.0F, 12.0F);
+    ImGui::SameLine();
     bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
     bool sidOverridden = state.emulator.GetCartridge().config.sidEnabled.has_value();
     ImGui::BeginDisabled(sidOverridden);
@@ -118,7 +118,7 @@ static void DrawAudioVideoControls(AppState& state) {
     }
 
     if (soundEnabled) {
-        ImGui::SameLine(0.0F, 12.0F);
+        ImGui::SameLine();
         bool sidModelOverridden = state.emulator.GetCartridge().config.sidModel.has_value();
         ImGui::BeginDisabled(sidModelOverridden);
         ImGui::PushItemWidth(150);
@@ -152,10 +152,10 @@ static void DrawControlButtonBar(AppState& state) {
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
 
-    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::SameLine();
     DrawPlaybackControls(state);
 
-    ImGui::SameLine(0.0F, 20.0F);
+    ImGui::SameLine();
     DrawAudioVideoControls(state);
 }
 
@@ -526,14 +526,19 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
     float y1 = ImGui::GetCursorPosY();
     constexpr float kRegHeight = 20.0F;
     float regPosY = ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y - kRegHeight;
-    float sepPosY = regPosY - ImGui::GetStyle().ItemSpacing.y - 6.0F;
-    float midSpace = sepPosY - y1;
-    float extraY = std::max(0.0F, midSpace - ImGui::GetFrameHeight());
+    float sep2PosY = regPosY - ImGui::GetStyle().ItemSpacing.y - 4.0F;
+    float midSpace = sep2PosY - y1;
+    float extraSpace = midSpace - (ImGui::GetFrameHeight() + 1.0F);
+    float gap = std::max(4.0F, extraSpace / 3.0F);
 
-    ImGui::SetCursorPosY(y1 + (extraY * 0.5F));
+    float sep1PosY = y1 + gap;
+    ImGui::SetCursorPosY(sep1PosY);
+    ImGui::Separator();
+
+    ImGui::SetCursorPosY(sep1PosY + 1.0F + gap);
     DrawIPSSection(state, mainColWidth);
 
-    ImGui::SetCursorPosY(sepPosY);
+    ImGui::SetCursorPosY(sep2PosY);
     ImGui::Separator();
 
     ImGui::SetCursorPosY(regPosY);
