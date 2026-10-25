@@ -153,6 +153,12 @@ static std::string FindCompiler() {
 }
 
 void CompilerVFS::Initialize() {
+    static bool initialized = false;
+    if (initialized) {
+        return;
+    }
+    initialized = true;
+
     fs::path tempRoot = fs::temp_directory_path() / "65c02_sim_toolchain";
     fs::create_directories(tempRoot);
     tempDir = tempRoot.string();
@@ -165,26 +171,26 @@ void CompilerVFS::Initialize() {
     }
 }
 
+void CompilerVFS::EnsureInitialized() {
+    Initialize();
+}
+
 void CompilerVFS::Cleanup() {
     if (!tempDir.empty()) {
         std::error_code errorCode;
         fs::remove_all(tempDir, errorCode);
+        tempDir.clear();
+        compilerPath.clear();
     }
 }
 
 std::string CompilerVFS::GetTempDir() {
-    if (tempDir.empty()) {
-        fs::path tempRoot = fs::temp_directory_path() / "65c02_sim_toolchain";
-        fs::create_directories(tempRoot);
-        tempDir = tempRoot.string();
-    }
+    EnsureInitialized();
     return tempDir;
 }
 
 std::string CompilerVFS::GetCompilerExecutable() {
-    if (compilerPath.empty()) {
-        compilerPath = FindCompiler();
-    }
+    EnsureInitialized();
     return compilerPath;
 }
 

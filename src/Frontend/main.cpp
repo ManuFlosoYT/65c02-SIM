@@ -37,6 +37,9 @@
 #include "Frontend/GUI/UIModules.h"
 #include "Frontend/Control/SDKManager.h"
 #include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
+#if defined(__linux__) && !defined(TARGET_WASM)
+#include <malloc.h>
+#endif
 
 using namespace Control;
 using namespace Core;
@@ -535,7 +538,6 @@ int main(int argc, char* argv[]) {
     const Args args = parseResult.args;
 
 #ifndef TARGET_WASM
-    CompilerVFS::Initialize();
     Control::SymbolTable::SetElfLoader(&CompilerFrontend::LoadELF);
 #endif
 
@@ -594,6 +596,10 @@ int main(int argc, char* argv[]) {
 
     static bool done = false;
     state.emulator.Start();
+
+#if defined(__linux__) && !defined(TARGET_WASM)
+    malloc_trim(0);
+#endif
     
 #ifndef TARGET_WASM
     static std::unique_ptr<MediaExporter> mediaExporter = nullptr;
@@ -616,6 +622,9 @@ int main(int argc, char* argv[]) {
     while (!done) {
         if (!isEmulationActive(state)) {
             if (framesToRender <= 0) {
+#if defined(__linux__) && !defined(TARGET_WASM)
+                malloc_trim(0);
+#endif
                 SDL_Event event;
                 if (SDL_WaitEventTimeout(&event, 250)) {
                     ImGui_ImplSDL3_ProcessEvent(&event);

@@ -6,6 +6,7 @@
 class CompilerVFS {
 public:
     static void Initialize();
+    static void EnsureInitialized();
     static void Cleanup();
     static std::string GetTempDir();
     static std::string GetCompilerExecutable();
