@@ -15,6 +15,7 @@ using namespace Hardware;
 using namespace System::Hardware::Scripting::Lang;
 
 struct ScriptEngine::Impl {
+    ScriptEngine& parent;
     Core::Emulator& emulator;
     std::deque<std::string> outputQueue;
     std::mutex outputMutex;
@@ -25,7 +26,10 @@ struct ScriptEngine::Impl {
     std::mutex scriptMutex;
     std::atomic<bool> abortRequested{false};
 
-    explicit Impl(Core::Emulator& emu) : emulator(emu), interpreter(std::make_unique<Interpreter>()) {
+    Impl(ScriptEngine& parentEngine, Core::Emulator& emu)
+        : parent(parentEngine), emulator(emu), interpreter(std::make_unique<Interpreter>()) {
+        interpreter->setContext(&emulator.GetCPU(), &emulator.GetMem());
+        interpreter->setAbortCheck([this]() { return abortRequested.load(std::memory_order_relaxed); });
         interpreter->defineBuiltin("emu.pause", [this](const std::vector<Value>&) -> Value {
             emulator.Pause();
             return std::monostate{};
@@ -46,13 +50,14 @@ struct ScriptEngine::Impl {
         });
         
         interpreter->setPrintHandler([this](const std::string& text) {
-            std::lock_guard<std::mutex> lock(outputMutex);
-            outputQueue.push_back(text);
+            parent.AppendOutput(text);
         });
 
         interpreter->defineBuiltin("emu.step", [this](const std::vector<Value>&) -> Value {
+            if (this->abortRequested.load(std::memory_order_relaxed)) throw std::runtime_error("Script aborted");
             emulator.Step<true>();
             while (emulator.GetCPU().remainingCycles > 0) {
+                if (this->abortRequested.load(std::memory_order_relaxed)) throw std::runtime_error("Script aborted");
                 emulator.Step<true>();
             }
             return std::monostate{};
@@ -66,7 +71,7 @@ struct ScriptEngine::Impl {
             uint64_t targetCycles = emulator.GetTotalCycles() + static_cast<uint64_t>(cycles);
 
             while (emulator.GetTotalCycles() < targetCycles) {
-                if (this->abortRequested.load(std::memory_order_relaxed) || emulator.IsHalted() || !emulator.IsRunning()) throw std::runtime_error("Script aborted or Emulator halted");
+                if (this->abortRequested.load(std::memory_order_relaxed) || emulator.IsHalted()) throw std::runtime_error("Script aborted or Emulator halted");
                 emulator.Step();
             }
             return std::monostate{};
@@ -80,7 +85,7 @@ struct ScriptEngine::Impl {
             uint64_t targetInsts = emulator.GetTotalInstructions() + static_cast<uint64_t>(insts);
 
             while (emulator.GetTotalInstructions() < targetInsts) {
-                if (this->abortRequested.load(std::memory_order_relaxed) || emulator.IsHalted() || !emulator.IsRunning()) throw std::runtime_error("Script aborted or Emulator halted");
+                if (this->abortRequested.load(std::memory_order_relaxed) || emulator.IsHalted()) throw std::runtime_error("Script aborted or Emulator halted");
                 emulator.Step();
             }
             return std::monostate{};
@@ -266,7 +271,7 @@ struct ScriptEngine::Impl {
 };
 
 ScriptEngine::ScriptEngine(Core::Emulator& emulator)
-    : emulatorRef(emulator), pImpl(std::make_unique<Impl>(emulator)) {}
+    : emulatorRef(emulator), pImpl(std::make_unique<Impl>(*this, emulator)) {}
 
 ScriptEngine::~ScriptEngine() {
     Stop();

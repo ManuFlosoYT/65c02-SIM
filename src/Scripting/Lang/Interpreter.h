@@ -26,6 +26,9 @@ public:
     void setPrintHandler(std::function<void(const std::string&)> handler) {
         printHandler = std::move(handler);
     }
+    void setAbortCheck(std::function<bool()> check) {
+        abortCheck = std::move(check);
+    }
 
     Value evaluate(Expr* expr);
     void setContext(const ::Hardware::CPU* cpu, const ::Hardware::Bus* bus) {
@@ -38,6 +41,7 @@ public:
 
    private:
     std::function<void(const std::string&)> printHandler;
+    std::function<bool()> abortCheck;
     void execute(Stmt* stmt);
     void executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, std::shared_ptr<Environment> environment);
 

@@ -64,6 +64,10 @@ Value Interpreter::evaluate(Expr* expr) {
 }
 
 void Interpreter::execute(Stmt* stmt) {
+    if (abortCheck && abortCheck()) {
+        throw std::runtime_error("Script aborted");
+    }
+
     if (breakOut || continueLoop) {
         return; // Skip if breaking or continuing
     }
@@ -377,7 +381,13 @@ void Interpreter::visitIfStmt(IfStmt* stmt) {
 }
 
 void Interpreter::visitWhileStmt(WhileStmt* stmt) {
-    while (isTruthy(evaluate(stmt->condition.get()))) {
+    while (true) {
+        if (abortCheck && abortCheck()) {
+            throw std::runtime_error("Script aborted");
+        }
+        if (!isTruthy(evaluate(stmt->condition.get()))) {
+            break;
+        }
         execute(stmt->body.get());
         
         if (breakOut) {

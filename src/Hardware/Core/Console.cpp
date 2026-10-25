@@ -145,6 +145,26 @@ static uint32_t MapDecGraphics(char chr) {
     }
 }
 
+static void AppendUtf8(std::string& out, uint32_t cp) {
+    if (cp < 0x80) {
+        out.push_back(static_cast<char>(cp));
+    } else if (cp <= 0x7FF) {
+        out.push_back(static_cast<char>(0xC0 | ((cp >> 6) & 0x1F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else if (cp <= 0xFFFF) {
+        out.push_back(static_cast<char>(0xE0 | ((cp >> 12) & 0x0F)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else if (cp <= 0x10FFFF) {
+        out.push_back(static_cast<char>(0xF0 | ((cp >> 18) & 0x07)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else {
+        out.push_back('?');
+    }
+}
+
 enum class ParserState { Ground, Escape, Csi, CharsetG0, CharsetG1, Osc };
 
 struct ConsoleState {
@@ -249,12 +269,7 @@ struct ConsoleState {
             std::string line;
             line.reserve(TERMINAL_COLS);
             for (int col = 0; col < TERMINAL_COLS; ++col) {
-                uint32_t cp = grid[0][col].codepoint;
-                if (cp < 128) {
-                    line.push_back(static_cast<char>(cp));
-                } else {
-                    line.push_back('?');
-                }
+                AppendUtf8(line, grid[0][col].codepoint);
             }
             while (!line.empty() && line.back() == ' ') {
                 line.pop_back();
@@ -547,12 +562,7 @@ static const std::vector<std::string>& GetLinesUnlocked() {
         std::string line;
         line.reserve(TERMINAL_COLS);
         for (int col = 0; col < TERMINAL_COLS; ++col) {
-            uint32_t cp = grid[row][col].codepoint;
-            if (cp < 128) {
-                line.push_back(static_cast<char>(cp));
-            } else {
-                line.push_back('?');
-            }
+            AppendUtf8(line, grid[row][col].codepoint);
         }
         while (!line.empty() && line.back() == ' ') {
             line.pop_back();
@@ -570,10 +580,7 @@ static const std::string& GetCurrentLineUnlocked() {
     const auto& grid = state.ActiveScreen();
     if (state.cursorY >= 0 && state.cursorY < TERMINAL_ROWS) {
         for (int col = 0; col <= state.cursorX && col < TERMINAL_COLS; ++col) {
-            uint32_t cp = grid[state.cursorY][col].codepoint;
-            if (cp < 128) {
-                state.cachedCurrentLine.push_back(static_cast<char>(cp));
-            }
+            AppendUtf8(state.cachedCurrentLine, grid[state.cursorY][col].codepoint);
         }
     }
     return state.cachedCurrentLine;
@@ -746,24 +753,40 @@ void OutputCallback(char character) {
 bool SaveState(std::ostream& out) {
     std::lock_guard<std::mutex> lock(GetMutex());
     auto& state = GetState();
-    const auto& lines = GetLinesUnlocked();
-    auto linesCount = static_cast<uint32_t>(lines.size());
-    Hardware::ISerializable::Serialize(out, linesCount);
-    for (const auto& line : lines) {
-        auto len = static_cast<uint32_t>(line.size());
-        Hardware::ISerializable::Serialize(out, len);
-        out.write(line.c_str(), static_cast<std::streamsize>(len));
-    }
 
-    const auto& currentLine = GetCurrentLineUnlocked();
-    auto currentLen = static_cast<uint32_t>(currentLine.size());
-    Hardware::ISerializable::Serialize(out, currentLen);
-    out.write(currentLine.c_str(), static_cast<std::streamsize>(currentLen));
-
+    Hardware::ISerializable::Serialize(out, state.useAltScreen);
     Hardware::ISerializable::Serialize(out, state.cursorX);
     Hardware::ISerializable::Serialize(out, state.cursorY);
+    Hardware::ISerializable::Serialize(out, state.cursorVisible);
+    Hardware::ISerializable::Serialize(out, state.currentFg);
+    Hardware::ISerializable::Serialize(out, state.currentBg);
+    Hardware::ISerializable::Serialize(out, state.currentAttrs);
     Hardware::ISerializable::Serialize(out, state.defaultFg);
     Hardware::ISerializable::Serialize(out, state.defaultBg);
+
+    auto scrollbackCount = static_cast<uint32_t>(state.scrollbackLines.size());
+    Hardware::ISerializable::Serialize(out, scrollbackCount);
+    for (const auto& line : state.scrollbackLines) {
+        Hardware::ISerializable::Serialize(out, line);
+    }
+
+    auto serializeGrid = [&out](const std::vector<std::vector<Cell>>& grid) {
+        for (int r = 0; r < TERMINAL_ROWS; ++r) {
+            for (int c = 0; c < TERMINAL_COLS; ++c) {
+                static const Cell defaultCell{' ', DEFAULT_FG, DEFAULT_BG, 0};
+                const auto& cell = (r < static_cast<int>(grid.size()) && c < static_cast<int>(grid[r].size()))
+                                       ? grid[r][c]
+                                       : defaultCell;
+                Hardware::ISerializable::Serialize(out, cell.codepoint);
+                Hardware::ISerializable::Serialize(out, cell.fg);
+                Hardware::ISerializable::Serialize(out, cell.bg);
+                Hardware::ISerializable::Serialize(out, cell.attributes);
+            }
+        }
+    };
+
+    serializeGrid(state.screen);
+    serializeGrid(state.altScreen);
 
     return out.good();
 }
@@ -773,44 +796,57 @@ bool LoadState(std::istream& inputStream) {
     auto& state = GetState();
     state.ResetBuffer();
 
-    uint32_t linesCount = 0;
-    Hardware::ISerializable::Deserialize(inputStream, linesCount);
-    if (!inputStream.good() || linesCount > 2000) {
+    Hardware::ISerializable::Deserialize(inputStream, state.useAltScreen);
+    Hardware::ISerializable::Deserialize(inputStream, state.cursorX);
+    Hardware::ISerializable::Deserialize(inputStream, state.cursorY);
+    Hardware::ISerializable::Deserialize(inputStream, state.cursorVisible);
+    Hardware::ISerializable::Deserialize(inputStream, state.currentFg);
+    Hardware::ISerializable::Deserialize(inputStream, state.currentBg);
+    Hardware::ISerializable::Deserialize(inputStream, state.currentAttrs);
+    Hardware::ISerializable::Deserialize(inputStream, state.defaultFg);
+    Hardware::ISerializable::Deserialize(inputStream, state.defaultBg);
+    if (!inputStream.good()) {
         return false;
     }
-    for (uint32_t i = 0; i < linesCount; ++i) {
-        uint32_t len = 0;
-        Hardware::ISerializable::Deserialize(inputStream, len);
-        if (!inputStream.good() || len > 1024) {
+
+    state.cursorX = std::clamp(state.cursorX, 0, TERMINAL_COLS);
+    state.cursorY = std::clamp(state.cursorY, 0, TERMINAL_ROWS - 1);
+
+    uint32_t scrollbackCount = 0;
+    Hardware::ISerializable::Deserialize(inputStream, scrollbackCount);
+    if (!inputStream.good() || scrollbackCount > CONSOLE_MAX_LINES) {
+        return false;
+    }
+    state.scrollbackLines.resize(scrollbackCount);
+    for (uint32_t i = 0; i < scrollbackCount; ++i) {
+        Hardware::ISerializable::Deserialize(inputStream, state.scrollbackLines[i]);
+        if (!inputStream.good()) {
             return false;
         }
-        std::string line(len, '\0');
-        inputStream.read(line.data(), static_cast<std::streamsize>(len));
-        state.scrollbackLines.push_back(line);
     }
 
-    uint32_t currentLen = 0;
-    Hardware::ISerializable::Deserialize(inputStream, currentLen);
-    if (!inputStream.good() || currentLen > 1024) {
+    auto deserializeGrid = [&inputStream](std::vector<std::vector<Cell>>& grid) -> bool {
+        for (int r = 0; r < TERMINAL_ROWS; ++r) {
+            for (int c = 0; c < TERMINAL_COLS; ++c) {
+                Cell& cell = grid[r][c];
+                Hardware::ISerializable::Deserialize(inputStream, cell.codepoint);
+                Hardware::ISerializable::Deserialize(inputStream, cell.fg);
+                Hardware::ISerializable::Deserialize(inputStream, cell.bg);
+                Hardware::ISerializable::Deserialize(inputStream, cell.attributes);
+                if (!inputStream.good()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
+    if (!deserializeGrid(state.screen) || !deserializeGrid(state.altScreen)) {
         return false;
     }
-    std::string currentLine(currentLen, '\0');
-    inputStream.read(currentLine.data(), static_cast<std::streamsize>(currentLen));
 
-    for (char c : currentLine) {
-        state.PutChar(static_cast<uint8_t>(c));
-    }
-
-    Hardware::ISerializable::Deserialize(inputStream, state.cursorX);
-    if (inputStream.good()) {
-        Hardware::ISerializable::Deserialize(inputStream, state.cursorY);
-    }
-    if (inputStream.good() && inputStream.peek() != std::char_traits<char>::eof()) {
-        Hardware::ISerializable::Deserialize(inputStream, state.defaultFg);
-        Hardware::ISerializable::Deserialize(inputStream, state.defaultBg);
-        state.currentFg = state.defaultFg;
-        state.currentBg = state.defaultBg;
-    }
+    state.cachedLines.clear();
+    state.cachedCurrentLine.clear();
 
     return inputStream.good();
 }

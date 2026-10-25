@@ -218,7 +218,6 @@ bool load_shared_payload(const uint8_t* data, size_t size) {
             if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
                 state.rom.bin = cart.metadata.name.empty() ? "shared_demo.65c" : cart.metadata.name;
                 state.rom.loaded = true;
-                state.rom.symbols.Clear();
                 state.emulator.ClearProfiler();
                 state.emulator.Resume();
                 Console::Clear();

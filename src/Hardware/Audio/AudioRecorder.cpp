@@ -19,7 +19,11 @@ bool AudioRecorder::Start(const std::string& filename, int sampleRate) {
 
     // Ensure SF_INFO is clean for writing
     sfInfo = {}; 
-    sfInfo.format = SF_FORMAT_FLAC | SF_FORMAT_PCM_16;
+    if (filename.ends_with(".ogg")) {
+        sfInfo.format = SF_FORMAT_OGG | SF_FORMAT_OPUS;
+    } else {
+        sfInfo.format = SF_FORMAT_FLAC | SF_FORMAT_PCM_16;
+    }
     sfInfo.channels = 1;
     sfInfo.samplerate = sampleRate;
 

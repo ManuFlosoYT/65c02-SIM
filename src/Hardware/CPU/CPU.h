@@ -28,6 +28,7 @@ class CPU : public ISerializable {
 
     Word PC{};  // Program Counter
     Word SP{};  // Stack Pointer
+    Word instructionPC = 0;
 
     const Byte* current_page_ptr = nullptr;
 
@@ -134,6 +135,7 @@ class CPU : public ISerializable {
 inline void Hardware::CPU::Reset() {
     PC = 0xFFFC;
     SP = 0x01FF;
+    instructionPC = 0;
 
     A = 0;
     X = 0;
@@ -292,7 +294,7 @@ inline void Hardware::CPU::AddPageCrossPenalty(Word baseAddr, Word effectiveAddr
     if (cycleAccurate && ((baseAddr & 0xFF00) != (effectiveAddr & 0xFF00))) {
         remainingCycles++;
         if (profiler != nullptr && profiler->IsEnabled()) [[unlikely]] {
-            profiler->OnPageCross(PC, baseAddr, effectiveAddr);
+            profiler->OnPageCross(instructionPC, baseAddr, effectiveAddr);
         }
     }
 }
@@ -308,6 +310,7 @@ inline void Hardware::CPU::UpdatePagePtr(Bus& bus) {
 
 template <bool Debug>
 inline Hardware::Byte Hardware::CPU::FetchOpcode(Bus& bus) {
+    instructionPC = PC;
     if constexpr (Debug) {
         bus.LogCDL(PC, CDL_OPCODE);
     }

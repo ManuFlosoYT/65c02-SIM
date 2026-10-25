@@ -149,6 +149,7 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
             ImGui::PushItemWidth(-FLT_MIN);
             if (ImGui::DragInt("##base", &base, 1.0F, 0, 0xFFFF, "0x%04X")) {
                 int size = (reg.endAddress - reg.startAddress) + 1;
+                base = std::clamp(base, 0, 0x10000 - size);
                 reg.startAddress = static_cast<Word>(base);
                 reg.endAddress = static_cast<Word>(base + size - 1);
                 layoutDirty = true;
@@ -159,6 +160,8 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
             int size = (reg.endAddress - reg.startAddress) + 1;
             ImGui::PushItemWidth(-FLT_MIN);
             if (ImGui::DragInt("##size", &size, 1.0F, 1, 0x10000, "0x%04X")) {
+                int maxSize = 0x10000 - static_cast<int>(reg.startAddress);
+                size = std::clamp(size, 1, maxSize);
                 reg.endAddress = static_cast<Word>(reg.startAddress + size - 1);
                 layoutDirty = true;
             }

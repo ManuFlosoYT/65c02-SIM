@@ -285,6 +285,7 @@ bool SymbolTable::LoadFromDebugInfo(const std::string& debugLineOutput, const st
 
     std::unordered_map<unsigned int, std::string> incDirs;
     std::unordered_map<unsigned int, std::string> unitFiles;
+    std::unordered_map<unsigned int, unsigned int> unitFileDir;
     std::unordered_map<std::string, unsigned int> pathToFileId;
 
     bool inTable = false;
@@ -302,6 +303,7 @@ bool SymbolTable::LoadFromDebugInfo(const std::string& debugLineOutput, const st
         if (line.rfind("debug_line[", 0) == 0) {
             incDirs.clear();
             unitFiles.clear();
+            unitFileDir.clear();
             inTable = false;
         } else if (line.find("include_directories[") != std::string::npos) {
             size_t b1 = line.find('[');
@@ -324,6 +326,12 @@ bool SymbolTable::LoadFromDebugInfo(const std::string& debugLineOutput, const st
             if (q1 != std::string::npos && q2 > q1) {
                 unitFiles[curFileIdx] = line.substr(q1 + 1, q2 - q1 - 1);
             }
+        } else if (line.find("dir_index:") != std::string::npos) {
+            size_t pos = line.find("dir_index:");
+            try {
+                unitFileDir[curFileIdx] = static_cast<unsigned int>(std::stoul(line.substr(pos + 10), nullptr, 0));
+            } catch (...) {
+            }
         } else if (line.find("Address ") != std::string::npos && line.find("Line ") != std::string::npos) {
             inTable = true;
         } else if (inTable) {
@@ -345,6 +353,13 @@ bool SymbolTable::LoadFromDebugInfo(const std::string& debugLineOutput, const st
                         bool isEnd = (rest.find("end_sequence") != std::string::npos);
 
                         std::string fPath = unitFiles[fIdx];
+                        auto itDir = unitFileDir.find(fIdx);
+                        if (itDir != unitFileDir.end()) {
+                            auto itInc = incDirs.find(itDir->second);
+                            if (itInc != incDirs.end() && !itInc->second.empty()) {
+                                fPath = (std::filesystem::path(itInc->second) / fPath).lexically_normal().string();
+                            }
+                        }
                         unsigned int globalFid = 0;
                         auto itF = pathToFileId.find(fPath);
                         if (itF == pathToFileId.end()) {

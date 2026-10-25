@@ -25,6 +25,7 @@ void EmulationEngine::Start() {
 }
 
 void EmulationEngine::Stop() {
+    emulator.scriptEngine.Stop();
     {
         std::lock_guard<std::mutex> lock(threadMutex);
         running = false;
@@ -303,7 +304,7 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
                 if (emulator.via.isIRQAsserted() || emulator.acia.HasIRQ()) [[unlikely]] {
                     emulator.pendingInterruptAny.store(true, std::memory_order_relaxed);
                 }
-                if (emulator.pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
+                if (cpuStepped && emulator.pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
                     emulator.HandleInterrupts<false>();
                 }
                 if (emulator.hasInput.load(std::memory_order_relaxed)) [[unlikely]] {

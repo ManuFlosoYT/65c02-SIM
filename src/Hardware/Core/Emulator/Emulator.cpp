@@ -236,6 +236,8 @@ void Emulator::HandleInterrupts() {
                 this->pendingIRQ.store(false, std::memory_order_relaxed);
             } else if (wasWaiting) {
                 this->pendingIRQ.store(false, std::memory_order_relaxed);
+            } else if (!acia.HasIRQ() && !via.isIRQAsserted()) {
+                this->pendingIRQ.store(false, std::memory_order_relaxed);
             }
         }
     }
@@ -251,12 +253,12 @@ void Emulator::HandleSerialInput() {
         return;
     }
 
-    if (baudDelay > 0 || !acia.CanReceive() || (via.GetPortA() & 0x01) != 0) {
+    if (baudDelay > 0 || !acia.CanReceive()) {
         return;
     }
 
     std::lock_guard<std::mutex> lock(bufferMutex);
-    if (!inputBuffer.empty() && acia.CanReceive() && (via.GetPortA() & 0x01) == 0 && baudDelay <= 0) {
+    if (!inputBuffer.empty() && acia.CanReceive() && baudDelay <= 0) {
         char chr = inputBuffer.front();
         inputBuffer.pop_front();
 
@@ -293,7 +295,7 @@ int Emulator::StepInternal(int ips) {
         RunCPUTick<Debug, false>(res, cpuStepped);
     }
     SyncHardwareCycles(cpuStepped, isNewInstruction, ips);
-    if (pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
+    if (cpuStepped && pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
         HandleInterrupts<Debug>();
     }
 
