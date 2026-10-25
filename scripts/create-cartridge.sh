@@ -17,6 +17,7 @@ IPS=1000000
 GPU="false"
 CYCLE="true"
 SID="true"
+SID_MODEL="8580"
 ESP="false"
 SD_ENABLED="false"
 
@@ -36,6 +37,7 @@ while [[ "$#" -gt 0 ]]; do
         --gpu) GPU="$2"; shift 2 ;;
         --cycle) CYCLE="$2"; shift 2 ;;
         --sid) SID="$2"; shift 2 ;;
+        --sid-model) SID_MODEL="$2"; shift 2 ;;
         --esp) ESP="$2"; shift 2 ;;
         --sd) SD_ENABLED="$2"; shift 2 ;;
         --type) TYPE="$2"; shift 2 ;;
@@ -62,6 +64,7 @@ if [ -z "$ROM_FILE" ] && [ -z "$VRAM_FILE" ]; then
     echo "  --gpu true/false"
     echo "  --cycle true/false"
     echo "  --sid true/false"
+    echo "  --sid-model \"8580\""
     echo "  --esp true/false"
     echo "  --vram \"VRAM_FILE\""
     echo "  --sd-image \"sdcard.img\""
@@ -127,6 +130,7 @@ fi
   echo "    \"gpu_enabled\": $GPU,"
   echo "    \"cycle_accurate\": $CYCLE,"
   echo "    \"sid_enabled\": $SID,"
+  echo "    \"sid_model\": \"$SID_MODEL\","
   echo "    \"esp_enabled\": $ESP,"
   echo "    \"sd_enabled\": $SD_ENABLED"
   echo "  },"

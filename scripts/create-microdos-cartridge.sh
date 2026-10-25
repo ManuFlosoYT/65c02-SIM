@@ -125,6 +125,7 @@ echo "  Packaging Cartridge..."
     --version "6.0" \
     --ips "$IPS" \
     --sid true \
+    --sid-model "8580" \
     --sd true \
     --esp true \
     --gpu false
