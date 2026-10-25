@@ -282,7 +282,9 @@ int Emulator::StepInternal(int ips) {
     int res = 0;
     bool cpuStepped = false;
     bool isNewInstruction = true;
-    Word sampleAddr = cpu.PC;
+    if constexpr (Debug) {
+        bus.SetLastAccess(cpu.PC, bus.ReadDirect(cpu.PC), true);
+    }
 
     if constexpr (CycleAccurateMode) {
         isNewInstruction = (cpu.remainingCycles == 0);
@@ -305,7 +307,7 @@ int Emulator::StepInternal(int ips) {
 
     if constexpr (Debug) {
         if (logicAnalyzerEnabled.load(std::memory_order_relaxed)) [[unlikely]] {
-            SampleLogicAnalyzer(sampleAddr, bus.ReadDirect(sampleAddr), true, isNewInstruction);
+            SampleLogicAnalyzer(bus.GetLastAddress(), bus.GetLastData(), bus.GetLastRw(), isNewInstruction);
         }
     }
 
@@ -585,6 +587,9 @@ void Emulator::SampleLogicAnalyzer(Word addr, Byte data, bool rw, bool sync) {
     sample.cb1 = via.GetCB1() ? 1 : 0;
     sample.cb2 = via.GetCB2() ? 1 : 0;
     sample.spiCs = !sdcard.IsCSActive();
+    sample.spiClk = sdcard.IsCSActive() ? 1 : 0;
+    sample.spiMosi = (sdcard.GetLastMOSI() & 0x80) ? 1 : 0;
+    sample.spiMiso = (sdcard.GetLastMISO() & 0x80) ? 1 : 0;
     sample.uartTx = acia.GetTxPin() ? 1 : 0;
     sample.uartRx = acia.GetRxPin() ? 1 : 0;
     sample.portA = via.GetPortA();

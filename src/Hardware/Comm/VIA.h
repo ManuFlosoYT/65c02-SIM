@@ -171,10 +171,7 @@ inline void VIA::HandleTimer1() {
             }
         }
 
-        if ((acr & 0x40) != 0) {
-            // Continuous interrupts mode
-            t1c = t1l;    // Reload
-        }
+        t1c = t1l;    // Reload
 
         // PB7 Toggling (ACR bit 7)
         if ((acr & 0x80) != 0) {
@@ -297,7 +294,8 @@ inline void VIA::Clock() {
 }
 
 inline void VIA::Clock(uint32_t cycles) {
-    if (!anyActive) [[likely]] {
+    if (!anyActive || (!ca2_pulse_pending && !cb1_pulse_pending && !cb2_pulse_pending && !sr_active &&
+                       t1c >= cycles && ((acr & 0x20) != 0 || t2c >= cycles))) [[likely]] {
         t1c = static_cast<Word>(t1c - cycles);
         if ((acr & 0x20) == 0) {
             t2c = static_cast<Word>(t2c - cycles);

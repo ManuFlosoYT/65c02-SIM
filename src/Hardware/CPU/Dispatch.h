@@ -51,8 +51,8 @@ constexpr std::array<OpcodeEntry<Debug>, 256> BuildDispatchTable() {
         entry = {nullptr, 0, -1};
     }
 
-    table[INS_WAI] = {&WAI::Execute<Debug>, 0, 0};
-    table[INS_STP] = {&STP::Execute<Debug>, 0, 1};
+    table[INS_WAI] = {&WAI::Execute<Debug>, CYC_INS_WAI, 0};
+    table[INS_STP] = {&STP::Execute<Debug>, CYC_INS_STP, 1};
     table[INS_NOP_IM_02] = {&NOP::ExecuteImmediate<Debug>, CYC_INS_NOP_IM, 0};
     table[INS_JMP_IND] = {&JMP::ExecuteIND<Debug>, CYC_INS_JMP_IND, 0};
     table[INS_JMP_ABSX] = {&JMP::ExecuteABSX<Debug>, CYC_INS_JMP_ABSX, 0};

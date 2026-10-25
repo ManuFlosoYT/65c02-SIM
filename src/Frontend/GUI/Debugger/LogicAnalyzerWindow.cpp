@@ -173,7 +173,7 @@ void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
             {20, "VDD", "Positive Supply Voltage (+5V)", -1}
         };
 
-        bool viaSelected = ((sample.address & 0xFFF0) == 0xD000);
+        bool viaSelected = ((sample.address & 0xFFF0) == 0x6000);
         // Right pins (40..21)
         rightPins = {
             {40, "CA1", "Control Line A1 Input", sample.ca1 ? 1 : 0},
@@ -199,7 +199,7 @@ void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
         };
     } else {
         // W65C51N (28 Pin PDIP)
-        bool aciaSelected = ((sample.address & 0xFFFC) == 0xD800);
+        bool aciaSelected = ((sample.address & 0xFFFC) == 0x5000);
         // Left pins (1..14)
         leftPins = {
             {1, "VSS", "Ground Reference (0V)", -1},

@@ -43,6 +43,8 @@ void SDCard::Reset() {
     is_read_multiblock = false;
     is_write_multiblock = false;
     sd_status_byte = 0x00;
+    last_miso = 0xFFU;
+    last_mosi = 0xFFU;
 
     if (is_folder_mount && !currentPath.empty()) {
         SyncFromHost();
@@ -801,6 +803,7 @@ void SDCard::Write(Word address, Byte data) {
             SetCS((data & 0x01U) == 0); // If 0, then high (inactive), if 1, then low (active)
             break;
         case 1:  // DATA
+            last_mosi = data;
             last_miso = TransferByte(data);
             break;
         default:

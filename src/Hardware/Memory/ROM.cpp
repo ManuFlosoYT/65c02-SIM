@@ -22,16 +22,18 @@ void ROM::WriteDirect(Word address, Byte data) {
 }
 
 bool ROM::SaveState(std::ostream& out) const {
-    auto sz = static_cast<Word>(data.size());
+    auto sz = static_cast<uint32_t>(data.size());
     ISerializable::Serialize(out, sz);
     ISerializable::Serialize(out, data);
     return out.good();
 }
 
 bool ROM::LoadState(std::istream& inputStream) {
-    Word sz = 0;
+    uint32_t sz = 0;
     ISerializable::Deserialize(inputStream, sz);
-    (void)sz;
+    if (sz <= 0x10000 && sz > 0) {
+        data.resize(sz);
+    }
     ISerializable::Deserialize(inputStream, data);
     return inputStream.good();
 }

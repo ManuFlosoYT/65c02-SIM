@@ -92,6 +92,7 @@ void ACIA::Write(Word address, Byte data) {
             break;
         case ACIA_STATUS & 0x03:
             // Programmed reset
+            CMD &= 0xE0;
             STATUS &= ~(ACIA_STATUS_IRQ | ACIA_STATUS_OVRN | ACIA_STATUS_PE | ACIA_STATUS_FE | ACIA_STATUS_RDRF);
             STATUS |= ACIA_STATUS_TDRE;
             UpdateIRQ();

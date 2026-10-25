@@ -113,6 +113,15 @@ class Bus : public ISerializable {
     [[nodiscard]] const std::array<uint8_t, BUS_SIZE>& GetCDLMap() const;
     [[nodiscard]] std::array<uint8_t, BUS_SIZE>& GetCDLMap();
 
+    [[nodiscard]] Word GetLastAddress() const { return lastAddress; }
+    [[nodiscard]] Byte GetLastData() const { return lastData; }
+    [[nodiscard]] bool GetLastRw() const { return lastRw; }
+    void SetLastAccess(Word address, Byte data, bool rw) {
+        lastAddress = address;
+        lastData = data;
+        lastRw = rw;
+    }
+
     [[nodiscard]] const std::vector<DeviceRegistration>& GetRegisteredDevices() const;
     [[nodiscard]] std::vector<DeviceRegistration>& GetRegisteredDevices();
     void RebuildDeviceMap();
@@ -140,6 +149,10 @@ class Bus : public ISerializable {
     std::atomic<bool> heatmapDirty{false};
     std::array<std::atomic<uint8_t>, BUS_SIZE> readHeat{};
     std::array<std::atomic<uint8_t>, BUS_SIZE> writeHeat{};
+
+    Word lastAddress = 0;
+    Byte lastData = 0;
+    bool lastRw = true;
 };
 
 }  // namespace Hardware
@@ -200,6 +213,12 @@ inline Byte Bus::Read(Word address) {
         }
     }
 
+    if constexpr (Debug) {
+        lastAddress = address;
+        lastData = data;
+        lastRw = true;
+    }
+
     return data;
 }
 
@@ -237,6 +256,9 @@ inline void Bus::Write(Word address, Byte data) {
     }
 
     if constexpr (Debug) {
+        lastAddress = address;
+        lastData = data;
+        lastRw = false;
         if (hasWriteHooks) {
             for (auto& hook : globalWriteHooks) {
                 hook(address, data);

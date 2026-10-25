@@ -38,7 +38,8 @@ void RTS::Execute(CPU& cpu, Bus& bus) {
 template <bool Debug>
 void BRK::Execute(CPU& cpu, Bus& bus) {
     cpu.B = true;
-    cpu.PushWord<Debug>(cpu.PC + 1, bus);
+    Word returnPc = cpu.PC + 1;
+    cpu.PushWord<Debug>(returnPc, bus);
     Byte processorStatus = cpu.GetStatus();
     cpu.PushByte<Debug>(processorStatus, bus);
     cpu.I = 1;
@@ -53,7 +54,7 @@ void BRK::Execute(CPU& cpu, Bus& bus) {
 
     if constexpr (Debug) {
         if (cpu.GetProfiler() != nullptr) {
-            cpu.GetProfiler()->OnBRK(cpu.PC, cpu.PC, cpu.GetCycleCount());
+            cpu.GetProfiler()->OnBRK(cpu.PC, returnPc, cpu.GetCycleCount());
         }
     }
 }

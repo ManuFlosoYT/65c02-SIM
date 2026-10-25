@@ -64,6 +64,17 @@ class CPU : public ISerializable {
     template <bool Debug>
     int StepFast(Bus& bus);
 
+    template <bool Debug = false>
+    void EnsureInit(Bus& bus) {
+        if (!isInit) {
+            PC = ReadWord<Debug>(0xFFFC, bus);
+            UpdatePagePtr(bus);
+            isInit = true;
+        } else if (current_page_ptr == nullptr) {
+            UpdatePagePtr(bus);
+        }
+    }
+
     template <bool Debug>
     void IRQ(Bus& bus);
     void IRQ(Bus& bus);
@@ -177,13 +188,7 @@ inline int Hardware::CPU::StepCycleAccurate(Bus& bus) {
     if constexpr (Debug) {
         cycleCount++;
     }
-    if (!isInit) {
-        PC = ReadWord<Debug>(0xFFFC, bus);
-        UpdatePagePtr(bus);
-        isInit = true;
-    } else if (current_page_ptr == nullptr) {
-        UpdatePagePtr(bus);
-    }
+    EnsureInit<Debug>(bus);
 
     if (waiting) [[unlikely]] {
         return 0;
@@ -199,19 +204,17 @@ inline int Hardware::CPU::StepCycleAccurate(Bus& bus) {
 
 template <bool Debug>
 inline int Hardware::CPU::StepFast(Bus& bus) {
-    if (!isInit) {
-        PC = ReadWord<Debug>(0xFFFC, bus);
-        UpdatePagePtr(bus);
-        isInit = true;
-    } else if (current_page_ptr == nullptr) {
-        UpdatePagePtr(bus);
-    }
+    EnsureInit<Debug>(bus);
 
     if (waiting) [[unlikely]] {
         return 0;
     }
 
-    return Dispatch<Debug>(bus);
+    int cycles = Dispatch<Debug>(bus);
+    if constexpr (Debug) {
+        cycleCount += cycles;
+    }
+    return cycles;
 }
 
 template <bool Debug>
@@ -219,6 +222,11 @@ inline void Hardware::CPU::IRQ(Bus& bus) {
     waiting = false;
     if (!I) {
         if (cycleAccurate) { remainingCycles += 7; }
+        if constexpr (Debug) {
+            if (profiler != nullptr) {
+                profiler->OnInterrupt(0xFFFE, cycleCount, "IRQ");
+            }
+        }
         PushWord<Debug>(PC, bus);
         B = 0;
         PushByte<Debug>(GetStatus(), bus);
@@ -232,6 +240,11 @@ inline void Hardware::CPU::IRQ(Bus& bus) {
 template <bool Debug>
 inline void Hardware::CPU::NMI(Bus& bus) {
     if (cycleAccurate) { remainingCycles += 7; }
+    if constexpr (Debug) {
+        if (profiler != nullptr) {
+            profiler->OnInterrupt(0xFFFA, cycleCount, "NMI");
+        }
+    }
     waiting = false;
     pendingNMI = false;
     PushWord<Debug>(PC, bus);

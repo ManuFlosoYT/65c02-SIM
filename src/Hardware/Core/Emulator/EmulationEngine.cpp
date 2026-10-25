@@ -328,6 +328,17 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
         }
         for (int i = 0; i < count; ++i) {
             bool isNew = (emulator.cpu.remainingCycles == 0);
+            if (hasBreakpoints && isNew) {
+                if (!emulator.cpu.isInit) {
+                    emulator.cpu.EnsureInit(emulator.bus);
+                }
+                if (hasComplex || emulator.breakpointManager.IsPCBreakpoint(emulator.cpu.PC)) [[unlikely]] {
+                    if (emulator.breakpointManager.Evaluate(emulator.cpu, emulator.bus) > 0) {
+                        stopCode = 0;
+                        return i;
+                    }
+                }
+            }
             int res = hooks ? emulator.StepInternal<true, true>(ips) : emulator.StepInternal<false, true>(ips);
 
             if (isNew && emulator.lastStepCpuCycles > 0) {
@@ -339,15 +350,6 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
             if (res != 0) [[unlikely]] {
                 stopCode = res;
                 return i + 1;
-            }
-
-            if (hasBreakpoints) {
-                if (hasComplex || emulator.breakpointManager.IsPCBreakpoint(emulator.cpu.PC)) [[unlikely]] {
-                    if (emulator.breakpointManager.Evaluate(emulator.cpu, emulator.bus) > 0) {
-                        stopCode = 0;
-                        return i + 1;
-                    }
-                }
             }
         }
     } else {
@@ -367,6 +369,17 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
             return count;
         }
         for (int i = 0; i < count; ++i) {
+            if (hasBreakpoints) {
+                if (!emulator.cpu.isInit) {
+                    emulator.cpu.EnsureInit(emulator.bus);
+                }
+                if (hasComplex || emulator.breakpointManager.IsPCBreakpoint(emulator.cpu.PC)) [[unlikely]] {
+                    if (emulator.breakpointManager.Evaluate(emulator.cpu, emulator.bus) > 0) {
+                        stopCode = 0;
+                        return i;
+                    }
+                }
+            }
             int res = hooks ? emulator.StepInternal<true, false>(ips) : emulator.StepInternal<false, false>(ips);
 
             if (emulator.lastStepCpuCycles > 0) {
@@ -378,15 +391,6 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
             if (res != 0) [[unlikely]] {
                 stopCode = res;
                 return i + 1;
-            }
-
-            if (hasBreakpoints) {
-                if (hasComplex || emulator.breakpointManager.IsPCBreakpoint(emulator.cpu.PC)) [[unlikely]] {
-                    if (emulator.breakpointManager.Evaluate(emulator.cpu, emulator.bus) > 0) {
-                        stopCode = 0;
-                        return i + 1;
-                    }
-                }
             }
         }
     }

@@ -36,7 +36,13 @@ class SDCard : public IBusDevice {
 
     // IBusDevice overrides
     Byte Read(Word address) override;
-    [[nodiscard]] Byte ReadDirect(Word address) override { return (address == 0) ? last_miso : 0xFF; }
+    [[nodiscard]] Byte ReadDirect(Word address) override {
+        switch (address & 0x03U) {
+            case 0: return mounted ? 0x01U : 0x00U;
+            case 1: return last_miso;
+            default: return 0xFFU;
+        }
+    }
     void Write(Word address, Byte data) override;
     [[nodiscard]] std::string GetName() const override { return "SD Card"; }
     [[nodiscard]] bool IsReadOnly() const override { return is_read_only; }
@@ -56,6 +62,7 @@ class SDCard : public IBusDevice {
 
     [[nodiscard]] inline bool IsCSActive() const { return cs_active; }
     [[nodiscard]] inline Byte GetLastMISO() const { return last_miso; }
+    [[nodiscard]] inline Byte GetLastMOSI() const { return last_mosi; }
 
     // State management
     bool SaveState(std::ostream& out) const override;
@@ -95,6 +102,7 @@ class SDCard : public IBusDevice {
 
     State state = State::IDLE;
     uint8_t last_miso = 0xFFU;
+    uint8_t last_mosi = 0xFFU;
 
     // Command parsing
     std::array<std::uint8_t, 6> cmd_buffer{};
