@@ -6,6 +6,7 @@
 #include "Hardware/Core/Bus.h"
 #include "Hardware/Core/ISerializable.h"
 #include "Hardware/Core/SubroutineProfiler.h"
+#include "Hardware/CPU/CPURegisters.h"
 
 using Byte = uint8_t;
 using Word = uint16_t;
@@ -19,28 +20,14 @@ template <bool Debug>
 inline int Dispatch(CPU& cpu, Bus& bus);
 }
 
-class CPU : public ISerializable {
+class CPU : public CPURegisters, public ISerializable {
    public:
     // RETURNS:
     // 0: OK
     // 1: STOP/JAM
     // -1: Opcode no válido
 
-    Word PC{};  // Program Counter
-    Word SP{};  // Stack Pointer
-    Word instructionPC = 0;
-
     const Byte* current_page_ptr = nullptr;
-
-    Byte A{}, X{}, Y{};  // Registros
-
-    Byte C : 1;  // Carry Flag
-    Byte Z : 1;  // Zero Flag
-    Byte I : 1;  // Interrupt Disable
-    Byte D : 1;  // Decimal Mode Flag
-    Byte B : 1;  // Break Command
-    Byte V : 1;  // Overflow Flag
-    Byte N : 1;  // Negative Flag
 
     bool isInit = false;
     bool waiting = false;
@@ -86,9 +73,6 @@ class CPU : public ISerializable {
     template <bool Debug>
     int Dispatch(Bus& bus);
 
-    [[nodiscard]] Byte GetStatus() const;
-    void SetStatus(Byte status);
-
     [[nodiscard]] bool IsCycleAccurate() const;
     void SetCycleAccurate(bool enabled);
     [[nodiscard]] int GetRemainingCycles() const;
@@ -133,21 +117,7 @@ class CPU : public ISerializable {
 #include "Hardware/CPU/Dispatch.h"
 
 inline void Hardware::CPU::Reset() {
-    PC = 0xFFFC;
-    SP = 0x01FF;
-    instructionPC = 0;
-
-    A = 0;
-    X = 0;
-    Y = 0;
-
-    C = 0;
-    Z = 0;
-    I = 0;
-    D = 0;
-    B = 0;
-    V = 0;
-    N = 0;
+    CPURegisters::Reset();
     isInit = false;
     waiting = false;
     pendingNMI = false;
@@ -263,29 +233,6 @@ inline void Hardware::CPU::NMI(Bus& bus) {
 template <bool Debug>
 inline int Hardware::CPU::Dispatch(Bus& bus) {
     return CPUDispatch::Dispatch<Debug>(*this, bus);
-}
-
-inline Hardware::Byte Hardware::CPU::GetStatus() const {
-    Byte status = 0;
-    status |= C;
-    status |= Z << 1;
-    status |= I << 2;
-    status |= D << 3;
-    status |= B << 4;
-    status |= 1 << 5;
-    status |= V << 6;
-    status |= N << 7;
-    return status;
-}
-
-inline void Hardware::CPU::SetStatus(Byte status) {
-    C = status & 0x01;
-    Z = (status >> 1) & 0x01;
-    I = (status >> 2) & 0x01;
-    D = (status >> 3) & 0x01;
-    B = (status >> 4) & 0x01;
-    V = (status >> 6) & 0x01;
-    N = (status >> 7) & 0x01;
 }
 
 inline bool Hardware::CPU::IsCycleAccurate() const { return cycleAccurate; }

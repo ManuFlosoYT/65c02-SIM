@@ -122,8 +122,6 @@ struct IndexExpr : public Expr {
 struct ChangedExpr : public Expr {
     std::unique_ptr<Expr> expression;
     Token keyword;
-    mutable bool hasPrev = false;
-    mutable std::variant<std::monostate, int64_t, std::string, bool> prevValue;
 
     ChangedExpr(std::unique_ptr<Expr> expression, Token keyword)
         : Expr(ExprKind::Changed), expression(std::move(expression)), keyword(std::move(keyword)) {}

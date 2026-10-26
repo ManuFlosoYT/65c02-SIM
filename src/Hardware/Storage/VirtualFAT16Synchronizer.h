@@ -16,6 +16,8 @@ public:
     static bool IsProtectedHostPath(const std::filesystem::path& canPath);
     static std::string GenerateSFN(const std::string& filename, std::set<std::string>& used_sfns);
 
+    static void InitializeDiskLayout(std::vector<uint8_t>& virtual_disk);
+
     static bool Build(std::vector<uint8_t>& virtual_disk,
                       const std::filesystem::path& hostFolder,
                       std::unordered_map<std::string, std::filesystem::path>& sfnToHostMap);

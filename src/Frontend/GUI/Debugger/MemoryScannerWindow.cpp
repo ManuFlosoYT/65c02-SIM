@@ -15,25 +15,6 @@ namespace GUI {
 
 namespace {
 
-struct ScannerState {
-    ScanQuery query;
-    std::uint16_t startAddr = 0x0000;
-    std::uint16_t endAddr = 0xFFFF;
-    bool unknown = false;
-    std::vector<ScanCandidate> candidates;
-    bool scanned = false;
-    char text[64] = "";
-};
-
-std::string ReadText(Hardware::Bus& bus, std::uint16_t addr, std::size_t length) {
-    std::string out;
-    for (std::size_t i = 0; i < length; ++i) {
-        auto byte = bus.ReadDirect(static_cast<std::uint16_t>(addr + i));
-        out += (byte >= 32 && byte <= 126) ? static_cast<char>(byte) : '.';
-    }
-    return out;
-}
-
 void DrawResults(Hardware::Bus& bus, const ScannerState& scan) {
     const bool isString = scan.query.type == ScanType::String;
     const int digits = scan.query.type == ScanType::U16 ? 4 : 2;
@@ -85,7 +66,7 @@ void DrawResults(Hardware::Bus& bus, const ScannerState& scan) {
 
 void DrawMemoryScannerWindow(AppState& state) {
     Hardware::Bus& bus = state.emulator.GetMem();
-    static ScannerState scan;
+    ScannerState& scan = state.scanner;
     auto read = [&bus](std::uint16_t addr) { return bus.ReadDirect(addr); };
 
     ImGui::TextUnformatted("Memory Scanner");

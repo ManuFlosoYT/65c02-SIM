@@ -7,6 +7,8 @@
 #include <string>
 
 #include "Hardware/Core/IBusDevice.h"
+#include "Hardware/Comm/ESP8266/ATCommandParser.h"
+#include "Hardware/Comm/ESP8266/VirtualWifiState.h"
 
 namespace Hardware {
 
@@ -16,12 +18,6 @@ class NetworkLoop;
 enum class ATState : uint8_t {
     Idle,
     WaitingCIPSENDData
-};
-
-enum class CWMode : uint8_t {
-    Station = 1,
-    SoftAP = 2,
-    StationAndAP = 3
 };
 
 enum class TrafficDirection : uint8_t {
@@ -69,6 +65,9 @@ public:
     [[nodiscard]] bool IsMuxEnabled() const;
     void SetMuxEnabled(bool enabled);
 
+    [[nodiscard]] const VirtualWifiState& GetWifiState() const { return wifiState; }
+    [[nodiscard]] VirtualWifiState& GetWifiState() { return wifiState; }
+
     [[nodiscard]] CWMode GetCWMode() const;
     void SetCWMode(CWMode mode);
 
@@ -97,8 +96,12 @@ public:
     void SetResponseCallback(std::function<void(const std::string&)> cb);
     [[nodiscard]] const std::string& GetLastResponse() const;
 
-    static std::string ParseQuotedParam(const std::string& cmd, size_t& pos);
-    static int ParseIntParam(const std::string& cmd, size_t& pos);
+    static inline std::string ParseQuotedParam(const std::string& cmd, size_t& pos) {
+        return ATCommandParser::ParseQuotedParam(cmd, pos);
+    }
+    static inline int ParseIntParam(const std::string& cmd, size_t& pos) {
+        return ATCommandParser::ParseIntParam(cmd, pos);
+    }
 
 private:
     void ProcessCurrentCommandBuffer();
@@ -135,9 +138,7 @@ private:
 
     bool echoEnabled{true};
     std::atomic<bool> muxEnabled{false};
-    bool wifiConnected{false};
-    CWMode cwMode{CWMode::Station};
-    std::string connectedSSID;
+    VirtualWifiState wifiState;
 
     std::function<void(const std::string&)> responseCallback;
     std::string lastResponse;

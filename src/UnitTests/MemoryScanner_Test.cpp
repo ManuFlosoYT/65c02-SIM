@@ -81,3 +81,20 @@ TEST_F(ScannerFixture, StringFindsAndRefilters) {
     EXPECT_TRUE(FirstScan(query, 0, 0x50, false, Reader()).empty());  // text cut by range end
 }
 
+TEST_F(ScannerFixture, ClearScanResetsState) {
+    ScannerState state;
+    state.candidates.push_back({0x1000, 42});
+    state.scanned = true;
+    ClearScan(state);
+    EXPECT_TRUE(state.candidates.empty());
+    EXPECT_FALSE(state.scanned);
+}
+
+TEST_F(ScannerFixture, ReadTextASCIIAndNonPrintable) {
+    mem.at(0x200) = 'H';
+    mem.at(0x201) = 'e';
+    mem.at(0x202) = 0x05;
+    mem.at(0x203) = 'o';
+    EXPECT_EQ(ReadText(Reader(), 0x200, 4), "He.o");
+}
+

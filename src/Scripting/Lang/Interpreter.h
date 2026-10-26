@@ -32,6 +32,9 @@ public:
     }
 
     Value evaluate(Expr* expr);
+    void clearChangedValues() {
+        changedPrevValues_.clear();
+    }
     void setContext(const ::Hardware::CPU* cpu, const ::Hardware::Bus* bus) {
         context.SetContext(cpu, bus);
     }
@@ -81,6 +84,7 @@ private:
 
     bool breakOut = false;
     bool continueLoop = false;
+    std::unordered_map<const ChangedExpr*, Value> changedPrevValues_;
 };
 
 } // namespace System::Hardware::Scripting::Lang

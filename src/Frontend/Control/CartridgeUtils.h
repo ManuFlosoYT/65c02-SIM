@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Frontend/Control/AppState.h"
+#include "Frontend/GUI/PopupManager.h"
 #include "Hardware/Core/Cartridge.h"
 
 namespace Control {
@@ -11,10 +12,24 @@ namespace Control {
  */
 void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart);
 
-bool ShouldPromptCartridgeSDSave(const AppState& state);
-void ExecuteReset(AppState& state);
-void ExecuteEjectCartridge(AppState& state);
-void PromptOrExecuteCartridgeAction(AppState& state, PendingCartridgeAction action);
-void ConfirmCartridgeAction(AppState& state, bool saveChanges);
+inline bool ShouldPromptCartridgeSDSave(const AppState& state) {
+    return Frontend::ShouldPromptCartridgeSDSave(state);
+}
+
+inline void ExecuteReset(AppState& state) {
+    Frontend::ExecuteReset(state);
+}
+
+inline void ExecuteEjectCartridge(AppState& state) {
+    Frontend::ExecuteEjectCartridge(state);
+}
+
+inline void PromptOrExecuteCartridgeAction(AppState& state, PendingCartridgeAction action) {
+    Frontend::PromptOrExecuteCartridgeAction(state, action);
+}
+
+inline void ConfirmCartridgeAction(AppState& state, bool saveChanges) {
+    Frontend::ConfirmCartridgeAction(state, saveChanges);
+}
 
 } // namespace Control

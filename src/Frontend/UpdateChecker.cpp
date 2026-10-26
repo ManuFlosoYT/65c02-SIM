@@ -12,36 +12,6 @@ namespace Frontend {
 
 using json = nlohmann::json;
 
-Version Version::Parse(const std::string& versionStr) {
-    Version version;
-    version.tag = versionStr;
-    std::string cleanVer = versionStr;
-
-    if (!cleanVer.empty() && cleanVer[0] == 'v') {
-        cleanVer = cleanVer.substr(1);
-    }
-
-    size_t dashPos = cleanVer.find('-');
-    if (dashPos != std::string::npos) {
-        cleanVer = cleanVer.substr(0, dashPos);
-    }
-
-    std::stringstream stringStream(cleanVer);
-    char dot = 0;
-    stringStream >> version.major >> dot >> version.minor >> dot >> version.patch;
-    return version;
-}
-
-bool Version::operator>(const Version& other) const {
-    if (major != other.major) {
-        return major > other.major;
-    }
-    if (minor != other.minor) {
-        return minor > other.minor;
-    }
-    return patch > other.patch;
-}
-
 void UpdateChecker::CheckForUpdates(const std::string& currentVersion, const UpdateCallback& callback) {
     std::thread([currentVersion, callback]() {
         std::string latestTag = FetchLatestReleaseTag();

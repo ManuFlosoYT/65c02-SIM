@@ -130,40 +130,6 @@ bool ACIA::CanReceive() const {
     return ((CMD & ACIA_CMD_DTR) != 0) && ((STATUS & ACIA_STATUS_RDRF) == 0);
 }
 
-int ACIA::GetBaudRate() const {
-    static const int baudRates[16] = {
-        0, 50, 75, 110, 134, 150, 300, 600, 1200, 1800, 2400, 3600, 4800, 7200, 9600, 19200
-    };
-    return baudRates[CTRL & 0x0F];
-}
-
-int ACIA::GetFrameBits() const {
-    int bits = 1; // Start bit
-
-    // Word length
-    Byte wl = (CTRL >> 5) & 0x03;
-    switch (wl) {
-        case 0: bits += 8; break;
-        case 1: bits += 7; break;
-        case 2: bits += 6; break;
-        case 3: bits += 5; break;
-    }
-
-    // Parity
-    if ((CMD & 0x20) != 0) {
-        bits += 1;
-    }
-
-    // Stop bits
-    if ((CTRL & 0x80) != 0) {
-        bits += 2;
-    } else {
-        bits += 1;
-    }
-
-    return bits;
-}
-
 bool ACIA::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, txData);
     ISerializable::Serialize(out, rxData);

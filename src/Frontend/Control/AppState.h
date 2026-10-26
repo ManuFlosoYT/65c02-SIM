@@ -2,99 +2,25 @@
 
 #include <glad/gl.h>
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <string>
-#include <array>
+#include <vector>
 
-#include "Hardware/Core/SymbolTable.h"
+#include "Frontend/Control/EmulationState.h"
+#include "Frontend/Control/GLRenderTargets.h"
+#include "Frontend/Control/IDEState.h"
+#include "Frontend/Control/UIModalState.h"
 #include "Frontend/GUI/Video/CRTFilter.h"
 #include "Hardware/Core/Emulator/Emulator.h"
+#include "Hardware/Core/MemoryScanner.h"
+#include "Hardware/Core/SymbolTable.h"
 
 namespace Control {
 
 using namespace Core;
 using namespace Hardware;
-
-struct ROMState {
-    std::string bin;
-    bool loaded = false;
-    SymbolTable symbols;
-    std::vector<uint8_t> data;
-};
-
-struct ScriptState {
-    std::string path;
-    bool loaded = false;
-    bool showConsole = false;
-};
-
-enum class RecordingType : std::uint8_t {
-    Audio = 0,
-    Video = 1,
-    SIDWindow = 2
-};
-
-enum class VideoFormat : std::uint8_t { MKV, MP4 };
-enum class AudioFormat : std::uint8_t { FLAC, OPUS };
-
-struct RecordingSettings {
-    RecordingType type = RecordingType::Audio;
-    VideoFormat format = VideoFormat::MKV;
-    AudioFormat audioFormat = AudioFormat::FLAC;
-    bool recordRaw = true;
-    bool recordProcessed = true;
-};
-
-struct EmulationState {
-    int instructionsPerFrame = 1000000;
-    bool gpuEnabled = false;
-    bool espEnabled = false;
-    bool sdEnabled = false;
-    bool cycleAccurate = true;
-    bool forceLoadSaveState = false;
-    bool autoReload = true;
-    bool sdLatencyEnabled = false;
-    bool ramPowerOnPattern = false;
-    bool sidPhaseTrigger = true;
-    bool sidADSRWarning = false;
-    bool isRecordingVideo = false;
-    std::string recordingVideoPath;
-    RecordingSettings recordingSettings;
-};
-
-enum class DebuggerMode : std::uint8_t {
-    Settings = 0,
-    Disassembly = 1,
-    Profiler = 2,
-    Debugger = 3,
-    Breakpoints = 4,
-    MemoryLayout = 5,
-    DataInspector = 6,
-    LogicAnalyzer = 7,
-    NetworkSniffer = 8,
-    MemoryScanner = 9
-};
-
-struct NetworkSnifferState {
-    bool autoScroll = true;
-    bool paused = false;
-    int filterDirection = 0;  // 0=All, 1=TX, 2=RX, 3=NetTX, 4=NetRX
-    char searchFilter[64] = "";
-    int selectedPacketIndex = -1;
-    bool aciaBridgeEnabled = false;
-};
-
-struct DebuggerState {
-    bool open = false;
-    DebuggerMode mode = DebuggerMode::Settings;
-    bool heatmapEnabled = true;
-};
-
-struct UpdateState {
-    std::atomic<bool> available{false};
-    std::string latestVersionTag;
-};
 
 struct CRTSettings {
     bool scanlines = true;
@@ -122,63 +48,6 @@ struct CRTSettings {
     float time = 0.0F;
 };
 
-struct RenderState {
-    GLuint vramTexture = 0;
-    GLuint profilerTexture = 0;
-    GLuint layoutTexture = 0;
-    GLuint sidTexture = 0;
-    GLuint sidFBO = 0;
-    GLuint lastDisplayTex = 0;
-    int lastDisplayW = 0;
-    int lastDisplayH = 0;
-    std::array<float, 2> sidWindowPos = {0.0F, 0.0F};
-    std::array<float, 2> sidWindowSize = {0.0F, 0.0F};
-    float uiScale = 1.0F;
-};
-
-enum class PendingCartridgeAction : std::uint8_t {
-    None,
-    Reset,
-    Eject,
-    Exit
-};
-
-struct PopupState {
-    bool sdCardDisabled = false;
-    bool sdCardWebWarning = false;
-    bool sdCardMountSentinelWarning = false;
-    std::string sdCardPendingMountFolder;
-    bool showCartridgeSavePrompt = false;
-    PendingCartridgeAction pendingCartridgeAction = PendingCartridgeAction::None;
-};
-
-struct SDKState {
-    std::vector<std::string> roms;
-    std::vector<std::string> midis;
-    std::vector<std::string> vrams;
-    bool loaded = false;
-    bool showPopup = false;
-    bool showUpdatePopup = false;
-    std::string extractedVersion;
-};
-
-enum class IDEMode : std::uint8_t {
-    C = 0,
-    ASM = 1,
-    MicroDOS = 2,
-    MIDI = 3
-};
-
-struct IDEState {
-    bool open = false;
-    std::string code;
-    std::string outputLog;
-    std::string currentFilePath;
-    std::vector<uint8_t> exportBinary;
-    bool isCMode = true;
-    IDEMode mode = IDEMode::C;
-};
-
 struct AppState {
     Emulator emulator;
 
@@ -193,6 +62,7 @@ struct AppState {
     SDKState sdk;
     IDEState ide;
     NetworkSnifferState sniffer;
+    ScannerState scanner;
     bool requestExit = false;
 
     GUI::CRTFilter crtFilter;

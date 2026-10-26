@@ -3,6 +3,7 @@
 #include <functional>
 
 #include "Hardware/Core/IBusDevice.h"
+#include "Hardware/Comm/ACIAFrameConfig.h"
 
 namespace Hardware {
 
@@ -40,8 +41,8 @@ class ACIA : public IBusDevice {
 
     [[nodiscard]] bool HasIRQ() const { return (STATUS & ACIA_STATUS_IRQ) != 0; }
     [[nodiscard]] bool CanReceive() const;
-    [[nodiscard]] int GetBaudRate() const;
-    [[nodiscard]] int GetFrameBits() const;
+    [[nodiscard]] inline int GetBaudRate() const { return ACIAFrameConfig::CalculateBaudRate(CTRL); }
+    [[nodiscard]] inline int GetFrameBits() const { return ACIAFrameConfig::CalculateFrameBits(CTRL, CMD); }
 
     [[nodiscard]] inline bool GetTxPin() const { return !isShifting || ((shiftRegisterData & 0x01) != 0); }
     [[nodiscard]] inline bool GetRxPin() const { return true; }

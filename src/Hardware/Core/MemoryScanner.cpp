@@ -1,4 +1,5 @@
 #include "Hardware/Core/MemoryScanner.h"
+#include "Hardware/Core/Bus.h"
 
 #include <algorithm>
 
@@ -79,6 +80,24 @@ void NextScan(std::vector<ScanCandidate>& candidates, const ScanQuery& query, co
         }
     };
     std::erase_if(candidates, [&](ScanCandidate& cand) { return !keep(cand); });
+}
+
+void ClearScan(ScannerState& state) {
+    state.Clear();
+}
+
+std::string ReadText(const ReadFn& read, std::uint16_t addr, std::size_t length) {
+    std::string out;
+    out.reserve(length);
+    for (std::size_t i = 0; i < length; ++i) {
+        auto byte = read(static_cast<std::uint16_t>(addr + i));
+        out += (byte >= 32 && byte <= 126) ? static_cast<char>(byte) : '.';
+    }
+    return out;
+}
+
+std::string ReadText(Hardware::Bus& bus, std::uint16_t addr, std::size_t length) {
+    return ReadText([&bus](std::uint16_t a) { return bus.ReadDirect(a); }, addr, length);
 }
 
 }  // namespace Control

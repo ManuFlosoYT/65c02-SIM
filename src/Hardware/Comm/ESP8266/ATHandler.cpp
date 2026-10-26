@@ -21,9 +21,7 @@ void ATHandler::Reset() {
     cipsendReceived = 0;
     echoEnabled = true;
     muxEnabled.store(false);
-    wifiConnected = false;
-    connectedSSID.clear();
-    cwMode = CWMode::Station;
+    wifiState.Reset();
 }
 
 void ATHandler::SetNetworkLoop(NetworkLoop* loop) { networkLoop = loop; }
@@ -34,17 +32,17 @@ bool ATHandler::IsMuxEnabled() const { return muxEnabled.load(std::memory_order_
 
 void ATHandler::SetMuxEnabled(bool enabled) { muxEnabled.store(enabled, std::memory_order_relaxed); }
 
-CWMode ATHandler::GetCWMode() const { return cwMode; }
+CWMode ATHandler::GetCWMode() const { return wifiState.cwMode; }
 
-void ATHandler::SetCWMode(CWMode mode) { cwMode = mode; }
+void ATHandler::SetCWMode(CWMode mode) { wifiState.cwMode = mode; }
 
-bool ATHandler::IsWifiConnected() const { return wifiConnected; }
+bool ATHandler::IsWifiConnected() const { return wifiState.wifiConnected; }
 
-void ATHandler::SetWifiConnected(bool connected) { wifiConnected = connected; }
+void ATHandler::SetWifiConnected(bool connected) { wifiState.wifiConnected = connected; }
 
-const std::string& ATHandler::GetConnectedSSID() const { return connectedSSID; }
+const std::string& ATHandler::GetConnectedSSID() const { return wifiState.connectedSSID; }
 
-void ATHandler::SetConnectedSSID(const std::string& ssid) { connectedSSID = ssid; }
+void ATHandler::SetConnectedSSID(const std::string& ssid) { wifiState.connectedSSID = ssid; }
 
 bool ATHandler::IsEchoEnabled() const { return echoEnabled; }
 
@@ -87,9 +85,7 @@ bool ATHandler::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, echoEnabled);
     bool mux = muxEnabled.load();
     ISerializable::Serialize(out, mux);
-    ISerializable::Serialize(out, wifiConnected);
-    ISerializable::Serialize(out, cwMode);
-    ISerializable::Serialize(out, connectedSSID);
+    wifiState.SaveState(out);
     return out.good();
 }
 
@@ -99,9 +95,7 @@ bool ATHandler::LoadState(std::istream& inStream) {
     bool mux = false;
     ISerializable::Deserialize(inStream, mux);
     muxEnabled.store(mux);
-    ISerializable::Deserialize(inStream, wifiConnected);
-    ISerializable::Deserialize(inStream, cwMode);
-    ISerializable::Deserialize(inStream, connectedSSID);
+    wifiState.LoadState(inStream);
     currentState = ATState::Idle;
     return inStream.good();
 }
@@ -207,7 +201,7 @@ void ATHandler::DispatchATCommand(const std::string& upper, const std::string& o
 void ATHandler::HandleCWMode(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
-        EnqueueResponse("\r\n+CWMODE:" + std::to_string(static_cast<int>(cwMode)) + "\r\nOK\r\n");
+        EnqueueResponse("\r\n+CWMODE:" + std::to_string(static_cast<int>(wifiState.cwMode)) + "\r\nOK\r\n");
         return;
     }
 
@@ -218,15 +212,15 @@ void ATHandler::HandleCWMode(const std::string& cmd) {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }
-    cwMode = static_cast<CWMode>(mode);
+    wifiState.cwMode = static_cast<CWMode>(mode);
     EnqueueResponse("\r\nOK\r\n");
 }
 
 void ATHandler::HandleCWJAP(const std::string& cmd) {
     size_t pos = cmd.find('=');
     if (pos == std::string::npos) {
-        if (wifiConnected) {
-            EnqueueResponse("\r\n+CWJAP:\"" + connectedSSID + "\"\r\nOK\r\n");
+        if (wifiState.wifiConnected) {
+            EnqueueResponse("\r\n+CWJAP:\"" + wifiState.connectedSSID + "\"\r\nOK\r\n");
         } else {
             EnqueueResponse("\r\nNo AP\r\nOK\r\n");
         }
@@ -241,8 +235,8 @@ void ATHandler::HandleCWJAP(const std::string& cmd) {
         return;
     }
 
-    connectedSSID = ssid;
-    wifiConnected = true;
+    wifiState.connectedSSID = ssid;
+    wifiState.wifiConnected = true;
     EnqueueResponse("\r\nWIFI CONNECTED\r\nWIFI GOT IP\r\nOK\r\n");
 }
 
@@ -251,13 +245,13 @@ void ATHandler::HandleCWLAP() {
 }
 
 void ATHandler::HandleCWQAP() {
-    wifiConnected = false;
-    connectedSSID.clear();
+    wifiState.wifiConnected = false;
+    wifiState.connectedSSID.clear();
     EnqueueResponse("\r\nOK\r\n");
 }
 
 void ATHandler::HandleCIFSR() {
-    if (!wifiConnected) {
+    if (!wifiState.wifiConnected) {
         EnqueueResponse("\r\nERROR\r\n");
         return;
     }
@@ -510,34 +504,6 @@ void ATHandler::HandlePing(const std::string& cmd) {
         networkLoop->StartPing(host);
     } else {
         EnqueueResponse("\r\n+71\r\nOK\r\n");
-    }
-}
-
-std::string ATHandler::ParseQuotedParam(const std::string& cmd, size_t& pos) {
-    size_t firstQuote = cmd.find('"', pos);
-    if (firstQuote == std::string::npos) {
-        return "";
-    }
-    size_t lastQuote = cmd.find('"', firstQuote + 1);
-    if (lastQuote == std::string::npos) {
-        return "";
-    }
-    pos = lastQuote + 1;
-    return cmd.substr(firstQuote + 1, lastQuote - firstQuote - 1);
-}
-
-int ATHandler::ParseIntParam(const std::string& cmd, size_t& pos) {
-    size_t nextComma = cmd.find(',', pos);
-    std::string valStr = cmd.substr(pos, nextComma - pos);
-    if (nextComma != std::string::npos) {
-        pos = nextComma;
-    } else {
-        pos = cmd.size();
-    }
-    try {
-        return std::stoi(valStr);
-    } catch (...) {
-        return -1;
     }
 }
 

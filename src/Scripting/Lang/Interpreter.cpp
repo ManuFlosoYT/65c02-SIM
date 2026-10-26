@@ -12,6 +12,7 @@ void Interpreter::defineBuiltin(const std::string& name, BuiltinFunc func) {
 }
 
 void Interpreter::interpret(const std::vector<std::unique_ptr<Stmt>>& statements) {
+    changedPrevValues_.clear();
     breakOut = false;
     continueLoop = false;
     try {
@@ -225,32 +226,14 @@ Value Interpreter::visitIndexExpr(IndexExpr* expr) {
 
 Value Interpreter::visitChangedExpr(ChangedExpr* expr) {
     Value current = evaluate(expr->expression.get());
-    if (!expr->hasPrev) {
-        if (std::holds_alternative<int64_t>(current)) {
-            expr->prevValue = std::get<int64_t>(current);
-        } else if (std::holds_alternative<bool>(current)) {
-            expr->prevValue = std::get<bool>(current);
-        } else if (std::holds_alternative<std::string>(current)) {
-            expr->prevValue = std::get<std::string>(current);
-        }
-        expr->hasPrev = true;
+    auto it = changedPrevValues_.find(expr);
+    if (it == changedPrevValues_.end()) {
+        changedPrevValues_.emplace(expr, current);
         return false;
     }
 
-    bool changed = false;
-    if (std::holds_alternative<int64_t>(current)) {
-        changed = !std::holds_alternative<int64_t>(expr->prevValue) ||
-                  std::get<int64_t>(current) != std::get<int64_t>(expr->prevValue);
-        expr->prevValue = std::get<int64_t>(current);
-    } else if (std::holds_alternative<bool>(current)) {
-        changed = !std::holds_alternative<bool>(expr->prevValue) ||
-                  std::get<bool>(current) != std::get<bool>(expr->prevValue);
-        expr->prevValue = std::get<bool>(current);
-    } else if (std::holds_alternative<std::string>(current)) {
-        changed = !std::holds_alternative<std::string>(expr->prevValue) ||
-                  std::get<std::string>(current) != std::get<std::string>(expr->prevValue);
-        expr->prevValue = std::get<std::string>(current);
-    }
+    bool changed = !isEqual(current, it->second);
+    it->second = current;
     return changed;
 }
 

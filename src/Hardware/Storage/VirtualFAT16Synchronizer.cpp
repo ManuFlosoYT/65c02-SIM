@@ -190,14 +190,7 @@ bool VirtualFAT16Synchronizer::IsProtectedHostPath(const std::filesystem::path& 
     return false;
 }
 
-bool VirtualFAT16Synchronizer::Build(std::vector<uint8_t>& virtual_disk,
-                                    const std::filesystem::path& hostFolder,
-                                    std::unordered_map<std::string, std::filesystem::path>& sfnToHostMap) {
-    sfnToHostMap.clear();
-    if (hostFolder.empty()) {
-        return false;
-    }
-
+void VirtualFAT16Synchronizer::InitializeDiskLayout(std::vector<uint8_t>& virtual_disk) {
     virtual_disk.assign(65536 * 512, 0);
 
     virtual_disk[0] = 0xEB;
@@ -241,6 +234,27 @@ bool VirtualFAT16Synchronizer::Build(std::vector<uint8_t>& virtual_disk,
     virtual_disk[510] = 0x55;
     virtual_disk[511] = 0xAA;
 
+    virtual_disk[2048] = 0xF8;
+    virtual_disk[2049] = 0xFF;
+    virtual_disk[2050] = 0xFF;
+    virtual_disk[2051] = 0xFF;
+
+    virtual_disk[18432] = 0xF8;
+    virtual_disk[18433] = 0xFF;
+    virtual_disk[18434] = 0xFF;
+    virtual_disk[18435] = 0xFF;
+}
+
+bool VirtualFAT16Synchronizer::Build(std::vector<uint8_t>& virtual_disk,
+                                    const std::filesystem::path& hostFolder,
+                                    std::unordered_map<std::string, std::filesystem::path>& sfnToHostMap) {
+    sfnToHostMap.clear();
+    if (hostFolder.empty()) {
+        return false;
+    }
+
+    InitializeDiskLayout(virtual_disk);
+
     auto setFatEntry = [&virtual_disk](uint16_t cluster, uint16_t val) {
         size_t f1 = 2048 + static_cast<size_t>(cluster) * 2;
         size_t f2 = 18432 + static_cast<size_t>(cluster) * 2;
@@ -251,9 +265,6 @@ bool VirtualFAT16Synchronizer::Build(std::vector<uint8_t>& virtual_disk,
             virtual_disk[f2 + 1] = static_cast<uint8_t>((val >> 8) & 0xFFU);
         }
     };
-
-    setFatEntry(0, 0xFFF8);
-    setFatEntry(1, 0xFFFF);
 
     uint16_t next_free_cluster = 2;
 

@@ -3,21 +3,16 @@
 
 namespace Hardware {
 
-LCD::LCD() : PORTB_DATA(0), screen{} { Reset(); }
+LCD::LCD() : screen{} { Reset(); }
 
 void LCD::Reset() {
-    four_bit_mode = false;
-    waiting_low_nibble = false;
-    current_high_nibble = 0;
-    last_portb = 0;
-    PORTB_DATA = 0;
+    busLatch.Reset();
 
     for (auto& row : screen) {
         row.fill(' ');
     }
     cursorX = 0;
     cursorY = 0;
-    is_init = false;
     display_on = true;
     cursor_on = false;
     cursor_increment = true;
@@ -25,7 +20,7 @@ void LCD::Reset() {
 
 Byte LCD::Read(Word address) {
     if (address == PORTB) {
-        return PORTB_DATA;
+        return busLatch.PORTB_DATA;
     }
     return 0;
 }
@@ -37,52 +32,11 @@ void LCD::Write(Word address, Byte data) {
 }
 
 void LCD::Update(Byte val) {
-    Byte old_val = last_portb;
-    last_portb = val;
-    PORTB_DATA = val;
-
-    // Detect Falling Edge of E (Bit 6, 0x40)
-    bool old_E = (old_val & 0x40) != 0;
-    bool new_E = (val & 0x40) != 0;
-
-    if (old_E && !new_E) {
-        // E went High -> Low. Latch Data.
-        Byte data_nibble = val & 0x0F;       // PB0-3 -> D4-D7
-        bool regSelect = (val & 0x10) != 0;  // PB4 = RS
-        bool readWrite = (val & 0x20) != 0;  // PB5 = RW
-
-        // We only care about Writes (RW=0)
-        if (readWrite) {
-            return;
-        }
-
-        if (!four_bit_mode) {
-            // 8-bit mode detection
-            if (!regSelect && data_nibble == 0x02) {
-                four_bit_mode = true;
-                waiting_low_nibble = false;
-                is_init = true;
-            }
+    if (auto transfer = busLatch.ProcessPortB(val)) {
+        if (transfer.is_data) {
+            WriteCharToScreen(static_cast<char>(transfer.value));
         } else {
-            // 4-bit mode
-            if (!waiting_low_nibble) {
-                // Capture High Nibble
-                current_high_nibble = data_nibble;
-                waiting_low_nibble = true;
-            } else {
-                // Capture Low Nibble and Execute
-                Byte low_nibble = data_nibble;
-                Byte full_byte = (current_high_nibble << 4) | low_nibble;
-                waiting_low_nibble = false;
-
-                if (regSelect) {
-                    // Data (Character)
-                    WriteCharToScreen((char)full_byte);
-                } else {
-                    // Command
-                    HandleCommand(full_byte);
-                }
-            }
+            HandleCommand(transfer.value);
         }
     }
 }
@@ -157,7 +111,7 @@ void LCD::HandleCommand(Byte cmd) {
             cursor_on = true;
             break;
         case 0x28:
-            four_bit_mode = true;
+            busLatch.four_bit_mode = true;
             break;
         default:
             if ((cmd & 0x80) == 0x80) {
@@ -176,12 +130,12 @@ void LCD::HandleCommand(Byte cmd) {
 }
 
 bool LCD::SaveState(std::ostream& out) const {
-    ISerializable::Serialize(out, PORTB_DATA);
-    ISerializable::Serialize(out, four_bit_mode);
-    ISerializable::Serialize(out, waiting_low_nibble);
-    ISerializable::Serialize(out, current_high_nibble);
-    ISerializable::Serialize(out, last_portb);
-    ISerializable::Serialize(out, is_init);
+    ISerializable::Serialize(out, busLatch.PORTB_DATA);
+    ISerializable::Serialize(out, busLatch.four_bit_mode);
+    ISerializable::Serialize(out, busLatch.waiting_low_nibble);
+    ISerializable::Serialize(out, busLatch.current_high_nibble);
+    ISerializable::Serialize(out, busLatch.last_portb);
+    ISerializable::Serialize(out, busLatch.is_init);
     ISerializable::Serialize(out, screen);
     ISerializable::Serialize(out, cursorX);
     ISerializable::Serialize(out, cursorY);
@@ -192,12 +146,12 @@ bool LCD::SaveState(std::ostream& out) const {
 }
 
 bool LCD::LoadState(std::istream& inputStream) {
-    ISerializable::Deserialize(inputStream, PORTB_DATA);
-    ISerializable::Deserialize(inputStream, four_bit_mode);
-    ISerializable::Deserialize(inputStream, waiting_low_nibble);
-    ISerializable::Deserialize(inputStream, current_high_nibble);
-    ISerializable::Deserialize(inputStream, last_portb);
-    ISerializable::Deserialize(inputStream, is_init);
+    ISerializable::Deserialize(inputStream, busLatch.PORTB_DATA);
+    ISerializable::Deserialize(inputStream, busLatch.four_bit_mode);
+    ISerializable::Deserialize(inputStream, busLatch.waiting_low_nibble);
+    ISerializable::Deserialize(inputStream, busLatch.current_high_nibble);
+    ISerializable::Deserialize(inputStream, busLatch.last_portb);
+    ISerializable::Deserialize(inputStream, busLatch.is_init);
     ISerializable::Deserialize(inputStream, screen);
     ISerializable::Deserialize(inputStream, cursorX);
     ISerializable::Deserialize(inputStream, cursorY);
