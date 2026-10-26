@@ -379,6 +379,11 @@ int main(void) {
             ctrl = next_semantic_byte();
             freq = get_note_freq(note);
             base = v * 7;
+            SID_WRITE_REG(base + 4, shadow_regs[base + 4] & ~0x01);
+            SID_WRITE_REG(base + 5, 0);
+            SID_WRITE_REG(base + 6, 0);
+            SID_WRITE_REG(base + 5, shadow_regs[base + 5]);
+            SID_WRITE_REG(base + 6, shadow_regs[base + 6]);
             SID_WRITE_REG(base + 0, freq & 0xFF);
             SID_WRITE_REG(base + 1, (freq >> 8) & 0xFF);
             SID_WRITE_REG(base + 4, ctrl);
@@ -392,6 +397,11 @@ int main(void) {
             ctrl = last_ctrl[v] | 0x01;
             freq = get_note_freq(note);
             base = v * 7;
+            SID_WRITE_REG(base + 4, shadow_regs[base + 4] & ~0x01);
+            SID_WRITE_REG(base + 5, 0);
+            SID_WRITE_REG(base + 6, 0);
+            SID_WRITE_REG(base + 5, shadow_regs[base + 5]);
+            SID_WRITE_REG(base + 6, shadow_regs[base + 6]);
             SID_WRITE_REG(base + 0, freq & 0xFF);
             SID_WRITE_REG(base + 1, (freq >> 8) & 0xFF);
             SID_WRITE_REG(base + 4, ctrl);
@@ -405,6 +415,11 @@ int main(void) {
             b2 = next_semantic_byte();
             b3 = next_semantic_byte();
             base = v * 7;
+            SID_WRITE_REG(base + 4, shadow_regs[base + 4] & ~0x01);
+            SID_WRITE_REG(base + 5, 0);
+            SID_WRITE_REG(base + 6, 0);
+            SID_WRITE_REG(base + 5, shadow_regs[base + 5]);
+            SID_WRITE_REG(base + 6, shadow_regs[base + 6]);
             SID_WRITE_REG(base + 0, b);
             SID_WRITE_REG(base + 1, b2);
             SID_WRITE_REG(base + 4, b3);
