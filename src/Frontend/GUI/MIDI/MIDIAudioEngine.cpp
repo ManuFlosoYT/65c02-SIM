@@ -312,8 +312,11 @@ void MIDIAudioEngine::TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, int c
 
     WriteReg(sid, static_cast<std::uint8_t>(base + REG_CTRL),
              static_cast<std::uint8_t>(params.waveMask & ~SID_WAVE_GATE), true);
-    WriteReg(sid, static_cast<std::uint8_t>(base + REG_AD), params.attackDecay);
-    WriteReg(sid, static_cast<std::uint8_t>(base + REG_SR), params.effectiveSustainRelease);
+    WriteReg(sid, static_cast<std::uint8_t>(base + REG_AD), 0x00, true);
+    WriteReg(sid, static_cast<std::uint8_t>(base + REG_SR), 0x00, true);
+    sid.Clock(10U);
+    WriteReg(sid, static_cast<std::uint8_t>(base + REG_AD), params.attackDecay, true);
+    WriteReg(sid, static_cast<std::uint8_t>(base + REG_SR), params.effectiveSustainRelease, true);
 
     if ((params.waveMask & (SID_WAVE_PULSE | SID_WAVE_TEST)) != 0) {
         WriteReg(sid, static_cast<std::uint8_t>(base + REG_PW_LO), static_cast<std::uint8_t>(params.pulseWidth & 0xFFU));
