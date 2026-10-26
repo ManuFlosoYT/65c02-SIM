@@ -1,13 +1,16 @@
 #include "Frontend/GUI/SIDViewerWindow.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
 #include <format>
 #include <numbers>
 #include <random>
 #include <span>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
@@ -823,6 +826,356 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
     ImGui::PopID();
 }
 
+static bool DrawToggleButton(const char* label, bool active) {
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_Border, Theme::AccentActive);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImColor(Theme::LcdPetroleumBg).Value);
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0F);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0F, 1.5F));
+
+    bool clicked = ImGui::Button(label);
+
+    ImGui::PopStyleVar(3);
+    ImGui::PopStyleColor(5);
+    return clicked;
+}
+
+static void DrawFilterAndRegistersTab(Hardware::SID& sid, bool should_update) {
+    (void)should_update;
+    ImGui::PushID("FilterAndRegistersTab");
+
+    const uint8_t reg15 = sid.GetRegister(0x15);
+    const uint8_t reg16 = sid.GetRegister(0x16);
+    const uint8_t reg17 = sid.GetRegister(0x17);
+    const uint8_t reg18 = sid.GetRegister(0x18);
+
+    const uint16_t fc = static_cast<uint16_t>((reg15 & 0x07U) | (static_cast<uint16_t>(reg16) << 3U));
+    const uint8_t res = (reg17 >> 4U) & 0x0FU;
+    const bool f1 = (reg17 & 0x01U) != 0;
+    const bool f2 = (reg17 & 0x02U) != 0;
+    const bool f3 = (reg17 & 0x04U) != 0;
+    const bool mode3Off = (reg18 & 0x80U) != 0;
+    const bool modeHP = (reg18 & 0x40U) != 0;
+    const bool modeBP = (reg18 & 0x20U) != 0;
+    const bool modeLP = (reg18 & 0x10U) != 0;
+    const uint8_t volume = reg18 & 0x0FU;
+
+    const double fcScaled = static_cast<double>(fc) / 2047.0;
+    double cutoffHz = (sid.GetModel() == SIDModel::MOS6581) ? (30.0 + (12000.0 * fcScaled * fcScaled * fcScaled))
+                                                            : (30.0 + (fcScaled * 12000.0));
+    cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
+
+    double filterQ = (sid.GetModel() == SIDModel::MOS6581)
+                         ? (1.5 - ((static_cast<double>(res) / 15.0) * (1.0 - (fcScaled * fcScaled * 0.85))))
+                         : (2.0 - (1.8 * (static_cast<double>(res) / 15.0)));
+    filterQ = std::max(0.1, filterQ);
+
+    const float availW = ImGui::GetContentRegionAvail().x;
+    constexpr float graphH = 70.0F;
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    const ImVec2 p1 = ImVec2(p0.x + availW, p0.y + graphH);
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    drawList->AddRectFilled(p0, p1, ImColor(Theme::Surface));
+    drawList->AddRect(p0, p1, ImColor(Theme::BorderSubtle));
+
+    constexpr std::array<std::pair<double, const char*>, 3> GRID_FREQS = {{
+        {100.0, "100Hz"},
+        {1000.0, "1kHz"},
+        {10000.0, "10kHz"}
+    }};
+    for (const auto& [gridF, label] : GRID_FREQS) {
+        const double t = std::log10(gridF / 20.0) / 3.0;
+        const float gx = p0.x + static_cast<float>(t) * availW;
+        drawList->AddLine(ImVec2(gx, p0.y), ImVec2(gx, p1.y), IM_COL32(255, 255, 255, 25), 1.0F);
+        drawList->AddText(ImVec2(gx + 2.0F, p0.y + 2.0F), IM_COL32(160, 175, 190, 110), label);
+    }
+
+    const float y0dB = p0.y + (18.0F / 42.0F) * graphH;
+    drawList->AddLine(ImVec2(p0.x, y0dB), ImVec2(p0.x + availW, y0dB), IM_COL32(255, 255, 255, 30), 1.0F);
+    drawList->AddText(ImVec2(p0.x + 3.0F, y0dB - 12.0F), IM_COL32(160, 175, 190, 100), "0 dB");
+
+    constexpr size_t POINT_COUNT = 100;
+    std::array<ImVec2, POINT_COUNT> curvePoints{};
+    const double omega0 = 2.0 * std::numbers::pi * cutoffHz;
+    const double omega0_sq = omega0 * omega0;
+
+    for (size_t i = 0; i < POINT_COUNT; ++i) {
+        const double t = static_cast<double>(i) / 99.0;
+        const double f = 20.0 * std::pow(1000.0, t);
+        const double omega = 2.0 * std::numbers::pi * f;
+        const double omega_sq = omega * omega;
+        const double termD = (omega0 * omega) / filterQ;
+        const double denomDiff = omega0_sq - omega_sq;
+        const double denom = std::max(1e-9, std::sqrt((denomDiff * denomDiff) + (termD * termD)));
+
+        const double nReal = (modeLP ? omega0_sq : 0.0) - (modeHP ? omega_sq : 0.0);
+        const double nImag = modeBP ? termD : 0.0;
+        const double num = std::sqrt((nReal * nReal) + (nImag * nImag));
+        const double h = (modeLP || modeBP || modeHP) ? (num / denom) : 0.0;
+        const double dB = std::clamp(20.0 * std::log10(h + 1e-4), -24.0, 18.0);
+        const float yNorm = static_cast<float>((18.0 - dB) / 42.0);
+
+        curvePoints.at(i) = ImVec2(p0.x + static_cast<float>(t) * availW, p0.y + yNorm * graphH);
+    }
+
+    const ImU32 fillCol = ImColor(Theme::AccentPrimary.x, Theme::AccentPrimary.y, Theme::AccentPrimary.z, 0.20F);
+    for (size_t i = 0; i < POINT_COUNT - 1; ++i) {
+        drawList->AddQuadFilled(ImVec2(curvePoints.at(i).x, p1.y), curvePoints.at(i),
+                                curvePoints.at(i + 1), ImVec2(curvePoints.at(i + 1).x, p1.y), fillCol);
+    }
+    drawList->AddPolyline(curvePoints.data(), static_cast<int>(POINT_COUNT), ImColor(Theme::AccentPrimary), 0, 2.0F);
+
+    const double cutoffT = std::clamp(std::log10(cutoffHz / 20.0) / 3.0, 0.0, 1.0);
+    const float fcX = p0.x + static_cast<float>(cutoffT) * availW;
+    drawList->AddLine(ImVec2(fcX, p0.y), ImVec2(fcX, p1.y), IM_COL32(255, 90, 90, 220), 1.5F);
+    drawList->AddText(ImVec2(fcX + 3.0F, p1.y - 14.0F), IM_COL32(255, 120, 120, 220), "fc");
+
+    ImGui::Dummy(ImVec2(availW, graphH));
+
+    ImGui::Spacing();
+    DrawColoredText(Theme::TextSecondary, "Mode:");
+    ImGui::SameLine(0.0F, 4.0F);
+    if (DrawToggleButton("LP", modeLP)) {
+        sid.Write(0x18, static_cast<uint8_t>(reg18 ^ 0x10U));
+    }
+    ImGui::SameLine(0.0F, 4.0F);
+    if (DrawToggleButton("BP", modeBP)) {
+        sid.Write(0x18, static_cast<uint8_t>(reg18 ^ 0x20U));
+    }
+    ImGui::SameLine(0.0F, 4.0F);
+    if (DrawToggleButton("HP", modeHP)) {
+        sid.Write(0x18, static_cast<uint8_t>(reg18 ^ 0x40U));
+    }
+
+    ImGui::SameLine(0.0F, 14.0F);
+    DrawColoredText(Theme::TextSecondary, "Route:");
+    ImGui::SameLine(0.0F, 4.0F);
+    if (DrawToggleButton("F1", f1)) {
+        sid.Write(0x17, static_cast<uint8_t>(reg17 ^ 0x01U));
+    }
+    ImGui::SameLine(0.0F, 4.0F);
+    if (DrawToggleButton("F2", f2)) {
+        sid.Write(0x17, static_cast<uint8_t>(reg17 ^ 0x02U));
+    }
+    ImGui::SameLine(0.0F, 4.0F);
+    if (DrawToggleButton("F3", f3)) {
+        sid.Write(0x17, static_cast<uint8_t>(reg17 ^ 0x04U));
+    }
+    ImGui::SameLine(0.0F, 4.0F);
+    if (DrawToggleButton("3 OFF", mode3Off)) {
+        sid.Write(0x18, static_cast<uint8_t>(reg18 ^ 0x80U));
+    }
+
+    ImGui::SameLine(0.0F, 14.0F);
+    DrawColoredText(Theme::TextSecondary, "Cutoff:");
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawColoredText(Theme::AccentActive, std::format("${:04X} ({}) ~{:.0f} Hz", fc, fc, cutoffHz));
+
+    ImGui::SameLine(0.0F, 10.0F);
+    DrawColoredText(Theme::TextSecondary, "Res:");
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawColoredText(Theme::AccentActive, std::format("${:X} ({}/15)", res, res));
+
+    ImGui::SameLine(0.0F, 10.0F);
+    DrawColoredText(Theme::TextSecondary, "Vol:");
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawColoredText(Theme::AccentActive, std::format("${:X}", volume));
+
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    static bool autoScroll = true;
+    ImGui::Checkbox("Auto-scroll", &autoScroll);
+    ImGui::SameLine(0.0F, 12.0F);
+    if (ImGui::Button("Clear")) {
+        sid.ClearTrackerLog();
+    }
+    ImGui::SameLine(0.0F, 12.0F);
+
+    std::vector<Hardware::SIDTrackerFrame> frames;
+    sid.GetTrackerLog(frames);
+    DrawColoredText(Theme::TextSecondary, std::format("Frames: {}", frames.size()));
+
+    static constexpr std::array<const char*, 12> TRACKER_NOTE_NAMES = {
+        "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"
+    };
+
+    constexpr ImGuiTableFlags tableFlags =
+        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
+
+    if (ImGui::BeginTable("SIDTrackerTable", 21, tableFlags, ImVec2(0, 0))) {
+        ImGui::TableSetupColumn("Frame", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V1 Note", ImGuiTableColumnFlags_WidthFixed, 44.0F);
+        ImGui::TableSetupColumn("V1 Freq", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V1 Wave", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V1 ADSR", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V1 PW", ImGuiTableColumnFlags_WidthFixed, 36.0F);
+        ImGui::TableSetupColumn("V2 Note", ImGuiTableColumnFlags_WidthFixed, 44.0F);
+        ImGui::TableSetupColumn("V2 Freq", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V2 Wave", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V2 ADSR", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V2 PW", ImGuiTableColumnFlags_WidthFixed, 36.0F);
+        ImGui::TableSetupColumn("V3 Note", ImGuiTableColumnFlags_WidthFixed, 44.0F);
+        ImGui::TableSetupColumn("V3 Freq", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V3 Wave", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V3 ADSR", ImGuiTableColumnFlags_WidthFixed, 42.0F);
+        ImGui::TableSetupColumn("V3 PW", ImGuiTableColumnFlags_WidthFixed, 36.0F);
+        ImGui::TableSetupColumn("FCut", ImGuiTableColumnFlags_WidthFixed, 36.0F);
+        ImGui::TableSetupColumn("Res", ImGuiTableColumnFlags_WidthFixed, 26.0F);
+        ImGui::TableSetupColumn("Route", ImGuiTableColumnFlags_WidthFixed, 36.0F);
+        ImGui::TableSetupColumn("Mode", ImGuiTableColumnFlags_WidthFixed, 36.0F);
+        ImGui::TableSetupColumn("Vol", ImGuiTableColumnFlags_WidthFixed, 26.0F);
+        ImGui::TableHeadersRow();
+
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(frames.size()));
+        while (clipper.Step()) {
+            for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) {
+                const auto& frame = frames.at(static_cast<size_t>(row));
+                ImGui::TableNextRow();
+
+                ImGui::TableNextColumn();
+                DrawColoredText(Theme::TextSecondary, std::format("{:04X}", frame.frameNumber));
+
+                for (size_t v = 0; v < 3; ++v) {
+                    const size_t base = v * 7U;
+                    const ImVec4 voiceCol = ImColor(VOICE_COLORS.at(v)).Value;
+
+                    const uint16_t freq = static_cast<uint16_t>(
+                        frame.registers.at(base) | (static_cast<uint16_t>(frame.registers.at(base + 1)) << 8U));
+                    const bool freqChanged = (frame.writeMask & ((1U << base) | (1U << (base + 1)))) != 0;
+
+                    ImGui::TableNextColumn();
+                    if (freqChanged) {
+                        const double hz = static_cast<double>(freq) * (1000000.0 / 16777216.0);
+                        if (freq > 0 && hz >= 16.0) {
+                            const int midiNote = static_cast<int>(std::round(69.0 + (12.0 * std::log2(hz / 440.0))));
+                            const int nInOct = ((midiNote % 12) + 12) % 12;
+                            const int oct = (midiNote / 12) - 1;
+                            DrawColoredText(voiceCol,
+                                            std::format("{}{}", TRACKER_NOTE_NAMES.at(static_cast<size_t>(nInOct)), oct));
+                        } else {
+                            DrawColoredText(voiceCol, "---");
+                        }
+                    } else {
+                        DrawColoredText(Theme::TextSecondary, "....");
+                    }
+
+                    ImGui::TableNextColumn();
+                    if (freqChanged) {
+                        DrawColoredText(voiceCol, std::format("{:04X}", freq));
+                    } else {
+                        DrawColoredText(Theme::TextSecondary, "....");
+                    }
+
+                    ImGui::TableNextColumn();
+                    const uint8_t ctrl = frame.registers.at(base + 4);
+                    if ((frame.writeMask & (1U << (base + 4))) != 0) {
+                        DrawColoredText(voiceCol, std::format("{:02X} {}", ctrl, (ctrl & 0x01) != 0 ? "G" : "."));
+                    } else {
+                        DrawColoredText(Theme::TextSecondary, ".. .");
+                    }
+
+                    ImGui::TableNextColumn();
+                    if ((frame.writeMask & ((1U << (base + 5)) | (1U << (base + 6)))) != 0) {
+                        DrawColoredText(voiceCol, std::format("{:02X}{:02X}", frame.registers.at(base + 5),
+                                                              frame.registers.at(base + 6)));
+                    } else {
+                        DrawColoredText(Theme::TextSecondary, "....");
+                    }
+
+                    ImGui::TableNextColumn();
+                    if ((frame.writeMask & ((1U << (base + 2)) | (1U << (base + 3)))) != 0) {
+                        const uint16_t pw = static_cast<uint16_t>(
+                            frame.registers.at(base + 2) | ((frame.registers.at(base + 3) & 0x0FU) << 8U));
+                        DrawColoredText(voiceCol, std::format("{:03X}", pw));
+                    } else {
+                        DrawColoredText(Theme::TextSecondary, "...");
+                    }
+                }
+
+                const ImVec4 filterCol = Theme::AccentActive;
+
+                ImGui::TableNextColumn();
+                if ((frame.writeMask & ((1U << 0x15) | (1U << 0x16))) != 0) {
+                    const uint16_t rowFc = static_cast<uint16_t>(
+                        (frame.registers.at(0x15) & 0x07U) | (static_cast<uint16_t>(frame.registers.at(0x16)) << 3U));
+                    DrawColoredText(filterCol, std::format("{:03X}", rowFc));
+                } else {
+                    DrawColoredText(Theme::TextSecondary, "...");
+                }
+
+                ImGui::TableNextColumn();
+                if ((frame.writeMask & (1U << 0x17)) != 0) {
+                    const uint8_t rowRes = (frame.registers.at(0x17) >> 4U) & 0x0FU;
+                    DrawColoredText(filterCol, std::format("{:X}", rowRes));
+                } else {
+                    DrawColoredText(Theme::TextSecondary, ".");
+                }
+
+                ImGui::TableNextColumn();
+                if ((frame.writeMask & (1U << 0x17)) != 0) {
+                    const uint8_t r17 = frame.registers.at(0x17);
+                    std::string route;
+                    route.reserve(3);
+                    route += ((r17 & 0x01U) != 0) ? '1' : '-';
+                    route += ((r17 & 0x02U) != 0) ? '2' : '-';
+                    route += ((r17 & 0x04U) != 0) ? '3' : '-';
+                    DrawColoredText(filterCol, route);
+                } else {
+                    DrawColoredText(Theme::TextSecondary, "...");
+                }
+
+                ImGui::TableNextColumn();
+                if ((frame.writeMask & (1U << 0x18)) != 0) {
+                    const uint8_t r18 = frame.registers.at(0x18);
+                    std::string mode;
+                    mode.reserve(4);
+                    mode += ((r18 & 0x10U) != 0) ? 'L' : '-';
+                    mode += ((r18 & 0x20U) != 0) ? 'B' : '-';
+                    mode += ((r18 & 0x40U) != 0) ? 'H' : '-';
+                    mode += ((r18 & 0x80U) != 0) ? '3' : '-';
+                    DrawColoredText(filterCol, mode);
+                } else {
+                    DrawColoredText(Theme::TextSecondary, "....");
+                }
+
+                ImGui::TableNextColumn();
+                if ((frame.writeMask & (1U << 0x18)) != 0) {
+                    const uint8_t rowVol = frame.registers.at(0x18) & 0x0FU;
+                    DrawColoredText(filterCol, std::format("{:X}", rowVol));
+                } else {
+                    DrawColoredText(Theme::TextSecondary, ".");
+                }
+            }
+        }
+
+        static size_t lastFrameCount = 0;
+        if (autoScroll && !frames.empty() &&
+            (frames.size() > lastFrameCount || ImGui::GetScrollY() >= ImGui::GetScrollMaxY())) {
+            ImGui::SetScrollHereY(1.0F);
+        }
+        lastFrameCount = frames.size();
+
+        ImGui::EndTable();
+    }
+
+    ImGui::PopID();
+}
+
 static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_update) {
     std::array<float, 32> spectrum{};
     std::array<std::array<float, 3>, 32> voiceShares{};
@@ -853,6 +1206,11 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
 
         if (ImGui::BeginTabItem("FFT Spectrogram")) {
             DrawFullSpectrogramTab(state.emulator.GetSID(), spectrum, voiceShares, should_update);
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Filter & Registers")) {
+            DrawFilterAndRegistersTab(state.emulator.GetSID(), should_update);
             ImGui::EndTabItem();
         }
 

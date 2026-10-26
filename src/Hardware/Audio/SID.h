@@ -9,6 +9,7 @@
 #include <iostream>
 #include <mutex>
 #include <span>
+#include <vector>
 
 #ifndef TARGET_WASM
 #include "Hardware/Audio/AudioRecorder.h"
@@ -82,6 +83,12 @@ struct SIDProfilingStats {
     std::uint64_t outputNanoseconds = 0;
 };
 
+struct SIDTrackerFrame {
+    uint32_t frameNumber = 0;
+    std::array<uint8_t, 0x20> registers{};
+    uint32_t writeMask = 0;
+};
+
 class SID : public IBusDevice {
    public:
     static constexpr int MAX_SID_VOICES = 3;
@@ -152,6 +159,10 @@ class SID : public IBusDevice {
     void SetVoiceSolo(int index, bool solo);
     [[nodiscard]] bool IsVoiceSolo(int index) const;
     void GetAudioSnapshot(std::span<float> outBuffer) const;
+    [[nodiscard]] const std::array<std::uint8_t, 0x20>& GetRegisters() const { return registers; }
+    [[nodiscard]] uint8_t GetRegister(size_t reg) const { return registers.at(reg & 0x1F); }
+    void GetTrackerLog(std::vector<SIDTrackerFrame>& outLog) const;
+    void ClearTrackerLog();
 
    private:
     std::array<std::uint8_t, 0x20> registers{};
@@ -211,6 +222,12 @@ class SID : public IBusDevice {
     static constexpr size_t AUDIO_SNAPSHOT_SIZE = 256;
     mutable std::array<float, AUDIO_SNAPSHOT_SIZE> visualizerBuffer{};
     std::atomic<size_t> visualizerWriteIndex{0};
+
+    static constexpr size_t TRACKER_LOG_CAPACITY = 512;
+    mutable std::mutex trackerMutex;
+    std::vector<SIDTrackerFrame> trackerLog;
+    SIDTrackerFrame currentTrackerFrame;
+    uint64_t lastTrackerFrameClock = 0;
 
     template <bool Profiled>
     void ClockInternal();

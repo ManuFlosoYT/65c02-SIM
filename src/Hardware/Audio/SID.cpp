@@ -153,6 +153,12 @@ void SID::Reset() {
     resampler.Clear();
     sampleBuffer.clear();
     visualizerBuffer.fill(0.0F);
+    {
+        std::lock_guard<std::mutex> trackerLock(trackerMutex);
+        trackerLog.clear();
+        currentTrackerFrame = {};
+        lastTrackerFrameClock = 0;
+    }
     
     if (audioStream != nullptr) {
         SDL_ClearAudioStream(audioStream);
@@ -256,6 +262,20 @@ void SID::Write(Word addr, Byte data) {
     uint8_t reg = addr & 0x1F;
     uint8_t* const regs = registers.data();
     regs[reg] = data;
+
+    {
+        std::lock_guard<std::mutex> trackerLock(trackerMutex);
+        currentTrackerFrame.registers.at(reg) = data;
+        currentTrackerFrame.writeMask |= (1U << reg);
+        if (emulationPaused) {
+            trackerLog.push_back(currentTrackerFrame);
+            if (trackerLog.size() > TRACKER_LOG_CAPACITY) {
+                trackerLog.erase(trackerLog.begin());
+            }
+            currentTrackerFrame.writeMask = 0;
+            currentTrackerFrame.frameNumber++;
+        }
+    }
 
     if (reg < 0x15) {
         const std::size_t voiceIdx = reg / 7U;
@@ -752,6 +772,19 @@ void SID::ClockProfiled() {
 }
 
 void SID::ClockSlow() {
+    if (cpuClockRateInt > 0 && clockCounter - lastTrackerFrameClock >= (cpuClockRateInt / 60)) {
+        lastTrackerFrameClock = clockCounter;
+        std::lock_guard<std::mutex> trackerLock(trackerMutex);
+        if (currentTrackerFrame.writeMask != 0) {
+            trackerLog.push_back(currentTrackerFrame);
+            if (trackerLog.size() > TRACKER_LOG_CAPACITY) {
+                trackerLog.erase(trackerLog.begin());
+            }
+            currentTrackerFrame.writeMask = 0;
+        }
+        currentTrackerFrame.frameNumber++;
+    }
+
     if (profilingEnabled) [[unlikely]] {
         ClockProfiled();
         return;
@@ -946,6 +979,17 @@ void SID::GetAudioSnapshot(std::span<float> outBuffer) const {
     for (size_t i = count; i < outBuffer.size(); ++i) {
         outBuffer[i] = 0.0F;
     }
+}
+
+void SID::GetTrackerLog(std::vector<SIDTrackerFrame>& outLog) const {
+    std::lock_guard<std::mutex> trackerLock(trackerMutex);
+    outLog = trackerLog;
+}
+
+void SID::ClearTrackerLog() {
+    std::lock_guard<std::mutex> trackerLock(trackerMutex);
+    trackerLog.clear();
+    currentTrackerFrame.writeMask = 0;
 }
 
 }  // namespace Hardware
