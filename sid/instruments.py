@@ -111,3 +111,32 @@ def get_percussion_config(note):
         if note in notes:
             return val
     return perc_map.get("default", {})
+
+
+def get_instrument_config(program, channel=0, note=60):
+    _load_instruments()
+    if channel == 9:
+        return get_percussion_config(note)
+    melodic_map = _instruments_data.get("melodic", {})
+    for key, val in melodic_map.items():
+        if "-" in key:
+            parts = key.split("-")
+            if int(parts[0]) <= program <= int(parts[1]):
+                return val
+        else:
+            if program == int(key):
+                return val
+    return {
+        "waves": ["PULSE"],
+        "attack_decay": "0x09",
+        "sustain_release_base": "0x05",
+        "pulse_width": "0x0800",
+        "features": []
+    }
+
+
+def get_instrument_resonance(program, channel=0, note=60):
+    res = get_instrument_config(program, channel, note).get("resonance")
+    if res is not None:
+        return int(res, 16) if isinstance(res, str) else int(res)
+    return None

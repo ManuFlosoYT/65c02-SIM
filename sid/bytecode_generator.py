@@ -54,6 +54,24 @@ class Voice:
         self.pwm_dir = 1
         self.features = []
         self.is_modulator = False
+        self.filter_enabled = False
+        self.filter_mode = FILT_LP
+        self.filter_res = 0x40
+        self.cutoff_base_hz = 1000.0
+        self.filter_env_type = None
+        self.filter_env_timer = 0.0
+        self.filter_env_dur = 0.15
+        self.filter_sweep_amount = 0.0
+
+    def reset_filter(self):
+        self.filter_enabled = False
+        self.filter_mode = FILT_LP
+        self.filter_res = 0x40
+        self.cutoff_base_hz = 1000.0
+        self.filter_env_type = None
+        self.filter_env_timer = 0.0
+        self.filter_env_dur = 0.15
+        self.filter_sweep_amount = 0.0
 
 
 class BytecodeGenerator:
@@ -116,6 +134,7 @@ class BytecodeGenerator:
             self.voices[i-1].pwm_dir = 1
             self.voices[i-1].features = []
             self.voices[i-1].is_modulator = False
+            self.voices[i-1].reset_filter()
 
         # Max Quality/Quality: High (0.04s), Compressed/Max: Low (0.10s), else Mid (0.08s)
         if self.mode in [MODE_MAX_QUALITY, MODE_QUALITY]:
@@ -136,6 +155,46 @@ class BytecodeGenerator:
         channel_pitchbend_range = {i: 2 for i in range(16)}
         channel_rpn_msb = {i: 127 for i in range(16)}
         channel_rpn_lsb = {i: 127 for i in range(16)}
+        channel_cc74 = {i: 64 for i in range(16)}
+        channel_cc71 = {i: 64 for i in range(16)}
+
+        def update_filter_routing():
+            filt_route = sum(1 << (v.index - 1) for v in self.voices if v.active and v.filter_enabled)
+            curr_vol_mode = self.sid_state[MODE_VOL]
+            if curr_vol_mode == -1:
+                curr_vol_mode = 0x0F
+            vol = curr_vol_mode & 0x0F
+
+            if filt_route == 0:
+                self._emit_reg(bytecode, RESON_FILT, 0x00)
+                off3 = FILT_OFF3 if self.voices[2].is_modulator else 0
+                self._emit_reg(bytecode, MODE_VOL, off3 | vol)
+                return
+
+            filt_mode = 0
+            res_nibbles = []
+            for v in self.voices:
+                if v.active and v.filter_enabled:
+                    filt_mode |= v.filter_mode
+                    ch = getattr(v, 'channel', 0)
+                    cc71 = channel_cc71.get(ch, 64)
+                    base_nibble = (v.filter_res >> 4) & 0x0F
+                    scaled = int(round(base_nibble * (cc71 / 64.0)))
+                    res_nibbles.append(max(0, min(15, scaled)))
+
+            if not filt_mode:
+                filt_mode = FILT_LP
+
+            if self.voices[2].is_modulator or (self.voices[2].active and (
+                "filter_off3" in getattr(self.voices[2], 'features', []) or
+                self.voices[2].role == 'percussion' or
+                getattr(self.voices[2], 'channel', -1) == self.noise_channel
+            )):
+                filt_mode |= FILT_OFF3
+
+            composite_res = (max(res_nibbles) << 4) if res_nibbles else 0x40
+            self._emit_reg(bytecode, RESON_FILT, (composite_res & 0xF0) | filt_route)
+            self._emit_reg(bytecode, MODE_VOL, (filt_mode & 0xF0) | vol)
 
         current_time = 0.0
         emitted_total_cycles = 0.0
@@ -154,7 +213,8 @@ class BytecodeGenerator:
                     ch = getattr(v, 'channel', 0)
                     if (len(getattr(v, 'arpeggio_notes', [])) > 1 or "pwm_sweep" in getattr(v, 'features', []) or
                         "vibrato" in getattr(v, 'features', []) or channel_pitchbend.get(ch, 0) != 0 or
-                        channel_mod.get(ch, 0) > 0 or getattr(v, 'released', False)):
+                        channel_mod.get(ch, 0) > 0 or getattr(v, 'released', False) or
+                        (v.filter_enabled and (v.filter_env_type is not None or "filter_lfo" in getattr(v, 'features', [])))):
                         has_effects = True
                         break
 
@@ -195,6 +255,8 @@ class BytecodeGenerator:
                         if v.release_timer >= getattr(v, 'max_release_time', 0.1):
                             v.active = False
                             v.released = False
+                            v.reset_filter()
+                            update_filter_routing()
                             continue
 
                     base = get_voice_offset(v.index)
@@ -252,6 +314,44 @@ class BytecodeGenerator:
                         self._emit_reg(bytecode, base + PW_LO_1, cur & 0xFF)
                         self._emit_reg(bytecode, base + PW_HI_1, (cur >> 8) & 0xFF)
 
+                    # 3. Filter Envelope Timer & LFO Advance
+                    if v.filter_enabled:
+                        v.filter_env_timer += step
+                        if mod_val == 0 and (v.filter_env_type == 'lfo' or "filter_lfo" in getattr(v, 'features', [])):
+                            v.arp_counter += 1
+
+                # 4. Filter Cutoff Envelope & Sweeps
+                filtered_voices = [v for v in self.voices if v.active and v.filter_enabled]
+                if filtered_voices:
+                    active_envs = [v for v in filtered_voices if v.filter_env_type is not None or "filter_lfo" in getattr(v, 'features', [])]
+                    lead_v = max(active_envs if active_envs else filtered_voices, key=lambda v: v.priority_score)
+                    hz = lead_v.cutoff_base_hz
+                    if lead_v.filter_env_type == 'pluck':
+                        decay = (1.0 - min(1.0, lead_v.filter_env_timer / lead_v.filter_env_dur)) ** 2
+                        hz = lead_v.cutoff_base_hz + lead_v.filter_sweep_amount * decay
+                        if lead_v.filter_env_timer >= lead_v.filter_env_dur:
+                            lead_v.filter_env_type = None
+                    elif lead_v.filter_env_type == 'swell':
+                        t = min(1.0, lead_v.filter_env_timer / lead_v.filter_env_dur)
+                        hz = lead_v.cutoff_base_hz + lead_v.filter_sweep_amount * t
+                        if lead_v.filter_env_timer >= lead_v.filter_env_dur:
+                            lead_v.filter_env_type = None
+
+                    if lead_v.filter_env_type == 'lfo' or "filter_lfo" in getattr(lead_v, 'features', []):
+                        hz *= (1.0 + 0.25 * math.sin(lead_v.arp_counter * 0.4))
+                    elif channel_mod.get(getattr(lead_v, 'channel', 0), 0) > 0:
+                        mod_depth = (channel_mod.get(getattr(lead_v, 'channel', 0), 0) / 127.0) * 0.25
+                        hz *= (1.0 + mod_depth * math.sin(lead_v.arp_counter * 0.4))
+
+                    ch = getattr(lead_v, 'channel', 0)
+                    cc74 = channel_cc74.get(ch, 64)
+                    hz *= (cc74 / 64.0)
+                    target_hz = max(30.0, min(12000.0, hz))
+
+                    dac_val = self._freq_to_cutoff_dac(target_hz)
+                    self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
+                    self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
+
                 if len(bytecode) > prev_len:
                     new_writes = bytecode[prev_len:]
                     del bytecode[prev_len:]
@@ -308,6 +408,19 @@ class BytecodeGenerator:
                                 self._emit_reg(bytecode, base + SR_1, sr)
                 elif ctrl == 1: # Modulation
                     channel_mod[ch] = val
+                elif ctrl == 71: # Resonance
+                    channel_cc71[ch] = val
+                    update_filter_routing()
+                elif ctrl == 74: # Cutoff / Brightness
+                    channel_cc74[ch] = val
+                    for v in self.voices:
+                        if v.active and v.filter_enabled and getattr(v, 'channel', -1) == ch:
+                            hz = v.cutoff_base_hz * (val / 64.0)
+                            target_hz = max(30.0, min(12000.0, hz))
+                            dac_val = self._freq_to_cutoff_dac(target_hz)
+                            self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
+                            self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
+                            break
                 elif ctrl == 101: # RPN MSB
                     channel_rpn_msb[ch] = val
                 elif ctrl == 100: # RPN LSB
@@ -388,41 +501,82 @@ class BytecodeGenerator:
                         self._emit_reg(bytecode, base + PW_HI_1, (pw >> 8) & 0xFF)
 
                     # Filter Setup
-                    has_filt = any(f in features for f in ["bass_filter", "velocity_filter", "filter_hp", "filter_bp"])
+                    has_filt = any(f in features for f in ["bass_filter", "velocity_filter", "filter_pluck", "filter_brass", "filter_lfo", "lead_filter", "pad_filter", "filter_hp", "filter_bp"])
                     if has_filt:
-                        is_melody = (ev['channel'] == self.melody_channel)
-                        melody_active = any(vo.active and getattr(vo, 'channel', -1) == self.melody_channel for vo in self.voices)
-                        
-                        if is_melody or not melody_active:
-                            filt_route = 1 << (v.index - 1)
-                            
-                            target_hz = 1000.0
-                            if "velocity_filter" in features:
-                                target_hz = 200.0 + (vel / 127.0) * 8000.0
-                            elif "bass_filter" in features:
-                                target_hz = 1500.0
+                        v.filter_enabled = True
+                        if "filter_hp" in features:
+                            v.filter_mode = FILT_HP
+                        elif "filter_bp" in features:
+                            v.filter_mode = FILT_BP
+                        else:
+                            v.filter_mode = FILT_LP
 
-                            dac_val = self._freq_to_cutoff_dac(target_hz)
-                            self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
-                            self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
-                            
-                            res = 0x40 # default resonance
-                            if self.chip == "6581" and dac_val > 1500:
-                                res = 0x10 # Q-Drop
-                            self._emit_reg(bytecode, RESON_FILT, res | filt_route)
-                            
-                            curr = self.sid_state[MODE_VOL]
-                            if curr == -1: curr = 0x0F
-                            fmode = FILT_LP
-                            if "filter_hp" in features: fmode = FILT_HP
-                            elif "filter_bp" in features: fmode = FILT_BP
-                            
-                            # if voice 3 is modulator, turn off its audio output
-                            if self.voices[2].is_modulator:
-                                fmode |= FILT_OFF3
-                                
-                            curr = curr & ~(FILT_LP | FILT_BP | FILT_HP | FILT_OFF3)
-                            self._emit_reg(bytecode, MODE_VOL, curr | fmode)
+                        if "bass_filter" in features or "lead_filter" in features:
+                            v.filter_res = 0x80
+                        elif "filter_bp" in features:
+                            v.filter_res = 0x60
+                        else:
+                            v.filter_res = 0x40
+
+                        if "filter_pluck" in features:
+                            v.cutoff_base_hz = 800.0
+                            v.filter_sweep_amount = 2500.0 + (vel / 127.0) * 1000.0
+                            v.filter_env_dur = 0.15
+                            v.filter_env_type = 'pluck'
+                        elif "filter_brass" in features:
+                            v.cutoff_base_hz = 800.0
+                            v.filter_sweep_amount = 2000.0
+                            v.filter_env_dur = 0.25
+                            v.filter_env_type = 'swell'
+                        elif "filter_bp" in features:
+                            v.cutoff_base_hz = 1200.0
+                            v.filter_sweep_amount = 2000.0
+                            v.filter_env_dur = 0.10
+                            v.filter_env_type = 'pluck'
+                        elif "filter_hp" in features:
+                            v.cutoff_base_hz = 5000.0
+                            v.filter_sweep_amount = 0.0
+                            v.filter_env_dur = 0.10
+                            v.filter_env_type = None
+                        elif "bass_filter" in features:
+                            v.cutoff_base_hz = 800.0
+                            v.filter_sweep_amount = 2500.0 + (vel / 127.0) * 1000.0
+                            v.filter_env_dur = 0.15
+                            v.filter_env_type = 'pluck'
+                        elif "lead_filter" in features or "pad_filter" in features:
+                            v.cutoff_base_hz = 2000.0 if "lead_filter" in features else 1500.0
+                            if "velocity_filter" in features:
+                                v.cutoff_base_hz += (vel / 127.0) * 1500.0
+                            v.filter_sweep_amount = 0.0
+                            v.filter_env_dur = 0.15
+                            v.filter_env_type = 'lfo' if "filter_lfo" in features else None
+                        elif "velocity_filter" in features:
+                            v.cutoff_base_hz = 300.0 + (vel / 127.0) * 6000.0
+                            v.filter_sweep_amount = 0.0
+                            v.filter_env_dur = 0.15
+                            v.filter_env_type = 'lfo' if "filter_lfo" in features else None
+                        else:
+                            v.cutoff_base_hz = 1000.0
+                            v.filter_sweep_amount = 0.0
+                            v.filter_env_dur = 0.15
+                            v.filter_env_type = 'lfo' if "filter_lfo" in features else None
+
+                        v.filter_env_timer = 0.0
+
+                        initial_hz = v.cutoff_base_hz
+                        if v.filter_env_type == 'pluck':
+                            initial_hz += v.filter_sweep_amount
+                        cc74 = channel_cc74.get(ev['channel'], 64)
+                        initial_hz *= (cc74 / 64.0)
+                        initial_hz = max(30.0, min(12000.0, initial_hz))
+                        dac_val = self._freq_to_cutoff_dac(initial_hz)
+                        self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
+                        self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
+
+                        update_filter_routing()
+                    else:
+                        v.reset_filter()
+                        update_filter_routing()
 
                     # 3. Trigger
                     if "pcm_sample" in features and self.chip == "6581":

@@ -539,7 +539,7 @@ class MidiProcessor:
                     'forced_role': track_forced_role
                 })
             elif msg.type == 'control_change':
-                if msg.control in [1, 7, 6, 38, 98, 99, 100, 101]: # Modulation, Volume, Data Entry, NRPN/RPN
+                if msg.control in [1, 7, 6, 38, 71, 74, 98, 99, 100, 101]: # Modulation, Volume, Data Entry, Filter Res/Cutoff, NRPN/RPN
                     self.events.append({
                         'time': current_time,
                         'type': 'control_change',

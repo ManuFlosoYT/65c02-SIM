@@ -46,7 +46,7 @@
       "attack_decay": "0x05",
       "sustain_release_base": "0x04",
       "pulse_width": "0x0800",
-      "features": ["bass_filter", "velocity_filter"]
+      "features": ["bass_filter", "velocity_filter", "filter_pluck"]
     },
     "35-37": {
       "name": "Fretless/Slap Bass",
@@ -54,7 +54,7 @@
       "attack_decay": "0x05",
       "sustain_release_base": "0x04",
       "pulse_width": "0x0800",
-      "features": ["bass_filter", "velocity_filter"]
+      "features": ["bass_filter", "velocity_filter", "filter_pluck"]
     },
     "38-39": {
       "name": "Synth Bass",
@@ -62,7 +62,7 @@
       "attack_decay": "0x05",
       "sustain_release_base": "0x04",
       "pulse_width": "0x0800",
-      "features": ["bass_filter", "velocity_filter", "pwm_sweep"]
+      "features": ["bass_filter", "velocity_filter", "filter_pluck", "pwm_sweep"]
     },
     "40-47": {
       "name": "Strings",
@@ -86,7 +86,7 @@
       "attack_decay": "0x25",
       "sustain_release_base": "0x05",
       "pulse_width": "0x0800",
-      "features": ["velocity_filter"]
+      "features": ["velocity_filter", "filter_brass"]
     },
     "64-71": {
       "name": "Reed",
@@ -110,7 +110,7 @@
       "attack_decay": "0x05",
       "sustain_release_base": "0x09",
       "pulse_width": "0x0800",
-      "features": ["pwm_sweep", "vibrato"]
+      "features": ["pwm_sweep", "vibrato", "lead_filter", "filter_lfo"]
     },
     "81": {
       "name": "Synth Lead (Sawtooth)",
@@ -118,7 +118,7 @@
       "attack_decay": "0x05",
       "sustain_release_base": "0x09",
       "pulse_width": "0x0800",
-      "features": ["pwm_sweep", "vibrato", "ring_mod"]
+      "features": ["pwm_sweep", "vibrato", "ring_mod", "lead_filter", "filter_lfo"]
     },
     "82-87": {
       "name": "Synth Lead (Other)",
@@ -126,7 +126,7 @@
       "attack_decay": "0x05",
       "sustain_release_base": "0x09",
       "pulse_width": "0x0800",
-      "features": ["pwm_sweep", "vibrato"]
+      "features": ["pwm_sweep", "vibrato", "lead_filter", "filter_lfo"]
     },
     "88-95": {
       "name": "Synth Pad",
@@ -134,7 +134,7 @@
       "attack_decay": "0xAA",
       "sustain_release_base": "0x0A",
       "pulse_width": "0x0800",
-      "features": ["pwm_sweep"]
+      "features": ["pwm_sweep", "pad_filter", "filter_lfo"]
     },
     "96-103": {
       "name": "Synth Effects",
@@ -212,7 +212,7 @@
       "attack_decay": "0x05",
       "sustain_release_base": "0x00",
       "pulse_width": "0x0800",
-      "features": ["snare_macro", "pcm_sample"]
+      "features": ["snare_macro", "pcm_sample", "filter_bp"]
     },
     "49,51,52,53,55,57,59": {
       "name": "Crash & Cymbals",
@@ -222,7 +222,7 @@
       "attack_decay": "0x0F",
       "sustain_release_base": "0x08",
       "pulse_width": "0x0800",
-      "features": []
+      "features": ["filter_hp"]
     },
     "41,43,45,47,48,50": {
       "name": "Toms",
@@ -242,7 +242,7 @@
       "attack_decay": "0x00",
       "sustain_release_base": "0x04",
       "pulse_width": "0x0800",
-      "features": []
+      "features": ["filter_hp"]
     },
     "42,44": {
       "name": "Closed Hi-Hat",
@@ -252,7 +252,7 @@
       "attack_decay": "0x00",
       "sustain_release_base": "0x02",
       "pulse_width": "0x0800",
-      "features": []
+      "features": ["filter_hp"]
     },
     "default": {
       "name": "Generic Percussion",
