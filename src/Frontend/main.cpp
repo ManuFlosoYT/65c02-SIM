@@ -493,6 +493,26 @@ static void MainLoop(void* arg) {
     ImVec2 work_pos = viewport->WorkPos;
     ImVec2 work_size = viewport->WorkSize;
     float top_section_height = work_size.y * 0.36F;
+    if (work_size.y > 0.0F && work_size.x > 0.0F) {
+        constexpr float target_aspect = 16.0F / 9.0F;
+        const float ideal_height = work_size.x / target_aspect;
+        const float missing_height = ideal_height - work_size.y;
+        if (missing_height > 0.0F && missing_height <= ideal_height * 0.15F) {
+            top_section_height = ideal_height * 0.36F;
+        } else {
+            const float current_aspect = work_size.x / work_size.y;
+            if (current_aspect > target_aspect) {
+                float target_width = work_size.y * target_aspect;
+                work_pos.x += (work_size.x - target_width) * 0.5F;
+                work_size.x = target_width;
+            } else if (current_aspect < target_aspect) {
+                float target_height = work_size.x / target_aspect;
+                work_pos.y += (work_size.y - target_height) * 0.5F;
+                work_size.y = target_height;
+            }
+            top_section_height = work_size.y * 0.36F;
+        }
+    }
 
     const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                          ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
