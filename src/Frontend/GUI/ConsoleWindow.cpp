@@ -5,6 +5,7 @@
 #include "Frontend/GUI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -113,38 +114,57 @@ static void DrawSDKPopup(AppState& state) {
         state.sdk.showPopup = false;
     }
 
-    ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    constexpr float verticalPadding = 40.0F;
+    const float popupHeight = std::max(200.0F, viewport->WorkSize.y - (verticalPadding * 2.0F));
+    const float popupWidth = std::min(800.0F, viewport->WorkSize.x - 40.0F);
+
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    ImGui::SetNextWindowSize(ImVec2(popupWidth, popupHeight), ImGuiCond_Appearing);
+
     if (ImGui::BeginPopupModal("SDK ROMs", nullptr, ImGuiWindowFlags_None)) {
-        if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
+        const float footerHeight = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
+        bool canScrollDown = false;
+
+        if (ImGui::BeginChild("SDKListRegion", ImVec2(0, -footerHeight), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+            if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
 #ifdef TARGET_WASM
-            ImGui::TextUnformatted("Loading ROM list...");
+                ImGui::TextUnformatted("Loading ROM list...");
 #else
-            ImGui::TextUnformatted("No SDK resources found in 'SDK/' directory.");
-            ImGui::TextUnformatted("Ensure SDK.zip was present at build time.");
+                ImGui::TextUnformatted("No SDK resources found in 'SDK/' directory.");
+                ImGui::TextUnformatted("Ensure SDK.zip was present at build time.");
 #endif
-        } else {
-            ImGui::Columns(3, "SDKColumns", true);
-            ImGui::Separator();
-            ImGui::TextUnformatted("ROMs");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("MIDIs");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("VRAMs");
-            ImGui::NextColumn();
-            ImGui::Separator();
+            } else {
+                ImGui::Columns(3, "SDKColumns", true);
+                ImGui::Separator();
+                ImGui::TextUnformatted("ROMs");
+                ImGui::NextColumn();
+                ImGui::TextUnformatted("MIDIs");
+                ImGui::NextColumn();
+                ImGui::TextUnformatted("VRAMs");
+                ImGui::NextColumn();
+                ImGui::Separator();
 
-            DrawSDKColumn(state, state.sdk.roms, "cartridge");
-            ImGui::NextColumn();
-            DrawSDKColumn(state, state.sdk.midis, "midi");
-            ImGui::NextColumn();
-            DrawSDKColumn(state, state.sdk.vrams, "vram");
-            ImGui::NextColumn();
+                DrawSDKColumn(state, state.sdk.roms, "cartridge");
+                ImGui::NextColumn();
+                DrawSDKColumn(state, state.sdk.midis, "midi");
+                ImGui::NextColumn();
+                DrawSDKColumn(state, state.sdk.vrams, "vram");
+                ImGui::NextColumn();
 
-            ImGui::Columns(1);
+                ImGui::Columns(1);
+            }
+            canScrollDown = ImGui::GetScrollY() < ImGui::GetScrollMaxY();
         }
+        ImGui::EndChild();
+
         ImGui::Separator();
         if (ImGui::Button("Close", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
+        }
+        if (canScrollDown) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("▼ Scroll down for more");
         }
         ImGui::EndPopup();
     }
