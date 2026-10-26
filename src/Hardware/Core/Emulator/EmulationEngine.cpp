@@ -89,6 +89,9 @@ void EmulationEngine::ThreadLoop() {
     uint64_t gpuCyclesThisSecond = 0;
     uint64_t instructionsThisSecond = 0;
     uint64_t slicesThisSecond = 0;
+    uint64_t emulationThisSecond = 0;
+    uint64_t sleepThisSecond = 0;
+    uint64_t lateThisSecond = 0;
     auto lastSecondTime = high_resolution_clock::now();
 
     double instructionAccumulator = 0.0;
@@ -100,6 +103,8 @@ void EmulationEngine::ThreadLoop() {
             std::unique_lock<std::mutex> lock(threadMutex);
             pauseCV.wait(lock, [this] { return !paused || !running; });
             isActuallyPaused.store(false, std::memory_order_release);
+            nextSliceTime = high_resolution_clock::now();
+            lastSecondTime = nextSliceTime;
         }
         if (!running.load(std::memory_order_relaxed)) {
             break;
@@ -126,9 +131,7 @@ void EmulationEngine::ThreadLoop() {
         const auto sliceStart = high_resolution_clock::now();
         const SliceResult slice = EmulateSlice(instructionsPerSlice);
         const auto sliceEnd = high_resolution_clock::now();
-        emulationNanoseconds.fetch_add(
-            static_cast<uint64_t>(duration_cast<nanoseconds>(sliceEnd - sliceStart).count()),
-            std::memory_order_relaxed);
+        emulationThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(sliceEnd - sliceStart).count());
         cyclesThisSecond += slice.cycles;
         cpuCyclesThisSecond += slice.cpuCycles;
         gpuCyclesThisSecond += slice.gpuCycles;
@@ -142,11 +145,25 @@ void EmulationEngine::ThreadLoop() {
             actualGpuCyclesPerSecond.store(gpuCyclesThisSecond, std::memory_order_relaxed);
             actualInstructionsPerSecond.store(instructionsThisSecond, std::memory_order_relaxed);
             slicesPerSecond.store(slicesThisSecond, std::memory_order_relaxed);
+            emulationNanoseconds.store(emulationThisSecond, std::memory_order_relaxed);
+            sleepNanoseconds.store(sleepThisSecond, std::memory_order_relaxed);
+            lateNanoseconds.store(lateThisSecond, std::memory_order_relaxed);
+            avgBatchDurationNs.store(batchesThisSecond > 0 ? (batchDurationThisSecond / batchesThisSecond) : 0, std::memory_order_relaxed);
+            avgBatchCycles.store(batchesThisSecond > 0 ? (batchCyclesThisSecond / batchesThisSecond) : 0, std::memory_order_relaxed);
+            lastBatchDurationNs.store(currentLastBatchDurationNs, std::memory_order_relaxed);
+            lastBatchCycles.store(currentLastBatchCycles, std::memory_order_relaxed);
+            batchesPerSecond.store(batchesThisSecond, std::memory_order_relaxed);
             cyclesThisSecond = 0;
             cpuCyclesThisSecond = 0;
             gpuCyclesThisSecond = 0;
             instructionsThisSecond = 0;
             slicesThisSecond = 0;
+            emulationThisSecond = 0;
+            sleepThisSecond = 0;
+            lateThisSecond = 0;
+            batchDurationThisSecond = 0;
+            batchCyclesThisSecond = 0;
+            batchesThisSecond = 0;
             lastSecondTime = now;
         }
 
@@ -154,14 +171,10 @@ void EmulationEngine::ThreadLoop() {
 
         auto sleepCheckTime = high_resolution_clock::now();
         if (sleepCheckTime < nextSliceTime) {
-            sleepNanoseconds.fetch_add(
-                static_cast<uint64_t>(duration_cast<nanoseconds>(nextSliceTime - sleepCheckTime).count()),
-                std::memory_order_relaxed);
+            sleepThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(nextSliceTime - sleepCheckTime).count());
             std::this_thread::sleep_until(nextSliceTime);
         } else {
-            lateNanoseconds.fetch_add(
-                static_cast<uint64_t>(duration_cast<nanoseconds>(sleepCheckTime - nextSliceTime).count()),
-                std::memory_order_relaxed);
+            lateThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(sleepCheckTime - nextSliceTime).count());
             nextSliceTime = sleepCheckTime;
             std::this_thread::yield();
         }
@@ -171,6 +184,7 @@ void EmulationEngine::ThreadLoop() {
 }
 
 EmulationEngine::SliceResult EmulationEngine::EmulateSlice(int instructionsPerSlice) {
+    using namespace std::chrono;
     if (instructionsPerSlice <= 0) {
         return {};
     }
@@ -197,8 +211,17 @@ EmulationEngine::SliceResult EmulationEngine::EmulateSlice(int instructionsPerSl
         uint64_t batchGpuCycles = 0;
         int stopCode = NO_STOP;
 
+        const auto batchStart = high_resolution_clock::now();
         int stepsInBatch = ProcessBatch(
             currentBatchSize, hooks, hasBreakpoints, hasComplex, batchInstructions, batchCpuCycles, batchGpuCycles, stopCode);
+        const auto batchEnd = high_resolution_clock::now();
+        const auto batchNs = static_cast<uint64_t>(duration_cast<nanoseconds>(batchEnd - batchStart).count());
+        const uint64_t batchCycles = batchCpuCycles + batchGpuCycles;
+        batchDurationThisSecond += batchNs;
+        batchCyclesThisSecond += batchCycles;
+        batchesThisSecond++;
+        currentLastBatchDurationNs = batchNs;
+        currentLastBatchCycles = batchCycles;
         localCpuCycleDelta += batchCpuCycles;
         localGpuCycleDelta += batchGpuCycles;
         localInstructionDelta += static_cast<uint64_t>(batchInstructions);
@@ -450,6 +473,11 @@ EmulationEngine::RuntimeStats EmulationEngine::GetRuntimeStats() const {
         .emulationNanoseconds = emulationNanoseconds.load(std::memory_order_relaxed),
         .sleepNanoseconds = sleepNanoseconds.load(std::memory_order_relaxed),
         .lateNanoseconds = lateNanoseconds.load(std::memory_order_relaxed),
+        .avgBatchDurationNs = avgBatchDurationNs.load(std::memory_order_relaxed),
+        .lastBatchDurationNs = lastBatchDurationNs.load(std::memory_order_relaxed),
+        .avgBatchCycles = avgBatchCycles.load(std::memory_order_relaxed),
+        .lastBatchCycles = lastBatchCycles.load(std::memory_order_relaxed),
+        .batchesPerSecond = batchesPerSecond.load(std::memory_order_relaxed),
     };
 }
 

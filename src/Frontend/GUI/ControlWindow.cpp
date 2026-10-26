@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <string>
+#include <unordered_set>
+#include <vector>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include "Frontend/GUI/Style/Style.h"
@@ -283,6 +286,8 @@ static void DrawActualIPS(AppState& state) {
 
     if (ImGui::IsItemHovered()) {
         if (ImGui::BeginItemTooltip()) {
+            ImGui::TextUnformatted("Simulation Rate");
+            ImGui::Separator();
             ImGui::Text("Cycles/s: %llu", static_cast<unsigned long long>(stats.cyclesPerSecond));
             if (state.emulator.IsGPUEnabled()) {
                 const double gpuPercent = stats.cyclesPerSecond > 0
@@ -295,9 +300,55 @@ static void DrawActualIPS(AppState& state) {
             }
             ImGui::Text("Instructions/s: %llu", static_cast<unsigned long long>(stats.instructionsPerSecond));
             ImGui::Text("Slices/s: %llu", static_cast<unsigned long long>(stats.slicesPerSecond));
-            ImGui::Text("Emulation: %.2f ms", static_cast<double>(stats.emulationNanoseconds) / 1'000'000.0);
-            ImGui::Text("Scheduler sleep: %.2f ms", static_cast<double>(stats.sleepNanoseconds) / 1'000'000.0);
-            ImGui::Text("Scheduler late: %.2f ms", static_cast<double>(stats.lateNanoseconds) / 1'000'000.0);
+
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Batch & Components");
+            ImGui::Separator();
+            const double avgBatchUs = static_cast<double>(stats.avgBatchDurationNs) / 1000.0;
+            const double lastBatchUs = static_cast<double>(stats.lastBatchDurationNs) / 1000.0;
+            ImGui::Text("Avg Batch Time: %.2f us", avgBatchUs);
+            ImGui::Text("Last Batch Time: %.2f us", lastBatchUs);
+            const uint64_t refCycles = stats.avgBatchCycles > 0 ? stats.avgBatchCycles : stats.lastBatchCycles;
+            ImGui::Text("Batch Cycles: %llu", static_cast<unsigned long long>(refCycles));
+            ImGui::Text("Batches/s: %llu", static_cast<unsigned long long>(stats.batchesPerSecond));
+
+            std::vector<std::string> activeComponents;
+            std::unordered_set<const Hardware::IBusDevice*> seenDevices;
+            for (const auto& reg : state.emulator.GetMem().GetRegisteredDevices()) {
+                if (reg.enabled && reg.device && !seenDevices.contains(reg.device)) {
+                    seenDevices.insert(reg.device);
+                    activeComponents.push_back(reg.device->GetName());
+                }
+            }
+
+            const size_t compCount = std::max<size_t>(1, activeComponents.size());
+            const uint64_t refBatchNs = stats.avgBatchDurationNs > 0 ? stats.avgBatchDurationNs : stats.lastBatchDurationNs;
+            const double timePerCompBatchUs = (static_cast<double>(refBatchNs) / 1000.0) / static_cast<double>(compCount);
+            const double timePerCompCycleNs = refCycles > 0
+                                                  ? (static_cast<double>(refBatchNs) /
+                                                     (static_cast<double>(compCount) * static_cast<double>(refCycles)))
+                                                  : 0.0;
+
+            std::string compListStr;
+            for (size_t i = 0; i < activeComponents.size(); ++i) {
+                if (i > 0) {
+                    compListStr += ", ";
+                }
+                compListStr += activeComponents[i];
+            }
+            ImGui::Text("Active Bus Devices (%zu): %s", activeComponents.size(), compListStr.c_str());
+            ImGui::Text("Avg / Component (Batch): %.2f us", timePerCompBatchUs);
+            ImGui::Text("Avg / Component (Cycle): %.2f ns", timePerCompCycleNs);
+
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Scheduler (Last 1s)");
+            ImGui::Separator();
+            const double emuMs = static_cast<double>(stats.emulationNanoseconds) / 1'000'000.0;
+            const double sleepMs = static_cast<double>(stats.sleepNanoseconds) / 1'000'000.0;
+            const double lateMs = static_cast<double>(stats.lateNanoseconds) / 1'000'000.0;
+            ImGui::Text("Emulation: %.2f ms (%.1f%% load)", emuMs, emuMs / 10.0);
+            ImGui::Text("Sleep: %.2f ms (%.1f%% idle)", sleepMs, sleepMs / 10.0);
+            ImGui::Text("Late: %.2f ms", lateMs);
             ImGui::EndTooltip();
         }
     }

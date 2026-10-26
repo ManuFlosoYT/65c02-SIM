@@ -23,6 +23,11 @@ class EmulationEngine {
         uint64_t emulationNanoseconds = 0;
         uint64_t sleepNanoseconds = 0;
         uint64_t lateNanoseconds = 0;
+        uint64_t avgBatchDurationNs = 0;
+        uint64_t lastBatchDurationNs = 0;
+        uint64_t avgBatchCycles = 0;
+        uint64_t lastBatchCycles = 0;
+        uint64_t batchesPerSecond = 0;
     };
 
     struct SliceResult {
@@ -90,6 +95,17 @@ class EmulationEngine {
     std::atomic<uint64_t> emulationNanoseconds{0};
     std::atomic<uint64_t> sleepNanoseconds{0};
     std::atomic<uint64_t> lateNanoseconds{0};
+    std::atomic<uint64_t> avgBatchDurationNs{0};
+    std::atomic<uint64_t> lastBatchDurationNs{0};
+    std::atomic<uint64_t> avgBatchCycles{0};
+    std::atomic<uint64_t> lastBatchCycles{0};
+    std::atomic<uint64_t> batchesPerSecond{0};
+
+    uint64_t batchDurationThisSecond{0};
+    uint64_t batchCyclesThisSecond{0};
+    uint64_t batchesThisSecond{0};
+    uint64_t currentLastBatchDurationNs{0};
+    uint64_t currentLastBatchCycles{0};
 
     std::thread emulatorThread;
     std::mutex threadMutex;
