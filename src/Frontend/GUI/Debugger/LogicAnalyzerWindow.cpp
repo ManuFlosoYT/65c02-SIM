@@ -287,7 +287,7 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     ImGui::SameLine();
     ImGui::TextUnformatted("Zoom:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(90.0F);
+    ImGui::SetNextItemWidth(90.0F * state.render.uiScale);
     ImGui::SliderInt("##Zoom", &uiState.visibleCycles, 32, 1024, "%d cyc");
 
     size_t count = analyzer.GetCount();
@@ -296,7 +296,7 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
         int maxOffset = static_cast<int>(count - static_cast<size_t>(uiState.visibleCycles));
         ImGui::TextUnformatted("Scroll:");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(85.0F);
+        ImGui::SetNextItemWidth(85.0F * state.render.uiScale);
         ImGui::SliderInt("##Scroll", &uiState.scrollOffset, 0, maxOffset, "%d");
         if (uiState.scrollOffset > 0) {
             ImGui::SameLine();

@@ -143,6 +143,9 @@ static void SetupStyle(){
     SetupFont();
 }
 
+static ImGuiStyle g_baseStyle;
+static float g_baseFontScale = 1.0F;
+
 static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const char* glsl_version) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -160,6 +163,8 @@ static void InitializeImGui(SDL_Window* window, SDL_GLContext gl_context, const 
     ImGui::StyleColorsDark();
     SetupStyle();
     ImGui::GetStyle().ScaleAllSizes(1.0F / dpi_scale);
+    g_baseStyle = ImGui::GetStyle();
+    g_baseFontScale = imgui_io.FontGlobalScale;
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 }
@@ -512,6 +517,13 @@ static void MainLoop(void* arg) {
             }
             top_section_height = work_size.y * 0.36F;
         }
+
+        const float ui_scale = std::max(0.25F, work_size.x / 1920.0F);
+        state.render.uiScale = ui_scale;
+        ImGuiIO& imgui_io = ImGui::GetIO();
+        imgui_io.FontGlobalScale = g_baseFontScale * ui_scale;
+        ImGui::GetStyle() = g_baseStyle;
+        ImGui::GetStyle().ScaleAllSizes(ui_scale);
     }
 
     const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |

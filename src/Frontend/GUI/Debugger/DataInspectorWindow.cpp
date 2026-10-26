@@ -54,7 +54,7 @@ struct InspectorState {
     int selectedDeviceIdx = -1;
 };
 
-void DrawInspectorRangeControls(const std::vector<DeviceRegistration>& devices, InspectorState& state) {
+void DrawInspectorRangeControls(const std::vector<DeviceRegistration>& devices, InspectorState& state, float scale) {
     RenderTextDisabled("Presets:");
     ImGui::SameLine();
     if (ImGui::SmallButton("Zero Page")) {
@@ -90,7 +90,7 @@ void DrawInspectorRangeControls(const std::vector<DeviceRegistration>& devices, 
             (state.selectedDeviceIdx >= 0 && std::cmp_less(state.selectedDeviceIdx, validDevices.size()))
                 ? validDevices.at(static_cast<size_t>(state.selectedDeviceIdx))->device->GetName().c_str()
                 : "Select Device...";
-        ImGui::SetNextItemWidth(180.0F);
+        ImGui::SetNextItemWidth(180.0F * scale);
         if (ImGui::BeginCombo("##DevicePreset", previewText)) {
             for (size_t i = 0; i < validDevices.size(); ++i) {
                 bool isSelected = std::cmp_equal(state.selectedDeviceIdx, i);
@@ -109,7 +109,7 @@ void DrawInspectorRangeControls(const std::vector<DeviceRegistration>& devices, 
 
     ImGui::Spacing();
 
-    ImGui::SetNextItemWidth(90.0F);
+    ImGui::SetNextItemWidth(90.0F * scale);
     uint16_t startVal = state.startAddr;
     if (ImGui::InputScalar("Start", ImGuiDataType_U16, &startVal, nullptr, nullptr, "0x%04X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
@@ -118,11 +118,11 @@ void DrawInspectorRangeControls(const std::vector<DeviceRegistration>& devices, 
     }
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(70.0F);
+    ImGui::SetNextItemWidth(70.0F * scale);
     ImGui::Combo("##SizeMode", &state.sizeMode, "End\0Size\0");
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(90.0F);
+    ImGui::SetNextItemWidth(90.0F * scale);
     if (state.sizeMode == 0) {
         uint16_t endVal = state.endAddr;
         if (ImGui::InputScalar("##EndAddr", ImGuiDataType_U16, &endVal, nullptr, nullptr, "0x%04X",
@@ -425,7 +425,7 @@ void DrawDataInspectorWindow(AppState& state) {
     ImGui::TextUnformatted("Data & Structure Inspector");
     ImGui::Separator();
 
-    DrawInspectorRangeControls(devices, inspector);
+    DrawInspectorRangeControls(devices, inspector, state.render.uiScale);
     ImGui::Spacing();
 
     if (ImGui::BeginTabBar("DataInspectorTabs")) {

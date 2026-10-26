@@ -84,14 +84,14 @@ Hardware::BreakCondition BuildConditionFromForm(const BreakpointFormState& form)
     return cond;
 }
 
-void DrawConditionForm(BreakpointFormState& form) {
-    ImGui::PushItemWidth(160);
+void DrawConditionForm(BreakpointFormState& form, float scale) {
+    ImGui::PushItemWidth(160.0F * scale);
     ImGui::Combo("Type", &form.typeIndex, kTypeNames.data(), static_cast<int>(kTypeNames.size()));
     ImGui::PopItemWidth();
 
     auto typeEnum = static_cast<Hardware::BreakpointType>(form.typeIndex);
 
-    ImGui::PushItemWidth(100);
+    ImGui::PushItemWidth(100.0F * scale);
     switch (typeEnum) {
         case Hardware::BreakpointType::PCAddress:
             ImGui::InputScalar("Address##cond", ImGuiDataType_U16, &form.address, nullptr, nullptr, "%04X",
@@ -133,7 +133,7 @@ void DrawConditionForm(BreakpointFormState& form) {
 
         case Hardware::BreakpointType::Expression: {
             ImGui::PopItemWidth();
-            ImGui::PushItemWidth(360);
+            ImGui::PushItemWidth(360.0F * scale);
             if (ImGui::InputTextWithHint("Expression##expr", "e.g. PC == $8000 && A > $10 || MEM[$0200] changed",
                                          form.exprBuf.data(), form.exprBuf.size())) {
                 form.exprError.clear();
@@ -143,19 +143,19 @@ void DrawConditionForm(BreakpointFormState& form) {
                 ImGui::TextUnformatted(form.exprError.c_str());
                 ImGui::PopStyleColor();
             }
-            ImGui::PushItemWidth(100);
+            ImGui::PushItemWidth(100.0F * scale);
             break;
         }
     }
     ImGui::PopItemWidth();
 }
 
-void DrawHelperSection(BreakpointFormState& form) {
+void DrawHelperSection(BreakpointFormState& form, float scale) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("Quick Breakpoints");
     ImGui::PopStyleColor();
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 3));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0F * scale, 3.0F * scale));
 
     if (ImGui::Button("PC == addr")) {
         form.typeIndex = 0;
@@ -348,7 +348,7 @@ void DrawBreakpointWindow(Control::AppState& state) {
     ImGui::Separator();
     ImGui::Spacing();
 
-    DrawHelperSection(form);
+    DrawHelperSection(form, state.render.uiScale);
 
     ImGui::Spacing();
 
@@ -356,7 +356,7 @@ void DrawBreakpointWindow(Control::AppState& state) {
     ImGui::TextUnformatted("New Breakpoint");
     ImGui::PopStyleColor();
 
-    DrawConditionForm(form);
+    DrawConditionForm(form, state.render.uiScale);
 
     ImGui::Spacing();
 
@@ -377,7 +377,7 @@ void DrawBreakpointWindow(Control::AppState& state) {
     ImGui::SameLine();
 
     constexpr std::array<const char*, 2> logicOps = {"AND", "OR"};
-    ImGui::PushItemWidth(75);
+    ImGui::PushItemWidth(75.0F * state.render.uiScale);
     ImGui::Combo("Logic##compound", &form.compoundOpIndex, logicOps.data(), static_cast<int>(logicOps.size()));
     ImGui::PopItemWidth();
 
@@ -387,7 +387,7 @@ void DrawBreakpointWindow(Control::AppState& state) {
 
     ImGui::Checkbox("Hit Once (auto-disable)", &form.hitOnce);
 
-    ImGui::PushItemWidth(200);
+    ImGui::PushItemWidth(200.0F * state.render.uiScale);
     ImGui::InputText("Label", form.labelBuf.data(), form.labelBuf.size());
     ImGui::PopItemWidth();
 

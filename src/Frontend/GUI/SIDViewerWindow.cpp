@@ -1279,7 +1279,7 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
     float sidWidth = work_size.x - leftWidth;
     ImGui::SetNextWindowPos(ImVec2(work_pos.x + leftWidth, work_pos.y), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(sidWidth, top_section_height), ImGuiCond_Always);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F, 2.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F * state.render.uiScale, 2.0F * state.render.uiScale));
     ImGui::Begin("SID Viewer", nullptr, window_flags | ImGuiWindowFlags_NoMove);
 
     state.render.sidWindowPos[0] = ImGui::GetWindowPos().x;

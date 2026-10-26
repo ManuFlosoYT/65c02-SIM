@@ -110,12 +110,12 @@ void DrawNetworkSnifferContent(Control::AppState& state) {
     }
     ImGui::SameLine();
 
-    ImGui::SetNextItemWidth(120.0F);
+    ImGui::SetNextItemWidth(120.0F * state.render.uiScale);
     const char* filterItems[] = {"All", "TX", "RX", "NET TX", "NET RX"};
     ImGui::Combo("Direction", &snifferState.filterDirection, filterItems, 5);
     ImGui::SameLine();
 
-    ImGui::SetNextItemWidth(140.0F);
+    ImGui::SetNextItemWidth(140.0F * state.render.uiScale);
     ImGui::InputTextWithHint("##Filter", "Filter text...", snifferState.searchFilter,
                              sizeof(snifferState.searchFilter));
     ImGui::SameLine();

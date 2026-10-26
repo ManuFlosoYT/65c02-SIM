@@ -14,7 +14,7 @@ void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top
     float controlAndRegHeight = top_section_height - lcdHeight;
     ImGui::SetNextWindowPos(ImVec2(work_pos.x, work_pos.y + controlAndRegHeight), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, lcdHeight), ImGuiCond_Always);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F, 10.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F * state.render.uiScale, 10.0F * state.render.uiScale));
     ImGui::Begin("LCD Output", nullptr, window_flags);
 
     const auto& lcd = state.emulator.GetLCD();

@@ -364,7 +364,7 @@ static void DrawConsoleButtonBar(AppState& state) {
     ImGui::Separator();
 }
 
-static void DrawCopyOutputModal() {
+static void DrawCopyOutputModal(AppState& state) {
     if (ImGui::BeginPopupModal("CopyConsoleOutput", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         static std::string fullText;
         if (ImGui::IsWindowAppearing()) {
@@ -376,10 +376,12 @@ static void DrawCopyOutputModal() {
             fullText += Console::GetCurrentLine();
         }
 
-        ImGui::InputTextMultiline("##CopySource", fullText.data(), fullText.size() + 1, ImVec2(800, 600),
+        const float popupWidth = 260.0F * state.render.uiScale;
+        const float popupHeight = 160.0F * state.render.uiScale;
+        ImGui::InputTextMultiline("##CopySource", fullText.data(), fullText.size() + 1, ImVec2(popupWidth, popupHeight),
                                   ImGuiInputTextFlags_ReadOnly);
 
-        if (ImGui::Button("Close", ImVec2(120, 0))) {
+        if (ImGui::Button("Close", ImVec2(120.0F * state.render.uiScale, 0))) {
             fullText.clear();
             ImGui::CloseCurrentPopup();
         }
@@ -399,7 +401,7 @@ void DrawConsoleWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
 
     DrawConsoleButtonBar(state);
     DrawConsoleView(state);
-    DrawCopyOutputModal();
+    DrawCopyOutputModal(state);
 
     ImGui::End();
 }

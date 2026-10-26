@@ -160,7 +160,7 @@ void DrawConsoleView(Control::AppState& state) {
     float totalHeight = charHeight * static_cast<float>(scrollbackCount + Console::TERMINAL_ROWS);
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, Theme::DeepBg);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0F, 6.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0F * state.render.uiScale, 6.0F * state.render.uiScale));
     ImGui::BeginChild("TerminalRegion", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();

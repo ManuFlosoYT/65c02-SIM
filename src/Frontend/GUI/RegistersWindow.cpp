@@ -34,6 +34,7 @@ static void DrawFlagBadge(const char* label, bool active) {
 }
 
 void DrawRegistersSection(AppState& state) {
+    const float scale = state.render.uiScale;
     const auto& cpu = state.emulator.GetCPU();
     auto printHex16 = [](const char* prefix, uint16_t val) {
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
@@ -57,33 +58,33 @@ void DrawRegistersSection(AppState& state) {
     };
 
     printHex16("PC: ", cpu.PC);
-    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::SameLine(0.0F, 16.0F * scale);
     printHex16("SP: ", cpu.SP);
-    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::SameLine(0.0F, 16.0F * scale);
     printHex8("A:  ", cpu.A);
-    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::SameLine(0.0F, 16.0F * scale);
     printHex8("X:  ", cpu.X);
-    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::SameLine(0.0F, 16.0F * scale);
     printHex8("Y:  ", cpu.Y);
-    ImGui::SameLine(0.0F, 16.0F);
+    ImGui::SameLine(0.0F, 16.0F * scale);
 
     ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
     ImGui::TextUnformatted("Flags:");
     ImGui::PopStyleColor();
-    ImGui::SameLine(0.0F, 8.0F);
+    ImGui::SameLine(0.0F, 8.0F * scale);
     ImGui::BeginGroup();
     DrawFlagBadge("N", cpu.N != 0);
-    ImGui::SameLine(0.0F, 4.0F);
+    ImGui::SameLine(0.0F, 4.0F * scale);
     DrawFlagBadge("V", cpu.V != 0);
-    ImGui::SameLine(0.0F, 4.0F);
+    ImGui::SameLine(0.0F, 4.0F * scale);
     DrawFlagBadge("B", cpu.B != 0);
-    ImGui::SameLine(0.0F, 4.0F);
+    ImGui::SameLine(0.0F, 4.0F * scale);
     DrawFlagBadge("D", cpu.D != 0);
-    ImGui::SameLine(0.0F, 4.0F);
+    ImGui::SameLine(0.0F, 4.0F * scale);
     DrawFlagBadge("I", cpu.I != 0);
-    ImGui::SameLine(0.0F, 4.0F);
+    ImGui::SameLine(0.0F, 4.0F * scale);
     DrawFlagBadge("Z", cpu.Z != 0);
-    ImGui::SameLine(0.0F, 4.0F);
+    ImGui::SameLine(0.0F, 4.0F * scale);
     DrawFlagBadge("C", cpu.C != 0);
     ImGui::EndGroup();
     if (ImGui::BeginItemTooltip()) {

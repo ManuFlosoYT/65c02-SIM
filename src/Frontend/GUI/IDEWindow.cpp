@@ -420,7 +420,7 @@ namespace {
     }
 
     void DrawSDKLibrariesSidebar(Control::AppState& state, float height) {
-        ImGui::BeginChild("##IDELibsSidebar", ImVec2(170.0F, height), true);
+        ImGui::BeginChild("##IDELibsSidebar", ImVec2(170.0F * state.render.uiScale, height), true);
         ImGui::TextUnformatted("SDK Libraries");
         ImGui::Separator();
 
@@ -1072,14 +1072,14 @@ void DrawIDEWindow(Control::AppState& state) {
     state.ide.open = false;
     return;
 #else
-    ImGui::SetNextWindowSize(ImVec2(800.0F, 600.0F), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(800.0F * state.render.uiScale, 600.0F * state.render.uiScale), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("65C02 Code Editor (LLVM-MOS)", &state.ide.open)) {
         DrawToolbar(state);
         ImGui::Separator();
 
-        const float outputHeight = 150.0F;
+        const float outputHeight = 150.0F * state.render.uiScale;
         const float availableHeight = ImGui::GetContentRegionAvail().y;
-        const float editorSectionHeight = availableHeight - outputHeight - 30.0F;
+        const float editorSectionHeight = availableHeight - outputHeight - (30.0F * state.render.uiScale);
 
         InitTabs(state);
 

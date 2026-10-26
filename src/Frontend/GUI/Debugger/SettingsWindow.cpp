@@ -492,7 +492,7 @@ static void DrawExportCartridgePopup(AppState& state) {
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted("SID Model:");
         ImGui::SameLine();
-        ImGui::PushItemWidth(100);
+        ImGui::PushItemWidth(100.0F * state.render.uiScale);
         const char* sidModels[] = { "MOS 6581", "MOS 8580" };
         ImGui::Combo("##ExportSIDModel", &exportSidModel, sidModels, 2);
         ImGui::PopItemWidth();

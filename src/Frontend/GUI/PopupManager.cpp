@@ -75,7 +75,7 @@ static void DrawROMAndStatePopups(AppState& state) {
         }
 
         ImGui::Spacing();
-        ImGui::SetNextWindowSize(ImVec2(120, 0));
+        ImGui::SetNextWindowSize(ImVec2(120.0F * state.render.uiScale, 0));
         if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
         }

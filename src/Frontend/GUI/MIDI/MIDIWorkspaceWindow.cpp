@@ -621,14 +621,14 @@ void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppSt
     }
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(58.0F);
+    ImGui::SetNextItemWidth(58.0F * state.render.uiScale);
     auto bpmFloat = static_cast<float>(ws.project.bpm);
     if (ImGui::DragFloat("BPM", &bpmFloat, 0.5F, 20.0F, 300.0F, "%.0f")) {
         ws.project.bpm = static_cast<double>( std::clamp(bpmFloat, 20.0F, 300.0F));
     }
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(64.0F);
+    ImGui::SetNextItemWidth(64.0F * state.render.uiScale);
     static constexpr std::array<const char*, 5> SNAP_LABELS = {"1/4", "1/8", "1/16", "1/32", "Free"};
     static constexpr std::array<double, 5> SNAP_VALUES = {1.0, 0.5, 0.25, 0.125, 0.0};
     int currentSnapIdx = 2;
@@ -643,7 +643,7 @@ void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppSt
     }
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(74.0F);
+    ImGui::SetNextItemWidth(74.0F * state.render.uiScale);
     int chipIdx = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
     static constexpr std::array<const char*, 2> CHIP_LABELS = {"6581", "8580"};
     if (ImGui::Combo("##ChipModel", &chipIdx, CHIP_LABELS.data(), static_cast<int>(CHIP_LABELS.size()))) {
@@ -837,13 +837,13 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
     DrawColoredText(Theme::AccentPrimary, "TRACK & SID INSTRUMENT BANK");
     ImGui::Separator();
 
-    ImGui::SetNextItemWidth(130.0F);
+    ImGui::SetNextItemWidth(130.0F * state.render.uiScale);
     if (ImGui::InputText("Name", ws.trackNameBuf.data(), ws.trackNameBuf.size())) {
         track.name = ws.trackNameBuf.data();
     }
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(65.0F);
+    ImGui::SetNextItemWidth(65.0F * state.render.uiScale);
     int chanOneBased = track.channel + 1;
     if (ImGui::SliderInt("Ch", &chanOneBased, 1, 16)) {
         track.channel = std::clamp(chanOneBased - 1, 0, 15);
@@ -856,7 +856,7 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
     ShowTextTooltip("MIDI Channel (1..16). Channel 10 is GM Percussion / SID Drum Kit.");
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(120.0F);
+    ImGui::SetNextItemWidth(120.0F * state.render.uiScale);
     static constexpr std::array<const char*, 5> ROLE_ITEMS = {
         "Auto", "* Main Melody", "Bass", "Harmony", "Percussion (Ch10)"
     };
@@ -886,7 +886,7 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
 
     if (track.channel != 9) {
         std::string currentPresetLabel = MIDI::MIDISoundBank::GetProgramName(track.program);
-        ImGui::SetNextItemWidth(220.0F);
+        ImGui::SetNextItemWidth(220.0F * state.render.uiScale);
         if (ImGui::BeginCombo("SID Preset", currentPresetLabel.c_str())) {
             for (const auto& preset : presets) {
                 const bool selected = (track.program >= preset.programStart && track.program <= preset.programEnd);
@@ -933,7 +933,7 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
             break;
         }
     }
-    ImGui::SetNextItemWidth(220.0F);
+    ImGui::SetNextItemWidth(220.0F * state.render.uiScale);
     if (ImGui::BeginCombo("Waveform", currentWaveLabel.c_str())) {
         for (const auto& opt : waveOpts) {
             const bool selected = (opt.waveMask == track.customWaveOverride);
@@ -989,7 +989,7 @@ void DrawPianoRollToolbar(MIDIWorkspaceState& ws, Control::AppState& state) {
             ws.selectedTrackIndex = 0;
         }
         const auto& curTrack = ws.project.tracks.at(ws.selectedTrackIndex);
-        ImGui::SetNextItemWidth(165.0F);
+        ImGui::SetNextItemWidth(165.0F * state.render.uiScale);
         if (ImGui::BeginCombo("##ActiveTrackCombo", curTrack.name.c_str())) {
             for (std::size_t idx = 0; idx < ws.project.tracks.size(); ++idx) {
                 const auto& trk = ws.project.tracks.at(idx);

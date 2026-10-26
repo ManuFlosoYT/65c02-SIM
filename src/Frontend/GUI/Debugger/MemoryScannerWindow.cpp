@@ -92,29 +92,29 @@ void DrawMemoryScannerWindow(AppState& state) {
     ImGui::Separator();
 
     int type = static_cast<int>(scan.query.type);
-    ImGui::SetNextItemWidth(120.0F);
+    ImGui::SetNextItemWidth(120.0F * state.render.uiScale);
     if (ImGui::Combo("Type", &type, "8-bit\0" "16-bit LE\0" "String\0")) {
         scan.query.type = static_cast<ScanType>(type);
         scan.candidates.clear();
         scan.scanned = false;
     }
 
-    ImGui::SetNextItemWidth(90.0F);
+    ImGui::SetNextItemWidth(90.0F * state.render.uiScale);
     ImGui::InputScalar("Start", ImGuiDataType_U16, &scan.startAddr, nullptr, nullptr, "0x%04X",
                        ImGuiInputTextFlags_CharsHexadecimal);
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(90.0F);
+    ImGui::SetNextItemWidth(90.0F * state.render.uiScale);
     ImGui::InputScalar("End", ImGuiDataType_U16, &scan.endAddr, nullptr, nullptr, "0x%04X",
                        ImGuiInputTextFlags_CharsHexadecimal);
 
     const bool isString = scan.query.type == ScanType::String;
     if (isString) {
-        ImGui::SetNextItemWidth(240.0F);
+        ImGui::SetNextItemWidth(240.0F * state.render.uiScale);
         if (ImGui::InputText("Text", scan.text, sizeof(scan.text))) {
             scan.query.text = scan.text;
         }
     } else {
-        ImGui::SetNextItemWidth(90.0F);
+        ImGui::SetNextItemWidth(90.0F * state.render.uiScale);
         ImGui::InputScalar("Value", ImGuiDataType_U16, &scan.query.value, nullptr, nullptr,
                            scan.query.type == ScanType::U8 ? "%02X" : "%04X", ImGuiInputTextFlags_CharsHexadecimal);
         if (scan.query.type == ScanType::U8) {
@@ -139,7 +139,7 @@ void DrawMemoryScannerWindow(AppState& state) {
         scan.query.filter = ScanFilter::Exact;
     } else {
         int filter = static_cast<int>(scan.query.filter);
-        ImGui::SetNextItemWidth(150.0F);
+        ImGui::SetNextItemWidth(150.0F * state.render.uiScale);
         if (ImGui::Combo("##Filter", &filter, "Exact value\0" "Increased\0" "Decreased\0" "Unchanged\0")) {
             scan.query.filter = static_cast<ScanFilter>(filter);
         }

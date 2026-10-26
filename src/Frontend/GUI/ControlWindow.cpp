@@ -153,7 +153,7 @@ static void DrawAudioVideoControls(AppState& state) {
         ImGui::SameLine();
         bool sidModelOverridden = state.emulator.GetCartridge().config.sidModel.has_value();
         ImGui::BeginDisabled(sidModelOverridden);
-        ImGui::PushItemWidth(150);
+        ImGui::PushItemWidth(150.0F * state.render.uiScale);
         const char* sidModels[] = { "MOS 6581", "MOS 8580" };
         int currentSIDModel = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
         if (ImGui::Combo("##SIDModel", &currentSIDModel, sidModels, 2)) {
@@ -221,7 +221,7 @@ static void DrawTargetIPS(AppState& state) {
     ImGui::PopStyleColor();
     ImGui::SameLine();
 
-    ImGui::SetNextItemWidth(80.0F);
+    ImGui::SetNextItemWidth(80.0F * state.render.uiScale);
     if (ImGui::InputDouble("##TargetFreq", &s_displayValue, 0.0, 0.0, "%g")) {
         if (s_displayValue > 0.0) {
             while (s_displayValue >= 1000.0 && s_currentUnit > 0) {
@@ -241,7 +241,7 @@ static void DrawTargetIPS(AppState& state) {
     }
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(95.0F);
+    ImGui::SetNextItemWidth(95.0F * state.render.uiScale);
     const char* unitsHz[] = { "MHz", "KHz", "Hz" };
     const char* unitsIPS[] = { "MIPS", "KIPS", "IPS" };
     const char** units = state.emulation.cycleAccurate ? unitsHz : unitsIPS;
@@ -659,16 +659,16 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
 
     ImGui::SetNextWindowPos(work_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(mainColWidth, controlHeight), ImGuiCond_Always);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0F, 10.0F));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0F, 6.0F));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0F, 5.0F));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0F * state.render.uiScale, 10.0F * state.render.uiScale));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0F * state.render.uiScale, 6.0F * state.render.uiScale));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0F * state.render.uiScale, 5.0F * state.render.uiScale));
     ImGui::Begin("Control", nullptr, window_flags | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     DrawControlButtonBar(state);
     DrawDebugMenu(state);
 
     float y1 = ImGui::GetCursorPosY();
-    constexpr float kRegHeight = 20.0F;
+    const float kRegHeight = ImGui::GetFrameHeight();
     float regPosY = ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y - kRegHeight;
     float sep2PosY = regPosY - ImGui::GetStyle().ItemSpacing.y - 4.0F;
     float midSpace = sep2PosY - y1;

@@ -15,7 +15,7 @@ void DrawCPURegisters(Control::AppState& state) {
     ImGui::TextUnformatted("CPU Registers");
     ImGui::PopStyleColor();
 
-    ImGui::PushItemWidth(100);
+    ImGui::PushItemWidth(100.0F * state.render.uiScale);
 
     uint16_t pcVal = cpu.PC;
     if (ImGui::InputScalar("PC", ImGuiDataType_U16, &pcVal, nullptr, nullptr, "%04X",
@@ -56,7 +56,7 @@ void DrawCPURegisters(Control::AppState& state) {
     ImGui::PopItemWidth();
 }
 
-void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled) {
+void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled, float scale) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
@@ -98,7 +98,7 @@ void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row, uint16
         }
 
         ImGui::PushID(addr);
-        ImGui::PushItemWidth(24.2F);
+        ImGui::PushItemWidth(24.2F * scale);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0F, ImGui::GetStyle().FramePadding.y));
         if (ImGui::InputScalar("##m", ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
                                ImGuiInputTextFlags_CharsHexadecimal)) {
@@ -143,13 +143,13 @@ void DrawMemoryEditor(Control::AppState& state) {
                           ImGuiChildFlags_Borders)) {
         if (ImGui::BeginTable("MemTable", 17,
                               ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY)) {
-            ImGui::TableSetupColumn("Addr", ImGuiTableColumnFlags_WidthFixed, 45.0F);
+            ImGui::TableSetupColumn("Addr", ImGuiTableColumnFlags_WidthFixed, 45.0F * state.render.uiScale);
             static constexpr std::array<const char*, 16> kHexHeaders = {
                 "0", "1", "2", "3", "4", "5", "6", "7",
                 "8", "9", "A", "B", "C", "D", "E", "F"
             };
             for (const char* header : kHexHeaders) {
-                ImGui::TableSetupColumn(header, ImGuiTableColumnFlags_WidthFixed, 24.2F);
+                ImGui::TableSetupColumn(header, ImGuiTableColumnFlags_WidthFixed, 24.2F * state.render.uiScale);
             }
             ImGui::TableHeadersRow();
 
@@ -159,7 +159,7 @@ void DrawMemoryEditor(Control::AppState& state) {
             clipper.Begin((0xFFFF + 1) / 16);
             while (clipper.Step()) {
                 for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                    DrawMemoryRow(state.emulator, bus, row, pc, heatmapEnabled);
+                    DrawMemoryRow(state.emulator, bus, row, pc, heatmapEnabled, state.render.uiScale);
                 }
             }
             ImGui::EndTable();
@@ -168,7 +168,7 @@ void DrawMemoryEditor(Control::AppState& state) {
     ImGui::EndChild();
 }
 
-void DrawTools(Core::Emulator& emulator) {
+void DrawTools(Core::Emulator& emulator, float scale) {
     Hardware::Bus& bus = emulator.GetMem();
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("Tools");
@@ -177,7 +177,7 @@ void DrawTools(Core::Emulator& emulator) {
     static uint16_t startAddr = 0x0000;
     static uint16_t endAddr = 0x00FF;
 
-    ImGui::PushItemWidth(100);
+    ImGui::PushItemWidth(100.0F * scale);
     ImGui::InputScalar("Start", ImGuiDataType_U16, &startAddr, nullptr, nullptr, "%04X",
                        ImGuiInputTextFlags_CharsHexadecimal);
     ImGui::SameLine();
@@ -222,7 +222,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
     ImGui::Separator();
     ImGui::Spacing();
 
-    DrawTools(state.emulator);
+    DrawTools(state.emulator, state.render.uiScale);
 }
 
 }  // namespace GUI

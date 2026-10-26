@@ -133,6 +133,7 @@ struct RenderState {
     int lastDisplayH = 0;
     std::array<float, 2> sidWindowPos = {0.0F, 0.0F};
     std::array<float, 2> sidWindowSize = {0.0F, 0.0F};
+    float uiScale = 1.0F;
 };
 
 enum class PendingCartridgeAction : std::uint8_t {

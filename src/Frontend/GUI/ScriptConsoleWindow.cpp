@@ -11,7 +11,7 @@ void DrawScriptConsoleWindow(Control::AppState& state, const ImVec2& work_pos, c
         return;
     }
 
-    ImGui::SetNextWindowSize(ImVec2(700, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(700.0F * state.render.uiScale, 400.0F * state.render.uiScale), ImGuiCond_FirstUseEver);
 
     if (ImGui::Begin("Script Console", &state.script.showConsole, ImGuiWindowFlags_NoCollapse)) {
         if (ImGui::Button("Clear")) {

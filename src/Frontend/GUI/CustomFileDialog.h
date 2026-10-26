@@ -13,7 +13,7 @@ public:
                            ImGuiFileDialogFlags vFlags = ImGuiFileDialogFlags_None);
 
     static bool Display(const std::string& vKey, ImGuiWindowFlags vFlags = ImGuiWindowFlags_NoCollapse, 
-                        ImVec2 vMinSize = ImVec2(800, 600), ImVec2 vMaxSize = ImVec2(32767, 32767));
+                        ImVec2 vMinSize = ImVec2(400, 300), ImVec2 vMaxSize = ImVec2(32767, 32767));
 
     [[nodiscard]] static bool IsOpened();
     [[nodiscard]] static bool IsOk();

@@ -305,7 +305,7 @@ void DrawFlameGraphTab(AppState& state, const SubroutineProfiler::Snapshot& snap
     static bool rootAtTop = false;
     ImGui::Checkbox("Root at Top", &rootAtTop);
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(160.0F);
+    ImGui::SetNextItemWidth(160.0F * state.render.uiScale);
     ImGui::InputTextWithHint("##ProfilerFilter", "Filter...", gProfilerFilter, sizeof(gProfilerFilter));
     if (gProfilerFilter[0] != '\0') {
         ImGui::SameLine();
@@ -520,7 +520,7 @@ void DrawFlameGraphTab(AppState& state, const SubroutineProfiler::Snapshot& snap
     }
 }
 
-void DrawSubroutinesTab(const SubroutineProfiler::Snapshot& snapshot) {
+void DrawSubroutinesTab(AppState& state, const SubroutineProfiler::Snapshot& snapshot) {
     if (!snapshot.root || snapshot.root->children.empty()) {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.7F, 0.7F, 0.7F, 1.0F), "No subroutine profiling data recorded yet.");
@@ -570,7 +570,7 @@ void DrawSubroutinesTab(const SubroutineProfiler::Snapshot& snapshot) {
         rows.push_back(std::move(val));
     }
 
-    ImGui::SetNextItemWidth(200.0F);
+    ImGui::SetNextItemWidth(200.0F * state.render.uiScale);
     ImGui::InputTextWithHint("##SubFilter", "Filter subroutines...", gProfilerFilter, sizeof(gProfilerFilter));
     ImGui::SameLine();
     if (gProfilerFilter[0] != '\0' && ImGui::SmallButton("Clear Filter")) {
@@ -778,7 +778,7 @@ void DrawProfilerWindow(AppState& state) {
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Subroutines")) {
-            DrawSubroutinesTab(snapshot);
+            DrawSubroutinesTab(state, snapshot);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Page Cross Alerts")) {
