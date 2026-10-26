@@ -3,61 +3,13 @@
 #include "Hardware/Core/ISerializable.h"
 #include <picosha2.h>
 
+#include <array>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
 namespace Core {
-
-namespace {
-
-SnapshotDelta CreateXORDiff(const std::string& oldState, const std::string& newState, uint64_t cycles,
-                            uint64_t instructions) {
-    SnapshotDelta delta;
-    delta.totalCycles = cycles;
-    delta.totalInstructions = instructions;
-
-    if (oldState.empty() || oldState.size() != newState.size()) {
-        delta.isKeyframe = true;
-        delta.fullState = oldState;
-        return delta;
-    }
-
-    const size_t len = oldState.size();
-    size_t i = 0;
-    size_t totalDiffBytes = 0;
-
-    while (i < len) {
-        if (oldState.at(i) == newState.at(i)) {
-            ++i;
-            continue;
-        }
-        size_t start = i;
-        while (i < len && oldState.at(i) != newState.at(i)) {
-            ++i;
-        }
-
-        SnapshotDelta::Chunk chunk;
-        chunk.offset = static_cast<uint32_t>(start);
-        chunk.xorData.resize(i - start);
-        for (size_t j = 0; j < chunk.xorData.size(); ++j) {
-            chunk.xorData.at(j) = static_cast<uint8_t>(oldState.at(start + j) ^ newState.at(start + j));
-        }
-        totalDiffBytes += chunk.xorData.size();
-        delta.chunks.push_back(std::move(chunk));
-    }
-
-    if (totalDiffBytes > (len * 4) / 10) {
-        delta.chunks.clear();
-        delta.isKeyframe = true;
-        delta.fullState = oldState;
-    }
-
-    return delta;
-}
-
-}  // namespace
 
 SavestateManager::SavestateManager(Emulator& emulator) : emulator(emulator) {}
 
@@ -71,34 +23,7 @@ bool SavestateManager::SaveComponentsState(std::ostream& stateStream) {
 }
 
 void SavestateManager::SaveInternalState(std::ostream& stateStream) {
-    int baud = emulator.serialBridge.GetBaudDelay();
-    Hardware::ISerializable::Serialize(stateStream, baud);
-
-    bool gpuE = emulator.gpuEnabled;
-    Hardware::ISerializable::Serialize(stateStream, gpuE);
-
-    int tIPS = emulator.GetTargetIPS();
-    Hardware::ISerializable::Serialize(stateStream, tIPS);
-
-    emulator.serialBridge.SerializeBuffer(stateStream);
-
-    auto binPathLen = static_cast<uint32_t>(emulator.currentBinPath.length());
-    Hardware::ISerializable::Serialize(stateStream, binPathLen);
-    stateStream.write(emulator.currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
-
-    bool autoReload = emulator.IsAutoReloadEnabled();
-    Hardware::ISerializable::Serialize(stateStream, autoReload);
-
-    uint64_t totalCyc = emulator.totalCycles.load(std::memory_order_relaxed);
-    Hardware::ISerializable::Serialize(stateStream, totalCyc);
-
-    uint64_t totalInst = emulator.totalInstructions.load(std::memory_order_relaxed);
-    Hardware::ISerializable::Serialize(stateStream, totalInst);
-
-    Hardware::ISerializable::Serialize(stateStream, emulator.espEnabled);
-    Hardware::ISerializable::Serialize(stateStream, emulator.sdEnabled);
-    bool aciaEsp = emulator.serialBridge.IsACIAESPBridge();
-    Hardware::ISerializable::Serialize(stateStream, aciaEsp);
+    emulator.SaveInternalState(stateStream);
 }
 
 bool SavestateManager::SaveState(const std::string& filename) {
@@ -108,7 +33,7 @@ bool SavestateManager::SaveState(const std::string& filename) {
     if (!SaveComponentsState(stateStream)) {
         return false;
     }
-    SaveInternalState(stateStream);
+    emulator.SaveInternalState(stateStream);
 
     std::string payload = stateStream.str();
     std::string payloadHash = picosha2::hash256_hex_string(payload);
@@ -117,7 +42,6 @@ bool SavestateManager::SaveState(const std::string& filename) {
     auto versionLen = static_cast<uint32_t>(version.length());
     std::array<char, 12> magic{"SIM65C02SST"};
 
-    // Metadata hash (Magic + Version)
     std::string metadata = std::string(magic.data()) + version;
     std::string metadataHash = picosha2::hash256_hex_string(metadata);
 
@@ -173,7 +97,6 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
     lastLoadVersion.assign(versionLen, '\0');
     inFile.read(lastLoadVersion.data(), static_cast<std::streamsize>(versionLen));
 
-    // Calculate metadata hash for verification (Magic + Version)
     std::string metadata = std::string(magic.data()) + lastLoadVersion;
     std::string computedMetadataHash = picosha2::hash256_hex_string(metadata);
 
@@ -193,7 +116,6 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
 
     lastLoadResult = SavestateLoadResult::Success;
 
-    // Verify Metadata Hash
     if (strncmp(fileMetadataHash.data(), computedMetadataHash.c_str(), hashLen) != 0) {
         std::cerr << "Error: Savestate metadata corruption detected!\n";
         lastLoadResult = SavestateLoadResult::GenericError;
@@ -204,14 +126,12 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
 
     emulator.SetupHardware();
 
-    // Verify Payload Hash
     std::string computedPayloadHash = picosha2::hash256_hex_string(payload);
     if (strncmp(filePayloadHash.data(), computedPayloadHash.c_str(), hashLen) != 0) {
         lastLoadResult = SavestateLoadResult::HashMismatch;
         std::cerr << "Warning: Savestate payload hash mismatch!\n";
     }
 
-    // Check Version
     if (lastLoadVersion != PROJECT_VERSION) {
         if (lastLoadResult == SavestateLoadResult::Success) {
             lastLoadResult = SavestateLoadResult::VersionMismatch;
@@ -225,7 +145,7 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
     bool structuralSuccess = LoadComponentsState(stateStream);
 
     if (structuralSuccess) {
-        structuralSuccess = LoadInternalState(stateStream);
+        structuralSuccess = emulator.LoadInternalState(stateStream);
     }
 
     if (!structuralSuccess || (!stateStream.good() && !stateStream.eof())) {
@@ -244,44 +164,24 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
 
 void SavestateManager::Rewind() {
     emulator.WaitUntilSafeToMutate();
-    std::scoped_lock lock(rewindMutex);
-    if (rewindBuffer.empty()) {
+    std::string stateToRestore;
+    uint64_t cycles = 0;
+    uint64_t instructions = 0;
+    if (!rewindHistory.PopRewind(stateToRestore, cycles, instructions)) {
         return;
     }
 
-    SnapshotDelta delta = std::move(rewindBuffer.back());
-    rewindBuffer.pop_back();
+    emulator.totalCycles.store(cycles, std::memory_order_relaxed);
+    emulator.totalInstructions.store(instructions, std::memory_order_relaxed);
 
-    if (delta.isKeyframe) {
-        lastCapturedState = std::move(delta.fullState);
-    } else {
-        for (const auto& chunk : delta.chunks) {
-            if (chunk.offset + chunk.xorData.size() <= lastCapturedState.size()) {
-                for (size_t j = 0; j < chunk.xorData.size(); ++j) {
-                    lastCapturedState.at(chunk.offset + j) ^= static_cast<char>(chunk.xorData.at(j));
-                }
-            }
-        }
-    }
-
-    lastCapturedCycles = delta.totalCycles;
-    lastCapturedInstructions = delta.totalInstructions;
-    emulator.totalCycles.store(delta.totalCycles, std::memory_order_relaxed);
-    emulator.totalInstructions.store(delta.totalInstructions, std::memory_order_relaxed);
-
-    std::stringstream stateStream(lastCapturedState);
+    std::stringstream stateStream(stateToRestore);
     if (LoadComponentsState(stateStream)) {
-        LoadInternalState(stateStream);
+        emulator.LoadInternalState(stateStream);
     }
     emulator.engine.SetHalted(false);
     emulator.pendingInterruptAny.store(
         emulator.pendingIRQ.load() || emulator.pendingNMI.load() || emulator.via.isIRQAsserted() || emulator.acia.HasIRQ(),
         std::memory_order_relaxed);
-}
-
-bool SavestateManager::CanRewind() const {
-    std::scoped_lock lock(rewindMutex);
-    return !rewindBuffer.empty();
 }
 
 bool SavestateManager::LoadComponentsState(std::istream& stateStream) {
@@ -294,47 +194,7 @@ bool SavestateManager::LoadComponentsState(std::istream& stateStream) {
 }
 
 bool SavestateManager::LoadInternalState(std::istream& stateStream) {
-    int baud = 0;
-    Hardware::ISerializable::Deserialize(stateStream, baud);
-    emulator.serialBridge.SetBaudDelay(baud);
-
-    bool gpuE = false;
-    Hardware::ISerializable::Deserialize(stateStream, gpuE);
-    emulator.gpuEnabled = gpuE;
-
-    int tIPS = 0;
-    Hardware::ISerializable::Deserialize(stateStream, tIPS);
-    emulator.SetTargetIPS(tIPS);
-
-    if (!emulator.serialBridge.DeserializeBuffer(stateStream)) {
-        return false;
-    }
-
-    uint32_t binPathLen = 0;
-    Hardware::ISerializable::Deserialize(stateStream, binPathLen);
-    if (binPathLen > 4096) { return false; }
-    emulator.currentBinPath.assign(binPathLen, '\0');
-    stateStream.read(emulator.currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
-
-    bool autoReload = false;
-    Hardware::ISerializable::Deserialize(stateStream, autoReload);
-    emulator.SetAutoReload(autoReload);
-
-    uint64_t totalCyc = 0;
-    Hardware::ISerializable::Deserialize(stateStream, totalCyc);
-    emulator.totalCycles.store(totalCyc, std::memory_order_relaxed);
-
-    uint64_t totalInst = 0;
-    Hardware::ISerializable::Deserialize(stateStream, totalInst);
-    emulator.totalInstructions.store(totalInst, std::memory_order_relaxed);
-
-    Hardware::ISerializable::Deserialize(stateStream, emulator.espEnabled);
-    Hardware::ISerializable::Deserialize(stateStream, emulator.sdEnabled);
-    bool aciaEsp = false;
-    Hardware::ISerializable::Deserialize(stateStream, aciaEsp);
-    emulator.serialBridge.SetACIAESPBridge(aciaEsp);
-
-    return true;
+    return emulator.LoadInternalState(stateStream);
 }
 
 void SavestateManager::SaveStateToBuffer() {
@@ -342,30 +202,13 @@ void SavestateManager::SaveStateToBuffer() {
     if (!SaveComponentsState(stateStream)) {
         return;
     }
-    SaveInternalState(stateStream);
+    emulator.SaveInternalState(stateStream);
 
-    std::scoped_lock lock(rewindMutex);
     std::string currentStateStr = stateStream.str();
     uint64_t currentCycles = emulator.totalCycles.load(std::memory_order_relaxed);
     uint64_t currentInstructions = emulator.totalInstructions.load(std::memory_order_relaxed);
 
-    if (lastCapturedState.empty()) {
-        lastCapturedState = std::move(currentStateStr);
-        lastCapturedCycles = currentCycles;
-        lastCapturedInstructions = currentInstructions;
-        return;
-    }
-
-    SnapshotDelta delta =
-        CreateXORDiff(lastCapturedState, currentStateStr, lastCapturedCycles, lastCapturedInstructions);
-    rewindBuffer.push_back(std::move(delta));
-    if (rewindBuffer.size() > MAX_REWIND_STATES) {
-        rewindBuffer.pop_front();
-    }
-
-    lastCapturedState = std::move(currentStateStr);
-    lastCapturedCycles = currentCycles;
-    lastCapturedInstructions = currentInstructions;
+    rewindHistory.PushState(std::move(currentStateStr), currentCycles, currentInstructions);
 }
 
 void SavestateManager::CapturePreStepSnapshot() {
@@ -373,62 +216,19 @@ void SavestateManager::CapturePreStepSnapshot() {
     if (!SaveComponentsState(stateStream)) {
         return;
     }
-    SaveInternalState(stateStream);
+    emulator.SaveInternalState(stateStream);
 
-    std::scoped_lock lock(rewindMutex);
     std::string currentStateStr = stateStream.str();
-    if (lastCapturedState.empty()) {
-        lastCapturedState = std::move(currentStateStr);
-        lastCapturedCycles = emulator.totalCycles.load(std::memory_order_relaxed);
-        lastCapturedInstructions = emulator.totalInstructions.load(std::memory_order_relaxed);
-        return;
-    }
+    uint64_t currentCycles = emulator.totalCycles.load(std::memory_order_relaxed);
+    uint64_t currentInstructions = emulator.totalInstructions.load(std::memory_order_relaxed);
 
-    if (currentStateStr != lastCapturedState) {
-        uint64_t currentCycles = emulator.totalCycles.load(std::memory_order_relaxed);
-        uint64_t currentInstructions = emulator.totalInstructions.load(std::memory_order_relaxed);
-        SnapshotDelta delta =
-            CreateXORDiff(lastCapturedState, currentStateStr, lastCapturedCycles, lastCapturedInstructions);
-        rewindBuffer.push_back(std::move(delta));
-        if (rewindBuffer.size() > MAX_REWIND_STATES) {
-            rewindBuffer.pop_front();
-        }
-        lastCapturedState = std::move(currentStateStr);
-        lastCapturedCycles = currentCycles;
-        lastCapturedInstructions = currentInstructions;
-    }
+    rewindHistory.PushPreStepState(std::move(currentStateStr), currentCycles, currentInstructions);
 }
 
 void SavestateManager::OnSliceStep() {
-    if (rewindSnapshotsEnabled) {
-        rewindSliceCounter++;
-        if (rewindSliceCounter >= rewindInterval) {
-            SaveStateToBuffer();
-            rewindSliceCounter = 0;
-        }
+    if (rewindHistory.ShouldCaptureOnSlice()) {
+        SaveStateToBuffer();
     }
-}
-
-void SavestateManager::SetRewindSnapshotsEnabled(bool enabled) {
-    rewindSnapshotsEnabled = enabled;
-    if (!rewindSnapshotsEnabled) {
-        ClearRewindBuffer();
-    }
-}
-
-void SavestateManager::SetRewindInterval(int n) {
-    if (n > 0) {
-        rewindInterval = n;
-    }
-}
-
-void SavestateManager::ClearRewindBuffer() {
-    std::scoped_lock lock(rewindMutex);
-    rewindBuffer.clear();
-    lastCapturedState.clear();
-    lastCapturedCycles = 0;
-    lastCapturedInstructions = 0;
-    rewindSliceCounter = 0;
 }
 
 }  // namespace Core

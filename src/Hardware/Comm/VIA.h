@@ -3,6 +3,9 @@
 #include <functional>
 
 #include "Hardware/Core/IBusDevice.h"
+#include "Hardware/Comm/VIATimer1.h"
+#include "Hardware/Comm/VIATimer2.h"
+#include "Hardware/Comm/VIAShiftRegister.h"
 
 namespace Hardware {
 
@@ -28,6 +31,13 @@ class VIA : public IBusDevice {
     [[nodiscard]] Byte GetDDRB() const;
     [[nodiscard]] Byte GetT1L_L() const;
 
+    [[nodiscard]] const VIATimer1& GetTimer1() const { return timer1; }
+    [[nodiscard]] VIATimer1& GetTimer1() { return timer1; }
+    [[nodiscard]] const VIATimer2& GetTimer2() const { return timer2; }
+    [[nodiscard]] VIATimer2& GetTimer2() { return timer2; }
+    [[nodiscard]] const VIAShiftRegister& GetShiftRegister() const { return shiftRegister; }
+    [[nodiscard]] VIAShiftRegister& GetShiftRegister() { return shiftRegister; }
+
     // External Input Setters (to simulate pins)
     void SetInputA(Byte val);
     void SetInputB(Byte val);
@@ -39,7 +49,7 @@ class VIA : public IBusDevice {
     [[nodiscard]] inline bool GetCA1() const { return ca1_in; }
     [[nodiscard]] inline bool GetCA2() const { return (((pcr >> 1) & 0x07) >= 4) ? ca2_out : ca2_in; }
     [[nodiscard]] inline bool GetCB1() const { Byte m = (acr >> 2) & 0x07; return (m == 1 || m == 2 || m == 4 || m == 5 || m == 6) ? cb1_out : cb1_in; }
-    [[nodiscard]] inline bool GetCB2() const { Byte m = (acr >> 2) & 0x07; return (m != 0) ? sr_out_cb2 : (((pcr >> 5) & 0x07) >= 4 ? cb2_out : cb2_in); }
+    [[nodiscard]] inline bool GetCB2() const { Byte m = (acr >> 2) & 0x07; return (m != 0) ? shiftRegister.sr_out_cb2 : (((pcr >> 5) & 0x07) >= 4 ? cb2_out : cb2_in); }
 
     inline void Clock();
     inline void Clock(uint32_t cycles);
@@ -51,23 +61,14 @@ class VIA : public IBusDevice {
     Byte ora = 0;    // 0x01 Output Register A
     Byte ddrb = 0;   // 0x02 Data Direction Register B
     Byte ddra = 0;   // 0x03 Data Direction Register A
-    Byte t1l_l = 0;  // 0x06 Timer 1 Latch Low
-    Byte t1l_h = 0;  // 0x07 Timer 1 Latch High
-    Byte sr = 0;     // 0x0A Shift Register
     Byte acr = 0;    // 0x0B Auxiliary Control Register
     Byte pcr = 0;    // 0x0C Peripheral Control Register
     Byte ifr = 0;    // 0x0D Interrupt Flag Register
     Byte ier = 0;    // 0x0E Interrupt Enable Register
 
-    // Internal state
-    Word t1c = 0xFFFF;  // Timer 1 Counter (16-bit internal)
-    Word t1l = 0xFFFF;  // Timer 1 Latch (16-bit internal)
-    Word t2c = 0xFFFF;  // Timer 2 Counter (16-bit internal)
-    Word t2l = 0xFFFF;  // Timer 2 Latch (16-bit internal)
-
-    bool t1_interrupt_armed = false;  // Is T1 interrupt armed?
-    bool t2_interrupt_armed = false;  // Is T2 interrupt armed?
-    bool t1_pb7_output = true;        // State of PB7 due to specific T1 mode
+    VIATimer1 timer1;
+    VIATimer2 timer2;
+    VIAShiftRegister shiftRegister;
 
     Byte ira = 0x00;  // Input Register A (External Pins)
     Byte irb = 0x00;  // Input Register B (External Pins)
@@ -82,17 +83,12 @@ class VIA : public IBusDevice {
     bool cb1_in = true;
     bool cb2_in = true;
 
-    // Shift Register state
-    Byte sr_cnt = 0;         // Number of bits shifted so far (for 8-bit cycle)
-    bool sr_active = false;  // Is SR currently shifting?
-    bool sr_out_cb2 = true;  // State of CB2 output for SR modes
-
     bool anyActive = false;
     void UpdateAnyActive() {
         Byte sr_mode = (acr >> 2) & 0x07;
         bool t2_sr_reload = (sr_mode == 1 || sr_mode == 4 || sr_mode == 5);
-        anyActive = t1_interrupt_armed || ((acr & 0xC0) != 0) || t2_interrupt_armed || t2_sr_reload ||
-                    sr_active || ca2_pulse_pending || cb1_pulse_pending || cb2_pulse_pending;
+        anyActive = timer1.t1Active || ((acr & 0xC0) != 0) || timer2.t2_interrupt_armed || t2_sr_reload ||
+                    shiftRegister.sr_active || ca2_pulse_pending || cb1_pulse_pending || cb2_pulse_pending;
     }
 
     void ClockSlow();
@@ -154,39 +150,21 @@ inline bool VIA::isIRQAsserted() const { return (ifr & 0x80) != 0; }
 
 inline Byte VIA::GetEffectiveORB() const {
     if ((acr & 0x80) != 0) {
-        return (orb & ~0x80) | (t1_pb7_output ? 0x80 : 0);
+        return (orb & ~0x80) | (timer1.t1_pb7_output ? 0x80 : 0);
     }
     return orb;
 }
 
 inline void VIA::HandleTimer1() {
-    t1c--;
-    if (t1c == 0xFFFF) [[unlikely]] {  // Underflow from 0 to -1 (0xFFFF)
-        // Interrupt Logic
-        if (t1_interrupt_armed) {
-            ifr |= 0x40;  // Set T1 interrupt
-            if ((acr & 0x40) == 0) {
-                // One-shot mode, disable future interrupts until reloaded
-                t1_interrupt_armed = false;
-            }
+    auto res = timer1.Clock(acr);
+    if (res.underflow) [[unlikely]] {
+        if (res.interruptTriggered) {
+            ifr |= 0x40;
         }
 
-        t1c = t1l;    // Reload
-
-        // PB7 Toggling (ACR bit 7)
-        if ((acr & 0x80) != 0) {
-            if ((acr & 0x40) == 0) {
-                // One-shot: raise PB7 on timeout
-                t1_pb7_output = true;
-            } else {
-                // Continuous: toggle PB7 on timeout
-                t1_pb7_output = !t1_pb7_output;
-            }
-            // If DDRB bit 7 is output, this reflects on the pin
-            if ((ddrb & 0x80) != 0) {
-                if (port_b_callback) {
-                    port_b_callback((irb & ~ddrb) | (GetEffectiveORB() & ddrb));
-                }
+        if (res.pb7Toggled && ((ddrb & 0x80) != 0)) {
+            if (port_b_callback) {
+                port_b_callback((irb & ~ddrb) | (GetEffectiveORB() & ddrb));
             }
         }
 
@@ -195,98 +173,39 @@ inline void VIA::HandleTimer1() {
 }
 
 inline bool VIA::HandleTimer2() {
-    bool underflowed = false;
-    // Mode check: ACR bit 5 (0 = One shot)
-    // If (acr & 0x20) == 0 -> One Shot counts PHI2
-    // If (acr & 0x20) == 1 -> Pulse Counting (handled in SetInputB)
-    if ((acr & 0x20) == 0) {
-        t2c--;
-        if (t2c == 0xFFFF) [[unlikely]] {
-            underflowed = true;
-            if (t2_interrupt_armed) {
-                ifr |= 0x20;
-                t2_interrupt_armed = false;  // T2 one-shot interrupt disabled until reloaded
-                UpdateIRQ();
-            }
-            
-            // In Shift Register modes 1, 4, 5, Timer 2 acts as a baud rate generator and auto-reloads.
-            Byte sr_mode = (acr >> 2) & 0x07;
-            if (sr_mode == 1 || sr_mode == 4 || sr_mode == 5) {
-                t2c = t2l;
-            }
-        }
+    auto res = timer2.Clock(acr);
+    if (res.interruptTriggered) {
+        ifr |= 0x20;
+        UpdateIRQ();
     }
-    return underflowed;
+    return res.underflow;
 }
 
 inline void VIA::HandleShiftRegister(bool timer2_underflowed) {
-    if (!sr_active) {
+    if (!shiftRegister.sr_active) {
         return;
     }
 
-    // ACR [4:2] determines mode.
-    Byte sr_mode = (acr >> 2) & 0x07;
-    if (sr_mode == 0) {
-        return;
+    auto res = shiftRegister.Clock(acr, timer2_underflowed, cb2_in);
+    if (res.cb1PulsePending) {
+        UpdateCB1Output(false);
+        cb1_pulse_pending = true;
     }
-
-    bool shift = false;
-
-    switch (sr_mode) {
-        case 1:  // Shift In (T2)
-        case 4:  // Shift Out (Free Run / T2)
-        case 5:  // Shift Out (T2)
-            if (timer2_underflowed) {
-                // Generate a CB1 pulse (half a T2 cycle wide, but we just pulse it here)
-                UpdateCB1Output(false); // Drop CB1
-                shift = true;
-                cb1_pulse_pending = true;
-            }
-            break;
-        case 2:  // Shift In (PHI2)
-        case 6:  // Shift Out (PHI2)
-            UpdateCB1Output(false);
-            shift = true;
-            cb1_pulse_pending = true;
-            break;
-        case 3:  // Shift In (External CB1)
-        case 7:  // Shift Out (External CB1)
-            // Shift is triggered in SetCB1, handled separately
-            break;
-        default:
-            break;
+    if (res.cb2Updated) {
+        UpdateCB2Output(res.cb2Out);
     }
-
-    if (shift) {
-        if ((sr_mode & 0x04) != 0) {  // Shift Out (Modes 4,5,6,7)
-            // Shift MSB out to CB2
-            sr_out_cb2 = (sr & 0x80) != 0;
-            UpdateCB2Output(sr_out_cb2);
-            sr = (sr << 1) | (sr_out_cb2 ? 1 : 0);
-        } else {  // Shift In (Modes 1,2,3)
-            // Shift CB2 into LSB
-            bool cb2_val = cb2_in;
-            sr = (sr << 1) | (cb2_val ? 1 : 0);
-        }
-
-        sr_cnt++;
-        if (sr_cnt == 8) {
-            ifr |= 0x04;  // Set SR Interrupt
-            if (sr_mode != 4) {
-                sr_active = false;  // Stop unless Free Run (Mode 4)
-            }
-            sr_cnt = 0;
-            UpdateIRQ();
-        }
+    if (res.interruptTriggered) {
+        ifr |= 0x04;
+        UpdateIRQ();
     }
 }
 
 inline void VIA::Clock() {
-    if (!anyActive || (!ca2_pulse_pending && !cb1_pulse_pending && !cb2_pulse_pending && !sr_active && t1c > 0 &&
-                       ((acr & 0x20) != 0 || t2c > 0))) [[likely]] {
-        t1c--;
+    if (!anyActive || (!ca2_pulse_pending && !cb1_pulse_pending && !cb2_pulse_pending && !shiftRegister.sr_active && timer1.t1c > 0 &&
+                       ((acr & 0x20) != 0 || timer2.t2c > 0))) [[likely]] {
+        timer1.t1c--;
         if ((acr & 0x20) == 0) {
-            t2c--;
+            timer2.t2c--;
         }
         return;
     }
@@ -294,11 +213,11 @@ inline void VIA::Clock() {
 }
 
 inline void VIA::Clock(uint32_t cycles) {
-    if (!anyActive || (!ca2_pulse_pending && !cb1_pulse_pending && !cb2_pulse_pending && !sr_active &&
-                       t1c >= cycles && ((acr & 0x20) != 0 || t2c >= cycles))) [[likely]] {
-        t1c = static_cast<Word>(t1c - cycles);
+    if (!anyActive || (!ca2_pulse_pending && !cb1_pulse_pending && !cb2_pulse_pending && !shiftRegister.sr_active &&
+                       timer1.t1c >= cycles && ((acr & 0x20) != 0 || timer2.t2c >= cycles))) [[likely]] {
+        timer1.t1c = static_cast<Word>(timer1.t1c - cycles);
         if ((acr & 0x20) == 0) {
-            t2c = static_cast<Word>(t2c - cycles);
+            timer2.t2c = static_cast<Word>(timer2.t2c - cycles);
         }
         return;
     }

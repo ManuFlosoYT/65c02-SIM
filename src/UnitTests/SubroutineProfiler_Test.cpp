@@ -268,6 +268,26 @@ TEST(SubroutineProfilerTest, ClearAndReset) {
     EXPECT_TRUE(resetSnapshot.root->children.empty());
 }
 
+TEST(SubroutineProfilerTest, ClearPageCrossAlertsPreservesFlameGraph) {
+    Hardware::SubroutineProfiler profiler;
+    profiler.SetEnabled(true);
+
+    profiler.OnJSR(0x1000, 0x0200, 100);
+    profiler.OnPageCross(0x1005, 0x20F0, 0x2105);
+    profiler.OnRTS(200);
+
+    auto snapshot = profiler.GetSnapshot();
+    EXPECT_EQ(snapshot.totalCycles, 100);
+    EXPECT_FALSE(snapshot.root->children.empty());
+    EXPECT_FALSE(snapshot.pageCrossAlerts.empty());
+
+    profiler.ClearPageCrossAlerts();
+    auto alertClearedSnapshot = profiler.GetSnapshot();
+    EXPECT_EQ(alertClearedSnapshot.totalCycles, 100);
+    EXPECT_FALSE(alertClearedSnapshot.root->children.empty());
+    EXPECT_TRUE(alertClearedSnapshot.pageCrossAlerts.empty());
+}
+
 TEST(SubroutineProfilerTest, SymbolResolution) {
     auto dbgPath = std::filesystem::temp_directory_path() / "profiler_test_symbols.dbg";
     {

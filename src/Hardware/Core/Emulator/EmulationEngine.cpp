@@ -140,19 +140,9 @@ void EmulationEngine::ThreadLoop() {
 
         auto now = high_resolution_clock::now();
         if (duration_cast<seconds>(now - lastSecondTime).count() >= 1) {
-            actualCyclesPerSecond.store(cyclesThisSecond, std::memory_order_relaxed);
-            actualCpuCyclesPerSecond.store(cpuCyclesThisSecond, std::memory_order_relaxed);
-            actualGpuCyclesPerSecond.store(gpuCyclesThisSecond, std::memory_order_relaxed);
-            actualInstructionsPerSecond.store(instructionsThisSecond, std::memory_order_relaxed);
-            slicesPerSecond.store(slicesThisSecond, std::memory_order_relaxed);
-            emulationNanoseconds.store(emulationThisSecond, std::memory_order_relaxed);
-            sleepNanoseconds.store(sleepThisSecond, std::memory_order_relaxed);
-            lateNanoseconds.store(lateThisSecond, std::memory_order_relaxed);
-            avgBatchDurationNs.store(batchesThisSecond > 0 ? (batchDurationThisSecond / batchesThisSecond) : 0, std::memory_order_relaxed);
-            avgBatchCycles.store(batchesThisSecond > 0 ? (batchCyclesThisSecond / batchesThisSecond) : 0, std::memory_order_relaxed);
-            lastBatchDurationNs.store(currentLastBatchDurationNs, std::memory_order_relaxed);
-            lastBatchCycles.store(currentLastBatchCycles, std::memory_order_relaxed);
-            batchesPerSecond.store(batchesThisSecond, std::memory_order_relaxed);
+            telemetry.CommitSecond(cyclesThisSecond, cpuCyclesThisSecond, gpuCyclesThisSecond,
+                                   instructionsThisSecond, slicesThisSecond, emulationThisSecond,
+                                   sleepThisSecond, lateThisSecond);
             cyclesThisSecond = 0;
             cpuCyclesThisSecond = 0;
             gpuCyclesThisSecond = 0;
@@ -161,9 +151,6 @@ void EmulationEngine::ThreadLoop() {
             emulationThisSecond = 0;
             sleepThisSecond = 0;
             lateThisSecond = 0;
-            batchDurationThisSecond = 0;
-            batchCyclesThisSecond = 0;
-            batchesThisSecond = 0;
             lastSecondTime = now;
         }
 
@@ -217,11 +204,7 @@ EmulationEngine::SliceResult EmulationEngine::EmulateSlice(int instructionsPerSl
         const auto batchEnd = high_resolution_clock::now();
         const auto batchNs = static_cast<uint64_t>(duration_cast<nanoseconds>(batchEnd - batchStart).count());
         const uint64_t batchCycles = batchCpuCycles + batchGpuCycles;
-        batchDurationThisSecond += batchNs;
-        batchCyclesThisSecond += batchCycles;
-        batchesThisSecond++;
-        currentLastBatchDurationNs = batchNs;
-        currentLastBatchCycles = batchCycles;
+        telemetry.RecordBatch(batchNs, batchCycles);
         localCpuCycleDelta += batchCpuCycles;
         localGpuCycleDelta += batchGpuCycles;
         localInstructionDelta += static_cast<uint64_t>(batchInstructions);
@@ -258,165 +241,8 @@ EmulationEngine::SliceResult EmulationEngine::EmulateSlice(int instructionsPerSl
 
 int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
                                   uint64_t& batchCpuCycles, uint64_t& batchGpuCycles, int& stopCode) {
-    stopCode = std::numeric_limits<int>::min();
-    int ips = targetIPS.load(std::memory_order_relaxed);
-    if (ips <= 0) {
-        ips = 1000000;
-    }
-    if (emulator.sidEnabled) {
-        emulator.sid.SetCpuClockRate(static_cast<double>(ips));
-    }
-
-    if (emulator.cpu.cycleAccurate) {
-        if (!hooks && !hasBreakpoints) [[likely]] {
-            uint64_t localCpuCycles = 0;
-            uint64_t localGpuCycles = 0;
-            int localInstructions = 0;
-            int i = 0;
-            while (i < count) {
-                if (emulator.gpuEnabled && !emulator.gpu.IsInBlankingInterval()) {
-                    const uint32_t waitCycles = emulator.gpu.GetDrawingWaitCycles();
-                    if (waitCycles > 0 && (!emulator.sidEnabled || emulator.sid.IsDormant()) && emulator.via.IsIdle() &&
-                        emulator.acia.IsIdle() && emulator.serialBridge.GetBaudDelay() == 0 &&
-                        !emulator.pendingInterruptAny.load(std::memory_order_relaxed) &&
-                        !emulator.serialBridge.HasInput()) [[likely]] {
-                        const auto rem = static_cast<uint32_t>(count - i);
-                        const uint32_t skip = (rem < waitCycles) ? rem : waitCycles;
-                        emulator.gpu.SkipDrawingCycles(skip);
-                        emulator.via.Clock(skip);
-                        if (emulator.sidEnabled) {
-                            emulator.sid.Clock(skip);
-                        }
-                        localGpuCycles += skip;
-                        i += static_cast<int>(skip);
-                        continue;
-                    }
-                }
-
-                const bool isNew = (emulator.cpu.remainingCycles == 0);
-                bool cpuStepped = false;
-                int res = 0;
-                if (emulator.gpuEnabled) {
-                    emulator.gpu.Clock();
-                    if (emulator.gpu.IsInBlankingInterval()) {
-                        res = emulator.cpu.StepCycleAccurate<false>(emulator.bus);
-                        cpuStepped = true;
-                    }
-                } else {
-                    res = emulator.cpu.StepCycleAccurate<false>(emulator.bus);
-                    cpuStepped = true;
-                }
-
-                if (cpuStepped) {
-                    localCpuCycles++;
-                    if (isNew) {
-                        localInstructions++;
-                    }
-                } else {
-                    localGpuCycles++;
-                }
-
-                emulator.serialBridge.DecrementBaudDelay();
-                emulator.via.Clock();
-                emulator.acia.Clock(ips);
-                if (emulator.sidEnabled) {
-                    emulator.sid.Clock();
-                }
-                if (emulator.via.isIRQAsserted() || emulator.acia.HasIRQ()) [[unlikely]] {
-                    emulator.pendingInterruptAny.store(true, std::memory_order_relaxed);
-                }
-                if (cpuStepped && emulator.pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
-                    emulator.HandleInterrupts<false>();
-                }
-                if (emulator.serialBridge.HasInput()) [[unlikely]] {
-                    emulator.HandleSerialInput<false>();
-                }
-
-                ++i;
-                if (res != 0) [[unlikely]] {
-                    batchInstructions += localInstructions;
-                    batchCpuCycles += localCpuCycles;
-                    batchGpuCycles += localGpuCycles;
-                    emulator.lastStepCpuCycles = cpuStepped ? 1 : 0;
-                    emulator.lastStepGpuCycles = (emulator.gpuEnabled && !cpuStepped) ? 1 : 0;
-                    stopCode = res;
-                    return i;
-                }
-            }
-            batchInstructions += localInstructions;
-            batchCpuCycles += localCpuCycles;
-            batchGpuCycles += localGpuCycles;
-            return count;
-        }
-        for (int i = 0; i < count; ++i) {
-            bool isNew = (emulator.cpu.remainingCycles == 0);
-            if (hasBreakpoints && isNew) {
-                if (!emulator.cpu.isInit) {
-                    emulator.cpu.EnsureInit(emulator.bus);
-                }
-                if (hasComplex || emulator.breakpointManager.IsPCBreakpoint(emulator.cpu.PC)) [[unlikely]] {
-                    if (emulator.breakpointManager.Evaluate(emulator.cpu, emulator.bus) > 0) {
-                        stopCode = 0;
-                        return i;
-                    }
-                }
-            }
-            int res = hooks ? emulator.StepInternal<true, true>(ips) : emulator.StepInternal<false, true>(ips);
-
-            if (isNew && emulator.lastStepCpuCycles > 0) {
-                batchInstructions++;
-            }
-            batchCpuCycles += emulator.lastStepCpuCycles;
-            batchGpuCycles += emulator.lastStepGpuCycles;
-
-            if (res != 0) [[unlikely]] {
-                stopCode = res;
-                return i + 1;
-            }
-        }
-    } else {
-        if (!hooks && !hasBreakpoints) [[likely]] {
-            for (int i = 0; i < count; ++i) {
-                int res = emulator.StepInternal<false, false>(ips);
-                if (emulator.lastStepCpuCycles > 0) {
-                    batchInstructions++;
-                }
-                batchCpuCycles += emulator.lastStepCpuCycles;
-                batchGpuCycles += emulator.lastStepGpuCycles;
-                if (res != 0) [[unlikely]] {
-                    stopCode = res;
-                    return i + 1;
-                }
-            }
-            return count;
-        }
-        for (int i = 0; i < count; ++i) {
-            if (hasBreakpoints) {
-                if (!emulator.cpu.isInit) {
-                    emulator.cpu.EnsureInit(emulator.bus);
-                }
-                if (hasComplex || emulator.breakpointManager.IsPCBreakpoint(emulator.cpu.PC)) [[unlikely]] {
-                    if (emulator.breakpointManager.Evaluate(emulator.cpu, emulator.bus) > 0) {
-                        stopCode = 0;
-                        return i;
-                    }
-                }
-            }
-            int res = hooks ? emulator.StepInternal<true, false>(ips) : emulator.StepInternal<false, false>(ips);
-
-            if (emulator.lastStepCpuCycles > 0) {
-                batchInstructions++;
-            }
-            batchCpuCycles += emulator.lastStepCpuCycles;
-            batchGpuCycles += emulator.lastStepGpuCycles;
-
-            if (res != 0) [[unlikely]] {
-                stopCode = res;
-                return i + 1;
-            }
-        }
-    }
-    return count;
+    return emulator.ProcessBatch(count, hooks, hasBreakpoints, hasComplex, batchInstructions, batchCpuCycles,
+                                 batchGpuCycles, stopCode);
 }
 
 void EmulationEngine::HandleStop(int code) {
@@ -434,49 +260,7 @@ void EmulationEngine::HandleStop(int code) {
 }
 
 void EmulationEngine::CheckAutoReload(std::chrono::high_resolution_clock::time_point& lastWatchCheck) {
-#ifndef TARGET_WASM
-    using namespace std::chrono;
-    if (autoReloadRequested.load() && !emulator.currentBinPath.empty()) {
-        auto now = high_resolution_clock::now();
-        if (duration_cast<milliseconds>(now - lastWatchCheck).count() >= 500) {
-            lastWatchCheck = now;
-            try {
-                if (std::filesystem::exists(emulator.currentBinPath)) {
-                    auto latestTime = std::filesystem::last_write_time(emulator.currentBinPath);
-                    if (latestTime > lastBinModificationTime) {
-                        std::string errorMsg;
-                        std::cerr << "Auto-reloading: " << emulator.currentBinPath << '\n';
-                        if (!emulator.Init(emulator.currentBinPath, errorMsg)) {
-                            std::cerr << "Auto-reload failed: " << errorMsg << '\n';
-                        }
-                    }
-                }
-            } catch (...) {
-                (void)0;
-            }
-        }
-    }
-#else
-    (void)lastWatchCheck;
-#endif
-}
-
-EmulationEngine::RuntimeStats EmulationEngine::GetRuntimeStats() const {
-    return {
-        .cyclesPerSecond = actualCyclesPerSecond.load(std::memory_order_relaxed),
-        .cpuCyclesPerSecond = actualCpuCyclesPerSecond.load(std::memory_order_relaxed),
-        .gpuCyclesPerSecond = actualGpuCyclesPerSecond.load(std::memory_order_relaxed),
-        .instructionsPerSecond = actualInstructionsPerSecond.load(std::memory_order_relaxed),
-        .slicesPerSecond = slicesPerSecond.load(std::memory_order_relaxed),
-        .emulationNanoseconds = emulationNanoseconds.load(std::memory_order_relaxed),
-        .sleepNanoseconds = sleepNanoseconds.load(std::memory_order_relaxed),
-        .lateNanoseconds = lateNanoseconds.load(std::memory_order_relaxed),
-        .avgBatchDurationNs = avgBatchDurationNs.load(std::memory_order_relaxed),
-        .lastBatchDurationNs = lastBatchDurationNs.load(std::memory_order_relaxed),
-        .avgBatchCycles = avgBatchCycles.load(std::memory_order_relaxed),
-        .lastBatchCycles = lastBatchCycles.load(std::memory_order_relaxed),
-        .batchesPerSecond = batchesPerSecond.load(std::memory_order_relaxed),
-    };
+    fileWatcher.CheckAutoReload(emulator, lastWatchCheck);
 }
 
 }  // namespace Core

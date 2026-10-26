@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "Hardware/Core/PageCrossTracker.h"
+
 namespace Control {
 class SymbolTable;
 }
@@ -24,15 +26,6 @@ struct FlameGraphNode {
     std::vector<std::shared_ptr<FlameGraphNode>> children;
 
     std::shared_ptr<FlameGraphNode> FindOrAddChild(uint16_t childAddr, const std::string& childName, bool interrupt);
-};
-
-struct PageCrossAlert {
-    uint16_t pc = 0;
-    uint16_t baseAddr = 0;
-    uint16_t effectiveAddr = 0;
-    uint16_t subroutineAddr = 0;
-    std::string subroutineName;
-    uint32_t count = 0;
 };
 
 class SubroutineProfiler {
@@ -56,6 +49,8 @@ class SubroutineProfiler {
 
     void Clear();
     void Reset();
+    void ClearPageCrossAlerts();
+    void ClearAlerts() { ClearPageCrossAlerts(); }
 
     void SetSymbolTable(const Control::SymbolTable* symTable);
 
@@ -67,6 +62,9 @@ class SubroutineProfiler {
     void OnPageCross(uint16_t pc, uint16_t baseAddr, uint16_t effectiveAddr);
 
     [[nodiscard]] Snapshot GetSnapshot() const;
+
+    [[nodiscard]] const PageCrossTracker& GetPageCrossTracker() const { return pageCrossTracker; }
+    [[nodiscard]] PageCrossTracker& GetPageCrossTracker() { return pageCrossTracker; }
 
    private:
     struct CallFrame {
@@ -86,7 +84,7 @@ class SubroutineProfiler {
 
     std::shared_ptr<FlameGraphNode> root;
     std::vector<CallFrame> callStack;
-    std::vector<PageCrossAlert> pageCrossAlerts;
+    PageCrossTracker pageCrossTracker;
     uint64_t lastCycle = 0;
 };
 

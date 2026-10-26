@@ -4,32 +4,10 @@
 #include <cstdint>
 #include "Frontend/Control/AppState.h"
 #include "Frontend/GUI/MIDI/MIDIFile.h"
-#include "Frontend/GUI/MIDI/MIDISoundBank.h"
+#include "Frontend/GUI/MIDI/MIDISequencerTransport.h"
+#include "Frontend/GUI/MIDI/SIDLiveSynthesizer.h"
 
 namespace GUI::MIDI {
-
-struct ActiveSIDVoice {
-    int index = 0;
-    int note = -1;
-    int channel = -1;
-    int program = 0;
-    MIDITrackRole role = MIDITrackRole::Harmony;
-    double startTimeSec = 0.0;
-    bool active = false;
-    bool released = false;
-    double releaseTimerSec = 0.0;
-    double maxReleaseTimeSec = 0.05;
-    int priorityScore = 0;
-    std::uint32_t noteId = 0;
-    std::uint8_t waveMask = SID_WAVE_PULSE;
-    std::uint16_t pulseWidth = 0x0800;
-    int pwmDir = 1;
-    std::uint16_t features = 0;
-    bool isModulator = false;
-    int lfoCounter = 0;
-    int kickSlideStep = 0;
-    std::uint16_t kickBaseFreqHi = 0;
-};
 
 class MIDIAudioEngine {
    public:
@@ -49,63 +27,44 @@ class MIDIAudioEngine {
     void Reset();
     void AllNotesOff(Hardware::SID& sid);
 
-    [[nodiscard]] bool IsPlaying() const { return playing; }
-    [[nodiscard]] bool IsActive() const { return playing || auditionActive || AnyVoiceActive(); }
+    [[nodiscard]] bool IsPlaying() const { return transport_.IsPlaying(); }
+    [[nodiscard]] bool IsActive() const { return transport_.IsPlaying() || auditionActive_ || synth_.AnyVoiceActive(); }
 
-    [[nodiscard]] double GetPlayheadBeats() const { return playheadBeats; }
+    [[nodiscard]] double GetPlayheadBeats() const { return transport_.GetPlayheadBeats(); }
     void SetPlayheadBeats(double beats);
 
-    [[nodiscard]] bool IsLoopEnabled() const { return loopEnabled; }
-    void SetLoopEnabled(bool loop) { loopEnabled = loop; }
+    [[nodiscard]] bool IsLoopEnabled() const { return transport_.IsLoopEnabled(); }
+    void SetLoopEnabled(bool loop) { transport_.SetLoopEnabled(loop); }
 
-    [[nodiscard]] double GetLoopStartBeats() const { return loopStartBeats; }
-    [[nodiscard]] double GetLoopEndBeats() const { return loopEndBeats; }
-    void SetLoopRegion(double startBeats, double endBeats);
+    [[nodiscard]] double GetLoopStartBeats() const { return transport_.GetLoopStartBeats(); }
+    [[nodiscard]] double GetLoopEndBeats() const { return transport_.GetLoopEndBeats(); }
+    void SetLoopRegion(double startBeats, double endBeats) { transport_.SetLoopRegion(startBeats, endBeats); }
 
-    [[nodiscard]] bool IsNTSC() const { return isNTSC; }
-    void SetNTSC(bool ntsc) { isNTSC = ntsc; }
+    [[nodiscard]] bool IsNTSC() const { return synth_.IsNTSC(); }
+    void SetNTSC(bool ntsc) { synth_.SetNTSC(ntsc); }
 
-    [[nodiscard]] const std::array<ActiveSIDVoice, 3>& GetVoices() const { return voices; }
+    [[nodiscard]] const std::array<ActiveSIDVoice, 3>& GetVoices() const { return synth_.GetVoices(); }
+
+    [[nodiscard]] const MIDISequencerTransport& GetTransport() const { return transport_; }
+    [[nodiscard]] MIDISequencerTransport& GetTransport() { return transport_; }
+
+    [[nodiscard]] const SIDLiveSynthesizer& GetSynthesizer() const { return synth_; }
+    [[nodiscard]] SIDLiveSynthesizer& GetSynthesizer() { return synth_; }
 
    private:
-    std::array<ActiveSIDVoice, 3> voices{{{0}, {1}, {2}}};
-    std::array<int, 25> sidRegCache{
-        {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}};
+    MIDISequencerTransport transport_;
+    SIDLiveSynthesizer synth_;
 
-    bool playing = false;
-    double playheadBeats = 0.0;
-    double playheadSeconds = 0.0;
-    double effectAccumulatorSec = 0.0;
+    double effectAccumulatorSec_ = 0.0;
 
-    bool loopEnabled = true;
-    double loopStartBeats = 0.0;
-    double loopEndBeats = 16.0;
-    bool isNTSC = true;
+    bool auditionActive_ = false;
+    int auditionVoiceIndex_ = 0;
+    int auditionNote_ = -1;
+    int auditionChannel_ = 0;
+    double auditionElapsedSec_ = 0.0;
+    bool auditionReleased_ = false;
 
-    bool auditionActive = false;
-    int auditionVoiceIndex = 0;
-    int auditionNote = -1;
-    int auditionChannel = 0;
-    double auditionElapsedSec = 0.0;
-    bool auditionReleased = false;
-
-    std::vector<std::uint32_t> activeSequenceNotes;
-
-    [[nodiscard]] bool AnyVoiceActive() const;
     void EnsureSIDReady(Control::AppState& state);
-    void WriteReg(Hardware::SID& sid, std::uint8_t reg, std::uint8_t val, bool force = false);
-    [[nodiscard]] std::uint16_t NoteToSIDFreq(double midiNote) const;
-    [[nodiscard]] std::uint16_t FreqHzToCutoffDAC(double hz, Hardware::SIDModel model) const;
-    [[nodiscard]] int ComputePriority(int note, int channel, MIDITrackRole role, int mainChannel, int bassChannel) const;
-    int AllocateVoice(int note, int channel, double nowSec, std::uint16_t features, MIDITrackRole role,
-                      int mainChannel, int bassChannel);
-    void TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, int channel, int program, int note, int velocity,
-                            double nowSec, MIDITrackRole role, int mainChannel, int bassChannel,
-                            std::uint8_t customWaveOverride);
-    void TriggerVoiceNoteOff(Hardware::SID& sid, int voiceIdx);
-    void StepModulationEffects(Hardware::SID& sid, double stepSec, int mainChannel);
-    void StepSequencerSlice(Hardware::SID& sid, const MIDIProject& project, double sliceStartSec, double sliceEndSec);
 };
 
 }  // namespace GUI::MIDI
-

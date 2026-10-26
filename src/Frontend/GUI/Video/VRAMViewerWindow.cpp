@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Video/VRAMViewerWindow.h"
+#include "Frontend/GUI/Video/VRAMImageIO.h"
 #include <imgui_internal.h>
 #include <bit>
 
@@ -57,35 +58,6 @@ ImVec4 VRAMColorToRGBA(Byte val) {
 
 }  // namespace
 
-static void ConvertVRAMToRGB(const Hardware::GPU& gpu, uint8_t* dst) {
-    for (size_t yIndex = 0; yIndex < GPU::VRAM_HEIGHT; yIndex++) {
-        for (size_t xIndex = 0; xIndex < GPU::VRAM_WIDTH; xIndex++) {
-            size_t idx = (yIndex * GPU::VRAM_WIDTH + xIndex) * 3;
-            Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
-            dst[idx + 0] = ((val >> 4) & 0x03) * 85;
-            dst[idx + 1] = ((val >> 2) & 0x03) * 85;
-            dst[idx + 2] = (val & 0x03) * 85;
-        }
-    }
-}
-
-static void LoadVRAMFromFile(const std::string& imgPath, AppState& state) {
-    std::ifstream file(imgPath, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        return;
-    }
-
-    std::streamsize fileSize = file.tellg();
-    if (fileSize > 0) {
-        file.seekg(0, std::ios::beg);
-        std::vector<unsigned char> buf(static_cast<size_t>(fileSize));
-        if (file.read(std::bit_cast<char*>(buf.data()), fileSize)) {
-            GPU& gpu = state.emulator.GetGPU();
-            gpu.LoadVRAM(buf);
-        }
-    }
-}
-
 static void DrawVRAMControls(AppState& state) {
 #ifdef TARGET_WASM
     bool cartLoaded = state.emulator.GetCartridge().loaded;
@@ -98,7 +70,7 @@ static void DrawVRAMControls(AppState& state) {
                 fwrite(data, 1, size, f);
                 fclose(f);
             }
-            LoadVRAMFromFile(virtualPath, state);
+            VRAMImageIO::LoadVRAMFromFile(virtualPath, state);
         };
         WebFileUtils::open_browser_file_picker(".bin");
     }
@@ -115,21 +87,7 @@ static void DrawVRAMControls(AppState& state) {
 
     ImGui::SameLine();
     if (ImGui::Button("Export VRAM")) {
-        std::string tempPath = "/tmp/vram_capture.bmp";
-        std::vector<unsigned char> pixels;
-        int capW = GPU::VRAM_WIDTH;
-        int capH = GPU::VRAM_HEIGHT;
-        pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
-        GPU& gpu = state.emulator.GetGPU();
-        ConvertVRAMToRGB(gpu, pixels.data());
-        SDL_Surface* surface = SDL_CreateSurfaceFrom(capW, capH, SDL_PIXELFORMAT_RGB24, pixels.data(), capW * 3);
-        if (surface != nullptr) {
-            SDL_SaveBMP(surface, tempPath.c_str());
-            SDL_DestroySurface(surface);
-            std::ifstream ifs(tempPath, std::ios::binary);
-            std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-            WebFileUtils::download_file("vram_capture.bmp", buffer.data(), buffer.size());
-        }
+        VRAMImageIO::ExportVRAMBMP(state);
     }
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
@@ -157,18 +115,7 @@ static void DrawVRAMControls(AppState& state) {
 
     ImGui::SameLine();
     if (ImGui::Button("Export VRAM")) {
-        if (!Frontend::CustomFileDialog::IsOpened()) {
-            time_t currentTime = time(nullptr);
-            struct tm* tmInfo = localtime(&currentTime);
-            std::array<char, 64> filenameBuffer{};
-            if (tmInfo != nullptr) {
-                static_cast<void>(strftime(filenameBuffer.data(), filenameBuffer.size(),
-                                           "65C02-SIM_VRAM_CAPTURE_%Y-%m-%d-%H-%M-%S.", tmInfo));
-            }
-
-            Frontend::CustomFileDialog::OpenDialog("SaveVRAMImageKey", "Save VRAM Image", ".bmp", ".",
-                                                    filenameBuffer.data());
-        }
+        VRAMImageIO::ExportVRAMBMP(state);
     }
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
@@ -222,62 +169,11 @@ void ForceRefreshVRAM(AppState& state) {
     GPU& gpu = state.emulator.GetGPU();
     std::array<unsigned char, static_cast<size_t>(GPU::VRAM_HEIGHT) * static_cast<size_t>(GPU::VRAM_WIDTH) * 3>
         pixels{};
-    ConvertVRAMToRGB(gpu, pixels.data());
+    VRAMImageIO::ConvertVRAMToRGB(gpu, pixels.data());
     glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 }
-
-
-#ifndef TARGET_WASM
-static void HandleVRAMLoadDialog(AppState& state) {
-    if (!Frontend::CustomFileDialog::Display("ChooseVRAMImageKey")) {
-        return;
-    }
-
-    if (Frontend::CustomFileDialog::IsOk()) {
-        std::string imgPath = Frontend::CustomFileDialog::GetFilePathName();
-        LoadVRAMFromFile(imgPath, state);
-    }
-    Frontend::CustomFileDialog::Close();
-}
-
-static void HandleVRAMSaveDialog(AppState& state) {
-    if (!Frontend::CustomFileDialog::Display("SaveVRAMImageKey")) {
-        return;
-    }
-
-    if (Frontend::CustomFileDialog::IsOk()) {
-        std::string imgPath = Frontend::CustomFileDialog::GetFilePathName();
-
-        std::vector<unsigned char> pixels;
-        int capW = 0;
-        int capH = 0;
-
-        if (state.render.lastDisplayTex != 0 && state.render.lastDisplayTex != state.render.vramTexture && state.render.lastDisplayW > 0) {
-            capW = state.render.lastDisplayW;
-            capH = state.render.lastDisplayH;
-            pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
-            glBindTexture(GL_TEXTURE_2D, state.render.lastDisplayTex);
-            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
-            glBindTexture(GL_TEXTURE_2D, 0);
-        } else {
-            capW = GPU::VRAM_WIDTH;
-            capH = GPU::VRAM_HEIGHT;
-            pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
-            GPU& gpu = state.emulator.GetGPU();
-            ConvertVRAMToRGB(gpu, pixels.data());
-        }
-
-        SDL_Surface* surface = SDL_CreateSurfaceFrom(capW, capH, SDL_PIXELFORMAT_RGB24, pixels.data(), capW * 3);
-        if (surface != nullptr) {
-            SDL_SaveBMP(surface, imgPath.c_str());
-            SDL_DestroySurface(surface);
-        }
-    }
-    Frontend::CustomFileDialog::Close();
-}
-#endif
 
 static void DrawRasterBeamOverlay(AppState& state, ImVec2 imgMin, int scale, float imgW, float imgH) {
     const GPU& gpu = state.emulator.GetGPU();
@@ -521,8 +417,8 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         ImGui::End();
 
 #ifndef TARGET_WASM
-    HandleVRAMLoadDialog(state);
-    HandleVRAMSaveDialog(state);
+    VRAMImageIO::HandleVRAMLoadDialog(state);
+    VRAMImageIO::HandleVRAMSaveDialog(state);
 #endif
 }
 

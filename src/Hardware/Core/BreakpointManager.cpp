@@ -2,15 +2,10 @@
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
-#include "Scripting/Lang/Interpreter.h"
-#include "Scripting/Lang/Lexer.h"
-#include "Scripting/Lang/Parser.h"
 
 namespace Hardware {
 
-BreakpointManager::BreakpointManager()
-    : interpreter(std::make_unique<System::Hardware::Scripting::Lang::Interpreter>()) {}
-
+BreakpointManager::BreakpointManager() = default;
 BreakpointManager::~BreakpointManager() = default;
 
 uint32_t BreakpointManager::AddBreakpoint(Breakpoint breakpoint) {
@@ -18,14 +13,7 @@ uint32_t BreakpointManager::AddBreakpoint(Breakpoint breakpoint) {
     breakpoint.id = nextId++;
     for (auto& cond : breakpoint.conditions) {
         if (cond.type == BreakpointType::Expression && cond.ast == nullptr && !cond.expression.empty()) {
-            try {
-                System::Hardware::Scripting::Lang::Lexer lexer(cond.expression);
-                auto tokens = lexer.scanTokens();
-                System::Hardware::Scripting::Lang::Parser parser(tokens);
-                cond.ast = parser.parseExpression();
-            } catch (...) {
-                cond.ast = nullptr;
-            }
+            cond.ast = BreakpointConditionEvaluator::ParseExpression(cond.expression);
         }
     }
     breakpoints.push_back(std::move(breakpoint));
@@ -65,8 +53,6 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
     const bool pcCandidate = fastPathBreakpoints.test(cpu.PC);
     const bool hasComplex = hasComplexBreakpoints.load(std::memory_order_relaxed);
 
-    // Lock-free check for the most common case: No PC breakpoint at this address
-    // and no complex breakpoints (registers, memory, etc.) active.
     if (!pcCandidate && !hasComplex) {
         return 0;
     }
@@ -97,7 +83,7 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
             if (!entry.enabled || entry.conditions.empty()) {
                 continue;
             }
-            if (CheckBreakpoint(entry, cpu, bus)) {
+            if (conditionEvaluator.CheckBreakpoint(entry, cpu, bus, watchpointTriggered, watchpointAddress)) {
                 entry.hitCount++;
                 if (entry.hitOnce) {
                     entry.enabled = false;
@@ -114,20 +100,7 @@ uint32_t BreakpointManager::Evaluate(const CPU& cpu, const Bus& bus) {
 }
 
 bool BreakpointManager::CheckBreakpoint(const Breakpoint& breakpoint, const CPU& cpu, const Bus& bus) const {
-    bool result = (breakpoint.compoundOp == LogicOp::And);
-    for (const auto& cond : breakpoint.conditions) {
-        bool condResult = EvaluateCondition(cond, cpu, bus);
-        if (breakpoint.compoundOp == LogicOp::And) {
-            if (!condResult) {
-                return false;
-            }
-        } else {
-            if (condResult) {
-                return true;
-            }
-        }
-    }
-    return result;
+    return conditionEvaluator.CheckBreakpoint(breakpoint, cpu, bus, watchpointTriggered, watchpointAddress);
 }
 
 std::vector<Breakpoint> BreakpointManager::GetBreakpointsSnapshot() const {
@@ -157,104 +130,11 @@ void BreakpointManager::ClearWatchpointHit() {
 }
 
 bool BreakpointManager::EvaluateCondition(const BreakCondition& cond, const CPU& cpu, const Bus& bus) const {
-    switch (cond.type) {
-        case BreakpointType::PCAddress: {
-            return cpu.PC == cond.address;
-        }
-
-        case BreakpointType::RegisterCondition: {
-            uint16_t regVal = 0;
-            switch (cond.reg) {
-                case RegisterId::A:
-                    regVal = cpu.A;
-                    break;
-                case RegisterId::X:
-                    regVal = cpu.X;
-                    break;
-                case RegisterId::Y:
-                    regVal = cpu.Y;
-                    break;
-                case RegisterId::SP:
-                    regVal = cpu.SP;
-                    break;
-                case RegisterId::PC:
-                    regVal = cpu.PC;
-                    break;
-            }
-            return Compare(cond.op, regVal, cond.value);
-        }
-
-        case BreakpointType::FlagCondition: {
-            uint16_t flagVal = 0;
-            switch (cond.flag) {
-                case FlagId::C:
-                    flagVal = cpu.C;
-                    break;
-                case FlagId::Z:
-                    flagVal = cpu.Z;
-                    break;
-                case FlagId::I:
-                    flagVal = cpu.I;
-                    break;
-                case FlagId::D:
-                    flagVal = cpu.D;
-                    break;
-                case FlagId::B:
-                    flagVal = cpu.B;
-                    break;
-                case FlagId::V:
-                    flagVal = cpu.V;
-                    break;
-                case FlagId::N:
-                    flagVal = cpu.N;
-                    break;
-            }
-            return Compare(cond.op, flagVal, cond.value);
-        }
-
-        case BreakpointType::MemoryCondition: {
-            uint16_t memVal = bus.ReadDirect(cond.address);
-            return Compare(cond.op, memVal, cond.value);
-        }
-
-        case BreakpointType::MemoryWatchpoint:
-            return watchpointTriggered && watchpointAddress == cond.address;
-
-        case BreakpointType::Expression: {
-            if (!cond.ast) {
-                return false;
-            }
-            if (!interpreter) {
-                interpreter = std::make_unique<System::Hardware::Scripting::Lang::Interpreter>();
-            }
-            interpreter->setContext(&cpu, &bus);
-            try {
-                auto val = interpreter->evaluate(cond.ast.get());
-                return System::Hardware::Scripting::Lang::Interpreter::isTruthy(val);
-            } catch (...) {
-                return false;
-            }
-        }
-    }
-    return false;
+    return conditionEvaluator.EvaluateCondition(cond, cpu, bus, watchpointTriggered, watchpointAddress);
 }
 
 bool BreakpointManager::Compare(CompareOp compareOp, uint16_t lhs, uint16_t rhs) {
-    switch (compareOp) {
-        case CompareOp::Equal:
-            return lhs == rhs;
-        case CompareOp::NotEqual:
-            return lhs != rhs;
-        case CompareOp::Less:
-            return lhs < rhs;
-        case CompareOp::LessEqual:
-            return lhs <= rhs;
-        case CompareOp::Greater:
-            return lhs > rhs;
-        case CompareOp::GreaterEqual:
-            return lhs >= rhs;
-    }
-    return false;
+    return BreakpointConditionEvaluator::Compare(compareOp, lhs, rhs);
 }
 
 void BreakpointManager::UpdateFastPath() {
@@ -302,46 +182,6 @@ void BreakpointManager::UpdateFastPath() {
     hasAnyBreakpoints.store(any, std::memory_order_relaxed);
     hasComplexBreakpoints.store(complex, std::memory_order_relaxed);
     hasWatchpoints.store(watchpoints, std::memory_order_relaxed);
-}
-
-bool BreakpointManager::ValidateExpression(const std::string& expr, std::string* outError) {
-    if (expr.empty()) {
-        if (outError != nullptr) {
-            *outError = "Expression is empty";
-        }
-        return false;
-    }
-    try {
-        System::Hardware::Scripting::Lang::Lexer lexer(expr);
-        auto tokens = lexer.scanTokens();
-        for (const auto& token : tokens) {
-            if (token.type == System::Hardware::Scripting::Lang::TokenType::Error) {
-                if (outError != nullptr) {
-                    *outError = token.lexeme;
-                }
-                return false;
-            }
-        }
-        System::Hardware::Scripting::Lang::Parser parser(tokens);
-        auto ast = parser.parseExpression();
-        if (ast == nullptr) {
-            if (outError != nullptr) {
-                *outError = "Failed to parse expression";
-            }
-            return false;
-        }
-        return true;
-    } catch (const std::exception& e) {
-        if (outError != nullptr) {
-            *outError = e.what();
-        }
-        return false;
-    } catch (...) {
-        if (outError != nullptr) {
-            *outError = "Unknown parse error";
-        }
-        return false;
-    }
 }
 
 }  // namespace Hardware

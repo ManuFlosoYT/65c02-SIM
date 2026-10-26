@@ -1,11 +1,10 @@
 #pragma once
 
 #include <cstdint>
-#include <deque>
 #include <iosfwd>
-#include <mutex>
 #include <string>
-#include <vector>
+
+#include "Hardware/Core/Emulator/RewindHistoryBuffer.h"
 
 namespace Core {
 
@@ -13,20 +12,10 @@ class Emulator;
 
 enum class SavestateLoadResult : std::uint8_t { Success, HashMismatch, VersionMismatch, StructuralError, GenericError };
 
-struct SnapshotDelta {
-    struct Chunk {
-        uint32_t offset = 0;
-        std::vector<uint8_t> xorData;
-    };
-    std::vector<Chunk> chunks;
-    std::string fullState;
-    bool isKeyframe = false;
-    uint64_t totalCycles = 0;
-    uint64_t totalInstructions = 0;
-};
-
 class SavestateManager {
    public:
+    using SnapshotDelta = Core::SnapshotDelta;
+
     explicit SavestateManager(Emulator& emulator);
     ~SavestateManager() = default;
 
@@ -39,17 +28,17 @@ class SavestateManager {
     bool LoadState(const std::string& filename, bool forceLoad = false);
 
     void Rewind();
-    [[nodiscard]] bool CanRewind() const;
+    [[nodiscard]] bool CanRewind() const { return rewindHistory.CanRewind(); }
     void StepBack() { Rewind(); }
 
     [[nodiscard]] SavestateLoadResult GetLastLoadResult() const { return lastLoadResult; }
     [[nodiscard]] std::string GetLastLoadVersion() const { return lastLoadVersion; }
 
-    void SetRewindSnapshotsEnabled(bool enabled);
-    [[nodiscard]] bool IsRewindSnapshotsEnabled() const { return rewindSnapshotsEnabled; }
-    void SetRewindInterval(int n);
-    [[nodiscard]] int GetRewindInterval() const { return rewindInterval; }
-    void ClearRewindBuffer();
+    void SetRewindSnapshotsEnabled(bool enabled) { rewindHistory.SetEnabled(enabled); }
+    [[nodiscard]] bool IsRewindSnapshotsEnabled() const { return rewindHistory.IsEnabled(); }
+    void SetRewindInterval(int n) { rewindHistory.SetInterval(n); }
+    [[nodiscard]] int GetRewindInterval() const { return rewindHistory.GetInterval(); }
+    void ClearRewindBuffer() { rewindHistory.Clear(); }
 
     void SaveStateToBuffer();
     void CapturePreStepSnapshot();
@@ -60,6 +49,9 @@ class SavestateManager {
     bool LoadComponentsState(std::istream& stateStream);
     bool LoadInternalState(std::istream& stateStream);
 
+    RewindHistoryBuffer& GetRewindHistory() { return rewindHistory; }
+    const RewindHistoryBuffer& GetRewindHistory() const { return rewindHistory; }
+
    private:
     friend class Emulator;
 
@@ -68,15 +60,7 @@ class SavestateManager {
     SavestateLoadResult lastLoadResult = SavestateLoadResult::Success;
     std::string lastLoadVersion;
 
-    std::deque<SnapshotDelta> rewindBuffer;
-    std::string lastCapturedState;
-    uint64_t lastCapturedCycles = 0;
-    uint64_t lastCapturedInstructions = 0;
-    mutable std::mutex rewindMutex;
-    static constexpr size_t MAX_REWIND_STATES = 600;
-    int rewindInterval = 1;
-    bool rewindSnapshotsEnabled = true;
-    int rewindSliceCounter = 0;
+    RewindHistoryBuffer rewindHistory;
 };
 
 }  // namespace Core

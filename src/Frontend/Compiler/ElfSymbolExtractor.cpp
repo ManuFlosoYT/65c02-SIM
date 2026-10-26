@@ -1,7 +1,7 @@
 #ifndef TARGET_WASM
 #include "ElfSymbolExtractor.h"
 #include "CompilerFrontend.h"
-#include "CompilerVFS.h"
+#include "ToolchainLocator.h"
 #include "ProcessRunner.h"
 #include <filesystem>
 #include <fstream>
@@ -11,21 +11,8 @@
 bool ElfSymbolExtractor::LoadELF(Control::SymbolTable& table, const std::string& elfPath) {
     Control::SymbolTable::SetElfLoader(&CompilerFrontend::LoadELF);
 
-    std::string compiler = CompilerVFS::GetCompilerExecutable();
-    std::filesystem::path binDir = std::filesystem::path(compiler).parent_path();
-
-    std::string dwarfdump = (binDir / "llvm-dwarfdump").string();
-    std::string nm = (binDir / "llvm-nm").string();
-#ifdef _WIN32
-    dwarfdump += ".exe";
-    nm += ".exe";
-#endif
-    if (!std::filesystem::exists(dwarfdump)) {
-        dwarfdump = "llvm-dwarfdump";
-    }
-    if (!std::filesystem::exists(nm)) {
-        nm = "llvm-nm";
-    }
+    std::string dwarfdump = ToolchainLocator::FindDwarfdump();
+    std::string nm = ToolchainLocator::FindNm();
 
     std::string lineDump;
     std::string nmDump;

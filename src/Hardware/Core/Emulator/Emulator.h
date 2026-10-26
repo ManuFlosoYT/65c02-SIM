@@ -171,10 +171,16 @@ class Emulator {
     SavestateManager& GetSavestateManager() { return savestateManager; }
     const SavestateManager& GetSavestateManager() const { return savestateManager; }
 
+    int ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
+                     uint64_t& batchCpuCycles, uint64_t& batchGpuCycles, int& stopCode);
+    void SaveInternalState(std::ostream& stateStream);
+    bool LoadInternalState(std::istream& stateStream);
+
    private:
     friend class SystemConfigurator;
     friend class SavestateManager;
     friend class EmulationEngine;
+    friend class BinaryFileWatcher;
 
     std::atomic<bool> pendingIRQ{false};
     std::atomic<bool> pendingNMI{false};

@@ -4,7 +4,15 @@
 #include "Hardware/Core/Console.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #include "Hardware/Core/CartridgeLoader.h"
+#include "Frontend/Control/SDUtils.h"
+#ifdef TARGET_WASM
+#include "Frontend/web/WebFileUtils.h"
+#endif
+
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <vector>
 
 using namespace Control;
 using namespace Core;
@@ -98,11 +106,95 @@ static void HandleLoadStateFilePicker(AppState& state) {
     }
 }
 
+void HandleCreateSDDialog(AppState& state) {
+    if (CustomFileDialog::Display("CreateSDDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
+            // Ensure .img extension
+            if (filePath.size() < 4 || filePath.substr(filePath.size() - 4) != ".img") {
+                filePath += ".img";
+            }
+            std::string tempPath = filePath;
+#ifdef TARGET_WASM
+            tempPath = "temp.img";
+#endif
+            if (GUI::CreateFAT16Image(tempPath)) {
+#ifdef TARGET_WASM
+                std::ifstream ifs(tempPath, std::ios::binary);
+                std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                WebFileUtils::download_file("new_sd.img", buffer.data(), buffer.size());
+#endif
+                if (GUI::IsSDCardEnabled(state)) {
+                    state.emulator.GetSDCard().Mount(filePath);
+                } else {
+                    state.popups.sdCardDisabled = true;
+                }
+            }
+        }
+        CustomFileDialog::Close();
+    }
+}
+
+void HandleMountSDDialog(AppState& state) {
+    if (CustomFileDialog::Display("MountSDDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
+            if (GUI::IsSDCardEnabled(state)) {
+                state.emulator.GetSDCard().Mount(filePath);
+            } else {
+                state.popups.sdCardDisabled = true;
+            }
+        }
+        CustomFileDialog::Close();
+    }
+}
+
+void HandleMountFolderDialog(AppState& state) {
+    if (CustomFileDialog::Display("MountFolderDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string folderPath = CustomFileDialog::GetCurrentPath();
+            const std::filesystem::path hostFolder(std::u8string(folderPath.begin(), folderPath.end()));
+            if (!folderPath.empty() && std::filesystem::is_directory(hostFolder)) {
+                if (!GUI::IsSDCardEnabled(state)) {
+                    state.popups.sdCardDisabled = true;
+                } else {
+                    if (std::filesystem::exists(hostFolder / ".65C02_SIM_mount")) {
+                        GUI::MountFolder(state, folderPath, true);
+                    } else {
+                        state.popups.sdCardMountSentinelWarning = true;
+                        state.popups.sdCardPendingMountFolder = folderPath;
+                    }
+                }
+            }
+        }
+        CustomFileDialog::Close();
+    }
+}
+
+void HandleLoadScriptDialog(AppState& state) {
+    if (CustomFileDialog::Display("LoadScriptDlgKey")) {
+        if (CustomFileDialog::IsOk()) {
+            std::string filePath = CustomFileDialog::GetFilePathName();
+            state.script.path = filePath;
+            state.script.loaded = true;
+            state.script.showConsole = true;
+            state.emulator.Pause();  // Pause the frontend before running the script
+            state.emulator.GetScriptEngine().LoadAndRun(filePath);
+            ImGui::CloseCurrentPopup();
+        }
+        CustomFileDialog::Close();
+    }
+}
+
 void HandleDialogs(AppState& state) {
 #ifndef TARGET_WASM
     HandleROMFilePicker(state);
     HandleSaveStateFilePicker(state);
     HandleLoadStateFilePicker(state);
+    HandleCreateSDDialog(state);
+    HandleMountSDDialog(state);
+    HandleMountFolderDialog(state);
+    HandleLoadScriptDialog(state);
 #else
     (void)state;
 #endif

@@ -45,11 +45,16 @@ void SubroutineProfiler::Clear() {
     root = std::make_shared<FlameGraphNode>();
     root->name = "Root";
     callStack.clear();
-    pageCrossAlerts.clear();
+    pageCrossTracker.ClearAlerts();
     lastCycle = 0;
 }
 
 void SubroutineProfiler::Reset() { Clear(); }
+
+void SubroutineProfiler::ClearPageCrossAlerts() {
+    std::lock_guard<std::mutex> lock(profilerMutex);
+    pageCrossTracker.ClearAlerts();
+}
 
 void SubroutineProfiler::SetSymbolTable(const Control::SymbolTable* symTable) {
     std::lock_guard<std::mutex> lock(profilerMutex);
@@ -70,7 +75,7 @@ void SubroutineProfiler::SetSymbolTable(const Control::SymbolTable* symTable) {
             }
         };
         updateNames(updateNames, root);
-        for (auto& alert : pageCrossAlerts) {
+        for (auto& alert : pageCrossTracker.GetAlerts()) {
             if (alert.subroutineAddr != 0 && (alert.subroutineName.empty() || alert.subroutineName[0] == '$')) {
                 std::string resolved = ResolveName(alert.subroutineAddr);
                 if (!resolved.empty() && resolved[0] != '$') {
@@ -176,21 +181,7 @@ void SubroutineProfiler::OnPageCross(uint16_t pc, uint16_t baseAddr, uint16_t ef
         root->pageCrossPenalties++;
     }
 
-    for (auto& alert : pageCrossAlerts) {
-        if (alert.pc == pc && alert.baseAddr == baseAddr && alert.effectiveAddr == effectiveAddr) {
-            alert.count++;
-            return;
-        }
-    }
-
-    PageCrossAlert alert;
-    alert.pc = pc;
-    alert.baseAddr = baseAddr;
-    alert.effectiveAddr = effectiveAddr;
-    alert.subroutineAddr = subAddr;
-    alert.subroutineName = subName;
-    alert.count = 1;
-    pageCrossAlerts.push_back(std::move(alert));
+    pageCrossTracker.OnPageCross(pc, baseAddr, effectiveAddr, subAddr, subName);
 }
 
 void SubroutineProfiler::PopFrame(uint64_t currentCycle) {
@@ -277,7 +268,7 @@ SubroutineProfiler::Snapshot SubroutineProfiler::GetSnapshot() const {
     snapshot.root->totalCycles = sumChildren;
     snapshot.totalCycles = sumChildren;
 
-    snapshot.pageCrossAlerts = pageCrossAlerts;
+    snapshot.pageCrossAlerts = pageCrossTracker.GetAlerts();
     if (symbolTable != nullptr) {
         for (auto& alert : snapshot.pageCrossAlerts) {
             if (alert.subroutineAddr != 0 && (alert.subroutineName.empty() || alert.subroutineName[0] == '$')) {

@@ -18,6 +18,8 @@
 #include <string>
 
 #include "Frontend/Control/AppState.h"
+#include "Frontend/CliArgsParser.h"
+#include "Frontend/HeadlessRunner.h"
 #include "Hardware/Core/Console.h"
 #include "Frontend/GUI/Style/Style.h"
 #include "UpdateChecker.h"
@@ -227,241 +229,6 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
 #endif
 }
 
-struct Args {
-    bool headless = false;
-    bool profileSID = false;
-    bool sidSound = false;
-    bool sidDevice = true;
-    std::string scriptPath;
-    std::string romPath;
-    std::string dumpMemPath;
-    int runCycles = 0;
-};
-
-struct ParseArgsResult {
-    Args args;
-    bool ok = true;
-    bool showUsage = false;
-    std::string error;
-};
-
-static bool ParseStrictInt(std::string_view text, int& outValue) {
-    if (text.empty()) {
-        return false;
-    }
-    const char* begin = text.data();
-    const char* end = text.data() + text.size();
-    auto [ptr, ec] = std::from_chars(begin, end, outValue);
-    return ec == std::errc() && ptr == end;
-}
-
-static void PrintHeadlessUsage(const char* exeName) {
-    std::cerr << "Usage: " << exeName << " [OPTIONS] [ROM_PATH]\n"
-              << "Options:\n"
-              << "  --headless              Run without GUI\n"
-              << "  --rom <path>            Load ROM from path (fallback: output/rom/room.bin)\n"
-              << "  --script <path>         Load and run Python script\n"
-              << "  --run-cycles <N>        Run N cycles (N >= 0)\n"
-              << "  --sid-sound <on|off>    Enable or disable SID audio processing\n"
-              << "  --sid-device <on|off>  Enable or disable the SID device\n"
-              << "  --profile-sid           Print SID timing counters\n"
-              << "  --dump-mem <file>       Dump 64KB memory to file\n"
-              << "  --help                  Show this help\n";
-}
-
-static ParseArgsResult ParseArgs(std::span<const char* const> argv) {
-    ParseArgsResult result;
-    Args& args = result.args;
-    for (std::size_t i = 1; i < argv.size(); ++i) {
-        std::string_view arg = argv[i];
-        if (arg == "--help") {
-            result.showUsage = true;
-            return result;
-        }
-        if (arg == "--headless") {
-            args.headless = true;
-        } else if (arg == "--profile-sid") {
-            args.profileSID = true;
-        } else if (arg == "--sid-sound") {
-            if (i + 1 >= argv.size()) {
-                result.ok = false;
-                result.error = "Missing value for --sid-sound";
-                return result;
-            }
-            std::string_view value = argv[++i];
-            if (value == "on") {
-                args.sidSound = true;
-            } else if (value == "off") {
-                args.sidSound = false;
-            } else {
-                result.ok = false;
-                result.error = "Invalid value for --sid-sound: " + std::string(value);
-                return result;
-            }
-        } else if (arg == "--sid-device") {
-            if (i + 1 >= argv.size()) {
-                result.ok = false;
-                result.error = "Missing value for --sid-device";
-                return result;
-            }
-            std::string_view value = argv[++i];
-            if (value == "on") {
-                args.sidDevice = true;
-            } else if (value == "off") {
-                args.sidDevice = false;
-            } else {
-                result.ok = false;
-                result.error = "Invalid value for --sid-device: " + std::string(value);
-                return result;
-            }
-        } else if (arg == "--script") {
-            if (i + 1 >= argv.size()) {
-                result.ok = false;
-                result.error = "Missing value for --script";
-                return result;
-            }
-            args.scriptPath = argv[++i];
-        } else if (arg == "--run-cycles") {
-            if (i + 1 >= argv.size()) {
-                result.ok = false;
-                result.error = "Missing value for --run-cycles";
-                return result;
-            }
-            int parsedCycles = 0;
-            if (!ParseStrictInt(argv[++i], parsedCycles) || parsedCycles < 0) {
-                result.ok = false;
-                result.error = "Invalid value for --run-cycles: " + std::string(argv[i]);
-                return result;
-            }
-            args.runCycles = parsedCycles;
-        } else if (arg == "--dump-mem") {
-            if (i + 1 >= argv.size()) {
-                result.ok = false;
-                result.error = "Missing value for --dump-mem";
-                return result;
-            }
-            args.dumpMemPath = argv[++i];
-        } else if (arg == "--rom") {
-            if (i + 1 >= argv.size()) {
-                result.ok = false;
-                result.error = "Missing value for --rom";
-                return result;
-            }
-            args.romPath = argv[++i];
-        } else if (!arg.empty() && arg[0] == '-') {
-            result.ok = false;
-            result.error = "Unknown option: " + std::string(arg);
-            return result;
-        } else if (args.romPath.empty()) {
-            args.romPath = std::string(arg);
-        } else {
-            result.ok = false;
-            result.error = "Unexpected positional argument: " + std::string(arg);
-            return result;
-        }
-    }
-    return result;
-}
-
-static std::string ResolveHeadlessRomPath(const Args& args) {
-    if (!args.romPath.empty()) {
-        return args.romPath;
-    }
-
-    static constexpr const char* fallbackCandidates[] = {
-        "output/rom/room.bin",
-        "./output/rom/room.bin",
-        "room.bin"
-    };
-
-    for (const char* candidate : fallbackCandidates) {
-        if (std::filesystem::exists(candidate)) {
-            return candidate;
-        }
-    }
-
-    return {};
-}
-
-static int RunHeadless(const Args& args) {
-    Core::Emulator emulator;
-    emulator.SetRewindSnapshotsEnabled(false);
-    emulator.GetSID().Init(sidSampleRate);
-    emulator.SetSIDEnabled(args.sidDevice);
-    emulator.GetSID().EnableSound(args.sidSound);
-    emulator.GetSID().SetProfilingEnabled(args.profileSID);
-    emulator.GetSID().ClearProfilingStats();
-    emulator.SetGPUEnabled(false);
-
-    std::string romPath = ResolveHeadlessRomPath(args);
-    if (romPath.empty()) {
-        std::cerr << "Headless: No ROM provided and fallback ROM not found.\n"
-                  << "Tried: output/rom/room.bin, ./output/rom/room.bin, room.bin\n";
-        return -1;
-    }
-    if (args.romPath.empty()) {
-        std::cerr << "Headless: No ROM specified, using fallback ROM: " << romPath << '\n';
-    }
-
-    std::string errorMsg;
-    if (!emulator.Init(romPath, errorMsg)) {
-        std::cerr << "Headless: Failed to load ROM: " << errorMsg << '\n';
-        return -1;
-    }
-
-    if (!args.scriptPath.empty()) {
-        emulator.GetScriptEngine().SetMirrorToStdout(true);
-        emulator.GetScriptEngine().LoadAndRun(args.scriptPath);
-    }
-
-    if (emulator.GetScriptEngine().HasPendingScript()) {
-        emulator.GetScriptEngine().ExecutePendingScript();
-    }
-
-    if (args.runCycles > 0) {
-        emulator.Resume();
-        for (int i = 0; i < args.runCycles; ++i) {
-            if (emulator.IsHalted() || emulator.Step() != 0) {
-                break;
-            }
-        }
-        if (!emulator.IsPaused()) {
-            emulator.Pause();
-        }
-    }
-
-    if (args.profileSID) {
-        const auto stats = emulator.GetSID().GetProfilingStats();
-        const auto toMilliseconds = [](std::uint64_t nanoseconds) {
-            return static_cast<double>(nanoseconds) / 1'000'000.0;
-        };
-        std::cout << std::fixed << std::setprecision(3)
-                  << "SID profile: clocks=" << stats.clockCount
-                  << ", oscillator_ms=" << toMilliseconds(stats.oscillatorNanoseconds)
-                  << ", envelope_ms=" << toMilliseconds(stats.envelopeNanoseconds)
-                  << ", filter_ms=" << toMilliseconds(stats.filterNanoseconds)
-                  << ", resampler_ms=" << toMilliseconds(stats.resamplerNanoseconds)
-                  << ", output_ms=" << toMilliseconds(stats.outputNanoseconds) << '\n';
-    }
-
-    if (!args.dumpMemPath.empty()) {
-        std::ofstream out(args.dumpMemPath, std::ios::binary);
-        if (out.is_open()) {
-            auto& mem = emulator.GetMem();
-            for (uint32_t addr = 0; addr <= 0xFFFF; ++addr) {
-                char val = static_cast<char>(mem.Read<true>(static_cast<uint16_t>(addr)));
-                out.write(&val, 1);
-            }
-        } else {
-            std::cerr << "Headless: Failed to open dump file " << args.dumpMemPath << '\n';
-        }
-    }
-
-    emulator.Stop();
-    emulator.GetSID().Close();
-    return 0;
-}
-
 // --- Emscripten Loop Support ---
 
 struct MainLoopArgs {
@@ -557,14 +324,14 @@ static void MainLoop(void* arg) {
 }
 
 int main(int argc, char* argv[]) {
-    const ParseArgsResult parseResult = ParseArgs(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
+    const ParseArgsResult parseResult = CliArgsParser::Parse(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
     if (parseResult.showUsage) {
-        PrintHeadlessUsage(argv[0]);
+        CliArgsParser::PrintUsage(argv[0]);
         return 0;
     }
     if (!parseResult.ok) {
         std::cerr << "Argument error: " << parseResult.error << "\n";
-        PrintHeadlessUsage(argv[0]);
+        CliArgsParser::PrintUsage(argv[0]);
         return -1;
     }
     const Args args = parseResult.args;
@@ -574,7 +341,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     if (args.headless) {
-        int ret = RunHeadless(args);
+        int ret = HeadlessRunner::Run(args, sidSampleRate);
 #ifndef TARGET_WASM
         CompilerVFS::Cleanup();
 #endif

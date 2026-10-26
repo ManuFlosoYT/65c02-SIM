@@ -28,10 +28,6 @@ public:
 
     // Returns available SDK header libraries for a given IDE mode
     static std::vector<std::string> GetAvailableLibraries(IDEMode mode);
-
-private:
-    static void WriteManifest();
-    static std::string GetExtractedVersion();
 };
 
 } // namespace Control

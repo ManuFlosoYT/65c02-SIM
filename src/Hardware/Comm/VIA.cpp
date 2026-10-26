@@ -11,31 +11,21 @@ void VIA::Reset() {
     ora = 0;
     ddrb = 0;
     ddra = 0;
-    t1l_l = 0;
-    t1l_h = 0;
-    sr = 0;
     acr = 0;
     pcr = 0;
     ifr = 0;
     ier = 0;
 
-    t1c = 0xFFFF;
-    t1l = 0xFFFF;
-    t2c = 0xFFFF;
-    t2l = 0xFFFF;
-    t1_interrupt_armed = false;
-    t2_interrupt_armed = false;
+    timer1.Reset();
+    timer2.Reset();
+    shiftRegister.Reset();
 
     ira = 0x00;
     irb = 0x00;
-    t1_pb7_output = true;
     cb1_in = true;
     cb2_in = true;
     ca1_in = true;
     ca2_in = true;
-    sr_cnt = 0;
-    sr_active = false;
-    sr_out_cb2 = true;
     ira_latched = 0;
     irb_latched = 0;
     ira_latch_full = false;
@@ -98,26 +88,27 @@ Byte VIA::Read(Word address) {
         case T1C_L & 0x0F:
             ifr &= ~0x40;  // Clear T1 interrupt flag on read
             UpdateIRQ();
-            return (Byte)(t1c & 0xFF);
+            return timer1.ReadLow();
         case T1C_H & 0x0F:
-            return (Byte)(t1c >> 8);
+            return timer1.ReadHigh();
         case T1L_L & 0x0F:
-            return t1l_l;
+            return timer1.ReadLatchLow();
         case T1L_H & 0x0F:
-            return t1l_h;
+            return timer1.ReadLatchHigh();
         case T2C_L & 0x0F:
             ifr &= ~0x20;  // Clear T2 interrupt flag on read
             UpdateIRQ();
-            return (Byte)(t2c & 0xFF);
+            return timer2.ReadLow();
         case T2C_H & 0x0F:
-            return (Byte)(t2c >> 8);
+            return timer2.ReadHigh();
         case VIA_SR & 0x0F:
             ifr &= ~0x04;  // Clear SR interrupt bit on read
-            sr_active = true;
-            sr_cnt = 0;
-            UpdateAnyActive();
-            UpdateIRQ();
-            return sr;
+            {
+                Byte val = shiftRegister.Read();
+                UpdateAnyActive();
+                UpdateIRQ();
+                return val;
+            }
         case ACR & 0x0F:
             return acr;
         case PCR & 0x0F:
@@ -160,19 +151,19 @@ Byte VIA::ReadDirect(Word address) {
         case DDRA & 0x0F:
             return ddra;
         case T1C_L & 0x0F:
-            return static_cast<Byte>(t1c & 0xFF);
+            return timer1.ReadLow();
         case T1C_H & 0x0F:
-            return static_cast<Byte>(t1c >> 8);
+            return timer1.ReadHigh();
         case T1L_L & 0x0F:
-            return t1l_l;
+            return timer1.ReadLatchLow();
         case T1L_H & 0x0F:
-            return t1l_h;
+            return timer1.ReadLatchHigh();
         case T2C_L & 0x0F:
-            return static_cast<Byte>(t2c & 0xFF);
+            return timer2.ReadLow();
         case T2C_H & 0x0F:
-            return static_cast<Byte>(t2c >> 8);
+            return timer2.ReadHigh();
         case VIA_SR & 0x0F:
-            return sr;
+            return shiftRegister.sr;
         case ACR & 0x0F:
             return acr;
         case PCR & 0x0F:
@@ -246,17 +237,12 @@ void VIA::Write(Word address, Byte data) {
             ddra = data;
             break;
         case T1C_L & 0x0F:
-            t1l_l = data;
-            t1l = (t1l & 0xFF00) | data;
+            timer1.WriteCounterLow(data);
             break;
         case T1C_H & 0x0F:
-            t1l_h = data;
-            t1l = (data << 8) | t1l_l;
-            t1c = t1l;  // Load counter with latch
+            timer1.WriteCounterHigh(data);
             ifr &= ~0x40;
-            t1_interrupt_armed = true;
             UpdateAnyActive();
-            t1_pb7_output = false; // Drop PB7 on start (both one-shot and continuous)
             if (((acr & 0x80) != 0) && ((ddrb & 0x80) != 0)) {
                 if (port_b_callback) {
                     port_b_callback((irb & ~ddrb) | (GetEffectiveORB() & ddrb));
@@ -265,32 +251,26 @@ void VIA::Write(Word address, Byte data) {
             UpdateIRQ();
             break;
         case T1L_L & 0x0F:
-            t1l_l = data;
-            t1l = (t1l & 0xFF00) | data;
+            timer1.WriteLatchLow(data);
             break;
         case T1L_H & 0x0F:
-            t1l_h = data;
-            t1l = (data << 8) | t1l_l;
+            timer1.WriteLatchHigh(data);
             ifr &= ~0x40;
             UpdateIRQ();
             break;
         case T2C_L & 0x0F:
-            t2l = (t2l & 0xFF00) | data;
+            timer2.WriteLow(data);
             break;
         case T2C_H & 0x0F:
-            t2l = (data << 8) | (t2l & 0xFF);
-            t2c = t2l;
+            timer2.WriteHigh(data);
             ifr &= ~0x20;
-            t2_interrupt_armed = true;
             UpdateAnyActive();
             UpdateIRQ();
             break;
         case VIA_SR & 0x0F:
-            sr = data;
+            shiftRegister.Write(data);
             ifr &= ~0x04;
-            sr_active = true;
             UpdateAnyActive();
-            sr_cnt = 0;
             UpdateIRQ();
             break;
         case ACR & 0x0F: {
@@ -360,10 +340,10 @@ void VIA::ClockSlow() {
         need_update = true;
     }
 
-    const bool t1_underflowed = (t1c == 0);
+    const bool t1_underflowed = (timer1.t1c == 0);
     HandleTimer1();
     const bool t2_underflowed = HandleTimer2();
-    if (sr_active) [[unlikely]] {
+    if (shiftRegister.sr_active) [[unlikely]] {
         HandleShiftRegister(t2_underflowed);
         need_update = true;
     }
@@ -437,24 +417,16 @@ void VIA::SetCA2(bool val) {
 
 void VIA::SetInputB(Byte val) {
     // Pulse Counting for T2 (PB6)
-    // Check PB6 transition high-to-low
     if (((acr & 0x20) != 0)) {
-        // PB6 is bit 6
         bool old_pb6 = (irb & 0x40) != 0;
         bool new_pb6 = (val & 0x40) != 0;
 
         if (old_pb6 && !new_pb6) {  // Falling edge
-            t2c--;
-            if (t2c == 0xFFFF) {
-                if (t2_interrupt_armed) {
+            auto res = timer2.PulsePB6(acr);
+            if (res.underflow) {
+                if (res.interruptTriggered) {
                     ifr |= 0x20;
-                    t2_interrupt_armed = false;
                     UpdateIRQ();
-                }
-                
-                Byte sr_mode = (acr >> 2) & 0x07;
-                if (sr_mode == 1 || sr_mode == 4 || sr_mode == 5) {
-                    t2c = t2l;
                 }
                 HandleShiftRegister(true);
                 UpdateAnyActive();
@@ -489,24 +461,14 @@ void VIA::SetCB1(bool val) {
         }
         ifr |= 0x10;
         
-        if (sr_active) {
-            Byte sr_mode = (acr >> 2) & 0x07;
-            if (sr_mode == 3 || sr_mode == 7) {
-                if (sr_mode == 7) {
-                    sr_out_cb2 = (sr & 0x80) != 0;
-                    UpdateCB2Output(sr_out_cb2);
-                    sr = (sr << 1) | (sr_out_cb2 ? 1 : 0);
-                } else {
-                    bool cb2_val = cb2_in;
-                    sr = (sr << 1) | (cb2_val ? 1 : 0);
-                }
-                sr_cnt++;
-                if (sr_cnt == 8) {
-                    ifr |= 0x04;
-                    sr_active = false;
-                    sr_cnt = 0;
-                    UpdateAnyActive();
-                }
+        if (shiftRegister.sr_active) {
+            auto res = shiftRegister.ShiftExternalCB1(acr, cb2_in);
+            if (res.cb2Updated) {
+                UpdateCB2Output(res.cb2Out);
+            }
+            if (res.interruptTriggered) {
+                ifr |= 0x04;
+                UpdateAnyActive();
             }
         }
         UpdateIRQ();
@@ -534,36 +496,36 @@ void VIA::SetCB2(bool val) {
 }
 
 Byte VIA::GetDDRB() const { return ddrb; }
-Byte VIA::GetT1L_L() const { return t1l_l; }
+Byte VIA::GetT1L_L() const { return timer1.t1l_l; }
 
 bool VIA::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, orb);
     ISerializable::Serialize(out, ora);
     ISerializable::Serialize(out, ddrb);
     ISerializable::Serialize(out, ddra);
-    ISerializable::Serialize(out, t1l_l);
-    ISerializable::Serialize(out, t1l_h);
-    ISerializable::Serialize(out, sr);
+    ISerializable::Serialize(out, timer1.t1l_l);
+    ISerializable::Serialize(out, timer1.t1l_h);
+    ISerializable::Serialize(out, shiftRegister.sr);
     ISerializable::Serialize(out, acr);
     ISerializable::Serialize(out, pcr);
     ISerializable::Serialize(out, ifr);
     ISerializable::Serialize(out, ier);
-    ISerializable::Serialize(out, t1c);
-    ISerializable::Serialize(out, t1l);
-    ISerializable::Serialize(out, t2c);
-    ISerializable::Serialize(out, t2l);
-    ISerializable::Serialize(out, t1_interrupt_armed);
-    ISerializable::Serialize(out, t2_interrupt_armed);
-    ISerializable::Serialize(out, t1_pb7_output);
+    ISerializable::Serialize(out, timer1.t1c);
+    ISerializable::Serialize(out, timer1.t1l);
+    ISerializable::Serialize(out, timer2.t2c);
+    ISerializable::Serialize(out, timer2.t2l);
+    ISerializable::Serialize(out, timer1.t1Active);
+    ISerializable::Serialize(out, timer2.t2_interrupt_armed);
+    ISerializable::Serialize(out, timer1.t1_pb7_output);
     ISerializable::Serialize(out, ira);
     ISerializable::Serialize(out, irb);
     ISerializable::Serialize(out, ca1_in);
     ISerializable::Serialize(out, ca2_in);
     ISerializable::Serialize(out, cb1_in);
     ISerializable::Serialize(out, cb2_in);
-    ISerializable::Serialize(out, sr_cnt);
-    ISerializable::Serialize(out, sr_active);
-    ISerializable::Serialize(out, sr_out_cb2);
+    ISerializable::Serialize(out, shiftRegister.sr_cnt);
+    ISerializable::Serialize(out, shiftRegister.sr_active);
+    ISerializable::Serialize(out, shiftRegister.sr_out_cb2);
     ISerializable::Serialize(out, ira_latched);
     ISerializable::Serialize(out, irb_latched);
     ISerializable::Serialize(out, ira_latch_full);
@@ -582,29 +544,29 @@ bool VIA::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, ora);
     ISerializable::Deserialize(inStream, ddrb);
     ISerializable::Deserialize(inStream, ddra);
-    ISerializable::Deserialize(inStream, t1l_l);
-    ISerializable::Deserialize(inStream, t1l_h);
-    ISerializable::Deserialize(inStream, sr);
+    ISerializable::Deserialize(inStream, timer1.t1l_l);
+    ISerializable::Deserialize(inStream, timer1.t1l_h);
+    ISerializable::Deserialize(inStream, shiftRegister.sr);
     ISerializable::Deserialize(inStream, acr);
     ISerializable::Deserialize(inStream, pcr);
     ISerializable::Deserialize(inStream, ifr);
     ISerializable::Deserialize(inStream, ier);
-    ISerializable::Deserialize(inStream, t1c);
-    ISerializable::Deserialize(inStream, t1l);
-    ISerializable::Deserialize(inStream, t2c);
-    ISerializable::Deserialize(inStream, t2l);
-    ISerializable::Deserialize(inStream, t1_interrupt_armed);
-    ISerializable::Deserialize(inStream, t2_interrupt_armed);
-    ISerializable::Deserialize(inStream, t1_pb7_output);
+    ISerializable::Deserialize(inStream, timer1.t1c);
+    ISerializable::Deserialize(inStream, timer1.t1l);
+    ISerializable::Deserialize(inStream, timer2.t2c);
+    ISerializable::Deserialize(inStream, timer2.t2l);
+    ISerializable::Deserialize(inStream, timer1.t1Active);
+    ISerializable::Deserialize(inStream, timer2.t2_interrupt_armed);
+    ISerializable::Deserialize(inStream, timer1.t1_pb7_output);
     ISerializable::Deserialize(inStream, ira);
     ISerializable::Deserialize(inStream, irb);
     ISerializable::Deserialize(inStream, ca1_in);
     ISerializable::Deserialize(inStream, ca2_in);
     ISerializable::Deserialize(inStream, cb1_in);
     ISerializable::Deserialize(inStream, cb2_in);
-    ISerializable::Deserialize(inStream, sr_cnt);
-    ISerializable::Deserialize(inStream, sr_active);
-    ISerializable::Deserialize(inStream, sr_out_cb2);
+    ISerializable::Deserialize(inStream, shiftRegister.sr_cnt);
+    ISerializable::Deserialize(inStream, shiftRegister.sr_active);
+    ISerializable::Deserialize(inStream, shiftRegister.sr_out_cb2);
     ISerializable::Deserialize(inStream, ira_latched);
     ISerializable::Deserialize(inStream, irb_latched);
     ISerializable::Deserialize(inStream, ira_latch_full);

@@ -1,6 +1,7 @@
 #ifndef TARGET_WASM
 #include "CompilerFrontend.h"
 #include "CompilerVFS.h"
+#include "ToolchainLocator.h"
 #include "ProcessRunner.h"
 #include "LinkerScriptGenerator.h"
 #include "CompilerDiagnosticParser.h"
@@ -136,14 +137,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
         res.log += stepLog;
 
         if (exitCode == 0 && fs::exists(elfFile) && fs::file_size(elfFile) > 0) {
-            std::string binDir = fs::path(compiler).parent_path().string();
-            std::string objcopy = (fs::path(binDir) / "llvm-objcopy").string();
-#ifdef _WIN32
-            objcopy += ".exe";
-#endif
-            if (!fs::exists(objcopy)) {
-                objcopy = "llvm-objcopy";
-            }
+            std::string objcopy = ToolchainLocator::FindObjcopy();
             std::string copyCmd = "\"" + objcopy + "\" -O binary \"" + elfFile + "\" \"" + binFile + "\"";
             std::string copyLog;
             int copyResult = ProcessRunner::RunCommand(copyCmd, copyLog);

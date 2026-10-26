@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <ranges>
 #include <stdexcept>
 
@@ -404,6 +405,244 @@ void Emulator::SampleLogicAnalyzer(Word addr, Byte data, bool rw, bool sync) {
     sample.portA = via.GetPortA();
     sample.portB = via.GetPortB();
     logicAnalyzer.RecordSample(sample);
+}
+
+int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasComplex, int& batchInstructions,
+                           uint64_t& batchCpuCycles, uint64_t& batchGpuCycles, int& stopCode) {
+    stopCode = std::numeric_limits<int>::min();
+    int ips = engine.GetTargetIPS();
+    if (ips <= 0) {
+        ips = 1000000;
+    }
+    if (sidEnabled) {
+        sid.SetCpuClockRate(static_cast<double>(ips));
+    }
+
+    if (cpu.cycleAccurate) {
+        if (!hooks && !hasBreakpoints) [[likely]] {
+            uint64_t localCpuCycles = 0;
+            uint64_t localGpuCycles = 0;
+            int localInstructions = 0;
+            int i = 0;
+            while (i < count) {
+                if (gpuEnabled && !gpu.IsInBlankingInterval()) {
+                    const uint32_t waitCycles = gpu.GetDrawingWaitCycles();
+                    if (waitCycles > 0 && (!sidEnabled || sid.IsDormant()) && via.IsIdle() &&
+                        acia.IsIdle() && serialBridge.GetBaudDelay() == 0 &&
+                        !pendingInterruptAny.load(std::memory_order_relaxed) &&
+                        !serialBridge.HasInput()) [[likely]] {
+                        const auto rem = static_cast<uint32_t>(count - i);
+                        const uint32_t skip = (rem < waitCycles) ? rem : waitCycles;
+                        gpu.SkipDrawingCycles(skip);
+                        via.Clock(skip);
+                        if (sidEnabled) {
+                            sid.Clock(skip);
+                        }
+                        localGpuCycles += skip;
+                        i += static_cast<int>(skip);
+                        continue;
+                    }
+                }
+
+                const bool isNew = (cpu.remainingCycles == 0);
+                bool cpuStepped = false;
+                int res = 0;
+                if (gpuEnabled) {
+                    gpu.Clock();
+                    if (gpu.IsInBlankingInterval()) {
+                        res = cpu.StepCycleAccurate<false>(bus);
+                        cpuStepped = true;
+                    }
+                } else {
+                    res = cpu.StepCycleAccurate<false>(bus);
+                    cpuStepped = true;
+                }
+
+                if (cpuStepped) {
+                    localCpuCycles++;
+                    if (isNew) {
+                        localInstructions++;
+                    }
+                } else {
+                    localGpuCycles++;
+                }
+
+                serialBridge.DecrementBaudDelay();
+                via.Clock();
+                acia.Clock(ips);
+                if (sidEnabled) {
+                    sid.Clock();
+                }
+                if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {
+                    pendingInterruptAny.store(true, std::memory_order_relaxed);
+                }
+                if (cpuStepped && pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
+                    HandleInterrupts<false>();
+                }
+                if (serialBridge.HasInput()) [[unlikely]] {
+                    HandleSerialInput<false>();
+                }
+
+                ++i;
+                if (res != 0) [[unlikely]] {
+                    batchInstructions += localInstructions;
+                    batchCpuCycles += localCpuCycles;
+                    batchGpuCycles += localGpuCycles;
+                    lastStepCpuCycles = cpuStepped ? 1 : 0;
+                    lastStepGpuCycles = (gpuEnabled && !cpuStepped) ? 1 : 0;
+                    stopCode = res;
+                    return i;
+                }
+            }
+            batchInstructions += localInstructions;
+            batchCpuCycles += localCpuCycles;
+            batchGpuCycles += localGpuCycles;
+            return count;
+        }
+        for (int i = 0; i < count; ++i) {
+            bool isNew = (cpu.remainingCycles == 0);
+            if (hasBreakpoints && isNew) {
+                if (!cpu.isInit) {
+                    cpu.EnsureInit(bus);
+                }
+                if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
+                    if (breakpointManager.Evaluate(cpu, bus) > 0) {
+                        stopCode = 0;
+                        return i;
+                    }
+                }
+            }
+            int res = hooks ? StepInternal<true, true>(ips) : StepInternal<false, true>(ips);
+
+            if (isNew && lastStepCpuCycles > 0) {
+                batchInstructions++;
+            }
+            batchCpuCycles += lastStepCpuCycles;
+            batchGpuCycles += lastStepGpuCycles;
+
+            if (res != 0) [[unlikely]] {
+                stopCode = res;
+                return i + 1;
+            }
+        }
+    } else {
+        if (!hooks && !hasBreakpoints) [[likely]] {
+            for (int i = 0; i < count; ++i) {
+                int res = StepInternal<false, false>(ips);
+                if (lastStepCpuCycles > 0) {
+                    batchInstructions++;
+                }
+                batchCpuCycles += lastStepCpuCycles;
+                batchGpuCycles += lastStepGpuCycles;
+                if (res != 0) [[unlikely]] {
+                    stopCode = res;
+                    return i + 1;
+                }
+            }
+            return count;
+        }
+        for (int i = 0; i < count; ++i) {
+            if (hasBreakpoints) {
+                if (!cpu.isInit) {
+                    cpu.EnsureInit(bus);
+                }
+                if (hasComplex || breakpointManager.IsPCBreakpoint(cpu.PC)) [[unlikely]] {
+                    if (breakpointManager.Evaluate(cpu, bus) > 0) {
+                        stopCode = 0;
+                        return i;
+                    }
+                }
+            }
+            int res = hooks ? StepInternal<true, false>(ips) : StepInternal<false, false>(ips);
+
+            if (lastStepCpuCycles > 0) {
+                batchInstructions++;
+            }
+            batchCpuCycles += lastStepCpuCycles;
+            batchGpuCycles += lastStepGpuCycles;
+
+            if (res != 0) [[unlikely]] {
+                stopCode = res;
+                return i + 1;
+            }
+        }
+    }
+    return count;
+}
+
+void Emulator::SaveInternalState(std::ostream& stateStream) {
+    int baud = serialBridge.GetBaudDelay();
+    Hardware::ISerializable::Serialize(stateStream, baud);
+
+    bool gpuE = gpuEnabled;
+    Hardware::ISerializable::Serialize(stateStream, gpuE);
+
+    int tIPS = GetTargetIPS();
+    Hardware::ISerializable::Serialize(stateStream, tIPS);
+
+    serialBridge.SerializeBuffer(stateStream);
+
+    auto binPathLen = static_cast<uint32_t>(currentBinPath.length());
+    Hardware::ISerializable::Serialize(stateStream, binPathLen);
+    stateStream.write(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
+
+    bool autoReload = IsAutoReloadEnabled();
+    Hardware::ISerializable::Serialize(stateStream, autoReload);
+
+    uint64_t totalCyc = totalCycles.load(std::memory_order_relaxed);
+    Hardware::ISerializable::Serialize(stateStream, totalCyc);
+
+    uint64_t totalInst = totalInstructions.load(std::memory_order_relaxed);
+    Hardware::ISerializable::Serialize(stateStream, totalInst);
+
+    Hardware::ISerializable::Serialize(stateStream, espEnabled);
+    Hardware::ISerializable::Serialize(stateStream, sdEnabled);
+    bool aciaEsp = serialBridge.IsACIAESPBridge();
+    Hardware::ISerializable::Serialize(stateStream, aciaEsp);
+}
+
+bool Emulator::LoadInternalState(std::istream& stateStream) {
+    int baud = 0;
+    Hardware::ISerializable::Deserialize(stateStream, baud);
+    serialBridge.SetBaudDelay(baud);
+
+    bool gpuE = false;
+    Hardware::ISerializable::Deserialize(stateStream, gpuE);
+    gpuEnabled = gpuE;
+
+    int tIPS = 0;
+    Hardware::ISerializable::Deserialize(stateStream, tIPS);
+    SetTargetIPS(tIPS);
+
+    if (!serialBridge.DeserializeBuffer(stateStream)) {
+        return false;
+    }
+
+    uint32_t binPathLen = 0;
+    Hardware::ISerializable::Deserialize(stateStream, binPathLen);
+    if (binPathLen > 4096) { return false; }
+    currentBinPath.assign(binPathLen, '\0');
+    stateStream.read(currentBinPath.data(), static_cast<std::streamsize>(binPathLen));
+
+    bool autoReload = false;
+    Hardware::ISerializable::Deserialize(stateStream, autoReload);
+    SetAutoReload(autoReload);
+
+    uint64_t totalCyc = 0;
+    Hardware::ISerializable::Deserialize(stateStream, totalCyc);
+    totalCycles.store(totalCyc, std::memory_order_relaxed);
+
+    uint64_t totalInst = 0;
+    Hardware::ISerializable::Deserialize(stateStream, totalInst);
+    totalInstructions.store(totalInst, std::memory_order_relaxed);
+
+    Hardware::ISerializable::Deserialize(stateStream, espEnabled);
+    Hardware::ISerializable::Deserialize(stateStream, sdEnabled);
+    bool aciaEsp = false;
+    Hardware::ISerializable::Deserialize(stateStream, aciaEsp);
+    serialBridge.SetACIAESPBridge(aciaEsp);
+
+    return true;
 }
 
 }  // namespace Core
