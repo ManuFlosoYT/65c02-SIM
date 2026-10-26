@@ -84,7 +84,7 @@ static void DrawMuteSoloButtons(Hardware::SID& sid, int voiceIndex) {
     ImGui::PopID();
 }
 
-static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_time, bool should_update) {
+static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_time, bool should_update, bool phase_trigger) {
     const auto& voice = sid.GetVoice(voiceIndex);
 
     ImGui::BeginGroup();
@@ -115,7 +115,8 @@ static void DrawVoiceWaveform(Hardware::SID& sid, int voiceIndex, double sid_tim
 
     for (size_t nIdx = 0; nIdx < WAVE_POINTS; nIdx++) {
         float timeRatio = static_cast<float>(nIdx) / static_cast<float>(WAVE_POINTS - 1);
-        float phase = (timeRatio * freqScale) - static_cast<float>(time * speed * freqScale);
+        float phaseOffset = phase_trigger ? 0.0F : static_cast<float>(time * speed * freqScale);
+        float phase = (timeRatio * freqScale) - phaseOffset;
         phase -= std::floor(phase);
 
         float val = 0.0F;
@@ -1189,7 +1190,7 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
                     ImGui::Separator();
                 }
 
-                DrawVoiceWaveform(state.emulator.GetSID(), voiceIndex, sid_time, should_update);
+                DrawVoiceWaveform(state.emulator.GetSID(), voiceIndex, sid_time, should_update, state.emulation.sidPhaseTrigger);
                 ImGui::SameLine(0.0F, 28.0F);
                 DrawVoiceParameters(state.emulator.GetSID(), voiceIndex);
 

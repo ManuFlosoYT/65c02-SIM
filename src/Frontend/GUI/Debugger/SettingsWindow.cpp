@@ -69,6 +69,8 @@ static void DrawEmulationSettings(AppState& state) {
         state.emulator.GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
     }
     ImGui::SetItemTooltip("Fills RAM with random bytes on next Reset to catch uninitialized variables.");
+    ImGui::Checkbox("Phase Trigger (Wave Stabilization)", &state.emulation.sidPhaseTrigger);
+    ImGui::SetItemTooltip("Locks voice preview waveform to phase reset/zero-crossing to keep waves static for observing Pulse Width (PW) changes.");
 }
 
 static void DrawScriptingSettings(AppState& state) {

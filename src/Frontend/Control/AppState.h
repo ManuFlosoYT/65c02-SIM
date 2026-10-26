@@ -56,6 +56,7 @@ struct EmulationState {
     bool autoReload = true;
     bool sdLatencyEnabled = false;
     bool ramPowerOnPattern = false;
+    bool sidPhaseTrigger = true;
     bool isRecordingVideo = false;
     std::string recordingVideoPath;
     RecordingSettings recordingSettings;
