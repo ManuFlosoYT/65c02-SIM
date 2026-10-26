@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Hardware/Core/Console.h"
@@ -175,104 +176,79 @@ static void DrawSDKPopup(AppState& state) {
     }
 }
 
-static void DrawLoadROMButton(AppState& state, bool cartLoaded) {
-    ImGui::BeginDisabled(cartLoaded);
-    if (ImGui::Button((state.rom.loaded && !cartLoaded) ? "Eject ROM" : "Load ROM")) {
-        if (state.rom.loaded) {
-            state.rom.loaded = false;
-            state.rom.bin = "";
-            state.emulator.Reset();
-            state.emulator.Pause();
+static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
+    const bool isLoaded = state.rom.loaded || cartLoaded;
+    if (ImGui::Button(isLoaded ? "Eject File" : "Load File")) {
+        if (isLoaded) {
+            if (cartLoaded) {
+                Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Eject);
+            } else {
+                state.rom.loaded = false;
+                state.rom.bin = "";
+                state.emulator.Reset();
+                state.emulator.Pause();
+            }
         } else {
 #ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-                std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
-                state.rom.data.assign(dataSpan.begin(), dataSpan.end());
-                state.emulator.Pause();
-                std::string errorMsg;
-                if (state.emulator.InitFromMemory(state.rom.data, filename, errorMsg)) {
-                    Console::Clear();
-                    state.rom.bin = filename;
-                    state.rom.loaded = true;
-                    state.rom.symbols.Clear();
-                    state.emulator.ClearProfiler();
-                    state.emulator.ClearCartridge();
+                std::string_view nameView(filename);
+                if (nameView.ends_with(".65c")) {
+                    std::string virtualPath = "/tmp/";
+                    virtualPath += filename;
+                    FILE* f = fopen(virtualPath.c_str(), "wb");
+                    if (f) {
+                        fwrite(data, 1, static_cast<size_t>(size), f);
+                        fclose(f);
+                    }
+                    state.emulator.Pause();
+                    std::string errorMsg;
+                    Core::Cartridge cart;
+                    if (Core::CartridgeLoader::Load(virtualPath, cart, errorMsg)) {
+                        Control::ApplyCartridgeConfig(state, cart);
+                        if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
+                            state.rom.bin = virtualPath;
+                            state.rom.loaded = true;
+                            state.emulator.ClearProfiler();
+                            ImGui::OpenPopup("Cartridge Loaded");
+                        } else {
+                            ImGui::OpenPopup("ErrorLoadingROM");
+                        }
+                    } else {
+                        ImGui::OpenPopup("ErrorLoadingCartridge");
+                    }
                 } else {
-                    std::cerr << "Failed to load ROM: " << errorMsg << "\n";
+                    std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
+                    state.rom.data.assign(dataSpan.begin(), dataSpan.end());
+                    state.emulator.Pause();
+                    std::string errorMsg;
+                    if (state.emulator.InitFromMemory(state.rom.data, filename, errorMsg)) {
+                        Console::Clear();
+                        state.rom.bin = filename;
+                        state.rom.loaded = true;
+                        state.rom.symbols.Clear();
+                        state.emulator.ClearProfiler();
+                        state.emulator.ClearCartridge();
+                    } else {
+                        std::cerr << "Failed to load ROM: " << errorMsg << "\n";
+                    }
                 }
             };
-            WebFileUtils::open_browser_file_picker(".bin");
+            WebFileUtils::open_browser_file_picker(".bin,.65c");
 #else
             if (!Frontend::CustomFileDialog::IsOpened()) {
-                Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+                Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin,.65c", ".");
             }
 #endif
         }
     }
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         if (cartLoaded) {
-            ImGui::TextUnformatted("Eject cartridge first to load a different ROM");
+            ImGui::TextUnformatted("Eject currently loaded cartridge");
         } else if (state.rom.loaded) {
             ImGui::TextUnformatted("Eject currently loaded ROM");
         } else {
-            ImGui::TextUnformatted("Open file dialog to load a 65C02 binary ROM");
-        }
-        ImGui::EndTooltip();
-    }
-}
-
-static void DrawLoadCartridgeButton(AppState& state, bool cartLoaded) {
-    ImGui::BeginDisabled(state.rom.loaded && !cartLoaded);
-    const char* cartBtnText = cartLoaded ? "Eject Cartridge" : "Load Cartridge (.65c)";
-    if (ImGui::Button(cartBtnText)) {
-        if (cartLoaded) {
-            Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Eject);
-        } else {
-#ifdef TARGET_WASM
-            WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
-                std::string virtualPath = "/tmp/";
-                virtualPath += filename;
-                FILE* f = fopen(virtualPath.c_str(), "wb");
-                if (f) {
-                    fwrite(data, 1, static_cast<size_t>(size), f);
-                    fclose(f);
-                }
-                state.emulator.Pause();
-                std::string errorMsg;
-                Core::Cartridge cart;
-                if (Core::CartridgeLoader::Load(virtualPath, cart, errorMsg)) {
-                    Control::ApplyCartridgeConfig(state, cart);
-                    ImGui::OpenPopup("Cartridge Loaded");
-                    if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
-                        state.rom.bin = virtualPath;
-                        state.rom.loaded = true;
-                        state.emulator.ClearProfiler();
-                    } else {
-                        ImGui::OpenPopup("ErrorLoadingROM");
-                    }
-                } else {
-                    ImGui::OpenPopup("ErrorLoadingCartridge");
-                }
-            };
-            WebFileUtils::open_browser_file_picker(".65c");
-#else
-            if (!Frontend::CustomFileDialog::IsOpened()) {
-                Frontend::CustomFileDialog::OpenDialog("ChooseCartridgeDlgKey", "Choose Cartridge", ".65c", ".");
-            }
-#endif
-        }
-    }
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::BeginTooltip();
-        if (state.rom.loaded && !cartLoaded) {
-            ImGui::TextUnformatted("Eject ROM first to load a Cartridge");
-        } else if (cartLoaded) {
-            ImGui::TextUnformatted("Eject currently loaded cartridge");
-        } else {
-            ImGui::TextUnformatted("Open file dialog to load a Cartridge file (.65c)");
+            ImGui::TextUnformatted("Open file dialog to load a 65C02 binary ROM (.bin) or Cartridge (.65c)");
         }
         ImGui::EndTooltip();
     }
@@ -337,10 +313,7 @@ static void DrawIDEButton(AppState& state, bool cartLoaded) {
 static void DrawConsoleButtonBar(AppState& state) {
     bool cartLoaded = state.emulator.GetCartridge().loaded;
 
-    DrawLoadROMButton(state, cartLoaded);
-
-    ImGui::SameLine();
-    DrawLoadCartridgeButton(state, cartLoaded);
+    DrawLoadFileButton(state, cartLoaded);
 
     ImGui::SameLine();
     DrawSDKButton(state);

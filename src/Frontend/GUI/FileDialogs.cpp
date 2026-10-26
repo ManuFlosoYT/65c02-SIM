@@ -17,40 +17,33 @@ static void HandleROMFilePicker(AppState& state) {
             std::string filePathName = CustomFileDialog::GetFilePathName();
             state.emulator.Pause();
             std::string errorMsg;
-            if (state.emulator.Init(filePathName, errorMsg)) {
-                Console::Clear();
-                state.rom.bin = filePathName;
-                state.rom.loaded = true;
-                state.rom.symbols.Clear();
-                state.emulator.ClearProfiler();
-            } else {
-                ImGui::OpenPopup("ErrorLoadingROM");
-            }
-        }
-        CustomFileDialog::Close();
-    }
-}
-
-static void HandleCartridgeFilePicker(AppState& state) {
-    if (CustomFileDialog::Display("ChooseCartridgeDlgKey")) {
-        if (CustomFileDialog::IsOk()) {
-            std::string filePathName = CustomFileDialog::GetFilePathName();
-            state.emulator.Pause();
-            std::string errorMsg;
-            Core::Cartridge cart;
-            if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
-                Control::ApplyCartridgeConfig(state, cart);
-                ImGui::OpenPopup("Cartridge Loaded");
-                if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
-                    state.rom.bin = filePathName;
-                    state.rom.loaded = true;
-                    state.emulator.ClearProfiler();
+            if (filePathName.ends_with(".65c")) {
+                Core::Cartridge cart;
+                if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
+                    Control::ApplyCartridgeConfig(state, cart);
+                    ImGui::OpenPopup("Cartridge Loaded");
+                    if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
+                        state.rom.bin = filePathName;
+                        state.rom.loaded = true;
+                        state.emulator.ClearProfiler();
+                    } else {
+                        ImGui::OpenPopup("ErrorLoadingROM");
+                    }
                 } else {
+                    std::cerr << "Cartridge load error: " << errorMsg << "\n";
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }
             } else {
-                std::cerr << "Cartridge load error: " << errorMsg << "\n";
-                ImGui::OpenPopup("ErrorLoadingROM");
+                if (state.emulator.Init(filePathName, errorMsg)) {
+                    Console::Clear();
+                    state.rom.bin = filePathName;
+                    state.rom.loaded = true;
+                    state.rom.symbols.Clear();
+                    state.emulator.ClearProfiler();
+                    state.emulator.ClearCartridge();
+                } else {
+                    ImGui::OpenPopup("ErrorLoadingROM");
+                }
             }
         }
         CustomFileDialog::Close();
@@ -102,7 +95,6 @@ static void HandleLoadStateFilePicker(AppState& state) {
 void HandleDialogs(AppState& state) {
 #ifndef TARGET_WASM
     HandleROMFilePicker(state);
-    HandleCartridgeFilePicker(state);
     HandleSaveStateFilePicker(state);
     HandleLoadStateFilePicker(state);
 #else
