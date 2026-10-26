@@ -362,7 +362,7 @@ static void DrawVoiceADSR(const Oscillator& voice, int voiceIndex) {
     ImGui::Dummy(size);
 }
 
-static void DrawVoiceADSRWarning(const Hardware::SID& sid, int voiceIndex) {
+static void DrawVoiceADSRWarning(const Hardware::SID& sid, int voiceIndex, bool enabled) {
     const auto& voice = sid.GetVoice(voiceIndex);
     const ImVec2 size(24.0F, 26.0F);
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
@@ -381,7 +381,7 @@ static void DrawVoiceADSRWarning(const Hardware::SID& sid, int voiceIndex) {
     }
 
     const double now = ImGui::GetTime();
-    const bool isWarning = (now - bugAlertTime.at(voiceIndex) < 2.0);
+    const bool isWarning = enabled && (now - bugAlertTime.at(voiceIndex) < 2.0);
 
     if (isWarning) {
         const bool blinkVisible = (static_cast<int>(now * 4.0) % 2 == 0);
@@ -413,7 +413,7 @@ static void DrawVoiceADSRWarning(const Hardware::SID& sid, int voiceIndex) {
     }
 }
 
-static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
+static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex, bool showADSRWarning) {
     const auto& voice = sid.GetVoice(voiceIndex);
     const ImVec4 voiceColor = ImColor(VOICE_COLORS.at(voiceIndex)).Value;
 
@@ -460,7 +460,7 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     DrawVoiceADSR(voice, voiceIndex);
 
     ImGui::SameLine(0.0F, 4.0F);
-    DrawVoiceADSRWarning(sid, voiceIndex);
+    DrawVoiceADSRWarning(sid, voiceIndex, showADSRWarning);
     ImGui::SameLine(0.0F, 4.0F);
 
     DrawControlBadge("GATE", (voice.control & 1) != 0);
@@ -1246,7 +1246,7 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
 
                 DrawVoiceWaveform(state.emulator.GetSID(), voiceIndex, sid_time, should_update, state.emulation.sidPhaseTrigger);
                 ImGui::SameLine(0.0F, 28.0F);
-                DrawVoiceParameters(state.emulator.GetSID(), voiceIndex);
+                DrawVoiceParameters(state.emulator.GetSID(), voiceIndex, state.emulation.sidADSRWarning);
 
                 ImGui::PopID();
             }

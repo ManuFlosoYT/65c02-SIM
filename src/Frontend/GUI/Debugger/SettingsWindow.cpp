@@ -71,6 +71,8 @@ static void DrawEmulationSettings(AppState& state) {
     ImGui::SetItemTooltip("Fills RAM with random bytes on next Reset to catch uninitialized variables.");
     ImGui::Checkbox("Phase Trigger (Wave Stabilization)", &state.emulation.sidPhaseTrigger);
     ImGui::SetItemTooltip("Locks voice preview waveform to phase reset/zero-crossing to keep waves static for observing Pulse Width (PW) changes.");
+    ImGui::Checkbox("SID ADSR Bug Warning", &state.emulation.sidADSRWarning);
+    ImGui::SetItemTooltip("Displays a warning indicator in the SID Viewer when rapid Gate transitions cause an ADSR delay bug.");
 }
 
 static void DrawScriptingSettings(AppState& state) {
