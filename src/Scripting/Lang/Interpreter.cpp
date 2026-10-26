@@ -2,9 +2,6 @@
 #include <cstdint>
 #include <iostream>
 
-#include "Hardware/CPU/CPU.h"
-#include "Hardware/Core/Bus.h"
-
 namespace System::Hardware::Scripting::Lang {
 
 Interpreter::Interpreter()
@@ -32,32 +29,29 @@ void Interpreter::interpret(const std::vector<std::unique_ptr<Stmt>>& statements
 }
 
 Value Interpreter::evaluate(Expr* expr) {
-    if (auto* binary = dynamic_cast<BinaryExpr*>(expr)) {
-        return visitBinaryExpr(binary);
+    if (!expr) {
+        throw std::runtime_error("Null expression");
     }
-    if (auto* unary = dynamic_cast<UnaryExpr*>(expr)) {
-        return visitUnaryExpr(unary);
-    }
-    if (auto* literal = dynamic_cast<LiteralExpr*>(expr)) {
-        return visitLiteralExpr(literal);
-    }
-    if (auto* var = dynamic_cast<VariableExpr*>(expr)) {
-        return visitVariableExpr(var);
-    }
-    if (auto* assign = dynamic_cast<AssignExpr*>(expr)) {
-        return visitAssignExpr(assign);
-    }
-    if (auto* call = dynamic_cast<CallExpr*>(expr)) {
-        return visitCallExpr(call);
-    }
-    if (auto* get = dynamic_cast<GetExpr*>(expr)) {
-        return visitGetExpr(get);
-    }
-    if (auto* index = dynamic_cast<IndexExpr*>(expr)) {
-        return visitIndexExpr(index);
-    }
-    if (auto* changed = dynamic_cast<ChangedExpr*>(expr)) {
-        return visitChangedExpr(changed);
+
+    switch (expr->kind) {
+        case ExprKind::Binary:
+            return visitBinaryExpr(static_cast<BinaryExpr*>(expr));
+        case ExprKind::Unary:
+            return visitUnaryExpr(static_cast<UnaryExpr*>(expr));
+        case ExprKind::Literal:
+            return visitLiteralExpr(static_cast<LiteralExpr*>(expr));
+        case ExprKind::Variable:
+            return visitVariableExpr(static_cast<VariableExpr*>(expr));
+        case ExprKind::Assign:
+            return visitAssignExpr(static_cast<AssignExpr*>(expr));
+        case ExprKind::Call:
+            return visitCallExpr(static_cast<CallExpr*>(expr));
+        case ExprKind::Get:
+            return visitGetExpr(static_cast<GetExpr*>(expr));
+        case ExprKind::Index:
+            return visitIndexExpr(static_cast<IndexExpr*>(expr));
+        case ExprKind::Changed:
+            return visitChangedExpr(static_cast<ChangedExpr*>(expr));
     }
 
     throw std::runtime_error("Unknown expression type");
@@ -72,24 +66,35 @@ void Interpreter::execute(Stmt* stmt) {
         return; // Skip if breaking or continuing
     }
 
-    if (auto* exprStmt = dynamic_cast<ExpressionStmt*>(stmt)) {
-        visitExpressionStmt(exprStmt);
-    } else if (auto* printStmt = dynamic_cast<PrintStmt*>(stmt)) {
-        visitPrintStmt(printStmt);
-    } else if (auto* varStmt = dynamic_cast<VarStmt*>(stmt)) {
-        visitVarStmt(varStmt);
-    } else if (auto* blockStmt = dynamic_cast<BlockStmt*>(stmt)) {
-        visitBlockStmt(blockStmt);
-    } else if (auto* ifStmt = dynamic_cast<IfStmt*>(stmt)) {
-        visitIfStmt(ifStmt);
-    } else if (auto* whileStmt = dynamic_cast<WhileStmt*>(stmt)) {
-        visitWhileStmt(whileStmt);
-    } else if (auto* breakStmt = dynamic_cast<BreakStmt*>(stmt)) {
-        visitBreakStmt(breakStmt);
-    } else if (auto* continueStmt = dynamic_cast<ContinueStmt*>(stmt)) {
-        visitContinueStmt(continueStmt);
-    } else {
-        throw std::runtime_error("Unknown statement type");
+    if (!stmt) {
+        throw std::runtime_error("Null statement");
+    }
+
+    switch (stmt->kind) {
+        case StmtKind::Expression:
+            visitExpressionStmt(static_cast<ExpressionStmt*>(stmt));
+            break;
+        case StmtKind::Print:
+            visitPrintStmt(static_cast<PrintStmt*>(stmt));
+            break;
+        case StmtKind::Var:
+            visitVarStmt(static_cast<VarStmt*>(stmt));
+            break;
+        case StmtKind::Block:
+            visitBlockStmt(static_cast<BlockStmt*>(stmt));
+            break;
+        case StmtKind::If:
+            visitIfStmt(static_cast<IfStmt*>(stmt));
+            break;
+        case StmtKind::While:
+            visitWhileStmt(static_cast<WhileStmt*>(stmt));
+            break;
+        case StmtKind::Break:
+            visitBreakStmt(static_cast<BreakStmt*>(stmt));
+            break;
+        case StmtKind::Continue:
+            visitContinueStmt(static_cast<ContinueStmt*>(stmt));
+            break;
     }
 }
 
@@ -194,46 +199,10 @@ Value Interpreter::visitLiteralExpr(LiteralExpr* expr) {
 }
 
 Value Interpreter::visitVariableExpr(VariableExpr* expr) {
-    if (cpuContext != nullptr) {
-        const std::string& name = expr->name.lexeme;
-        if (name == "PC" || name == "pc") {
-            return static_cast<int64_t>(cpuContext->PC);
-        }
-        if (name == "A" || name == "a") {
-            return static_cast<int64_t>(cpuContext->A);
-        }
-        if (name == "X" || name == "x") {
-            return static_cast<int64_t>(cpuContext->X);
-        }
-        if (name == "Y" || name == "y") {
-            return static_cast<int64_t>(cpuContext->Y);
-        }
-        if (name == "SP" || name == "sp") {
-            return static_cast<int64_t>(cpuContext->SP);
-        }
-        if (name == "C" || name == "c") {
-            return static_cast<int64_t>(cpuContext->C);
-        }
-        if (name == "Z" || name == "z") {
-            return static_cast<int64_t>(cpuContext->Z);
-        }
-        if (name == "I" || name == "i") {
-            return static_cast<int64_t>(cpuContext->I);
-        }
-        if (name == "D" || name == "d") {
-            return static_cast<int64_t>(cpuContext->D);
-        }
-        if (name == "B" || name == "b") {
-            return static_cast<int64_t>(cpuContext->B);
-        }
-        if (name == "V" || name == "v") {
-            return static_cast<int64_t>(cpuContext->V);
-        }
-        if (name == "N" || name == "n") {
-            return static_cast<int64_t>(cpuContext->N);
-        }
+    if (auto hwVal = context.ResolveVariable(expr->name.lexeme)) {
+        return *hwVal;
     }
-    if (expr->name.lexeme == "MEM" || expr->name.lexeme == "mem") {
+    if (EmulatorScriptContext::IsMemoryIdentifier(expr->name.lexeme)) {
         return std::string("MEM");
     }
     return environment->get(expr->name);
@@ -247,11 +216,8 @@ Value Interpreter::visitIndexExpr(IndexExpr* expr) {
         if (!std::holds_alternative<int64_t>(indexVal)) {
             throw RuntimeError(expr->bracket, "Memory address index must be a number.");
         }
-        if (busContext != nullptr) {
-            auto addr = static_cast<uint16_t>(std::get<int64_t>(indexVal));
-            return static_cast<int64_t>(busContext->ReadDirect(addr));
-        }
-        return static_cast<int64_t>(0);
+        auto addr = static_cast<uint16_t>(std::get<int64_t>(indexVal));
+        return context.ReadMemory(addr);
     }
 
     throw RuntimeError(expr->bracket, "Index operator not supported on this object.");
@@ -316,7 +282,8 @@ Value Interpreter::visitCallExpr(CallExpr* expr) {
 }
 
 Value Interpreter::visitGetExpr(GetExpr* expr) {
-    if (auto* varExpr = dynamic_cast<VariableExpr*>(expr->object.get())) {
+    if (expr->object && expr->object->kind == ExprKind::Variable) {
+        auto* varExpr = static_cast<VariableExpr*>(expr->object.get());
         if (varExpr->name.lexeme == "emu") {
             return Callable{"emu." + expr->name.lexeme};
         }

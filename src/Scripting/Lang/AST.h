@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Token.h"
+#include <cstdint>
 #include <memory>
 #include <vector>
 #include <string>
@@ -8,9 +9,33 @@
 
 namespace System::Hardware::Scripting::Lang {
 
+enum class ExprKind : uint8_t {
+    Binary,
+    Unary,
+    Literal,
+    Variable,
+    Assign,
+    Call,
+    Get,
+    Index,
+    Changed
+};
+
+enum class StmtKind : uint8_t {
+    Expression,
+    Print,
+    Var,
+    Block,
+    If,
+    While,
+    Break,
+    Continue
+};
+
 struct Expr {
+    const ExprKind kind;
+    explicit Expr(ExprKind k) : kind(k) {}
     virtual ~Expr() = default;
-    Expr() = default;
     Expr(const Expr&) = delete;
     Expr& operator=(const Expr&) = delete;
     Expr(Expr&&) = delete;
@@ -18,8 +43,9 @@ struct Expr {
 };
 
 struct Stmt {
+    const StmtKind kind;
+    explicit Stmt(StmtKind k) : kind(k) {}
     virtual ~Stmt() = default;
-    Stmt() = default;
     Stmt(const Stmt&) = delete;
     Stmt& operator=(const Stmt&) = delete;
     Stmt(Stmt&&) = delete;
@@ -34,7 +60,7 @@ struct BinaryExpr : public Expr {
     std::unique_ptr<Expr> right;
 
     BinaryExpr(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right)
-        : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
+        : Expr(ExprKind::Binary), left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
 };
 
 struct UnaryExpr : public Expr {
@@ -42,21 +68,21 @@ struct UnaryExpr : public Expr {
     std::unique_ptr<Expr> right;
 
     UnaryExpr(Token op, std::unique_ptr<Expr> right)
-        : op(std::move(op)), right(std::move(right)) {}
+        : Expr(ExprKind::Unary), op(std::move(op)), right(std::move(right)) {}
 };
 
 struct LiteralExpr : public Expr {
     std::variant<std::monostate, int64_t, std::string, bool> value; // monostate for null/nil
     
-    explicit LiteralExpr(int64_t v) : value(v) {}
-    explicit LiteralExpr(std::string v) : value(std::move(v)) {}
-    explicit LiteralExpr(bool v) : value(v) {}
+    explicit LiteralExpr(int64_t v) : Expr(ExprKind::Literal), value(v) {}
+    explicit LiteralExpr(std::string v) : Expr(ExprKind::Literal), value(std::move(v)) {}
+    explicit LiteralExpr(bool v) : Expr(ExprKind::Literal), value(v) {}
 };
 
 struct VariableExpr : public Expr {
     Token name;
 
-    explicit VariableExpr(Token name) : name(std::move(name)) {}
+    explicit VariableExpr(Token name) : Expr(ExprKind::Variable), name(std::move(name)) {}
 };
 
 struct AssignExpr : public Expr {
@@ -64,7 +90,7 @@ struct AssignExpr : public Expr {
     std::unique_ptr<Expr> value;
 
     AssignExpr(Token name, std::unique_ptr<Expr> value)
-        : name(std::move(name)), value(std::move(value)) {}
+        : Expr(ExprKind::Assign), name(std::move(name)), value(std::move(value)) {}
 };
 
 struct CallExpr : public Expr {
@@ -73,7 +99,7 @@ struct CallExpr : public Expr {
     std::vector<std::unique_ptr<Expr>> arguments;
 
     CallExpr(std::unique_ptr<Expr> callee, Token paren, std::vector<std::unique_ptr<Expr>> arguments)
-        : callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
+        : Expr(ExprKind::Call), callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
 };
 
 struct GetExpr : public Expr {
@@ -81,7 +107,7 @@ struct GetExpr : public Expr {
     Token name;
 
     GetExpr(std::unique_ptr<Expr> object, Token name)
-        : object(std::move(object)), name(std::move(name)) {}
+        : Expr(ExprKind::Get), object(std::move(object)), name(std::move(name)) {}
 };
 
 struct IndexExpr : public Expr {
@@ -90,7 +116,7 @@ struct IndexExpr : public Expr {
     std::unique_ptr<Expr> index;
 
     IndexExpr(std::unique_ptr<Expr> object, Token bracket, std::unique_ptr<Expr> index)
-        : object(std::move(object)), bracket(std::move(bracket)), index(std::move(index)) {}
+        : Expr(ExprKind::Index), object(std::move(object)), bracket(std::move(bracket)), index(std::move(index)) {}
 };
 
 struct ChangedExpr : public Expr {
@@ -100,7 +126,7 @@ struct ChangedExpr : public Expr {
     mutable std::variant<std::monostate, int64_t, std::string, bool> prevValue;
 
     ChangedExpr(std::unique_ptr<Expr> expression, Token keyword)
-        : expression(std::move(expression)), keyword(std::move(keyword)) {}
+        : Expr(ExprKind::Changed), expression(std::move(expression)), keyword(std::move(keyword)) {}
 };
 
 // Statements
@@ -109,14 +135,14 @@ struct ExpressionStmt : public Stmt {
     std::unique_ptr<Expr> expression;
 
     explicit ExpressionStmt(std::unique_ptr<Expr> expression)
-        : expression(std::move(expression)) {}
+        : Stmt(StmtKind::Expression), expression(std::move(expression)) {}
 };
 
 struct PrintStmt : public Stmt { // Optional: useful for debugging
     std::unique_ptr<Expr> expression;
 
     explicit PrintStmt(std::unique_ptr<Expr> expression)
-        : expression(std::move(expression)) {}
+        : Stmt(StmtKind::Print), expression(std::move(expression)) {}
 };
 
 struct VarStmt : public Stmt {
@@ -124,14 +150,14 @@ struct VarStmt : public Stmt {
     std::unique_ptr<Expr> initializer;
 
     VarStmt(Token name, std::unique_ptr<Expr> initializer)
-        : name(std::move(name)), initializer(std::move(initializer)) {}
+        : Stmt(StmtKind::Var), name(std::move(name)), initializer(std::move(initializer)) {}
 };
 
 struct BlockStmt : public Stmt {
     std::vector<std::unique_ptr<Stmt>> statements;
 
     explicit BlockStmt(std::vector<std::unique_ptr<Stmt>> statements)
-        : statements(std::move(statements)) {}
+        : Stmt(StmtKind::Block), statements(std::move(statements)) {}
 };
 
 struct IfStmt : public Stmt {
@@ -140,7 +166,7 @@ struct IfStmt : public Stmt {
     std::unique_ptr<Stmt> elseBranch;
 
     IfStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> thenBranch, std::unique_ptr<Stmt> elseBranch)
-        : condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {}
+        : Stmt(StmtKind::If), condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {}
 };
 
 struct WhileStmt : public Stmt {
@@ -148,15 +174,15 @@ struct WhileStmt : public Stmt {
     std::unique_ptr<Stmt> body;
 
     WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body)
-        : condition(std::move(condition)), body(std::move(body)) {}
+        : Stmt(StmtKind::While), condition(std::move(condition)), body(std::move(body)) {}
 };
 
 struct BreakStmt : public Stmt {
-    BreakStmt() = default;
+    BreakStmt() : Stmt(StmtKind::Break) {}
 };
 
 struct ContinueStmt : public Stmt {
-    ContinueStmt() = default;
+    ContinueStmt() : Stmt(StmtKind::Continue) {}
 };
 
 } // namespace System::Hardware::Scripting::Lang

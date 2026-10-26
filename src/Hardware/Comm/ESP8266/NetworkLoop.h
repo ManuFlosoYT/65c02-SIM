@@ -1,42 +1,14 @@
 #pragma once
 
-#include <array>
-#include <atomic>
-#include <chrono>
-#include <memory>
-#include <mutex>
 #include <string>
-#include <thread>
 
-#include <asio.hpp>
-#ifndef TARGET_WASM
-#include <asio/ssl.hpp>
-#endif
+#include "Hardware/Comm/ESP8266/ATSocketManager.h"
+#include "Hardware/Comm/ESP8266/ATHttpClient.h"
+#include "Hardware/Comm/ESP8266/ATPingService.h"
 
 namespace Hardware {
 
 class ESP8266;
-
-static constexpr int kMaxConnections = 5;
-
-struct ATConnection {
-    std::unique_ptr<asio::ip::tcp::socket> tcpSocket;
-#ifndef TARGET_WASM
-    std::unique_ptr<asio::ssl::stream<asio::ip::tcp::socket>> sslStream;
-#endif
-    std::unique_ptr<asio::ip::udp::socket> udpSocket;
-    asio::ip::udp::endpoint udpRemoteEndpoint;
-    int udpMode{0};
-    std::thread rxThread;
-    std::recursive_mutex rxThreadMutex;
-    std::atomic<bool> active{false};
-    bool isHttps{false};
-    std::string protocol;
-    std::string remoteHost;
-    int remotePort{0};
-
-    void StopRxThread();
-};
 
 class NetworkLoop {
 public:
@@ -77,34 +49,18 @@ public:
 
     [[nodiscard]] std::string GetLocalIP();
 
+    [[nodiscard]] ATSocketManager& GetSocketManager() { return socketManager; }
+    [[nodiscard]] const ATSocketManager& GetSocketManager() const { return socketManager; }
+    [[nodiscard]] ATHttpClient& GetHttpClient() { return httpClient; }
+    [[nodiscard]] const ATHttpClient& GetHttpClient() const { return httpClient; }
+    [[nodiscard]] ATPingService& GetPingService() { return pingService; }
+    [[nodiscard]] const ATPingService& GetPingService() const { return pingService; }
+
 private:
-    void RxLoopTCP(int linkId);
-#ifndef TARGET_WASM
-    void RxLoopSSL(int linkId);
-    void PerformHttpsRequest(int linkId, const std::string& host, int port, const std::string& requestData);
-    void PerformHttpClientRequest(int opt, int contentType, const std::string& url,
-                                  const std::string& host, const std::string& path,
-                                  const std::string& postData);
-#endif
-    void RxLoopUDP(int linkId);
-    void AcceptLoop();
-    void PingTask(const std::string& host);
-
     ESP8266& esp;
-
-    asio::io_context ioContext;
-#ifndef TARGET_WASM
-    asio::ssl::context sslContext;
-#endif
-    std::array<ATConnection, kMaxConnections> connections;
-
-    std::unique_ptr<asio::ip::tcp::acceptor> serverAcceptor;
-    std::thread acceptThread;
-    std::atomic<bool> serverRunning{false};
-
-    std::thread pingThread;
-    std::atomic<bool> stopPing{false};
-    std::thread httpClientThread;
+    ATSocketManager socketManager;
+    ATHttpClient httpClient;
+    ATPingService pingService;
 };
 
 }  // namespace Hardware

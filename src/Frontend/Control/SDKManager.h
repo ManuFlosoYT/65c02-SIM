@@ -1,8 +1,13 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 namespace Control {
+
+struct AppState;
+enum class IDEMode : std::uint8_t;
 
 class SDKManager {
 public:
@@ -17,6 +22,12 @@ public:
 
     // Scan extracted directories to populate AppState
     static void ScanExtractedSDK(struct AppState& state);
+
+    // Resolves path to a library file (returns empty string if not found)
+    static std::string ResolveLibPath(const std::string& lib);
+
+    // Returns available SDK header libraries for a given IDE mode
+    static std::vector<std::string> GetAvailableLibraries(IDEMode mode);
 
 private:
     static void WriteManifest();

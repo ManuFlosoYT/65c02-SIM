@@ -4,8 +4,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include <functional>
+#include "Hardware/Core/SourceCodeCache.h"
 
 namespace Control {
 
@@ -68,8 +68,14 @@ struct DbgSeg {
     std::string type;
 };
 
+class DbgFormatParser;
+class DwarfNmParser;
+
 class SymbolTable {
 public:
+    friend class DbgFormatParser;
+    friend class DwarfNmParser;
+
     using ElfLoader = std::function<bool(SymbolTable& table, const std::string& elfPath)>;
     static void SetElfLoader(ElfLoader loader);
 
@@ -108,14 +114,12 @@ private:
     std::unordered_map<unsigned int, DbgSpan> spans;
     std::unordered_map<unsigned int, DbgLine> lines;
     std::unordered_map<unsigned int, DbgSeg> segs;
-    mutable std::unordered_map<unsigned int, std::vector<std::string>> fileLines;
+    mutable SourceCodeCache sourceCache;
 
     // Fast lookups
     std::unordered_map<uint16_t, unsigned int> addrToSymId; 
     std::unordered_map<uint16_t, unsigned int> addrToLineId;
     std::unordered_map<std::string, unsigned int> nameToSymId;
-    
-    void ProcessRecord(const std::string& type, std::unordered_map<std::string, std::string>& attrs);
 };
 
 }  // namespace Control

@@ -12,6 +12,7 @@
 #include "Hardware/Core/IBusDevice.h"
 #include "Hardware/Comm/ESP8266/ATHandler.h"
 #include "Hardware/Comm/ESP8266/NetworkLoop.h"
+#include "Hardware/Comm/ESP8266/NetworkTrafficLogger.h"
 
 namespace Hardware {
 
@@ -35,12 +36,16 @@ public:
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
 
-    void RecordTraffic(TrafficDirection dir, TrafficChannel ch, int linkId, const std::string& tag,
-                       const std::string& payload);
-    [[nodiscard]] std::vector<TrafficPacket> GetTrafficLog() const;
-    void ClearTrafficLog();
-    void SetSnifferPaused(bool paused);
-    [[nodiscard]] bool IsSnifferPaused() const;
+    inline void RecordTraffic(TrafficDirection dir, TrafficChannel ch, int linkId, const std::string& tag,
+                              const std::string& payload) {
+        trafficLogger.Record(dir, ch, linkId, tag, payload);
+    }
+    [[nodiscard]] inline std::vector<TrafficPacket> GetTrafficLog() const { return trafficLogger.GetTrafficLog(); }
+    inline void ClearTrafficLog() { trafficLogger.ClearTrafficLog(); }
+    inline void SetSnifferPaused(bool paused) { trafficLogger.SetSnifferPaused(paused); }
+    [[nodiscard]] inline bool IsSnifferPaused() const { return trafficLogger.IsSnifferPaused(); }
+    [[nodiscard]] NetworkTrafficLogger& GetTrafficLogger() { return trafficLogger; }
+    [[nodiscard]] const NetworkTrafficLogger& GetTrafficLogger() const { return trafficLogger; }
     void SetRxByteCallback(std::function<void(Byte)> callback);
 
     void EnqueueResponse(const std::string& response);
@@ -61,10 +66,7 @@ private:
     std::queue<Byte> rxQueue;
     mutable std::mutex rxMutex;
 
-    static constexpr size_t kMaxTrafficPackets = 500;
-    std::deque<TrafficPacket> trafficLog;
-    mutable std::mutex trafficMutex;
-    std::atomic<bool> snifferPaused{false};
+    NetworkTrafficLogger trafficLogger;
     std::function<void(Byte)> rxByteCallback;
 
     NetworkLoop networkLoop;

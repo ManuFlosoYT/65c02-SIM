@@ -31,6 +31,8 @@
 #include "Hardware/Core/Console.h"
 #include "Hardware/Core/Emulator/SavestateManager.h"
 #include "Hardware/Core/Emulator/EmulationEngine.h"
+#include "Hardware/Core/Emulator/SerialIOBridge.h"
+#include "Hardware/Core/Emulator/SystemConfigurator.h"
 
 namespace Core {
 
@@ -170,17 +172,15 @@ class Emulator {
     const SavestateManager& GetSavestateManager() const { return savestateManager; }
 
    private:
+    friend class SystemConfigurator;
+    friend class SavestateManager;
+    friend class EmulationEngine;
+
     std::atomic<bool> pendingIRQ{false};
     std::atomic<bool> pendingNMI{false};
     std::atomic<bool> pendingInterruptAny{false};
 
     void HandleVIAPortB(Byte val);
-    void RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMapped);
-    bool RegisterCartridgeLayout();
-    void RegisterDefaultLayout();
-    void ResetHardwareDevices();
-    void LoadCartridgeVRAMIfPresent();
-    void MountSDCardIfPresent();
     void EnsureWatchpointWriteHook();
     
     template <bool Debug, bool CycleAccurateMode>
@@ -220,17 +220,12 @@ class Emulator {
     ConsoleSerializable consoleSerializable;
     std::vector<ISerializable*> components;
 
-    // Input buffer
-    std::deque<char> inputBuffer;
-    std::mutex bufferMutex;
-    std::atomic<bool> hasInput{false};
-    int baudDelay = 0;
+    SerialIOBridge serialBridge;
     bool gpuEnabled = false;
     bool sidEnabled = true;
     bool sidEnabledOverride = false;
     bool espEnabled = false;
     bool sdEnabled = false;
-    bool aciaEspBridge = false;
 
     std::atomic<uint64_t> totalCycles{0};
     std::atomic<uint64_t> totalInstructions{0};
@@ -276,8 +271,8 @@ inline Hardware::ESP8266& Core::Emulator::GetESP8266() { return esp8266; }
 inline const Hardware::ESP8266& Core::Emulator::GetESP8266() const { return esp8266; }
 inline Hardware::ACIA& Core::Emulator::GetACIA() { return acia; }
 inline const Hardware::ACIA& Core::Emulator::GetACIA() const { return acia; }
-inline void Core::Emulator::SetACIAESPBridge(bool enabled) { aciaEspBridge = enabled; }
-inline bool Core::Emulator::IsACIAESPBridge() const { return aciaEspBridge; }
+inline void Core::Emulator::SetACIAESPBridge(bool enabled) { serialBridge.SetACIAESPBridge(enabled); }
+inline bool Core::Emulator::IsACIAESPBridge() const { return serialBridge.IsACIAESPBridge(); }
 
 inline void Core::Emulator::SetSDEnabled(bool enabled) {
     if (sdEnabled == enabled) { return; }

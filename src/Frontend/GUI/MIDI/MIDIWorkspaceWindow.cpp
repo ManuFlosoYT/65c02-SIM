@@ -15,6 +15,8 @@
 #include "Frontend/GUI/MIDI/MIDIAudioEngine.h"
 #include "Frontend/GUI/MIDI/MIDIFile.h"
 #include "Frontend/GUI/MIDI/MIDISoundBank.h"
+#include "Frontend/GUI/MIDI/MIDIProjectSession.h"
+#include "Frontend/GUI/MIDI/MIDICompilerPipeline.h"
 #include "Frontend/GUI/Style/Style.h"
 #include "Frontend/GUI/CustomFileDialog.h"
 
@@ -29,7 +31,6 @@ namespace {
 constexpr int MIN_PITCH = 12;
 constexpr int MAX_PITCH = 107;
 constexpr int NUM_PITCHES = MAX_PITCH - MIN_PITCH + 1;
-constexpr std::size_t MAX_UNDO_STATES = 32;
 
 constexpr std::array<ImU32, 3> SID_VOICE_COLORS = {
     IM_COL32(79, 195, 247, 230),
@@ -51,13 +52,8 @@ enum class DragMode : std::uint8_t {
 
 struct MIDIWorkspaceState {
     bool initialized = false;
-    MIDI::MIDIProject project;
+    MIDI::MIDIProjectSession session;
     MIDI::MIDIAudioEngine audioEngine;
-    std::size_t selectedTrackIndex = 0;
-
-    std::vector<MIDI::MIDIProject> undoStack;
-    std::vector<MIDI::MIDIProject> redoStack;
-    std::vector<MIDI::MIDINote> copiedNotes;
 
     float pixelsPerBeat = 80.0F;
     float rowHeight = 16.0F;
@@ -80,13 +76,8 @@ struct MIDIWorkspaceState {
     ImVec2 boxSelectStart{0.0F, 0.0F};
     ImVec2 boxSelectEnd{0.0F, 0.0F};
 
-    std::array<char, 128> trackNameBuf{};
-    std::size_t lastSyncedTrackIdx = 999999;
-
     std::vector<std::string> presetMidiFiles;
     bool presetsScanned = false;
-
-    std::string statusLog = "Ready — Click Piano Roll to place & audition SID notes.";
 };
 
 MIDIWorkspaceState& GetWorkspaceState() {
@@ -177,109 +168,6 @@ void ShowTextTooltip(std::string_view text) {
     }
 }
 
-void PushUndoState(MIDIWorkspaceState& ws) {
-    if (ws.undoStack.size() >= MAX_UNDO_STATES) {
-        ws.undoStack.erase(ws.undoStack.begin());
-    }
-    ws.undoStack.push_back(ws.project);
-    ws.redoStack.clear();
-}
-
-void RecomputeAllocation(MIDIWorkspaceState& ws, Control::AppState& state) {
-    MIDI::MIDIFile::ComputeVoicePreviewAllocation(ws.project, state.emulator.GetSID().GetModel());
-    const double totalBeats = std::max(16.0, std::ceil(ws.project.GetTotalDurationBeats() / 4.0) * 4.0);
-    ws.audioEngine.SetLoopRegion(0.0, totalBeats);
-}
-
-void PerformUndo(MIDIWorkspaceState& ws, Control::AppState& state) {
-    if (ws.undoStack.empty()) {
-        return;
-    }
-    ws.redoStack.push_back(ws.project);
-    ws.project = std::move(ws.undoStack.back());
-    ws.undoStack.pop_back();
-    if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-        ws.selectedTrackIndex = ws.project.tracks.empty() ? 0 : ws.project.tracks.size() - 1;
-    }
-    ws.lastSyncedTrackIdx = 999999;
-    RecomputeAllocation(ws, state);
-    ws.statusLog = "Undo performed.";
-}
-
-void PerformRedo(MIDIWorkspaceState& ws, Control::AppState& state) {
-    if (ws.redoStack.empty()) {
-        return;
-    }
-    ws.undoStack.push_back(ws.project);
-    ws.project = std::move(ws.redoStack.back());
-    ws.redoStack.pop_back();
-    if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-        ws.selectedTrackIndex = ws.project.tracks.empty() ? 0 : ws.project.tracks.size() - 1;
-    }
-    ws.lastSyncedTrackIdx = 999999;
-    RecomputeAllocation(ws, state);
-    ws.statusLog = "Redo performed.";
-}
-
-void CopySelectedNotes(MIDIWorkspaceState& ws) {
-    if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-        return;
-    }
-    const auto& track = ws.project.tracks.at(ws.selectedTrackIndex);
-    ws.copiedNotes.clear();
-    double minBeat = 1e9;
-    for (const auto& note : track.notes) {
-        if (note.selected) {
-            ws.copiedNotes.push_back(note);
-            minBeat = std::min(minBeat, note.startBeat);
-        }
-    }
-    if (!ws.copiedNotes.empty()) {
-        for (auto& note : ws.copiedNotes) {
-            note.startBeat -= minBeat;
-        }
-        ws.statusLog = std::format("Copied {} note(s) to clipboard.", ws.copiedNotes.size());
-    }
-}
-
-void PasteNotes(MIDIWorkspaceState& ws, Control::AppState& state) {
-    if (ws.copiedNotes.empty() || ws.selectedTrackIndex >= ws.project.tracks.size()) {
-        return;
-    }
-    PushUndoState(ws);
-    auto& track = ws.project.tracks.at(ws.selectedTrackIndex);
-    for (auto& note : track.notes) {
-        note.selected = false;
-    }
-    const double baseBeat = ws.audioEngine.GetPlayheadBeats();
-    for (const auto& src : ws.copiedNotes) {
-        MIDI::MIDINote pasted = src;
-        pasted.id = ws.project.nextNoteId++;
-        pasted.startBeat = std::max(0.0, baseBeat + src.startBeat);
-        pasted.selected = true;
-        track.notes.push_back(pasted);
-    }
-    RecomputeAllocation(ws, state);
-    ws.statusLog = std::format("Pasted {} note(s) at beat {:.2f}.", ws.copiedNotes.size(), baseBeat);
-}
-
-void DeleteSelectedNotes(MIDIWorkspaceState& ws, Control::AppState& state) {
-    if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-        return;
-    }
-    auto& track = ws.project.tracks.at(ws.selectedTrackIndex);
-    const bool anySelected = std::ranges::any_of(track.notes, [](const MIDI::MIDINote& n) { return n.selected; });
-    if (!anySelected) {
-        return;
-    }
-    PushUndoState(ws);
-    const auto oldCount = track.notes.size();
-    std::erase_if(track.notes, [](const MIDI::MIDINote& n) { return n.selected; });
-    const auto removed = oldCount - track.notes.size();
-    RecomputeAllocation(ws, state);
-    ws.statusLog = std::format("Deleted {} selected note(s).", removed);
-}
-
 [[nodiscard]] double SnapBeatValue(double beat, double snapBeats) {
     if (snapBeats <= 0.0) {
         return std::max(0.0, beat);
@@ -299,10 +187,8 @@ void EnsureWorkspaceInitialized(MIDIWorkspaceState& ws, Control::AppState& state
         return;
     }
     MIDI::MIDISoundBank::EnsureLoaded();
-    ws.project.InitDefaultProject();
-    ws.selectedTrackIndex = 0;
+    ws.session.InitDefaultProject(state, ws.audioEngine);
     ws.initialized = true;
-    RecomputeAllocation(ws, state);
 }
 
 void ScanPresetMidis(MIDIWorkspaceState& ws) {
@@ -325,174 +211,6 @@ void ScanPresetMidis(MIDIWorkspaceState& ws) {
         std::ranges::sort(ws.presetMidiFiles);
     }
 }
-
-#ifndef TARGET_WASM
-[[nodiscard]] std::vector<std::uint8_t> ReadBinaryFileBytes(const std::string& path) {
-    std::ifstream inFile(path, std::ios::binary | std::ios::ate);
-    if (!inFile) {
-        return {};
-    }
-    const auto fileSize = inFile.tellg();
-    if (fileSize <= 0) {
-        return {};
-    }
-    inFile.seekg(0, std::ios::beg);
-    std::vector<char> buf(static_cast<std::size_t>(fileSize));
-    inFile.read(buf.data(), fileSize);
-    return {buf.begin(), buf.end()};
-}
-
-[[nodiscard]] std::string ReadTextFileContent(const std::string& path) {
-    std::ifstream inFile(path, std::ios::binary);
-    if (!inFile) {
-        return {};
-    }
-    return {std::istreambuf_iterator<char>(inFile), std::istreambuf_iterator<char>()};
-}
-
-[[nodiscard]] std::string SanitizeCleanStem(const std::string& path) {
-    std::string stem = std::filesystem::path(path).stem().string();
-    std::erase(stem, ' ');
-    if (stem.empty()) {
-        stem = "ide_preview";
-    }
-    return stem;
-}
-
-bool CompileMIDIProjectToBinary(MIDIWorkspaceState& ws, Control::AppState& state, bool microDosSid,
-                                std::vector<std::uint8_t>& outBinary, std::string& outSavedPath) {
-    std::error_code ec;
-    std::filesystem::create_directories("tools/sid/build", ec);
-    std::filesystem::create_directories("output/midi", ec);
-
-    std::string midPath = ws.project.filePath;
-    if (midPath.empty()) {
-        midPath = "tools/sid/build/ide_preview.mid";
-    }
-    std::string saveErr;
-    if (!MIDI::MIDIFile::SaveToFile(midPath, ws.project, saveErr)) {
-        ws.statusLog = "Failed to save temporary MIDI: " + saveErr;
-        return false;
-    }
-
-    const std::string cleanName = SanitizeCleanStem(midPath);
-    const std::string chipStr = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? "6581" : "8580";
-    const std::string sysStr = ws.audioEngine.IsNTSC() ? "NTSC" : "PAL";
-    const int mainTrackIdx = ws.project.GetMainTrackIndex();
-
-    std::string extraArgs = std::format("--chip {} --system {}", chipStr, sysStr);
-    if (mainTrackIdx >= 0 && static_cast<std::size_t>(mainTrackIdx) < ws.project.tracks.size()) {
-        const auto& mainTrk = ws.project.tracks.at(static_cast<std::size_t>(mainTrackIdx));
-        extraArgs += std::format(" --main-track {} --melody-channel {}", mainTrackIdx + 1, mainTrk.channel);
-    }
-    for (const auto& trk : ws.project.tracks) {
-        if (trk.role == MIDI::MIDITrackRole::Bass && trk.channel != 9) {
-            extraArgs += std::format(" --bass-channel {}", trk.channel);
-            break;
-        }
-    }
-
-    if (microDosSid) {
-        const std::string outSidPath = "output/midi/" + cleanName + ".sid";
-        std::filesystem::remove(outSidPath, ec);
-        std::string cmdOut;
-        const std::string cmd =
-            std::format("python3 tools/sid/audio_to_sid.py \"{}\" --mode max_quality --microDOS {}", midPath, extraArgs);
-        const int rc = CompilerFrontend::RunCommand(cmd, cmdOut);
-        if (rc == 0 && std::filesystem::exists(outSidPath, ec)) {
-            outBinary = ReadBinaryFileBytes(outSidPath);
-            outSavedPath = outSidPath;
-            ws.statusLog = std::format("Built MicroDOS .sid ({} bytes): {}", outBinary.size(), outSidPath);
-            return !outBinary.empty();
-        }
-        ws.statusLog = "audio_to_sid.py (--microDOS) failed. Check console/output.";
-        state.ide.outputLog = cmdOut;
-        return false;
-    }
-
-    const std::string outBinPath = "output/midi/" + cleanName + ".bin";
-    std::filesystem::remove(outBinPath, ec);
-
-    std::string scriptOut;
-    const std::string scriptCmd = std::format("bash sdk/scripts/midi-to-bin.sh \"{}\" {}", midPath, extraArgs);
-    const int scriptRc = CompilerFrontend::RunCommand(scriptCmd, scriptOut);
-    state.ide.outputLog = scriptOut;
-
-    if (scriptRc == 0 && std::filesystem::exists(outBinPath, ec)) {
-        outBinary = ReadBinaryFileBytes(outBinPath);
-        if (!outBinary.empty()) {
-            outSavedPath = outBinPath;
-            ws.statusLog = std::format("midi-to-bin.sh succeeded ({} bytes): {}", outBinary.size(), outBinPath);
-            return true;
-        }
-    }
-
-    static constexpr std::array<const char*, 5> FALLBACK_MODES = {
-        "max_quality", "quality", "balanced", "compressed", "max_compression"
-    };
-    const std::string asmPath = "tools/sid/build/" + cleanName + ".s";
-    for (const char* mode : FALLBACK_MODES) {
-        std::filesystem::remove(asmPath, ec);
-        std::string pyOut;
-        const std::string pyCmd =
-            std::format("python3 tools/sid/audio_to_sid.py \"{}\" --mode {} {}", midPath, mode, extraArgs);
-        const int pyRc = CompilerFrontend::RunCommand(pyCmd, pyOut);
-        state.ide.outputLog += pyOut;
-        if (pyRc != 0 || !std::filesystem::exists(asmPath, ec)) {
-            continue;
-        }
-        const std::string asmCode = ReadTextFileContent(asmPath);
-        if (asmCode.empty()) {
-            continue;
-        }
-        auto buildRes = CompilerFrontend::Compile(CompilerFrontend::BuildType::Assembly, asmCode, cleanName + ".s");
-        state.ide.outputLog += buildRes.log;
-        if (buildRes.success && !buildRes.binary.empty()) {
-            outBinary = std::move(buildRes.binary);
-            std::ofstream binOut(outBinPath, std::ios::binary);
-            if (binOut) {
-                for (const auto byteVal : outBinary) {
-                    binOut.put(static_cast<char>(byteVal));
-                }
-            }
-            outSavedPath = outBinPath;
-            ws.statusLog = std::format("Compiled SID ROM [mode: {}] ({} bytes).", mode, outBinary.size());
-            return true;
-        }
-    }
-
-    ws.statusLog = "Failed to compile MIDI to 65C02 ROM.";
-    return false;
-}
-
-void HandleCompileAndRunROM(MIDIWorkspaceState& ws, Control::AppState& state) {
-    ws.audioEngine.Stop(state);
-    std::vector<std::uint8_t> binary;
-    std::string binPath;
-    if (!CompileMIDIProjectToBinary(ws, state, false, binary, binPath)) {
-        return;
-    }
-
-    state.emulator.Pause();
-    state.emulator.SetCartridge(Core::Cartridge{});
-    state.emulator.GetSID().EnableSound(true);
-    state.emulator.SetSIDEnabled(true);
-
-    std::string errMsg;
-    const std::string romName = std::filesystem::path(binPath).filename().string();
-    if (state.emulator.InitFromMemory(binary, romName, errMsg)) {
-        state.rom.bin = romName;
-        state.rom.data = binary;
-        state.rom.loaded = true;
-        state.emulator.ClearProfiler();
-        state.emulator.Resume();
-        state.ide.open = false;
-        ws.statusLog = "Loaded & running on 65C02 Emulator: " + romName;
-    } else {
-        ws.statusLog = "Emulator load failed: " + errMsg;
-    }
-}
-#endif
 
 void DrawTopRowModeAndFileBar(MIDIWorkspaceState& ws, Control::AppState& state) {
     DrawColoredText(Theme::AccentPrimary, "MODE:");
@@ -525,12 +243,7 @@ void DrawTopRowModeAndFileBar(MIDIWorkspaceState& ws, Control::AppState& state) 
 
     if (ImGui::SmallButton("New")) {
         ws.audioEngine.Stop(state);
-        PushUndoState(ws);
-        ws.project.InitDefaultProject();
-        ws.selectedTrackIndex = 0;
-        ws.lastSyncedTrackIdx = 999999;
-        RecomputeAllocation(ws, state);
-        ws.statusLog = "Initialized new 3-track SID MIDI project.";
+        ws.session.InitDefaultProject(state, ws.audioEngine);
     }
     ShowTextTooltip("Create a new default 3-track SID MIDI project (Lead, Bass, Drums)");
 
@@ -564,15 +277,10 @@ void DrawTopRowModeAndFileBar(MIDIWorkspaceState& ws, Control::AppState& state) 
 
     ImGui::SameLine();
     if (ImGui::SmallButton("Save")) {
-        if (ws.project.filePath.empty()) {
+        if (ws.session.GetProject().filePath.empty()) {
             Frontend::CustomFileDialog::OpenDialog("MIDI_SaveFile", "Save MIDI File As", ".mid,.midi", ".");
         } else {
-            std::string err;
-            if (MIDI::MIDIFile::SaveToFile(ws.project.filePath, ws.project, err)) {
-                ws.statusLog = "Saved MIDI to " + ws.project.filePath;
-            } else {
-                ws.statusLog = "Save error: " + err;
-            }
+            ws.session.SaveToFile(ws.session.GetProject().filePath);
         }
     }
 
@@ -592,6 +300,7 @@ void DrawTopRowModeAndFileBar(MIDIWorkspaceState& ws, Control::AppState& state) 
 }
 
 void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppState& state) {
+    auto& project = ws.session.GetProject();
     const bool isPlaying = ws.audioEngine.IsPlaying();
     if (isPlaying) {
         ImGui::PushStyleColor(ImGuiCol_Button, Theme::AccentActive);
@@ -603,7 +312,7 @@ void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppSt
     } else {
         ImGui::PushStyleColor(ImGuiCol_Button, Theme::RunBg);
         if (ImGui::SmallButton("> Play")) {
-            ws.audioEngine.Play(state, ws.project);
+            ws.audioEngine.Play(state, project);
         }
         ImGui::PopStyleColor();
     }
@@ -622,9 +331,9 @@ void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppSt
 
     ImGui::SameLine();
     ImGui::SetNextItemWidth(58.0F * state.render.uiScale);
-    auto bpmFloat = static_cast<float>(ws.project.bpm);
+    auto bpmFloat = static_cast<float>(project.bpm);
     if (ImGui::DragFloat("BPM", &bpmFloat, 0.5F, 20.0F, 300.0F, "%.0f")) {
-        ws.project.bpm = static_cast<double>( std::clamp(bpmFloat, 20.0F, 300.0F));
+        project.bpm = static_cast<double>(std::clamp(bpmFloat, 20.0F, 300.0F));
     }
 
     ImGui::SameLine();
@@ -649,7 +358,7 @@ void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppSt
     if (ImGui::Combo("##ChipModel", &chipIdx, CHIP_LABELS.data(), static_cast<int>(CHIP_LABELS.size()))) {
         const auto newModel = (chipIdx == 0) ? Hardware::SIDModel::MOS6581 : Hardware::SIDModel::MOS8580;
         state.emulator.GetSID().SetModel(newModel);
-        RecomputeAllocation(ws, state);
+        ws.session.RecomputeAllocation(state, ws.audioEngine);
     }
     ShowTextTooltip("Target SID Chip Model (6581 Warm Analog vs 8580 Crisp Clean Mixed Waveforms)");
 
@@ -665,7 +374,7 @@ void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppSt
     ImGui::PushStyleColor(ImGuiCol_Button, Theme::AccentActive);
     ImGui::PushStyleColor(ImGuiCol_Text, ImColor(Theme::LcdPetroleumBg).Value);
     if (ImGui::SmallButton("Compile & Run ROM")) {
-        HandleCompileAndRunROM(ws, state);
+        MIDI::MIDICompilerPipeline::HandleCompileAndRunROM(ws.session, ws.audioEngine, state);
     }
     ImGui::PopStyleColor(2);
     ShowTextTooltip("Convert MIDI via audio_to_sid.py + midi-to-bin.sh (--main-track) and run on 65C02 Simulator");
@@ -684,63 +393,38 @@ void DrawTrackListPanel(MIDIWorkspaceState& ws, Control::AppState& state, float 
         return;
     }
 
+    auto& project = ws.session.GetProject();
+
     DrawColoredText(Theme::AccentPrimary, "TRACKS & MAIN ROLE");
     ImGui::SameLine();
     if (ImGui::SmallButton("+ Track")) {
-        PushUndoState(ws);
-        MIDI::MIDITrack newTrack;
-        const int nextNum = static_cast<int>(ws.project.tracks.size()) + 1;
-        newTrack.name = std::format("Track {}", nextNum);
-        int freeChan = 0;
-        for (int candidate = 0; candidate < 16; ++candidate) {
-            if (candidate == 9) {
-                continue;
-            }
-            const bool used = std::ranges::any_of(
-                ws.project.tracks, [candidate](const MIDI::MIDITrack& t) { return t.channel == candidate; });
-            if (!used) {
-                freeChan = candidate;
-                break;
-            }
-        }
-        newTrack.channel = freeChan;
-        newTrack.program = 80;
-        ws.project.tracks.push_back(std::move(newTrack));
-        ws.selectedTrackIndex = ws.project.tracks.size() - 1;
-        ws.lastSyncedTrackIdx = 999999;
-        RecomputeAllocation(ws, state);
+        ws.session.AddTrack(state, ws.audioEngine);
     }
     ImGui::SameLine();
-    ImGui::BeginDisabled(ws.project.tracks.size() <= 1);
+    ImGui::BeginDisabled(project.tracks.size() <= 1);
     if (ImGui::SmallButton("- Track")) {
-        PushUndoState(ws);
-        ws.project.tracks.erase(ws.project.tracks.begin() + static_cast<std::ptrdiff_t>(ws.selectedTrackIndex));
-        if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-            ws.selectedTrackIndex = ws.project.tracks.size() - 1;
-        }
-        ws.lastSyncedTrackIdx = 999999;
-        RecomputeAllocation(ws, state);
+        ws.session.RemoveTrack(state, ws.audioEngine);
     }
     ImGui::EndDisabled();
 
     ImGui::SameLine();
-    ImGui::BeginDisabled(ws.undoStack.empty());
+    ImGui::BeginDisabled(!ws.session.CanUndo());
     if (ImGui::SmallButton("Undo")) {
-        PerformUndo(ws, state);
+        ws.session.PerformUndo(state, ws.audioEngine);
     }
     ImGui::EndDisabled();
 
     ImGui::SameLine();
-    ImGui::BeginDisabled(ws.redoStack.empty());
+    ImGui::BeginDisabled(!ws.session.CanRedo());
     if (ImGui::SmallButton("Redo")) {
-        PerformRedo(ws, state);
+        ws.session.PerformRedo(state, ws.audioEngine);
     }
     ImGui::EndDisabled();
 
     ImGui::Separator();
 
-    for (std::size_t idx = 0; idx < ws.project.tracks.size(); ++idx) {
-        auto& track = ws.project.tracks.at(idx);
+    for (std::size_t idx = 0; idx < project.tracks.size(); ++idx) {
+        auto& track = project.tracks.at(idx);
         ImGui::PushID(static_cast<int>(idx));
 
         const bool isMain = track.isMainTrack;
@@ -754,16 +438,7 @@ void DrawTrackListPanel(MIDIWorkspaceState& ws, Control::AppState& state, float 
             ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
         }
         if (ImGui::SmallButton(isMain ? "* Main" : "o Main")) {
-            PushUndoState(ws);
-            if (isMain) {
-                track.isMainTrack = false;
-                if (track.role == MIDI::MIDITrackRole::Melody) {
-                    track.role = MIDI::MIDITrackRole::Auto;
-                }
-            } else {
-                ws.project.SetMainTrack(idx);
-            }
-            RecomputeAllocation(ws, state);
+            ws.session.SetMainTrack(idx, state, ws.audioEngine);
         }
         ImGui::PopStyleColor(3);
         ShowTextTooltip(
@@ -778,7 +453,7 @@ void DrawTrackListPanel(MIDIWorkspaceState& ws, Control::AppState& state, float 
         }
         if (ImGui::SmallButton("M")) {
             track.muted = !track.muted;
-            RecomputeAllocation(ws, state);
+            ws.session.RecomputeAllocation(state, ws.audioEngine);
         }
         ImGui::PopStyleColor();
         ShowTextTooltip("Mute Track");
@@ -791,7 +466,7 @@ void DrawTrackListPanel(MIDIWorkspaceState& ws, Control::AppState& state, float 
         }
         if (ImGui::SmallButton("S")) {
             track.solo = !track.solo;
-            RecomputeAllocation(ws, state);
+            ws.session.RecomputeAllocation(state, ws.audioEngine);
         }
         ImGui::PopStyleColor();
         ShowTextTooltip("Solo Track");
@@ -800,9 +475,9 @@ void DrawTrackListPanel(MIDIWorkspaceState& ws, Control::AppState& state, float 
         const auto effRole = GetEffectiveTrackRole(track);
         const std::string label =
             std::format("{} [Ch{}|{}] ({})", track.name, track.channel + 1, GetRoleBadgeText(effRole), track.notes.size());
-        const bool isSelected = (ws.selectedTrackIndex == idx);
+        const bool isSelected = (ws.session.GetSelectedTrackIndex() == idx);
         if (ImGui::Selectable(label.c_str(), isSelected)) {
-            ws.selectedTrackIndex = idx;
+            ws.session.SetSelectedTrackIndex(idx);
         }
 
         ImGui::PopID();
@@ -817,29 +492,33 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
         return;
     }
 
-    if (ws.project.tracks.empty()) {
+    auto& project = ws.session.GetProject();
+    if (project.tracks.empty()) {
         ImGui::TextDisabled("No tracks in project.");
         ImGui::EndChild();
         return;
     }
-    if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-        ws.selectedTrackIndex = 0;
+    if (ws.session.GetSelectedTrackIndex() >= project.tracks.size()) {
+        ws.session.SetSelectedTrackIndex(0);
     }
 
-    auto& track = ws.project.tracks.at(ws.selectedTrackIndex);
-    if (ws.lastSyncedTrackIdx != ws.selectedTrackIndex) {
-        ws.trackNameBuf.fill('\0');
-        const std::size_t copyLen = std::min(track.name.size(), ws.trackNameBuf.size() - 1);
-        std::copy_n(track.name.data(), copyLen, ws.trackNameBuf.data());
-        ws.lastSyncedTrackIdx = ws.selectedTrackIndex;
+    auto& track = project.tracks.at(ws.session.GetSelectedTrackIndex());
+    auto& trackNameBuf = ws.session.GetTrackNameBuf();
+    auto& lastSyncedIdx = ws.session.GetLastSyncedTrackIdx();
+
+    if (lastSyncedIdx != ws.session.GetSelectedTrackIndex()) {
+        trackNameBuf.fill('\0');
+        const std::size_t copyLen = std::min(track.name.size(), trackNameBuf.size() - 1);
+        std::copy_n(track.name.data(), copyLen, trackNameBuf.data());
+        lastSyncedIdx = ws.session.GetSelectedTrackIndex();
     }
 
     DrawColoredText(Theme::AccentPrimary, "TRACK & SID INSTRUMENT BANK");
     ImGui::Separator();
 
     ImGui::SetNextItemWidth(130.0F * state.render.uiScale);
-    if (ImGui::InputText("Name", ws.trackNameBuf.data(), ws.trackNameBuf.size())) {
-        track.name = ws.trackNameBuf.data();
+    if (ImGui::InputText("Name", trackNameBuf.data(), trackNameBuf.size())) {
+        track.name = trackNameBuf.data();
     }
 
     ImGui::SameLine();
@@ -851,7 +530,7 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
             track.role = MIDI::MIDITrackRole::Percussion;
             track.isMainTrack = false;
         }
-        RecomputeAllocation(ws, state);
+        ws.session.RecomputeAllocation(state, ws.audioEngine);
     }
     ShowTextTooltip("MIDI Channel (1..16). Channel 10 is GM Percussion / SID Drum Kit.");
 
@@ -865,9 +544,9 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
         roleIdx = 1;
     }
     if (ImGui::Combo("Role", &roleIdx, ROLE_ITEMS.data(), static_cast<int>(ROLE_ITEMS.size()))) {
-        PushUndoState(ws);
+        ws.session.PushUndoState();
         if (roleIdx == 1) {
-            ws.project.SetMainTrack(ws.selectedTrackIndex);
+            project.SetMainTrack(ws.session.GetSelectedTrackIndex());
         } else {
             if (track.isMainTrack) {
                 track.isMainTrack = false;
@@ -877,7 +556,7 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
                 track.channel = 9;
             }
         }
-        RecomputeAllocation(ws, state);
+        ws.session.RecomputeAllocation(state, ws.audioEngine);
     }
 
     const auto& presets = MIDI::MIDISoundBank::GetMelodicPresets();
@@ -894,7 +573,7 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
                     std::format("[{:03d}-{:03d}] {} ({})", preset.programStart, preset.programEnd, preset.name,
                                 MIDI::MIDISoundBank::FormatWaveformMask(preset.baseParams.waveMask));
                 if (ImGui::Selectable(itemLabel.c_str(), selected)) {
-                    PushUndoState(ws);
+                    ws.session.PushUndoState();
                     track.program = preset.representativeProgram;
                     ws.audioEngine.TriggerAuditionNote(state, track.channel, track.program, 60, 108,
                                                        track.customWaveOverride, GetEffectiveTrackRole(track));
@@ -938,7 +617,7 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
         for (const auto& opt : waveOpts) {
             const bool selected = (opt.waveMask == track.customWaveOverride);
             if (ImGui::Selectable(opt.label.c_str(), selected)) {
-                PushUndoState(ws);
+                ws.session.PushUndoState();
                 track.customWaveOverride = opt.waveMask;
                 const int previewPitch = (track.channel == 9) ? 38 : 60;
                 ws.audioEngine.TriggerAuditionNote(state, track.channel, track.program, previewPitch, 108,
@@ -984,18 +663,19 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
 }
 
 void DrawPianoRollToolbar(MIDIWorkspaceState& ws, Control::AppState& state) {
-    if (!ws.project.tracks.empty()) {
-        if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-            ws.selectedTrackIndex = 0;
+    auto& project = ws.session.GetProject();
+    if (!project.tracks.empty()) {
+        if (ws.session.GetSelectedTrackIndex() >= project.tracks.size()) {
+            ws.session.SetSelectedTrackIndex(0);
         }
-        const auto& curTrack = ws.project.tracks.at(ws.selectedTrackIndex);
+        const auto& curTrack = project.tracks.at(ws.session.GetSelectedTrackIndex());
         ImGui::SetNextItemWidth(165.0F * state.render.uiScale);
         if (ImGui::BeginCombo("##ActiveTrackCombo", curTrack.name.c_str())) {
-            for (std::size_t idx = 0; idx < ws.project.tracks.size(); ++idx) {
-                const auto& trk = ws.project.tracks.at(idx);
+            for (std::size_t idx = 0; idx < project.tracks.size(); ++idx) {
+                const auto& trk = project.tracks.at(idx);
                 const std::string item = std::format("{}{} (Ch{})", trk.isMainTrack ? "* " : "", trk.name, trk.channel + 1);
-                if (ImGui::Selectable(item.c_str(), idx == ws.selectedTrackIndex)) {
-                    ws.selectedTrackIndex = idx;
+                if (ImGui::Selectable(item.c_str(), idx == ws.session.GetSelectedTrackIndex())) {
+                    ws.session.SetSelectedTrackIndex(idx);
                 }
             }
             ImGui::EndCombo();
@@ -1031,20 +711,14 @@ void DrawPianoRollToolbar(MIDIWorkspaceState& ws, Control::AppState& state) {
     }
 
     ImGui::SameLine();
-    if (ImGui::SmallButton("Clear Track") && ws.selectedTrackIndex < ws.project.tracks.size()) {
-        auto& trk = ws.project.tracks.at(ws.selectedTrackIndex);
-        if (!trk.notes.empty()) {
-            PushUndoState(ws);
-            trk.notes.clear();
-            RecomputeAllocation(ws, state);
-            ws.statusLog = "Cleared all notes in active track.";
-        }
+    if (ImGui::SmallButton("Clear Track") && ws.session.GetSelectedTrackIndex() < project.tracks.size()) {
+        ws.session.ClearTrackNotes(ws.session.GetSelectedTrackIndex(), state, ws.audioEngine);
     }
 
     int activeAtPlayhead = 0;
     int culledAtPlayhead = 0;
     const double ph = ws.audioEngine.GetPlayheadBeats();
-    for (const auto& trk : ws.project.tracks) {
+    for (const auto& trk : project.tracks) {
         if (trk.muted) {
             continue;
         }
@@ -1069,17 +743,18 @@ void DrawPianoRollToolbar(MIDIWorkspaceState& ws, Control::AppState& state) {
     ImGui::SameLine();
     ImGui::TextUnformatted("|");
     ImGui::SameLine();
-    DrawColoredText(Theme::TextSecondary, ws.statusLog);
+    DrawColoredText(Theme::TextSecondary, ws.session.GetStatusLog());
 }
 
 void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppState& state) {
-    if (ws.project.tracks.empty()) {
+    auto& project = ws.session.GetProject();
+    if (project.tracks.empty()) {
         return;
     }
-    if (ws.selectedTrackIndex >= ws.project.tracks.size()) {
-        ws.selectedTrackIndex = 0;
+    if (ws.session.GetSelectedTrackIndex() >= project.tracks.size()) {
+        ws.session.SetSelectedTrackIndex(0);
     }
-    auto& activeTrack = ws.project.tracks.at(ws.selectedTrackIndex);
+    auto& activeTrack = project.tracks.at(ws.session.GetSelectedTrackIndex());
     const auto activeRole = GetEffectiveTrackRole(activeTrack);
 
     const ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -1175,7 +850,7 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
                                                activeTrack.customWaveOverride, activeRole);
         } else if (inVel) {
             ws.dragMode = DragMode::VelocityEdit;
-            PushUndoState(ws);
+            ws.session.PushUndoState();
         } else if (inGrid) {
             const double clickBeat = screenXToBeat(mousePos.x);
             const int clickPitch = screenYToPitch(mousePos.y);
@@ -1196,7 +871,7 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
             }
 
             if (hitNote != nullptr) {
-                PushUndoState(ws);
+                ws.session.PushUndoState();
                 if (!io.KeyShift) {
                     for (auto& n : activeTrack.notes) {
                         n.selected = false;
@@ -1223,12 +898,12 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
                 ws.boxSelectStart = mousePos;
                 ws.boxSelectEnd = mousePos;
             } else {
-                PushUndoState(ws);
+                ws.session.PushUndoState();
                 for (auto& n : activeTrack.notes) {
                     n.selected = false;
                 }
                 MIDI::MIDINote newNote;
-                newNote.id = ws.project.nextNoteId++;
+                newNote.id = project.nextNoteId++;
                 newNote.pitch = clickPitch;
                 newNote.velocity = 100;
                 newNote.startBeat = FloorSnapBeatValue(clickBeat, ws.snapBeats);
@@ -1242,12 +917,12 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
                 ws.lastAuditionedPitch = newNote.pitch;
                 activeTrack.notes.push_back(newNote);
 
-                RecomputeAllocation(ws, state);
+                ws.session.RecomputeAllocation(state, ws.audioEngine);
                 ws.audioEngine.TriggerAuditionNote(state, activeTrack.channel, activeTrack.program, clickPitch, 100,
                                                    activeTrack.customWaveOverride, activeRole);
                 ws.dragMode = DragMode::CreateNote;
-                ws.statusLog = std::format("Placed note {} ({}) at beat {:.2f}", PitchToNoteName(clickPitch),
-                                           clickPitch, newNote.startBeat);
+                ws.session.SetStatusLog(std::format("Placed note {} ({}) at beat {:.2f}", PitchToNoteName(clickPitch),
+                                                   clickPitch, newNote.startBeat));
             }
         }
     }
@@ -1262,10 +937,10 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
             const float nx0 = beatToScreenX(note.startBeat);
             const float nx1 = beatToScreenX(note.startBeat + note.durationBeats);
             if (mousePos.x >= nx0 && mousePos.x <= nx1) {
-                PushUndoState(ws);
+                ws.session.PushUndoState();
                 activeTrack.notes.erase(activeTrack.notes.begin() + static_cast<std::ptrdiff_t>(idx));
-                RecomputeAllocation(ws, state);
-                ws.statusLog = "Deleted note.";
+                ws.session.RecomputeAllocation(state, ws.audioEngine);
+                ws.session.SetStatusLog("Deleted note.");
                 break;
             }
         }
@@ -1348,7 +1023,7 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
         }
         if (ws.dragMode == DragMode::CreateNote || ws.dragMode == DragMode::MoveNote ||
             ws.dragMode == DragMode::ResizeNote) {
-            RecomputeAllocation(ws, state);
+            ws.session.RecomputeAllocation(state, ws.audioEngine);
         }
         ws.dragMode = DragMode::None;
         ws.lastAuditionedPitch = -1;
@@ -1388,7 +1063,7 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
         }
         const double nearestInt = std::round(beat);
         const bool isBeatLine = std::abs(beat - nearestInt) < 1e-4;
-        const bool isBarLine = isBeatLine && (static_cast<int>(nearestInt) % ws.project.timeSigNumerator == 0);
+        const bool isBarLine = isBeatLine && (static_cast<int>(nearestInt) % project.timeSigNumerator == 0);
         const ImU32 vCol = isBarLine    ? IM_COL32(85, 105, 140, 220)
                            : isBeatLine ? IM_COL32(48, 58, 78, 180)
                                         : IM_COL32(30, 36, 48, 120);
@@ -1396,11 +1071,11 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
     }
 
     if (ws.showGhostNotes) {
-        for (std::size_t tIdx = 0; tIdx < ws.project.tracks.size(); ++tIdx) {
-            if (tIdx == ws.selectedTrackIndex) {
+        for (std::size_t tIdx = 0; tIdx < project.tracks.size(); ++tIdx) {
+            if (tIdx == ws.session.GetSelectedTrackIndex()) {
                 continue;
             }
-            const auto& other = ws.project.tracks.at(tIdx);
+            const auto& other = project.tracks.at(tIdx);
             if (other.muted) {
                 continue;
             }
@@ -1469,17 +1144,17 @@ void DrawInteractivePianoRollAndVelocity(MIDIWorkspaceState& ws, Control::AppSta
 
     dl->PushClipRect(rulerMin, rulerMax, true);
     dl->AddRectFilled(rulerMin, rulerMax, ImColor(Theme::Surface));
-    for (int beatInt = static_cast<int>( std::max(0.0, startBeatVis)); beatInt <= static_cast<int>(endBeatVis);
+    for (int beatInt = static_cast<int>(std::max(0.0, startBeatVis)); beatInt <= static_cast<int>(endBeatVis);
          ++beatInt) {
         const float x = beatToScreenX(static_cast<double>(beatInt));
         if (x < rulerMin.x || x > rulerMax.x) {
             continue;
         }
-        const bool isBar = (beatInt % ws.project.timeSigNumerator == 0);
+        const bool isBar = (beatInt % project.timeSigNumerator == 0);
         dl->AddLine(ImVec2(x, isBar ? rulerMin.y : rulerMin.y + 12.0F), ImVec2(x, rulerMax.y),
                     IM_COL32(120, 140, 170, 200));
         if (isBar) {
-            const int barNum = (beatInt / ws.project.timeSigNumerator) + 1;
+            const int barNum = (beatInt / project.timeSigNumerator) + 1;
             const std::string barTxt = std::format("Bar {}", barNum);
             dl->AddText(ImVec2(x + 4.0F, rulerMin.y + 3.0F), ImColor(Theme::TextMain), barTxt.c_str());
         }
@@ -1557,13 +1232,7 @@ void HandleMIDIWorkspaceFileDialogs(MIDIWorkspaceState& ws, Control::AppState& s
             if (!path.ends_with(".mid") && !path.ends_with(".midi")) {
                 path += ".mid";
             }
-            std::string err;
-            if (MIDI::MIDIFile::SaveToFile(path, ws.project, err)) {
-                ws.project.filePath = path;
-                ws.statusLog = "Saved MIDI to " + path;
-            } else {
-                ws.statusLog = "Failed to save MIDI: " + err;
-            }
+            ws.session.SaveToFile(path);
         }
         Frontend::CustomFileDialog::Close();
     }
@@ -1575,15 +1244,16 @@ void HandleMIDIWorkspaceFileDialogs(MIDIWorkspaceState& ws, Control::AppState& s
             const bool wantSid = targetPath.ends_with(".sid");
             std::vector<std::uint8_t> compiledBytes;
             std::string builtPath;
-            if (CompileMIDIProjectToBinary(ws, state, wantSid, compiledBytes, builtPath)) {
+            if (MIDI::MIDICompilerPipeline::CompileMIDIProjectToBinary(
+                    ws.session, state, ws.audioEngine.IsNTSC(), wantSid, compiledBytes, builtPath)) {
                 std::ofstream out(targetPath, std::ios::binary);
                 if (out) {
                     for (const auto byteVal : compiledBytes) {
                         out.put(static_cast<char>(byteVal));
                     }
-                    ws.statusLog = std::format("Exported {} bytes to {}", compiledBytes.size(), targetPath);
+                    ws.session.SetStatusLog(std::format("Exported {} bytes to {}", compiledBytes.size(), targetPath));
                 } else {
-                    ws.statusLog = "Failed to write export file: " + targetPath;
+                    ws.session.SetStatusLog("Failed to write export file: " + targetPath);
                 }
             }
         }
@@ -1602,25 +1272,25 @@ void HandleKeyboardShortcuts(MIDIWorkspaceState& ws, Control::AppState& state) {
         if (ws.audioEngine.IsPlaying()) {
             ws.audioEngine.Pause(state);
         } else {
-            ws.audioEngine.Play(state, ws.project);
+            ws.audioEngine.Play(state, ws.session.GetProject());
         }
     }
 
     if (ImGui::IsKeyPressed(ImGuiKey_Delete, false) || ImGui::IsKeyPressed(ImGuiKey_Backspace, false)) {
-        DeleteSelectedNotes(ws, state);
+        ws.session.DeleteSelectedNotes(state, ws.audioEngine);
     }
 
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
-        PerformUndo(ws, state);
+        ws.session.PerformUndo(state, ws.audioEngine);
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
-        PerformRedo(ws, state);
+        ws.session.PerformRedo(state, ws.audioEngine);
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C, false)) {
-        CopySelectedNotes(ws);
+        ws.session.CopySelectedNotes();
     }
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_V, false)) {
-        PasteNotes(ws, state);
+        ws.session.PasteNotes(state, ws.audioEngine);
     }
 }
 
@@ -1631,27 +1301,9 @@ void OpenMIDIFileInWorkspace(Control::AppState& state, const std::string& filePa
     EnsureWorkspaceInitialized(ws, state);
     ws.audioEngine.Stop(state);
 
-    MIDI::MIDIProject loaded;
-    std::string err;
-    if (MIDI::MIDIFile::LoadFromFile(filePath, loaded, err)) {
-        PushUndoState(ws);
-        ws.project = std::move(loaded);
-        ws.selectedTrackIndex = 0;
-        for (std::size_t idx = 0; idx < ws.project.tracks.size(); ++idx) {
-            if (ws.project.tracks.at(idx).isMainTrack) {
-                ws.selectedTrackIndex = idx;
-                break;
-            }
-        }
-        ws.lastSyncedTrackIdx = 999999;
+    if (ws.session.LoadFromFile(filePath, state, ws.audioEngine)) {
         ws.initialScrollSet = false;
-        RecomputeAllocation(ws, state);
         state.ide.currentFilePath = filePath;
-        ws.statusLog = std::format("Loaded '{}' ({} tracks, {:.0f} BPM)",
-                                   std::filesystem::path(filePath).filename().string(), ws.project.tracks.size(),
-                                   ws.project.bpm);
-    } else {
-        ws.statusLog = "Failed to load MIDI: " + err;
     }
 }
 
@@ -1664,7 +1316,7 @@ void DrawMIDIWorkspaceWindow(Control::AppState& state, ImVec2 workPos, ImVec2 wo
     auto& ws = GetWorkspaceState();
     EnsureWorkspaceInitialized(ws, state);
 
-    ws.audioEngine.Update(state, ws.project, ImGui::GetIO().DeltaTime);
+    ws.audioEngine.Update(state, ws.session.GetProject(), ImGui::GetIO().DeltaTime);
     HandleKeyboardShortcuts(ws, state);
 
     const float leftWidth = workSize.x * 0.47F;

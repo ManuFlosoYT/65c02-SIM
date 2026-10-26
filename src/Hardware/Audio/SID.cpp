@@ -35,33 +35,12 @@ SID::SID() {
 SID::~SID() { Close(); }
 
 void SID::Close() {
-    if (audioStream != nullptr) {
-        SDL_DestroyAudioStream(audioStream);
-        audioStream = nullptr;
-    }
+    audioSink.Close();
 }
 
 void SID::Init(int sampleRate) {
-    this->sampleRate = sampleRate;
     resampler.SetRates(SID_NATIVE_RATE, static_cast<double>(sampleRate));
-
-    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-        std::cerr << "SDL Audio init failed: " << SDL_GetError() << '\n';
-        return;
-    }
-
-    SDL_AudioSpec want;
-    SDL_zero(want);
-    want.freq = sampleRate;
-    want.format = SDL_AUDIO_S16;
-    want.channels = 1;
-
-    audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &want, nullptr, nullptr);
-    if (audioStream == nullptr) {
-        std::cerr << "Failed to open audio: " << SDL_GetError() << '\n';
-    } else {
-        SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audioStream));
-    }
+    audioSink.Init(sampleRate);
 }
 
 void SID::SetCpuClockRate(double rate) {
@@ -102,15 +81,10 @@ void SID::UpdateDormantState() {
         (v[0].frequency == 0 && (v[0].control & 0x01) == 0 && v[0].env.holdZero && v[0].env.level == 0) &&
         (v[1].frequency == 0 && (v[1].control & 0x01) == 0 && v[1].env.holdZero && v[1].env.level == 0) &&
         (v[2].frequency == 0 && (v[2].control & 0x01) == 0 && v[2].env.holdZero && v[2].env.level == 0);
-#ifndef TARGET_WASM
-    const bool recording = (recorder != nullptr) || !pendingFilename.empty();
-#else
-    const bool recording = !pendingFilename.empty();
-#endif
-    const bool canBeDormant = voicesSilent && !profilingEnabled && !recording && !audioCallback &&
+    const bool recording = audioSink.IsRecording();
+    const bool canBeDormant = voicesSilent && !profilingEnabled && !recording && !audioSink.HasAudioCallback() &&
                               (model != SIDModel::MOS6581 || (volumeRegister & 0x0F) == 0) &&
-                              filterLow == 0.0 && filterBand == 0.0 &&
-                              dcBlockerState == 0.0 && dcBlockerPrevIn == 0.0;
+                              filter.IsSilent();
     if (canBeDormant && !isDormant) {
         dormantClockAnchor = clockCounter;
     } else if (!canBeDormant && isDormant) {
@@ -146,34 +120,21 @@ void SID::Reset() {
         voice.adsrDelayBugClock.store(0, std::memory_order_relaxed);
     }
     volumeRegister = 0;
-    filterLow = 0.0;
-    filterBand = 0.0;
-    dcBlockerState = 0.0;
-    dcBlockerPrevIn = 0.0;
+    filter.Reset();
     clockCounter = 0;
     dormantClockAnchor = 0;
     sidCycleAccumulator = 0;
     isDormant = false;
     resampler.Clear();
-    sampleBuffer.clear();
-    visualizerBuffer.fill(0.0F);
-    {
-        std::lock_guard<std::mutex> trackerLock(trackerMutex);
-        trackerLog.clear();
-        currentTrackerFrame = {};
-        lastTrackerFrameClock = 0;
-    }
-    
-    if (audioStream != nullptr) {
-        SDL_ClearAudioStream(audioStream);
-    }
+    trackerLogger.Reset();
+    audioSink.Reset();
     UpdateDormantState();
 }
 
 void SID::SetModel(SIDModel newModel) {
     std::lock_guard<std::mutex> lock(sidMutex);
     this->model = newModel;
-    filterCoefficientsDirty = true;
+    filter.filterCoefficientsDirty = true;
     UpdateDormantState();
 }
 
@@ -187,26 +148,16 @@ void SID::EnableSound(bool enable) {
     if (!soundEnabled && enable) {
         // Clear old state before enabling
         resampler.Clear();
-        sampleBuffer.clear();
-        dcBlockerState = 0.0;
-        dcBlockerPrevIn = 0.0;
-        filterCoefficientsDirty = true;
-        if (audioStream != nullptr) {
-            SDL_ClearAudioStream(audioStream);
-        }
+        filter.dcBlockerState = 0.0;
+        filter.dcBlockerPrevIn = 0.0;
+        filter.filterCoefficientsDirty = true;
+        audioSink.ClearAudioStream();
     }
     
     soundEnabled = enable;
-
-#ifndef TARGET_WASM
-    if (soundEnabled && !emulationPaused && !pendingFilename.empty()) {
-        recorder = std::make_unique<AudioRecorder>();
-        if (!recorder->Start(pendingFilename, sampleRate)) {
-            recorder.reset();
-        }
-        pendingFilename.clear();
+    if (soundEnabled && !emulationPaused) {
+        audioSink.OnResumePlayback(soundEnabled);
     }
-#endif
 
     UpdateAudioState();
 }
@@ -221,36 +172,20 @@ void SID::SetEmulationPaused(bool paused) {
     if (emulationPaused && !paused) {
         // Resuming from pause: clear stale data to prevent audio pop
         resampler.Clear();
-        sampleBuffer.clear();
-        dcBlockerState = 0.0;
-        dcBlockerPrevIn = 0.0;
-        if (audioStream != nullptr) {
-            SDL_ClearAudioStream(audioStream);
-        }
+        filter.dcBlockerState = 0.0;
+        filter.dcBlockerPrevIn = 0.0;
+        audioSink.ClearAudioStream();
     }
     
     emulationPaused = paused;
-#ifndef TARGET_WASM
-    if (!emulationPaused && soundEnabled && !pendingFilename.empty()) {
-        auto newRecorder = std::make_unique<AudioRecorder>();
-        if (newRecorder->Start(pendingFilename, sampleRate)) {
-            recorder = std::move(newRecorder);
-            pendingFilename.clear();
-        }
+    if (!emulationPaused && soundEnabled) {
+        audioSink.OnResumePlayback(soundEnabled);
     }
-#endif
     UpdateAudioState();
 }
 
 void SID::UpdateAudioState() {
-    if (audioStream != nullptr) {
-        SDL_AudioDeviceID devId = SDL_GetAudioStreamDevice(audioStream);
-        if (!soundEnabled || emulationPaused) {
-            SDL_PauseAudioDevice(devId);
-        } else {
-            SDL_ResumeAudioDevice(devId);
-        }
-    }
+    audioSink.UpdateAudioState(soundEnabled, emulationPaused);
 }
 
 Byte SID::Read(Word addr) {
@@ -267,19 +202,7 @@ void SID::Write(Word addr, Byte data) {
     uint8_t* const regs = registers.data();
     regs[reg] = data;
 
-    {
-        std::lock_guard<std::mutex> trackerLock(trackerMutex);
-        currentTrackerFrame.registers.at(reg) = data;
-        currentTrackerFrame.writeMask |= (1U << reg);
-        if (emulationPaused) {
-            trackerLog.push_back(currentTrackerFrame);
-            if (trackerLog.size() > TRACKER_LOG_CAPACITY) {
-                trackerLog.erase(trackerLog.begin());
-            }
-            currentTrackerFrame.writeMask = 0;
-            currentTrackerFrame.frameNumber++;
-        }
-    }
+    trackerLogger.LogWrite(reg, data, emulationPaused);
 
     if (reg < 0x15) {
         const std::size_t voiceIdx = reg / 7U;
@@ -309,12 +232,12 @@ void SID::Write(Word addr, Byte data) {
     if (reg == 0x18) {
         volumeRegister = data & 0x0F;
         filterMode = data & 0xF0;
-        filterCoefficientsDirty = true;
+        filter.filterCoefficientsDirty = true;
     } else if (reg == 0x17) {
         filterFiltMask = data & 0x0F;
-        filterCoefficientsDirty = true;
+        filter.filterCoefficientsDirty = true;
     } else if (reg == 0x15 || reg == 0x16) {
-        filterCoefficientsDirty = true;
+        filter.filterCoefficientsDirty = true;
     }
     UpdateDormantState();
 }
@@ -508,72 +431,15 @@ void Oscillator::Next(SIDModel model) {
     oscOutput = out;
 }
 
-namespace {
-inline double FastTanh(double x) {
-    if (x == 0.0) {
-        return 0.0;
-    }
-    if (x > 4.5) {
-        return 1.0;
-    }
-    if (x < -4.5) {
-        return -1.0;
-    }
-    const double x2 = x * x;
-    return x * (135135.0 + (x2 * (17325.0 + (x2 * (378.0 + x2))))) /
-           (135135.0 + (x2 * (62370.0 + (x2 * (3150.0 + (x2 * 28.0))))));
-}
-}  // namespace
-
 void SID::UpdateFilterCoefficients() {
     uint16_t fc = (registers.at(0x15) & 0x7) | (registers.at(0x16) << 3);
     uint8_t resFilt = registers.at(0x17);
     uint8_t res = (resFilt >> 4) & 0x0F;
-    double fcScaled = static_cast<double>(fc) * (1.0 / 2047.0);
-    double cutoffHz = 0.0;
-    if (model == SIDModel::MOS6581) {
-        cutoffHz = 30.0 + (12000.0 * (fcScaled * fcScaled * fcScaled));
-        double effectiveRes = (static_cast<double>(res) * (1.0 / 15.0)) * (1.0 - (fcScaled * fcScaled * 0.85));
-        effectiveRes = std::max(0.0, effectiveRes);
-        filterQ = 1.5 - effectiveRes;
-    } else {
-        cutoffHz = 30.0 + (fcScaled * 12000.0);
-        filterQ = 2.0 - (1.8 * (static_cast<double>(res) * (1.0 / 15.0)));
-    }
-    cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
-    double w = 2.0 * std::numbers::pi * cutoffHz / SID_NATIVE_RATE;
-    filterG = std::tan(w * 0.5);
-    filterR = 1.0 / filterQ;
-    filterRPlusG = filterR + filterG;
-    filterDenomInv = 1.0 / (1.0 + (filterG * filterRPlusG));
-    filterCoefficientsDirty = false;
+    filter.UpdateFilterCoefficients(fc, res, model);
 }
 
 void SID::FlushAvailableOutput() {
-    while (resampler.HasOutput()) {
-        double finalMix = resampler.GetOutput();
-        sampleBuffer.push_back(static_cast<int16_t>(finalMix * 18000.0));
-
-        const size_t wIdx = visualizerWriteIndex.load(std::memory_order_relaxed);
-        visualizerBuffer[wIdx % AUDIO_SNAPSHOT_SIZE] = static_cast<float>(finalMix);
-        visualizerWriteIndex.store(wIdx + 1, std::memory_order_relaxed);
-
-        if (sampleBuffer.size() >= 512) {
-            if (audioStream != nullptr && !emulationPaused) {
-                SDL_PutAudioStreamData(audioStream, sampleBuffer.data(),
-                                       static_cast<int>(sampleBuffer.size() * sizeof(int16_t)));
-            }
-#ifndef TARGET_WASM
-            if (recorder && soundEnabled && !emulationPaused) {
-                recorder->PushAudio(sampleBuffer.data(), sampleBuffer.size());
-            }
-#endif
-            if (audioCallback) {
-                audioCallback(sampleBuffer.data(), static_cast<int>(sampleBuffer.size()));
-            }
-            sampleBuffer.clear();
-        }
-    }
+    audioSink.FlushAvailableOutput(resampler, emulationPaused, soundEnabled);
 }
 
 template <bool Profiled>
@@ -636,10 +502,7 @@ void SID::ClockInternal() {
 
     if (!soundEnabled) {
         if (envOr == 0) {
-            filterLow = 0.0;
-            filterBand = 0.0;
-            dcBlockerState = 0.0;
-            dcBlockerPrevIn = 0.0;
+            filter.Reset();
             UpdateDormantState();
         }
         return;
@@ -650,13 +513,13 @@ void SID::ClockInternal() {
         filterStart = std::chrono::steady_clock::now();
     }
 
-    if (filterCoefficientsDirty) [[unlikely]] {
+    if (filter.filterCoefficientsDirty) [[unlikely]] {
         UpdateFilterCoefficients();
     }
 
     const uint8_t currentVolume = volumeRegister & 0x0F;
     if (envOr == 0 && (model != SIDModel::MOS6581 || currentVolume == 0) &&
-        filterLow == 0.0 && filterBand == 0.0 && dcBlockerState == 0.0 && dcBlockerPrevIn == 0.0) [[likely]] {
+        filter.IsSilent()) [[likely]] {
         if constexpr (Profiled) {
             profilingStats.filterNanoseconds += static_cast<std::uint64_t>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -691,7 +554,6 @@ void SID::ClockInternal() {
     double directOutput = 0.0;
     static constexpr double INV_2048 = 1.0 / 2048.0;
     static constexpr double INV_255 = 1.0 / 255.0;
-    static constexpr double INV_15 = 1.0 / 15.0;
 
     const uint8_t soloMask = voiceSoloMask.load(std::memory_order_relaxed);
     const uint8_t muteMask = voiceMuteMask.load(std::memory_order_relaxed);
@@ -715,53 +577,9 @@ void SID::ClockInternal() {
         }
     }
 
-    double hp = (filteredInput - filterLow - (filterBand * filterRPlusG)) * filterDenomInv;
-    double bp = filterBand + (filterG * hp);
-    double lp = filterLow + (filterG * bp);
-
-    filterBand = bp + (filterG * hp);
-    filterLow = lp + (filterG * bp);
-
-    if (model == SIDModel::MOS6581) {
-        filterBand = FastTanh(filterBand);
-        filterLow = FastTanh(filterLow);
-    }
-
-    double filterOutput = 0.0;
-    if ((filterMode & 0x10) != 0) {
-        filterOutput += filterLow;
-    }
-    if ((filterMode & 0x20) != 0) {
-        filterOutput += filterBand;
-    }
-    if ((filterMode & 0x40) != 0) {
-        filterOutput += hp;
-    }
-
-    if (model == SIDModel::MOS6581) {
-        filterOutput += filteredInput * 0.05;
-    }
-
-    double mix = FastTanh((directOutput + filterOutput) * 0.25);
-    const double volScaled = static_cast<double>(currentVolume) * INV_15;
-    mix *= volScaled;
-
-    if (model == SIDModel::MOS6581) {
-        mix += (volScaled - 0.5) * 0.45;
-    }
-
-    double pole = (model == SIDModel::MOS6581) ? 0.99995 : 0.995;
-    double filteredMix = mix - dcBlockerPrevIn + (pole * dcBlockerState);
+    double filteredMix = filter.Process(filteredInput, directOutput, filterMode, currentVolume, model, envOr == 0);
     if (std::abs(filteredMix) < 1e-15 && envOr == 0) {
-        filteredMix = 0.0;
-        filterLow = 0.0;
-        filterBand = 0.0;
-        dcBlockerState = 0.0;
-        dcBlockerPrevIn = 0.0;
         UpdateDormantState();
-    } else {
-        dcBlockerState = filteredMix;
-        dcBlockerPrevIn = mix;
     }
 
     if constexpr (Profiled) {
@@ -800,18 +618,7 @@ void SID::ClockProfiled() {
 }
 
 void SID::ClockSlow() {
-    if (cpuClockRateInt > 0 && clockCounter - lastTrackerFrameClock >= (cpuClockRateInt / 60)) {
-        lastTrackerFrameClock = clockCounter;
-        std::lock_guard<std::mutex> trackerLock(trackerMutex);
-        if (currentTrackerFrame.writeMask != 0) {
-            trackerLog.push_back(currentTrackerFrame);
-            if (trackerLog.size() > TRACKER_LOG_CAPACITY) {
-                trackerLog.erase(trackerLog.begin());
-            }
-            currentTrackerFrame.writeMask = 0;
-        }
-        currentTrackerFrame.frameNumber++;
-    }
+    trackerLogger.StepFrame(clockCounter, (cpuClockRateInt > 0) ? (cpuClockRateInt / 60) : 16666);
 
     if (profilingEnabled) [[unlikely]] {
         ClockProfiled();
@@ -892,10 +699,10 @@ bool SID::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, volumeRegister);
     ISerializable::Serialize(out, soundEnabled);
     ISerializable::Serialize(out, emulationPaused);
-    ISerializable::Serialize(out, filterLow);
-    ISerializable::Serialize(out, filterBand);
-    ISerializable::Serialize(out, dcBlockerState);
-    ISerializable::Serialize(out, dcBlockerPrevIn);
+    ISerializable::Serialize(out, filter.filterLow);
+    ISerializable::Serialize(out, filter.filterBand);
+    ISerializable::Serialize(out, filter.dcBlockerState);
+    ISerializable::Serialize(out, filter.dcBlockerPrevIn);
     
     uint8_t mod = static_cast<uint8_t>(model);
     ISerializable::Serialize(out, mod);
@@ -911,11 +718,11 @@ bool SID::LoadState(std::istream& inStream) {
     ISerializable::Deserialize(inStream, volumeRegister);
     ISerializable::Deserialize(inStream, soundEnabled);
     ISerializable::Deserialize(inStream, emulationPaused);
-    ISerializable::Deserialize(inStream, filterLow);
-    ISerializable::Deserialize(inStream, filterBand);
-    ISerializable::Deserialize(inStream, dcBlockerState);
-    ISerializable::Deserialize(inStream, dcBlockerPrevIn);
-    filterCoefficientsDirty = true;
+    ISerializable::Deserialize(inStream, filter.filterLow);
+    ISerializable::Deserialize(inStream, filter.filterBand);
+    ISerializable::Deserialize(inStream, filter.dcBlockerState);
+    ISerializable::Deserialize(inStream, filter.dcBlockerPrevIn);
+    filter.filterCoefficientsDirty = true;
     
     uint8_t mod = 0;
     if (!inStream.eof()) {
@@ -933,51 +740,30 @@ bool SID::LoadState(std::istream& inStream) {
 
 void SID::StartRecording(const std::string& filename) {
     std::lock_guard<std::mutex> lock(sidMutex);
-#ifndef TARGET_WASM
-    if (!emulationPaused && soundEnabled) {
-        recorder = std::make_unique<AudioRecorder>();
-        if (!recorder->Start(filename, sampleRate)) {
-            recorder.reset();
-        }
-    } else {
-        pendingFilename = filename;
-    }
-#else
-    (void)filename;
-#endif
+    audioSink.StartRecording(filename, emulationPaused, soundEnabled);
     UpdateDormantState();
 }
 
 void SID::StopRecording() {
     std::lock_guard<std::mutex> lock(sidMutex);
-    pendingFilename.clear();
-#ifndef TARGET_WASM
-    if (recorder) {
-        recorder->Stop();
-        recorder.reset();
-    }
-#endif
+    audioSink.StopRecording();
     UpdateDormantState();
 }
 
 bool SID::IsRecording() const {
     std::lock_guard<std::mutex> lock(sidMutex);
-#ifndef TARGET_WASM
-    return recorder != nullptr || !pendingFilename.empty();
-#else
-    return !pendingFilename.empty();
-#endif
+    return audioSink.IsRecording();
 }
 
 void SID::SetAudioCallback(std::function<void(const int16_t*, int)> callback) {
     std::lock_guard<std::mutex> lock(sidMutex);
-    audioCallback = std::move(callback);
+    audioSink.SetAudioCallback(std::move(callback));
     UpdateDormantState();
 }
 
 void SID::ClearAudioCallback() {
     std::lock_guard<std::mutex> lock(sidMutex);
-    audioCallback = nullptr;
+    audioSink.ClearAudioCallback();
     UpdateDormantState();
 }
 
@@ -995,29 +781,15 @@ SIDProfilingStats SID::GetProfilingStats() const {
 }
 
 void SID::GetAudioSnapshot(std::span<float> outBuffer) const {
-    if (outBuffer.empty()) {
-        return;
-    }
-    const size_t count = std::min(outBuffer.size(), AUDIO_SNAPSHOT_SIZE);
-    const size_t writeIdx = visualizerWriteIndex.load(std::memory_order_relaxed);
-    for (size_t i = 0; i < count; ++i) {
-        const size_t bufIdx = (writeIdx + AUDIO_SNAPSHOT_SIZE - count + i) % AUDIO_SNAPSHOT_SIZE;
-        outBuffer[i] = visualizerBuffer[bufIdx];
-    }
-    for (size_t i = count; i < outBuffer.size(); ++i) {
-        outBuffer[i] = 0.0F;
-    }
+    audioSink.GetAudioSnapshot(outBuffer);
 }
 
 void SID::GetTrackerLog(std::vector<SIDTrackerFrame>& outLog) const {
-    std::lock_guard<std::mutex> trackerLock(trackerMutex);
-    outLog = trackerLog;
+    trackerLogger.GetTrackerLog(outLog);
 }
 
 void SID::ClearTrackerLog() {
-    std::lock_guard<std::mutex> trackerLock(trackerMutex);
-    trackerLog.clear();
-    currentTrackerFrame.writeMask = 0;
+    trackerLogger.Clear();
 }
 
 }  // namespace Hardware

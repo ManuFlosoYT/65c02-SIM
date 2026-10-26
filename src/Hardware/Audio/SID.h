@@ -11,16 +11,13 @@
 #include <span>
 #include <vector>
 
-#ifndef TARGET_WASM
-#include "Hardware/Audio/AudioRecorder.h"
-#endif
 #include "Hardware/Core/IBusDevice.h"
-#include "Hardware/Audio/SIDResampler.h"
+#include "Hardware/Audio/SIDFilter.h"
+#include "Hardware/Audio/SIDAudioSink.h"
+#include "Hardware/Audio/SIDTrackerLogger.h"
 #include <memory>
 
 namespace Hardware {
-
-enum class SIDModel { MOS6581, MOS8580 };
 
 struct ADSREnvelope {
     enum State : std::uint8_t { IDLE, ATTACK, DECAY, SUSTAIN, RELEASE };
@@ -88,12 +85,6 @@ struct SIDProfilingStats {
     std::uint64_t filterNanoseconds = 0;
     std::uint64_t resamplerNanoseconds = 0;
     std::uint64_t outputNanoseconds = 0;
-};
-
-struct SIDTrackerFrame {
-    uint32_t frameNumber = 0;
-    std::array<uint8_t, 0x20> registers{};
-    uint32_t writeMask = 0;
 };
 
 class SID : public IBusDevice {
@@ -188,53 +179,24 @@ class SID : public IBusDevice {
     uint64_t sidCycleAccumulator = 0;
     uint64_t cpuClockRateInt = 1000000;
     
-    // Buffer for audio generated during Clock()
-    std::vector<int16_t> sampleBuffer;
-    
     // Cache for read-only registers
     uint8_t voice3OscOutput = 0;
     uint8_t voice3EnvOutput = 0;
 
-    double filterLow = 0.0;
-    double filterBand = 0.0;
-    double filterQ = 1.0;
     std::uint8_t filterFiltMask = 0;
     std::uint8_t filterMode = 0;
+    SIDFilter filter;
 
-    double dcBlockerState = 0.0;
-    double dcBlockerPrevIn = 0.0;
-    bool filterCoefficientsDirty = true;
-    double filterG = 0.0;
-    double filterR = 1.0;
-    double filterRPlusG = 1.0;
-    double filterDenomInv = 1.0;
-    
     SIDResampler resampler;
+    SIDAudioSink audioSink;
+    SIDTrackerLogger trackerLogger;
 
-    SDL_AudioStream* audioStream = nullptr;
-    int sampleRate = 48000;
     mutable std::mutex sidMutex;
-
-#ifndef TARGET_WASM
-    std::unique_ptr<AudioRecorder> recorder;
-#endif
-    std::string pendingFilename;
-    std::function<void(const int16_t*, int)> audioCallback;
     bool profilingEnabled = false;
     SIDProfilingStats profilingStats;
 
     std::atomic<uint8_t> voiceMuteMask{0};
     std::atomic<uint8_t> voiceSoloMask{0};
-
-    static constexpr size_t AUDIO_SNAPSHOT_SIZE = 256;
-    mutable std::array<float, AUDIO_SNAPSHOT_SIZE> visualizerBuffer{};
-    std::atomic<size_t> visualizerWriteIndex{0};
-
-    static constexpr size_t TRACKER_LOG_CAPACITY = 512;
-    mutable std::mutex trackerMutex;
-    std::vector<SIDTrackerFrame> trackerLog;
-    SIDTrackerFrame currentTrackerFrame;
-    uint64_t lastTrackerFrameClock = 0;
 
     template <bool Profiled>
     void ClockInternal();

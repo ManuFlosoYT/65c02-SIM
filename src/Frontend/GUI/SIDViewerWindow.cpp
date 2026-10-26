@@ -1,4 +1,5 @@
 #include "Frontend/GUI/SIDViewerWindow.h"
+#include "Frontend/GUI/SIDAudioAnalyzer.h"
 
 #include <algorithm>
 #include <array>
@@ -561,166 +562,6 @@ static void DrawPianoRoll(const Core::SID& sid) {
     ImGui::Dummy(ImVec2(totalPianoW, whiteKeyH));
 }
 
-static void ComputeFFT(std::vector<std::complex<float>>& a) {
-    const size_t n = a.size();
-    for (size_t i = 1, j = 0; i < n; ++i) {
-        size_t bit = n >> 1U;
-        for (; (j & bit) != 0; bit >>= 1U) {
-            j ^= bit;
-        }
-        j ^= bit;
-        if (i < j) {
-            std::swap(a[i], a[j]);
-        }
-    }
-    for (size_t len = 2; len <= n; len <<= 1U) {
-        float ang = -2.0F * std::numbers::pi_v<float> / static_cast<float>(len);
-        std::complex<float> wlen(std::cos(ang), std::sin(ang));
-        for (size_t i = 0; i < n; i += len) {
-            std::complex<float> w(1.0F, 0.0F);
-            for (size_t j = 0; j < (len / 2U); ++j) {
-                std::complex<float> u = a[i + j];
-                std::complex<float> v = a[i + j + (len / 2U)] * w;
-                a[i + j] = u + v;
-                a[i + j + (len / 2U)] = u - v;
-                w *= wlen;
-            }
-        }
-    }
-}
-
-static void ComputeVoiceShares(const Hardware::SID& sid, std::array<std::array<float, 3>, 32>& voiceShares) {
-    std::array<std::array<float, 3>, 32> energy{};
-    for (int v = 0; v < 3; ++v) {
-        if (sid.IsVoiceMuted(v)) {
-            continue;
-        }
-        if ((sid.IsVoiceSolo(0) || sid.IsVoiceSolo(1) || sid.IsVoiceSolo(2)) && !sid.IsVoiceSolo(v)) {
-            continue;
-        }
-        const auto& voice = sid.GetVoice(v);
-        if (voice.frequency == 0 || voice.env.level == 0 || (voice.control & 0x08) != 0) {
-            continue;
-        }
-        const uint8_t waveControl = (voice.control >> 4) & 0x0F;
-        if (waveControl == 0) {
-            continue;
-        }
-
-        const float envLevel = static_cast<float>(voice.env.level) / 255.0F;
-        if ((waveControl & 0x08) != 0) {
-            for (size_t i = 0; i < 32; ++i) {
-                energy.at(i).at(static_cast<size_t>(v)) += envLevel * 0.35F;
-            }
-            continue;
-        }
-
-        const float freqHz = static_cast<float>(voice.frequency) * (1000000.0F / 16777216.0F);
-        if (freqHz < 16.0F) {
-            continue;
-        }
-
-        constexpr float binHz = 48000.0F / 128.0F;
-        const float pulseDuty = std::clamp(static_cast<float>(voice.pulseWidth & 0x0FFF) / 4095.0F, 0.05F, 0.95F);
-        const int maxHarmonic = std::min(64, static_cast<int>(16000.0F / freqHz));
-
-        for (int k = 1; k <= maxHarmonic; ++k) {
-            const float kF = static_cast<float>(k);
-            const float hFreq = freqHz * kF;
-            float hAmp = 0.0F;
-            if ((waveControl & 0x01) != 0 && (k % 2 != 0)) {
-                hAmp = std::max(hAmp, 1.0F / (kF * kF));
-            }
-            if ((waveControl & 0x02) != 0) {
-                hAmp = std::max(hAmp, 1.0F / kF);
-            }
-            if ((waveControl & 0x04) != 0) {
-                hAmp = std::max(hAmp, std::abs(std::sin(kF * std::numbers::pi_v<float> * pulseDuty)) / kF);
-            }
-            if (hAmp <= 0.0F) {
-                continue;
-            }
-
-            const float binIdx = (hFreq / binHz) - 1.0F;
-            if (binIdx >= -0.5F && binIdx < 32.5F) {
-                const int b0 = static_cast<int>(std::floor(binIdx));
-                const int b1 = b0 + 1;
-                const float frac = binIdx - static_cast<float>(b0);
-                const float totalEnergy = envLevel * hAmp;
-                if (b0 >= 0 && b0 < 32) {
-                    energy.at(static_cast<size_t>(b0)).at(static_cast<size_t>(v)) += totalEnergy * (1.0F - frac);
-                }
-                if (b1 >= 0 && b1 < 32) {
-                    energy.at(static_cast<size_t>(b1)).at(static_cast<size_t>(v)) += totalEnergy * frac;
-                }
-            }
-        }
-    }
-
-    for (size_t i = 0; i < 32; ++i) {
-        const float sum = energy.at(i).at(0) + energy.at(i).at(1) + energy.at(i).at(2);
-        if (sum > 1e-4F) {
-            voiceShares.at(i).at(0) = energy.at(i).at(0) / sum;
-            voiceShares.at(i).at(1) = energy.at(i).at(1) / sum;
-            voiceShares.at(i).at(2) = energy.at(i).at(2) / sum;
-        } else {
-            voiceShares.at(i) = {1.0F / 3.0F, 1.0F / 3.0F, 1.0F / 3.0F};
-        }
-    }
-}
-
-static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrumOut,
-                       std::array<std::array<float, 3>, 32>& voiceSharesOut, bool should_update) {
-    static std::array<float, 32> smoothedSpectrum{};
-    if (!should_update) {
-        for (size_t i = 0; i < 32; ++i) {
-            smoothedSpectrum.at(i) *= 0.88F;
-            if (smoothedSpectrum.at(i) < 0.005F) {
-                smoothedSpectrum.at(i) = 0.0F;
-            }
-            spectrumOut.at(i) = smoothedSpectrum.at(i);
-        }
-        return;
-    }
-
-    constexpr size_t FFT_SIZE = 128;
-    std::array<float, FFT_SIZE> samples{};
-    sid.GetAudioSnapshot(samples);
-
-    std::vector<std::complex<float>> fftData(FFT_SIZE);
-    for (size_t i = 0; i < FFT_SIZE; ++i) {
-        float window = 0.5F * (1.0F - std::cos(2.0F * std::numbers::pi_v<float> * static_cast<float>(i) / (FFT_SIZE - 1.0F)));
-        fftData[i] = std::complex<float>(samples.at(i) * window, 0.0F);
-    }
-    ComputeFFT(fftData);
-
-    for (size_t i = 0; i < 32; ++i) {
-        float rawMag = (std::abs(fftData.at(i + 1)) / (static_cast<float>(FFT_SIZE) * 0.25F));
-        float db = (rawMag > 1e-4F) ? (20.0F * std::log10(rawMag)) : -60.0F;
-        float norm = std::clamp((db + 60.0F) / 60.0F, 0.0F, 1.0F);
-        smoothedSpectrum.at(i) = std::clamp(std::max(norm, smoothedSpectrum.at(i) * 0.82F), 0.0F, 1.0F);
-        spectrumOut.at(i) = smoothedSpectrum.at(i);
-    }
-    ComputeVoiceShares(sid, voiceSharesOut);
-}
-
-static void UpdatePeakHold(const std::array<float, 32>& spectrum,
-                           std::array<float, 32>& peakHold,
-                           std::array<float, 32>& peakTimers,
-                           float dt) {
-    for (size_t i = 0; i < 32; ++i) {
-        float val = spectrum.at(i);
-        if (val >= peakHold.at(i)) {
-            peakHold.at(i) = val;
-            peakTimers.at(i) = 0.35F;
-        } else if (peakTimers.at(i) > 0.0F) {
-            peakTimers.at(i) -= dt;
-        } else {
-            peakHold.at(i) = std::max(val, peakHold.at(i) - (0.65F * dt));
-        }
-    }
-}
-
 static void DrawCompactSpectrum(const std::array<float, 32>& spectrum,
                                 const std::array<std::array<float, 3>, 32>& voiceShares) {
     const float availW = ImGui::GetContentRegionAvail().x;
@@ -730,7 +571,7 @@ static void DrawCompactSpectrum(const std::array<float, 32>& spectrum,
 
     static std::array<float, 32> compactPeakHold{};
     static std::array<float, 32> compactPeakTimers{};
-    UpdatePeakHold(spectrum, compactPeakHold, compactPeakTimers, ImGui::GetIO().DeltaTime);
+    SIDAudioAnalyzer::UpdatePeakHold(spectrum, compactPeakHold, compactPeakTimers, ImGui::GetIO().DeltaTime);
 
     drawList->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barH), ImColor(Theme::Surface));
     const float barW = (availW - 4.0F) / 32.0F;
@@ -787,7 +628,7 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
 
     static std::array<float, 32> fullPeakHold{};
     static std::array<float, 32> fullPeakTimers{};
-    UpdatePeakHold(spectrum, fullPeakHold, fullPeakTimers, ImGui::GetIO().DeltaTime);
+    SIDAudioAnalyzer::UpdatePeakHold(spectrum, fullPeakHold, fullPeakTimers, ImGui::GetIO().DeltaTime);
 
     drawList->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barHeight), ImColor(Theme::Surface));
     drawList->AddRect(p0, ImVec2(p0.x + availW, p0.y + barHeight), ImColor(Theme::BorderSubtle));
@@ -927,15 +768,8 @@ static void DrawFilterAndRegistersTab(Hardware::SID& sid, bool should_update) {
     const bool modeLP = (reg18 & 0x10U) != 0;
     const uint8_t volume = reg18 & 0x0FU;
 
-    const double fcScaled = static_cast<double>(fc) / 2047.0;
-    double cutoffHz = (sid.GetModel() == SIDModel::MOS6581) ? (30.0 + (12000.0 * fcScaled * fcScaled * fcScaled))
-                                                            : (30.0 + (fcScaled * 12000.0));
-    cutoffHz = std::clamp(cutoffHz, 1.0, 24000.0);
-
-    double filterQ = (sid.GetModel() == SIDModel::MOS6581)
-                         ? (1.5 - ((static_cast<double>(res) / 15.0) * (1.0 - (fcScaled * fcScaled * 0.85))))
-                         : (2.0 - (1.8 * (static_cast<double>(res) / 15.0)));
-    filterQ = std::max(0.1, filterQ);
+    const auto filterResp = SIDAudioAnalyzer::ComputeFilterResponse(fc, res, sid.GetModel(), modeLP, modeBP, modeHP);
+    const double cutoffHz = filterResp.cutoffHz;
 
     const float availW = ImGui::GetContentRegionAvail().x;
     constexpr float graphH = 70.0F;
@@ -962,28 +796,11 @@ static void DrawFilterAndRegistersTab(Hardware::SID& sid, bool should_update) {
     drawList->AddLine(ImVec2(p0.x, y0dB), ImVec2(p0.x + availW, y0dB), IM_COL32(255, 255, 255, 30), 1.0F);
     drawList->AddText(ImVec2(p0.x + 3.0F, y0dB - 12.0F), IM_COL32(160, 175, 190, 100), "0 dB");
 
-    constexpr size_t POINT_COUNT = 100;
+    constexpr size_t POINT_COUNT = SIDAudioAnalyzer::FILTER_POINTS;
     std::array<ImVec2, POINT_COUNT> curvePoints{};
-    const double omega0 = 2.0 * std::numbers::pi * cutoffHz;
-    const double omega0_sq = omega0 * omega0;
-
     for (size_t i = 0; i < POINT_COUNT; ++i) {
         const double t = static_cast<double>(i) / 99.0;
-        const double f = 20.0 * std::pow(1000.0, t);
-        const double omega = 2.0 * std::numbers::pi * f;
-        const double omega_sq = omega * omega;
-        const double termD = (omega0 * omega) / filterQ;
-        const double denomDiff = omega0_sq - omega_sq;
-        const double denom = std::max(1e-9, std::sqrt((denomDiff * denomDiff) + (termD * termD)));
-
-        const double nReal = (modeLP ? omega0_sq : 0.0) - (modeHP ? omega_sq : 0.0);
-        const double nImag = modeBP ? termD : 0.0;
-        const double num = std::sqrt((nReal * nReal) + (nImag * nImag));
-        const double h = (modeLP || modeBP || modeHP) ? (num / denom) : 0.0;
-        const double dB = std::clamp(20.0 * std::log10(h + 1e-4), -24.0, 18.0);
-        const float yNorm = static_cast<float>((18.0 - dB) / 42.0);
-
-        curvePoints.at(i) = ImVec2(p0.x + static_cast<float>(t) * availW, p0.y + yNorm * graphH);
+        curvePoints.at(i) = ImVec2(p0.x + static_cast<float>(t) * availW, p0.y + filterResp.yNorms.at(i) * graphH);
     }
 
     const ImU32 fillCol = ImColor(Theme::AccentPrimary.x, Theme::AccentPrimary.y, Theme::AccentPrimary.z, 0.20F);
@@ -1234,7 +1051,8 @@ static void DrawFilterAndRegistersTab(Hardware::SID& sid, bool should_update) {
 static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_update) {
     std::array<float, 32> spectrum{};
     std::array<std::array<float, 3>, 32> voiceShares{};
-    ProcessFFT(state.emulator.GetSID(), spectrum, voiceShares, should_update);
+    static SIDAudioAnalyzer audioAnalyzer;
+    audioAnalyzer.ProcessFFT(state.emulator.GetSID(), spectrum, voiceShares, should_update);
 
     if (ImGui::BeginTabBar("SIDViewerTabs")) {
         if (ImGui::BeginTabItem("Oscillators")) {

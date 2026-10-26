@@ -71,7 +71,8 @@ bool SavestateManager::SaveComponentsState(std::ostream& stateStream) {
 }
 
 void SavestateManager::SaveInternalState(std::ostream& stateStream) {
-    Hardware::ISerializable::Serialize(stateStream, emulator.baudDelay);
+    int baud = emulator.serialBridge.GetBaudDelay();
+    Hardware::ISerializable::Serialize(stateStream, baud);
 
     bool gpuE = emulator.gpuEnabled;
     Hardware::ISerializable::Serialize(stateStream, gpuE);
@@ -79,14 +80,7 @@ void SavestateManager::SaveInternalState(std::ostream& stateStream) {
     int tIPS = emulator.GetTargetIPS();
     Hardware::ISerializable::Serialize(stateStream, tIPS);
 
-    {
-        std::lock_guard<std::mutex> bufferLock(emulator.bufferMutex);
-        auto qSize = static_cast<uint32_t>(emulator.inputBuffer.size());
-        Hardware::ISerializable::Serialize(stateStream, qSize);
-        for (char chr : emulator.inputBuffer) {
-            stateStream.write(&chr, 1);
-        }
-    }
+    emulator.serialBridge.SerializeBuffer(stateStream);
 
     auto binPathLen = static_cast<uint32_t>(emulator.currentBinPath.length());
     Hardware::ISerializable::Serialize(stateStream, binPathLen);
@@ -103,7 +97,8 @@ void SavestateManager::SaveInternalState(std::ostream& stateStream) {
 
     Hardware::ISerializable::Serialize(stateStream, emulator.espEnabled);
     Hardware::ISerializable::Serialize(stateStream, emulator.sdEnabled);
-    Hardware::ISerializable::Serialize(stateStream, emulator.aciaEspBridge);
+    bool aciaEsp = emulator.serialBridge.IsACIAESPBridge();
+    Hardware::ISerializable::Serialize(stateStream, aciaEsp);
 }
 
 bool SavestateManager::SaveState(const std::string& filename) {
@@ -299,7 +294,9 @@ bool SavestateManager::LoadComponentsState(std::istream& stateStream) {
 }
 
 bool SavestateManager::LoadInternalState(std::istream& stateStream) {
-    Hardware::ISerializable::Deserialize(stateStream, emulator.baudDelay);
+    int baud = 0;
+    Hardware::ISerializable::Deserialize(stateStream, baud);
+    emulator.serialBridge.SetBaudDelay(baud);
 
     bool gpuE = false;
     Hardware::ISerializable::Deserialize(stateStream, gpuE);
@@ -309,17 +306,9 @@ bool SavestateManager::LoadInternalState(std::istream& stateStream) {
     Hardware::ISerializable::Deserialize(stateStream, tIPS);
     emulator.SetTargetIPS(tIPS);
 
-    uint32_t qSize = 0;
-    Hardware::ISerializable::Deserialize(stateStream, qSize);
-    if (qSize > 10ULL * 1024 * 1024) { return false; }
-    std::lock_guard<std::mutex> lock(emulator.bufferMutex);
-    emulator.inputBuffer.clear();
-    for (size_t i = 0; i < qSize; ++i) {
-        char chr = '\0';
-        stateStream.read(&chr, 1);
-        emulator.inputBuffer.push_back(chr);
+    if (!emulator.serialBridge.DeserializeBuffer(stateStream)) {
+        return false;
     }
-    emulator.hasInput.store(!emulator.inputBuffer.empty());
 
     uint32_t binPathLen = 0;
     Hardware::ISerializable::Deserialize(stateStream, binPathLen);
@@ -341,7 +330,9 @@ bool SavestateManager::LoadInternalState(std::istream& stateStream) {
 
     Hardware::ISerializable::Deserialize(stateStream, emulator.espEnabled);
     Hardware::ISerializable::Deserialize(stateStream, emulator.sdEnabled);
-    Hardware::ISerializable::Deserialize(stateStream, emulator.aciaEspBridge);
+    bool aciaEsp = false;
+    Hardware::ISerializable::Deserialize(stateStream, aciaEsp);
+    emulator.serialBridge.SetACIAESPBridge(aciaEsp);
 
     return true;
 }

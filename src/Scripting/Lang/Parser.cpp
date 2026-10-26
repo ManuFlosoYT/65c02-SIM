@@ -138,7 +138,8 @@ std::unique_ptr<Expr> Parser::assignment() {
         Token equals = previous();
         std::unique_ptr<Expr> value = assignment();
 
-        if (auto* varExpr = dynamic_cast<VariableExpr*>(expr.get())) {
+        if (expr && expr->kind == ExprKind::Variable) {
+            auto* varExpr = static_cast<VariableExpr*>(expr.get());
             Token name = varExpr->name;
             return std::make_unique<AssignExpr>(name, std::move(value));
         }

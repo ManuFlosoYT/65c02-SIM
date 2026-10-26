@@ -16,7 +16,7 @@ namespace Core {
 Emulator::Emulator() : cpu(), scriptEngine(*this), engine(*this), savestateManager(*this) {
     components = {&bus, &cpu, &ram, &rom, &via, &sid, &acia, &sdcard, &esp8266, &lcd, &gpu, &consoleSerializable};
     esp8266.SetRxByteCallback([this](Byte b) {
-        if (aciaEspBridge) {
+        if (serialBridge.IsACIAESPBridge()) {
             esp8266.RecordTraffic(TrafficDirection::RX, TrafficChannel::ATResponse, -1, "ESP8266 -> ACIA",
                                   std::string(1, static_cast<char>(b)));
             acia.ReceiveData(b);
@@ -84,11 +84,7 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
 
     currentBinPath = name;
     
-    {
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        inputBuffer.clear();
-        hasInput.store(false, std::memory_order_relaxed);
-    }
+    serialBridge.Clear();
     
     SetupHardware();
     std::cout << "Loaded ROM from memory: " << name << " (" << data.size() << " bytes)\n";
@@ -169,9 +165,7 @@ void Emulator::RunCPUTick(int& res, bool& cpuStepped) {
 void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction, int ips) {
     lastStepCpuCycles = cpuStepped ? 1 : 0;
     lastStepGpuCycles = (gpuEnabled && !cpuStepped) ? 1 : 0;
-    if (baudDelay > 0) [[unlikely]] {
-        baudDelay--;
-    }
+    serialBridge.DecrementBaudDelay();
 
     via.Clock();
     acia.Clock(ips);
@@ -249,34 +243,7 @@ void Emulator::HandleInterrupts() {
 
 template <bool Debug>
 void Emulator::HandleSerialInput() {
-    if (!hasInput.load(std::memory_order_relaxed)) {
-        return;
-    }
-
-    if (baudDelay > 0 || !acia.CanReceive()) {
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(bufferMutex);
-    if (!inputBuffer.empty() && acia.CanReceive() && baudDelay <= 0) {
-        char chr = inputBuffer.front();
-        inputBuffer.pop_front();
-
-        acia.ReceiveData(chr);
-        if (acia.HasIRQ()) {
-            pendingInterruptAny.store(true, std::memory_order_relaxed);
-        }
-        
-        int baudRate = acia.GetBaudRate();
-        if (baudRate <= 0) baudRate = 19200;
-        int ips = engine.GetTargetIPS();
-        if (ips <= 0) ips = 1000000;
-        baudDelay = (ips * 10) / baudRate;
-    }
-
-    if (inputBuffer.empty()) {
-        hasInput.store(false, std::memory_order_relaxed);
-    }
+    serialBridge.ProcessSerialInput(acia, engine.GetTargetIPS(), pendingInterruptAny);
 }
 
 template <bool Debug, bool CycleAccurateMode>
@@ -303,7 +270,7 @@ int Emulator::StepInternal(int ips) {
         return 0;
     }
 
-    if (hasInput.load(std::memory_order_relaxed)) [[unlikely]] {
+    if (serialBridge.HasInput()) [[unlikely]] {
         HandleSerialInput<Debug>();
     }
 
@@ -345,22 +312,12 @@ template void Emulator::HandleSerialInput<true>();
 template void Emulator::HandleSerialInput<false>();
 
 void Emulator::InjectKey(char key) {
-    if (key == '\n') {
-        key = '\r';
-    }
-
-    std::lock_guard<std::mutex> lock(bufferMutex);
-    inputBuffer.push_back(key);
-    hasInput.store(true, std::memory_order_relaxed);
+    serialBridge.InjectKey(key);
 }
 
 void Emulator::SetOutputCallback(std::function<void(char)> callback) {
     acia.SetOutputCallback([this, cb = std::move(callback)](char c) {
-        if (aciaEspBridge) {
-            esp8266.RecordTraffic(TrafficDirection::TX, TrafficChannel::ATCommand, -1, "ACIA -> ESP8266",
-                                  std::string(1, c));
-            esp8266.Write(0x5004, static_cast<Byte>(c));
-        }
+        serialBridge.ForwardOutputIfBridged(c, esp8266);
         if (cb) {
             cb(c);
         }
@@ -381,158 +338,8 @@ void Emulator::Reset() {
     SetupHardware();
 }
 
-void Emulator::RegisterCartridgeDevice(const DeviceConfig& dev, bool& sdCustomMapped) {
-    if (dev.name == "RAM") {
-        bus.RegisterDevice(dev.start, dev.end, &ram, true, false);
-    } else if (dev.name == "ROM") {
-        bus.RegisterDevice(dev.start, dev.end, &rom, true, false);
-    } else if (dev.name == "ACIA") {
-        bus.RegisterDevice(dev.start, dev.end, &acia, true, true);
-    } else if (dev.name == "VIA") {
-        bus.RegisterDevice(dev.start, dev.end, &via, true, true);
-    } else if (dev.name == "ESP8266" || dev.name == "ESP32") {
-        bus.RegisterDevice(dev.start, dev.end, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
-    } else if (dev.name == "SID") {
-        sidEnabled = sidEnabledOverride
-                         ? sidEnabled
-                         : cartridge.config.sidEnabled.value_or(true);
-        bus.RegisterDevice(dev.start, dev.end, &sid, sidEnabled, true);
-    } else if (dev.name == "GPU") {
-        bus.RegisterDevice(dev.start, dev.end, &gpu, cartridge.config.gpuEnabled.value_or(this->gpuEnabled), true);
-    } else if (dev.name == "LCD") {
-        bus.RegisterVirtualDevice(&lcd, true);
-    } else if (dev.name == "SD Card") {
-        bus.RegisterDevice(dev.start, dev.end, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-        sdCustomMapped = true;
-    } else {
-        throw std::runtime_error("Unsupported cartridge device: " + dev.name);
-    }
-}
-
-bool Emulator::RegisterCartridgeLayout() {
-    if (!cartridge.loaded || cartridge.busDevices.empty()) {
-        return false;
-    }
-
-    if (!sidEnabledOverride) {
-        sidEnabled = false;
-    }
-    bool sdCustomMapped = false;
-    bool lcdCustomMapped = false;
-    for (const auto& dev : cartridge.busDevices) {
-        if (dev.name == "LCD") {
-            lcdCustomMapped = true;
-        }
-        RegisterCartridgeDevice(dev, sdCustomMapped);
-    }
-
-    // MMIO SD device default if not mapped manually
-    if (!sdCustomMapped) {
-        bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-    }
-
-    if (!lcdCustomMapped) {
-        bus.RegisterVirtualDevice(&lcd, true);
-    }
-
-    return true;
-}
-
-void Emulator::RegisterDefaultLayout() {
-    // Default layout (v1.0)
-    bus.RegisterDevice(0x0000, 0x7FFF, &ram, true, false);
-    bus.RegisterDevice(0x8000, 0xFFFF, &rom, true, false);
-    bus.RegisterDevice(0x5000, 0x5003, &acia, true, true);
-    bus.RegisterDevice(0x6000, 0x600F, &via, true, true);
-    bus.RegisterDevice(0x5004, 0x5007, &esp8266, cartridge.config.espEnabled.value_or(this->espEnabled), true);
-    bus.RegisterDevice(0x5008, 0x500B, &sdcard, cartridge.config.sdEnabled.value_or(this->sdEnabled), true);
-    if (!sidEnabledOverride) {
-        sidEnabled = cartridge.config.sidEnabled.value_or(true);
-    }
-    bus.RegisterDevice(0x4800, 0x481F, &sid, sidEnabled, true);
-    bus.RegisterDevice(0x2000, 0x3FFF, &gpu, cartridge.config.gpuEnabled.value_or(this->gpuEnabled), true);
-    bus.RegisterVirtualDevice(&lcd, true);
-}
-
-void Emulator::ResetHardwareDevices() {
-    if (ram.IsPowerOnPattern()) {
-        ram.Reset();
-    }
-    acia.Reset();
-    via.Reset();
-    sid.Reset();
-    gpu.Reset();
-    lcd.Reset();
-    sdcard.Reset();
-    esp8266.Reset();
-}
-
-void Emulator::LoadCartridgeVRAMIfPresent() {
-    if (cartridge.loaded && !cartridge.vramData.empty()) {
-        gpu.LoadVRAM(cartridge.vramData);
-    }
-}
-
-void Emulator::MountSDCardIfPresent() {
-    // Priority: 1. Cartridge internal SD, 2. External .sd file alongside ROM
-    if (cartridge.loaded && !cartridge.sdCardPath.empty()) {
-        // Persistence: Re-mount if lost during reset (though SDCard::Reset doesn't unmount)
-        if (!sdcard.IsMounted() || sdcard.GetMountedPath() != cartridge.sdCardPath) {
-            sdcard.Mount(cartridge.sdCardPath);
-        }
-        return;
-    }
-
-    if (currentBinPath.empty()) {
-        return;
-    }
-
-    std::filesystem::path sdPath = currentBinPath;
-    sdPath.replace_extension(".sd");
-    if (std::filesystem::exists(sdPath)) {
-        if (!sdcard.IsMounted() || sdcard.GetMountedPath() != sdPath.string()) {
-            sdcard.Mount(sdPath.string());
-        }
-    }
-}
-
 void Emulator::SetupHardware() {
-    if (engine.IsRunning() && std::this_thread::get_id() != engine.GetThreadId() && !engine.IsActuallyPaused()) {
-        WaitUntilSafeToMutate();
-    }
-    engine.SetHalted(false);
-    bus.ClearDevices();
-    bus.Init();
-    watchpointWriteHookInstalled = false;
-    cpu.SetProfiler(&subroutineProfiler);
-    cpu.Reset();
-    pendingIRQ.store(false, std::memory_order_relaxed);
-    pendingNMI.store(false, std::memory_order_relaxed);
-    pendingInterruptAny.store(false, std::memory_order_relaxed);
-    totalCycles = 0;
-    totalInstructions = 0;
-    savestateManager.ClearRewindBuffer();
-
-    try {
-        if (!RegisterCartridgeLayout()) {
-            RegisterDefaultLayout();
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "Exception during SetupHardware: " << e.what() << '\n';
-        if (cartridge.loaded) {
-            cartridge.loaded = false;
-            SetupHardware(); // Retry with default layout
-            return;
-        }
-    }
-
-    ResetHardwareDevices();
-
-    LoadCartridgeVRAMIfPresent();
-    MountSDCardIfPresent();
-
-    via.SetPortBCallback([this](Byte val) { HandleVIAPortB(val); });
-    EnsureWatchpointWriteHook();
+    SystemConfigurator::SetupHardware(*this);
 }
 
 void Emulator::SetSIDEnabled(bool enabled) {

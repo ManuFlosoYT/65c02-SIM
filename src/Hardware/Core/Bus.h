@@ -7,22 +7,13 @@
 
 #include "Hardware/Core/IBusDevice.h"
 #include "Hardware/Core/ISerializable.h"
+#include "Hardware/Core/BusTelemetry.h"
 
 namespace Hardware {
 
 using BusWriteHook = std::function<void(Word /* address */, Byte /* data */)>;
 
-constexpr Word MAX_ADDR = 0xFFFF;
-constexpr uint32_t BUS_SIZE = (uint32_t)MAX_ADDR + 1;
 constexpr Word ROM_SIZE = 0x8000;
-
-enum CDLFlags : uint8_t {
-    CDL_NONE = 0,
-    CDL_OPCODE = 1 << 0,
-    CDL_DATA = 1 << 1,
-    CDL_ZP_POINTER = 1 << 2,
-    CDL_OPERAND = 1 << 3,
-};
 
 constexpr Word ACIA_DATA = 0x5000;
 constexpr Word ACIA_STATUS = 0x5001;
@@ -141,16 +132,7 @@ class Bus : public ISerializable {
     std::vector<BusWriteHook> globalWriteHooks;
     bool hasWriteHooks = false;
 
-    bool profilingEnabled = false;
-    std::array<uint32_t, BUS_SIZE> profilerCounts{};
-    std::array<uint32_t, BUS_SIZE> profilerReadCounts{};
-    std::array<uint32_t, BUS_SIZE> profilerWriteCounts{};
-    std::array<uint8_t, BUS_SIZE> cdlMap{};
-
-    bool heatmapEnabled = false;
-    std::atomic<bool> heatmapDirty{false};
-    std::array<std::atomic<uint8_t>, BUS_SIZE> readHeat{};
-    std::array<std::atomic<uint8_t>, BUS_SIZE> writeHeat{};
+    BusTelemetry telemetry;
 
     Word lastAddress = 0;
     Byte lastData = 0;
@@ -161,48 +143,44 @@ class Bus : public ISerializable {
 
 namespace Hardware {
 
-inline void Bus::LogCDL(Word address, uint8_t flags) { cdlMap[address] |= flags; }
+inline void Bus::LogCDL(Word address, uint8_t flags) { telemetry.LogCDL(address, flags); }
 
-inline uint8_t Bus::GetCDL(Word address) const { return cdlMap[address]; }
+inline uint8_t Bus::GetCDL(Word address) const { return telemetry.GetCDL(address); }
 
-inline const std::array<uint8_t, BUS_SIZE>& Bus::GetCDLMap() const { return cdlMap; }
+inline const std::array<uint8_t, BUS_SIZE>& Bus::GetCDLMap() const { return telemetry.GetCDLMap(); }
 
-inline std::array<uint8_t, BUS_SIZE>& Bus::GetCDLMap() { return cdlMap; }
+inline std::array<uint8_t, BUS_SIZE>& Bus::GetCDLMap() { return telemetry.GetCDLMap(); }
 
-inline void Bus::SetProfilingEnabled(bool enabled) { profilingEnabled = enabled; }
+inline void Bus::ClearCDL() { telemetry.ClearCDL(); }
 
-inline uint32_t* Bus::GetProfilerCounts() { return profilerCounts.data(); }
+inline void Bus::SetProfilingEnabled(bool enabled) { telemetry.SetProfilingEnabled(enabled); }
 
-inline uint32_t* Bus::GetProfilerReadCounts() { return profilerReadCounts.data(); }
+inline void Bus::ClearProfiler() { telemetry.ClearProfiler(); }
 
-inline uint32_t* Bus::GetProfilerWriteCounts() { return profilerWriteCounts.data(); }
+inline uint32_t* Bus::GetProfilerCounts() { return telemetry.GetProfilerCounts(); }
 
-inline void Bus::SetHeatmapEnabled(bool enabled) {
-    heatmapEnabled = enabled;
-    if (!enabled) {
-        ClearHeatmap();
-    }
-}
+inline uint32_t* Bus::GetProfilerReadCounts() { return telemetry.GetProfilerReadCounts(); }
 
-inline bool Bus::IsHeatmapEnabled() const { return heatmapEnabled; }
+inline uint32_t* Bus::GetProfilerWriteCounts() { return telemetry.GetProfilerWriteCounts(); }
 
-inline uint8_t Bus::GetReadHeat(Word address) const { return readHeat.at(address).load(std::memory_order_relaxed); }
+inline void Bus::SetHeatmapEnabled(bool enabled) { telemetry.SetHeatmapEnabled(enabled); }
 
-inline uint8_t Bus::GetWriteHeat(Word address) const { return writeHeat.at(address).load(std::memory_order_relaxed); }
+inline bool Bus::IsHeatmapEnabled() const { return telemetry.IsHeatmapEnabled(); }
 
-inline bool Bus::HasActiveHooks() const { return profilingEnabled || heatmapEnabled || hasWriteHooks; }
+inline void Bus::ClearHeatmap() { telemetry.ClearHeatmap(); }
+
+inline void Bus::DecayHeatmap(uint8_t amount) { telemetry.DecayHeatmap(amount); }
+
+inline uint8_t Bus::GetReadHeat(Word address) const { return telemetry.GetReadHeat(address); }
+
+inline uint8_t Bus::GetWriteHeat(Word address) const { return telemetry.GetWriteHeat(address); }
+
+inline bool Bus::HasActiveHooks() const { return telemetry.HasActiveHooks() || hasWriteHooks; }
 
 template <bool Debug>
 inline Byte Bus::Read(Word address) {
     if constexpr (Debug) {
-        if (profilingEnabled) {
-            profilerCounts[address]++;
-            profilerReadCounts.at(address)++;
-        }
-        if (heatmapEnabled) {
-            readHeat.at(address).store(255, std::memory_order_relaxed);
-            heatmapDirty.store(true, std::memory_order_relaxed);
-        }
+        telemetry.LogRead(address);
     }
     Byte data = 0;
 
@@ -238,14 +216,7 @@ inline Byte Bus::ReadDirect(Word address) const {
 template <bool Debug>
 inline void Bus::Write(Word address, Byte data) {
     if constexpr (Debug) {
-        if (profilingEnabled) {
-            profilerCounts[address]++;
-            profilerWriteCounts.at(address)++;
-        }
-        if (heatmapEnabled) {
-            writeHeat.at(address).store(255, std::memory_order_relaxed);
-            heatmapDirty.store(true, std::memory_order_relaxed);
-        }
+        telemetry.LogWrite(address);
     }
 
     if (Byte* memoryBase = pageWriteMap[address >> 8]) [[likely]] {

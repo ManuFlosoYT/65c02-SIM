@@ -277,9 +277,9 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
                 if (emulator.gpuEnabled && !emulator.gpu.IsInBlankingInterval()) {
                     const uint32_t waitCycles = emulator.gpu.GetDrawingWaitCycles();
                     if (waitCycles > 0 && (!emulator.sidEnabled || emulator.sid.IsDormant()) && emulator.via.IsIdle() &&
-                        emulator.acia.IsIdle() && emulator.baudDelay == 0 &&
+                        emulator.acia.IsIdle() && emulator.serialBridge.GetBaudDelay() == 0 &&
                         !emulator.pendingInterruptAny.load(std::memory_order_relaxed) &&
-                        !emulator.hasInput.load(std::memory_order_relaxed)) [[likely]] {
+                        !emulator.serialBridge.HasInput()) [[likely]] {
                         const auto rem = static_cast<uint32_t>(count - i);
                         const uint32_t skip = (rem < waitCycles) ? rem : waitCycles;
                         emulator.gpu.SkipDrawingCycles(skip);
@@ -316,9 +316,7 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
                     localGpuCycles++;
                 }
 
-                if (emulator.baudDelay > 0) [[unlikely]] {
-                    emulator.baudDelay--;
-                }
+                emulator.serialBridge.DecrementBaudDelay();
                 emulator.via.Clock();
                 emulator.acia.Clock(ips);
                 if (emulator.sidEnabled) {
@@ -330,7 +328,7 @@ int EmulationEngine::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bo
                 if (cpuStepped && emulator.pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
                     emulator.HandleInterrupts<false>();
                 }
-                if (emulator.hasInput.load(std::memory_order_relaxed)) [[unlikely]] {
+                if (emulator.serialBridge.HasInput()) [[unlikely]] {
                     emulator.HandleSerialInput<false>();
                 }
 

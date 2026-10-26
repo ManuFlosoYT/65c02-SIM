@@ -2,6 +2,7 @@
 
 #include "AST.h"
 #include "Environment.h"
+#include "EmulatorScriptContext.h"
 #include <memory>
 #include <functional>
 #include <vector>
@@ -32,14 +33,19 @@ public:
 
     Value evaluate(Expr* expr);
     void setContext(const ::Hardware::CPU* cpu, const ::Hardware::Bus* bus) {
-        cpuContext = cpu;
-        busContext = bus;
+        context.SetContext(cpu, bus);
+    }
+    void setContext(EmulatorScriptContext ctx) {
+        context = std::move(ctx);
+    }
+    const EmulatorScriptContext& getContext() const {
+        return context;
     }
 
     static bool isTruthy(const Value& value);
     static bool isEqual(const Value& a, const Value& b);
 
-   private:
+private:
     std::function<void(const std::string&)> printHandler;
     std::function<bool()> abortCheck;
     void execute(Stmt* stmt);
@@ -67,8 +73,7 @@ public:
     static void checkNumberOperand(const Token& op, const Value& operand);
     static void checkNumberOperands(const Token& op, const Value& left, const Value& right);
 
-    const ::Hardware::CPU* cpuContext = nullptr;
-    const ::Hardware::Bus* busContext = nullptr;
+    EmulatorScriptContext context;
 
     std::shared_ptr<Environment> globals;
     std::shared_ptr<Environment> environment;

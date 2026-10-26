@@ -78,8 +78,6 @@ class SDCard : public IBusDevice {
     bool allow_host_deletion = false;
     std::vector<uint8_t> virtual_disk;
     std::unordered_map<std::string, std::filesystem::path> sfnToHostMap;
-    bool BuildVirtualFAT();
-    void ExtractVirtualFAT();
 
     bool is_modified = false;
     bool is_read_only = false;
