@@ -65,7 +65,12 @@ static void HandleSDKFileLoading(AppState& state, const std::string& filename, c
 
 static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files, const std::string& subfolder) {
     for (const auto& file : files) {
-        if (ImGui::Selectable(file.c_str())) {
+        std::string displayName = file;
+        if (displayName.ends_with(".65c") || displayName.ends_with(".c65")) {
+            displayName.resize(displayName.size() - 4);
+        }
+        std::string label = displayName + "##" + file;
+        if (ImGui::Selectable(label.c_str())) {
 #ifdef TARGET_WASM
             std::string url = "roms/";
             if (subfolder != "cartridge") {
