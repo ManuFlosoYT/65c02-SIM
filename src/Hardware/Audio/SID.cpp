@@ -140,6 +140,10 @@ void SID::Reset() {
         voice.env.sustainLevel = 0;
         voice.env.releaseRate = 0;
         voice.oscOutput = 0;
+        voice.lastGateOffClock = 0;
+        voice.gateWasActive = false;
+        voice.hadHardRestart = false;
+        voice.adsrDelayBugClock.store(0, std::memory_order_relaxed);
     }
     volumeRegister = 0;
     filterLow = 0.0;
@@ -293,6 +297,11 @@ void SID::Write(Word addr, Byte data) {
         osc.env.targetDecayRate = attackDecay & 0xF;
         osc.env.targetSustainLevel = (sustainRelease >> 4) & 0xF;
         osc.env.targetReleaseRate = sustainRelease & 0xF;
+        if (reg == regOffset + 5 || reg == regOffset + 6) {
+            if (regs[regOffset + 5] == 0 && regs[regOffset + 6] == 0 && (osc.control & 0x01) == 0) {
+                osc.hadHardRestart = true;
+            }
+        }
         UpdateDormantState();
         return;
     }
@@ -590,9 +599,28 @@ void SID::ClockInternal() {
     if constexpr (Profiled) {
         envStart = std::chrono::steady_clock::now();
     }
-    v[0].env.Update((v[0].control & 0x01) != 0);
-    v[1].env.Update((v[1].control & 0x01) != 0);
-    v[2].env.Update((v[2].control & 0x01) != 0);
+    for (std::size_t i = 0; i < 3; ++i) {
+        const bool newGate = (v[i].control & 0x01) != 0;
+        const bool oldGate = v[i].env.gate;
+        if (oldGate && !newGate) {
+            v[i].gateWasActive = true;
+            v[i].lastGateOffClock = clockCounter;
+            v[i].hadHardRestart = (v[i].env.targetAttackRate == 0 && v[i].env.targetDecayRate == 0 &&
+                                   v[i].env.targetSustainLevel == 0 && v[i].env.targetReleaseRate == 0);
+        } else if (!oldGate && newGate) {
+            if (v[i].gateWasActive && v[i].lastGateOffClock > 0) {
+                const uint64_t elapsed = clockCounter - v[i].lastGateOffClock;
+                const uint64_t twoFrames = (cpuClockRateInt > 0) ? ((2ULL * cpuClockRateInt) / 60ULL) : 33333ULL;
+                if ((elapsed < twoFrames && !v[i].hadHardRestart) ||
+                    (v[i].env.rateCounter > RATE_COUNTER_PERIODS.at(v[i].env.targetAttackRate))) {
+                    v[i].adsrDelayBugClock.store(clockCounter, std::memory_order_relaxed);
+                }
+            }
+            v[i].gateWasActive = true;
+            v[i].hadHardRestart = false;
+        }
+        v[i].env.Update(newGate);
+    }
     if constexpr (Profiled) {
         profilingStats.envelopeNanoseconds += static_cast<std::uint64_t>(
             std::chrono::duration_cast<std::chrono::nanoseconds>(

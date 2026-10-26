@@ -103,3 +103,64 @@ TEST(SIDTrackerTest, CaptureWritesAndFrames) {
     EXPECT_EQ(sid.GetRegister(0x01), 0);
 }
 
+TEST(SIDDelayBugTest, DetectsRapidRetriggerWithoutHardRestart) {
+    SID sid;
+    sid.Write(0x00, 0x10);
+    sid.Write(0x01, 0x10);
+    sid.Write(0x05, 0x00);
+    sid.Write(0x06, 0xF0);
+    sid.Write(0x04, 0x11);
+    sid.Clock(100);
+
+    sid.Write(0x04, 0x10);
+    sid.Clock(500);
+
+    sid.Write(0x04, 0x11);
+    sid.Clock(1);
+
+    EXPECT_GT(sid.GetVoice(0).GetADSRDelayBugClock(), 0U);
+}
+
+TEST(SIDDelayBugTest, AllowsHardRestartWithZeroADSR) {
+    SID sid;
+    sid.Write(0x00, 0x10);
+    sid.Write(0x01, 0x10);
+    sid.Write(0x05, 0x00);
+    sid.Write(0x06, 0xF0);
+    sid.Write(0x04, 0x11);
+    sid.Clock(100);
+
+    sid.Write(0x04, 0x10);
+    sid.Clock(100);
+
+    sid.Write(0x05, 0x00);
+    sid.Write(0x06, 0x00);
+    sid.Clock(10);
+
+    sid.Write(0x05, 0xF0);
+    sid.Write(0x06, 0xF0);
+    sid.Write(0x04, 0x11);
+    sid.Clock(1);
+
+    EXPECT_EQ(sid.GetVoice(0).GetADSRDelayBugClock(), 0U);
+}
+
+TEST(SIDDelayBugTest, AllowsRetriggerAfterTwoFrames) {
+    SID sid;
+    sid.Write(0x00, 0x10);
+    sid.Write(0x01, 0x10);
+    sid.Write(0x05, 0xF0);
+    sid.Write(0x06, 0xF0);
+    sid.Write(0x04, 0x11);
+    sid.Clock(100);
+
+    sid.Write(0x04, 0x10);
+    sid.Clock(40000);
+
+    sid.Write(0x04, 0x11);
+    sid.Clock(1);
+
+    EXPECT_EQ(sid.GetVoice(0).GetADSRDelayBugClock(), 0U);
+}
+
+

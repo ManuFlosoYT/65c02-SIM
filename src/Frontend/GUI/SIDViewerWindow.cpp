@@ -362,6 +362,57 @@ static void DrawVoiceADSR(const Oscillator& voice, int voiceIndex) {
     ImGui::Dummy(size);
 }
 
+static void DrawVoiceADSRWarning(const Hardware::SID& sid, int voiceIndex) {
+    const auto& voice = sid.GetVoice(voiceIndex);
+    const ImVec2 size(24.0F, 26.0F);
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    static std::array<uint64_t, 3> lastBugClock = {0, 0, 0};
+    static std::array<double, 3> bugAlertTime = {-10.0, -10.0, -10.0};
+
+    const uint64_t currentBugClock = voice.GetADSRDelayBugClock();
+    if (currentBugClock == 0) {
+        lastBugClock.at(voiceIndex) = 0;
+        bugAlertTime.at(voiceIndex) = -10.0;
+    } else if (currentBugClock != lastBugClock.at(voiceIndex)) {
+        lastBugClock.at(voiceIndex) = currentBugClock;
+        bugAlertTime.at(voiceIndex) = ImGui::GetTime();
+    }
+
+    const double now = ImGui::GetTime();
+    const bool isWarning = (now - bugAlertTime.at(voiceIndex) < 2.0);
+
+    if (isWarning) {
+        const bool blinkVisible = (static_cast<int>(now * 4.0) % 2 == 0);
+        if (blinkVisible) {
+            const ImU32 warnColor = IM_COL32(255, 180, 0, 255);
+            const char* text = "(!)";
+            const ImVec2 textSize = ImGui::CalcTextSize(text);
+            const ImVec2 textPos = ImVec2(
+                p0.x + ((size.x - textSize.x) * 0.5F),
+                p0.y + ((size.y - textSize.y) * 0.5F)
+            );
+            drawList->AddText(textPos, warnColor, text);
+        }
+
+        ImGui::PushID(voiceIndex);
+        ImGui::InvisibleButton("##ADSRWarn", size);
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::TextColored(ImVec4(1.0F, 0.75F, 0.0F, 1.0F), "ADSR Delay Bug / Missing Hard Restart");
+            ImGui::Separator();
+            ImGui::TextUnformatted("Gate Off -> Gate On occurred in < 2 frames without ADSR = $0000.");
+            ImGui::TextUnformatted("The envelope generator may desync or start from an unreleased level,");
+            ImGui::TextUnformatted("causing choked notes or missing attack.");
+            ImGui::EndTooltip();
+        }
+        ImGui::PopID();
+    } else {
+        ImGui::Dummy(size);
+    }
+}
+
 static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     const auto& voice = sid.GetVoice(voiceIndex);
     const ImVec4 voiceColor = ImColor(VOICE_COLORS.at(voiceIndex)).Value;
@@ -408,7 +459,10 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     ImGui::SameLine(0.0F, 26.0F);
     DrawVoiceADSR(voice, voiceIndex);
 
-    ImGui::SameLine(0.0F, 32.0F);
+    ImGui::SameLine(0.0F, 4.0F);
+    DrawVoiceADSRWarning(sid, voiceIndex);
+    ImGui::SameLine(0.0F, 4.0F);
+
     DrawControlBadge("GATE", (voice.control & 1) != 0);
     ImGui::SameLine(0.0F, 10.0F);
     DrawControlBadge("SYNC", (voice.control & 2) != 0);

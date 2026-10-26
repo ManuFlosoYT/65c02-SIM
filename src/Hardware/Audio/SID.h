@@ -68,6 +68,13 @@ struct Oscillator {
     // Output state
     uint16_t oscOutput = 0;
 
+    uint64_t lastGateOffClock = 0;
+    bool gateWasActive = false;
+    bool hadHardRestart = false;
+    std::atomic<uint64_t> adsrDelayBugClock{0};
+
+    [[nodiscard]] uint64_t GetADSRDelayBugClock() const { return adsrDelayBugClock.load(std::memory_order_relaxed); }
+
     void Next(SIDModel model);
 
     bool SaveState(std::ostream& out) const;
