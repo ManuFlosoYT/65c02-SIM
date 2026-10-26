@@ -3,7 +3,7 @@
 <h1>65c02 emulator for the BenEater memory layout implementation</h1>
 <br/>
 
-# 🌐 [▶️ RUN IT ONLINE!](https://manuflosoyt.github.io/65c02-SIM/)
+# 🌐 [▶️ RUN IT ONLINE!](https://manufloso.dev/65c02-SIM/)
 
 <br/>
 <p>Emulated components: CPU, VIA, ACIA, SID, GPU, SD Card (SPI), ESP8266 (Wi-Fi), 32KB RAM, 32KB ROM, 7,5KB VRAM (6,25KB usable by CPU)</p>
