@@ -19,8 +19,11 @@ bool CustomFileDialog::Display(const std::string& vKey, ImGuiWindowFlags vFlags,
     return ImGuiFileDialog::Instance()->Display(vKey, vFlags, vMinSize, vMaxSize);
 }
 
-bool CustomFileDialog::IsOpened() {
-    return ImGuiFileDialog::Instance()->IsOpened();
+bool CustomFileDialog::IsOpened(const std::string& vKey) {
+    if (vKey.empty()) {
+        return ImGuiFileDialog::Instance()->IsOpened();
+    }
+    return ImGuiFileDialog::Instance()->IsOpened(vKey);
 }
 
 bool CustomFileDialog::IsOk() {

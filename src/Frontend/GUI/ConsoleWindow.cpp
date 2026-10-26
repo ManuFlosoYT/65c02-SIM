@@ -192,7 +192,7 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
 #ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
                 std::string_view nameView(filename);
-                if (nameView.ends_with(".65c")) {
+                if (nameView.ends_with(".65c") || nameView.ends_with(".c65")) {
                     std::string virtualPath = "/tmp/";
                     virtualPath += filename;
                     FILE* f = fopen(virtualPath.c_str(), "wb");
@@ -233,10 +233,10 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
                     }
                 }
             };
-            WebFileUtils::open_browser_file_picker(".bin,.65c");
+            WebFileUtils::open_browser_file_picker(".bin,.65c,.c65");
 #else
             if (!Frontend::CustomFileDialog::IsOpened()) {
-                Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin,.65c", ".");
+                Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", "Supported Files (*.bin, *.65c){.bin,.65c,.c65},.bin,.65c,.*", ".");
             }
 #endif
         }

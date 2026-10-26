@@ -12,12 +12,18 @@ using namespace Core;
 namespace Frontend {
 
 static void HandleROMFilePicker(AppState& state) {
+    if (CustomFileDialog::IsOpened("ChooseFileDlgKey")) {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImVec2 targetSize = ImVec2(viewport->WorkSize.x * 0.75F, viewport->WorkSize.y * 0.75F);
+        ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+        ImGui::SetNextWindowSize(targetSize, ImGuiCond_Appearing);
+    }
     if (CustomFileDialog::Display("ChooseFileDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePathName = CustomFileDialog::GetFilePathName();
             state.emulator.Pause();
             std::string errorMsg;
-            if (filePathName.ends_with(".65c")) {
+            if (filePathName.ends_with(".65c") || filePathName.ends_with(".c65")) {
                 Core::Cartridge cart;
                 if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
                     Control::ApplyCartridgeConfig(state, cart);

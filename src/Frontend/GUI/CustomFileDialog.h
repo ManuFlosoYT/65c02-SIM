@@ -15,7 +15,7 @@ public:
     static bool Display(const std::string& vKey, ImGuiWindowFlags vFlags = ImGuiWindowFlags_NoCollapse, 
                         ImVec2 vMinSize = ImVec2(400, 300), ImVec2 vMaxSize = ImVec2(32767, 32767));
 
-    [[nodiscard]] static bool IsOpened();
+    [[nodiscard]] static bool IsOpened(const std::string& vKey = "");
     [[nodiscard]] static bool IsOk();
     [[nodiscard]] static std::string GetFilePathName();
     [[nodiscard]] static std::string GetCurrentPath();

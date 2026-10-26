@@ -101,7 +101,7 @@ void ExecuteReset(AppState& state) {
         }
         if (!initSuccess) {
             state.rom.loaded = false;
-            Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", ".");
+            Frontend::CustomFileDialog::OpenDialog("ChooseFileDlgKey", "Choose File", "Supported Files (*.bin, *.65c){.bin,.65c,.c65},.bin,.65c,.*", ".");
         }
 #endif
     }
