@@ -62,7 +62,7 @@ static void DrawEmulationSettings(AppState& state) {
         state.emulator.SetAutoReload(state.emulation.autoReload);
     }
 #endif
-    if (ImGui::Checkbox("Simulate SD Read Latency", &state.emulation.sdLatencyEnabled)) {
+    if (ImGui::Checkbox("Random SD Read Latency", &state.emulation.sdLatencyEnabled)) {
         state.emulator.GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
     }
     if (ImGui::Checkbox("Random RAM at Power-On", &state.emulation.ramPowerOnPattern)) {
