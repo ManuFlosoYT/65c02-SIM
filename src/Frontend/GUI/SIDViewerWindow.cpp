@@ -369,7 +369,8 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex) {
     ImGui::SameLine(0.0F, 34.0F);
     DrawColoredText(Theme::TextSecondary, "PW:");
     ImGui::SameLine(0.0F, 4.0F);
-    DrawColoredText(voiceColor, std::format("{:03X}", voice.pulseWidth));
+    const float dutyPct = (static_cast<float>(voice.pulseWidth & 0x0FFFU) / 4095.0F) * 100.0F;
+    DrawColoredText(voiceColor, std::format("{:03X} ({:.0f}%)", voice.pulseWidth, dutyPct));
     ImGui::SameLine(0.0F, 34.0F);
     DrawColoredText(Theme::TextSecondary, "Wave:");
     ImGui::SameLine(0.0F, 4.0F);
@@ -530,7 +531,88 @@ static void ComputeFFT(std::vector<std::complex<float>>& a) {
     }
 }
 
-static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrumOut, bool should_update) {
+static void ComputeVoiceShares(const Hardware::SID& sid, std::array<std::array<float, 3>, 32>& voiceShares) {
+    std::array<std::array<float, 3>, 32> energy{};
+    for (int v = 0; v < 3; ++v) {
+        if (sid.IsVoiceMuted(v)) {
+            continue;
+        }
+        if ((sid.IsVoiceSolo(0) || sid.IsVoiceSolo(1) || sid.IsVoiceSolo(2)) && !sid.IsVoiceSolo(v)) {
+            continue;
+        }
+        const auto& voice = sid.GetVoice(v);
+        if (voice.frequency == 0 || voice.env.level == 0 || (voice.control & 0x08) != 0) {
+            continue;
+        }
+        const uint8_t waveControl = (voice.control >> 4) & 0x0F;
+        if (waveControl == 0) {
+            continue;
+        }
+
+        const float envLevel = static_cast<float>(voice.env.level) / 255.0F;
+        if ((waveControl & 0x08) != 0) {
+            for (size_t i = 0; i < 32; ++i) {
+                energy.at(i).at(static_cast<size_t>(v)) += envLevel * 0.35F;
+            }
+            continue;
+        }
+
+        const float freqHz = static_cast<float>(voice.frequency) * (1000000.0F / 16777216.0F);
+        if (freqHz < 16.0F) {
+            continue;
+        }
+
+        constexpr float binHz = 48000.0F / 128.0F;
+        const float pulseDuty = std::clamp(static_cast<float>(voice.pulseWidth & 0x0FFF) / 4095.0F, 0.05F, 0.95F);
+        const int maxHarmonic = std::min(64, static_cast<int>(16000.0F / freqHz));
+
+        for (int k = 1; k <= maxHarmonic; ++k) {
+            const float kF = static_cast<float>(k);
+            const float hFreq = freqHz * kF;
+            float hAmp = 0.0F;
+            if ((waveControl & 0x01) != 0 && (k % 2 != 0)) {
+                hAmp = std::max(hAmp, 1.0F / (kF * kF));
+            }
+            if ((waveControl & 0x02) != 0) {
+                hAmp = std::max(hAmp, 1.0F / kF);
+            }
+            if ((waveControl & 0x04) != 0) {
+                hAmp = std::max(hAmp, std::abs(std::sin(kF * std::numbers::pi_v<float> * pulseDuty)) / kF);
+            }
+            if (hAmp <= 0.0F) {
+                continue;
+            }
+
+            const float binIdx = (hFreq / binHz) - 1.0F;
+            if (binIdx >= -0.5F && binIdx < 32.5F) {
+                const int b0 = static_cast<int>(std::floor(binIdx));
+                const int b1 = b0 + 1;
+                const float frac = binIdx - static_cast<float>(b0);
+                const float totalEnergy = envLevel * hAmp;
+                if (b0 >= 0 && b0 < 32) {
+                    energy.at(static_cast<size_t>(b0)).at(static_cast<size_t>(v)) += totalEnergy * (1.0F - frac);
+                }
+                if (b1 >= 0 && b1 < 32) {
+                    energy.at(static_cast<size_t>(b1)).at(static_cast<size_t>(v)) += totalEnergy * frac;
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < 32; ++i) {
+        const float sum = energy.at(i).at(0) + energy.at(i).at(1) + energy.at(i).at(2);
+        if (sum > 1e-4F) {
+            voiceShares.at(i).at(0) = energy.at(i).at(0) / sum;
+            voiceShares.at(i).at(1) = energy.at(i).at(1) / sum;
+            voiceShares.at(i).at(2) = energy.at(i).at(2) / sum;
+        } else {
+            voiceShares.at(i) = {1.0F / 3.0F, 1.0F / 3.0F, 1.0F / 3.0F};
+        }
+    }
+}
+
+static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrumOut,
+                       std::array<std::array<float, 3>, 32>& voiceSharesOut, bool should_update) {
     static std::array<float, 32> smoothedSpectrum{};
     if (!should_update) {
         for (size_t i = 0; i < 32; ++i) {
@@ -557,37 +639,77 @@ static void ProcessFFT(const Hardware::SID& sid, std::array<float, 32>& spectrum
     for (size_t i = 0; i < 32; ++i) {
         float rawMag = (std::abs(fftData.at(i + 1)) / (static_cast<float>(FFT_SIZE) * 0.25F));
         float db = (rawMag > 1e-4F) ? (20.0F * std::log10(rawMag)) : -60.0F;
-        float norm = std::clamp((db + 38.0F) / 38.0F, 0.0F, 1.0F);
+        float norm = std::clamp((db + 60.0F) / 60.0F, 0.0F, 1.0F);
         smoothedSpectrum.at(i) = std::clamp(std::max(norm, smoothedSpectrum.at(i) * 0.82F), 0.0F, 1.0F);
         spectrumOut.at(i) = smoothedSpectrum.at(i);
     }
+    ComputeVoiceShares(sid, voiceSharesOut);
 }
 
-static void DrawCompactSpectrum(const std::array<float, 32>& spectrum) {
+static void UpdatePeakHold(const std::array<float, 32>& spectrum,
+                           std::array<float, 32>& peakHold,
+                           std::array<float, 32>& peakTimers,
+                           float dt) {
+    for (size_t i = 0; i < 32; ++i) {
+        float val = spectrum.at(i);
+        if (val >= peakHold.at(i)) {
+            peakHold.at(i) = val;
+            peakTimers.at(i) = 0.35F;
+        } else if (peakTimers.at(i) > 0.0F) {
+            peakTimers.at(i) -= dt;
+        } else {
+            peakHold.at(i) = std::max(val, peakHold.at(i) - (0.65F * dt));
+        }
+    }
+}
+
+static void DrawCompactSpectrum(const std::array<float, 32>& spectrum,
+                                const std::array<std::array<float, 3>, 32>& voiceShares) {
     const float availW = ImGui::GetContentRegionAvail().x;
     constexpr float barH = 14.0F;
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
+    static std::array<float, 32> compactPeakHold{};
+    static std::array<float, 32> compactPeakTimers{};
+    UpdatePeakHold(spectrum, compactPeakHold, compactPeakTimers, ImGui::GetIO().DeltaTime);
+
     drawList->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barH), ImColor(Theme::Surface));
     const float barW = (availW - 4.0F) / 32.0F;
     const float maxH = barH - 2.0F;
     for (size_t i = 0; i < 32; ++i) {
-        float h = std::clamp(spectrum.at(i) * maxH, 0.0F, maxH);
+        float val = spectrum.at(i);
+        float h = (val > 0.01F) ? std::max(1.5F, val * maxH) : 0.0F;
         float bx0 = p0.x + 2.0F + (static_cast<float>(i) * barW);
+        float bx1 = bx0 + barW - 1.0F;
         float by1 = p0.y + barH - 1.0F;
-        ImU32 col = ImColor(Theme::AccentPrimary);
-        if (spectrum.at(i) > 0.65F) {
-            col = IM_COL32(255, 100, 100, 255);
-        } else if (spectrum.at(i) > 0.40F) {
-            col = IM_COL32(255, 200, 50, 255);
+
+        if (h > 0.0F) {
+            const auto& shares = voiceShares.at(i);
+            float curBottom = by1;
+            float topY = by1 - h;
+            for (size_t v = 0; v < 3; ++v) {
+                float segH = h * shares.at(v);
+                if (segH > 0.0F) {
+                    float nextY = (v == 2) ? topY : std::max(topY, curBottom - segH);
+                    drawList->AddRectFilled(ImVec2(bx0, nextY), ImVec2(bx1, curBottom), VOICE_COLORS.at(v));
+                    curBottom = nextY;
+                }
+            }
         }
-        drawList->AddRectFilled(ImVec2(bx0, by1 - h), ImVec2(bx0 + barW - 1.0F, by1), col);
+
+        float peakH = std::clamp(compactPeakHold.at(i) * maxH, 0.0F, maxH);
+        if (peakH > 1.0F) {
+            float peakY = by1 - peakH;
+            drawList->AddLine(ImVec2(bx0, peakY), ImVec2(bx1, peakY), IM_COL32(255, 255, 255, 200), 1.0F);
+        }
     }
     ImGui::Dummy(ImVec2(availW, barH));
 }
 
-static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 32>& spectrum, bool should_update) {
+static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 32>& spectrum,
+                                   const std::array<std::array<float, 3>, 32>& voiceShares,
+                                   bool should_update) {
     ImGui::PushID("FullSpectrogramTab");
     ImGui::TextUnformatted("Mute/Solo:");
     for (int v = 0; v < 3; ++v) {
@@ -605,35 +727,59 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
     const ImVec2 p0 = ImGui::GetCursorScreenPos();
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
+    static std::array<float, 32> fullPeakHold{};
+    static std::array<float, 32> fullPeakTimers{};
+    UpdatePeakHold(spectrum, fullPeakHold, fullPeakTimers, ImGui::GetIO().DeltaTime);
+
     drawList->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barHeight), ImColor(Theme::Surface));
     drawList->AddRect(p0, ImVec2(p0.x + availW, p0.y + barHeight), ImColor(Theme::BorderSubtle));
 
     const float barWidth = (availW - 4.0F) / 32.0F;
     const float maxBarH = barHeight - 6.0F;
     for (size_t i = 0; i < 32; ++i) {
-        float h = std::clamp(spectrum.at(i) * maxBarH, 0.0F, maxBarH);
+        float val = spectrum.at(i);
+        float h = (val > 0.01F) ? std::max(2.0F, val * maxBarH) : 0.0F;
         float bx0 = p0.x + 2.0F + (static_cast<float>(i) * barWidth);
+        float bx1 = bx0 + barWidth - 1.0F;
         float by1 = p0.y + barHeight - 3.0F;
-        float by0 = by1 - h;
-        ImU32 col = ImColor(Theme::AccentPrimary);
-        if (spectrum.at(i) > 0.65F) {
-            col = IM_COL32(255, 100, 100, 255);
-        } else if (spectrum.at(i) > 0.40F) {
-            col = IM_COL32(255, 200, 50, 255);
+
+        if (h > 0.0F) {
+            const auto& shares = voiceShares.at(i);
+            float curBottom = by1;
+            float topY = by1 - h;
+            for (size_t v = 0; v < 3; ++v) {
+                float segH = h * shares.at(v);
+                if (segH > 0.0F) {
+                    float nextY = (v == 2) ? topY : std::max(topY, curBottom - segH);
+                    drawList->AddRectFilled(ImVec2(bx0, nextY), ImVec2(bx1, curBottom), VOICE_COLORS.at(v));
+                    curBottom = nextY;
+                }
+            }
         }
-        drawList->AddRectFilled(ImVec2(bx0, by0), ImVec2(bx0 + barWidth - 1.0F, by1), col);
+
+        float peakH = std::clamp(fullPeakHold.at(i) * maxBarH, 0.0F, maxBarH);
+        if (peakH > 1.5F) {
+            float peakY = by1 - peakH;
+            drawList->AddLine(ImVec2(bx0, peakY), ImVec2(bx1, peakY), IM_COL32(255, 255, 255, 210), 1.5F);
+        }
     }
     ImGui::Dummy(ImVec2(availW, barHeight + 4.0F));
 
     ImGui::TextUnformatted("Waterfall Spectrogram (Time vs Freq):");
+    struct WaterfallCell {
+        float val = 0.0F;
+        std::array<float, 3> voiceShares{1.0F / 3.0F, 1.0F / 3.0F, 1.0F / 3.0F};
+    };
     constexpr int WATERFALL_COLS = 32;
     constexpr int WATERFALL_ROWS = 28;
-    static std::array<std::array<float, WATERFALL_COLS>, WATERFALL_ROWS> waterfallGrid{};
+    static std::array<std::array<WaterfallCell, WATERFALL_COLS>, WATERFALL_ROWS> waterfallGrid{};
     if (should_update) {
         for (int r = WATERFALL_ROWS - 1; r > 0; --r) {
             waterfallGrid.at(r) = waterfallGrid.at(r - 1);
         }
-        waterfallGrid.at(0) = spectrum;
+        for (size_t c = 0; c < WATERFALL_COLS; ++c) {
+            waterfallGrid.at(0).at(c) = {spectrum.at(c), voiceShares.at(c)};
+        }
     }
 
     const ImVec2 wp0 = ImGui::GetCursorScreenPos();
@@ -647,21 +793,28 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
 
     for (int r = 0; r < WATERFALL_ROWS; ++r) {
         for (size_t c = 0; c < WATERFALL_COLS; ++c) {
-            float val = waterfallGrid.at(r).at(c);
+            const auto& cell = waterfallGrid.at(r).at(c);
+            float val = cell.val;
             float cx0 = wp0.x + (static_cast<float>(c) * cellW);
             float cy0 = wp0.y + (static_cast<float>(r) * cellH);
             ImVec2 cp0(cx0 + 0.5F, cy0 + 0.5F);
             ImVec2 cp1(cx0 + cellW - 0.5F, cy0 + cellH - 0.5F);
 
             ImU32 cellColor = IM_COL32(11, 29, 40, 220);
-            if (val > 0.65F) {
-                cellColor = IM_COL32(255, 235, 59, 255);
-            } else if (val > 0.40F) {
-                cellColor = IM_COL32(0, 230, 200, 240);
-            } else if (val > 0.18F) {
-                cellColor = IM_COL32(0, 150, 180, 220);
-            } else if (val > 0.04F) {
-                cellColor = IM_COL32(20, 70, 95, 200);
+            if (val > 0.04F) {
+                const auto& shares = cell.voiceShares;
+                float rMix = (shares.at(0) * 79.0F) + (shares.at(1) * 255.0F) + (shares.at(2) * 240.0F);
+                float gMix = (shares.at(0) * 195.0F) + (shares.at(1) * 183.0F) + (shares.at(2) * 98.0F);
+                float bMix = (shares.at(0) * 247.0F) + (shares.at(1) * 77.0F) + (shares.at(2) * 146.0F);
+
+                float intensity = std::clamp(val, 0.25F, 1.0F);
+                int alpha = static_cast<int>(std::clamp(160.0F + (val * 95.0F), 160.0F, 255.0F));
+                cellColor = IM_COL32(
+                    static_cast<int>(rMix * intensity),
+                    static_cast<int>(gMix * intensity),
+                    static_cast<int>(bMix * intensity),
+                    alpha
+                );
             }
             drawList->AddRectFilled(cp0, cp1, cellColor);
         }
@@ -672,7 +825,8 @@ static void DrawFullSpectrogramTab(Hardware::SID& sid, const std::array<float, 3
 
 static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_update) {
     std::array<float, 32> spectrum{};
-    ProcessFFT(state.emulator.GetSID(), spectrum, should_update);
+    std::array<std::array<float, 3>, 32> voiceShares{};
+    ProcessFFT(state.emulator.GetSID(), spectrum, voiceShares, should_update);
 
     if (ImGui::BeginTabBar("SIDViewerTabs")) {
         if (ImGui::BeginTabItem("Oscillators")) {
@@ -692,13 +846,13 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
             ImGui::Separator();
             DrawPianoRoll(state.emulator.GetSID());
             ImGui::Spacing();
-            DrawCompactSpectrum(spectrum);
+            DrawCompactSpectrum(spectrum, voiceShares);
 
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("FFT Spectrogram")) {
-            DrawFullSpectrogramTab(state.emulator.GetSID(), spectrum, should_update);
+            DrawFullSpectrogramTab(state.emulator.GetSID(), spectrum, voiceShares, should_update);
             ImGui::EndTabItem();
         }
 
