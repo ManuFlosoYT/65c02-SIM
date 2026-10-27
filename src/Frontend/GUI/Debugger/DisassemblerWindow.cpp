@@ -26,59 +26,65 @@ static void ResolveSymbolsForLocation(const Control::AppState& state, uint16_t c
     }
 }
 
-static void ResolveDirectOperand(const Control::AppState& state, std::string& opText) {
-    size_t comma = opText.find(',');
-    std::string hexPart = opText.substr(1, comma != std::string::npos ? comma - 1 : std::string::npos);
-    if (!hexPart.empty()) {
-        char* end = nullptr;
-        unsigned long val = std::strtoul(hexPart.c_str(), &end, 16);
-        if (end != nullptr && *end == '\0') {
-            auto opAddr = static_cast<uint16_t>(val);
-            if (const auto* opSym = state.rom.symbols.GetSymbolAtAddress(opAddr)) {
-                if (comma != std::string::npos) {
-                    opText = opSym->name + opText.substr(comma);
-                } else {
-                    opText = opSym->name;
-                }
-            }
-        }
-    }
-}
-
-static void ResolveIndirectOperand(const Control::AppState& state, std::string& opText) {
-    size_t endHex = opText.find_first_not_of("0123456789ABCDEFabcdef", 2);
-    if (endHex != std::string::npos && endHex > 2) {
-        std::string hexPart = opText.substr(2, endHex - 2);
-        char* end = nullptr;
-        unsigned long val = std::strtoul(hexPart.c_str(), &end, 16);
-        if (end != nullptr && *end == '\0') {
-            auto opAddr = static_cast<uint16_t>(val);
-            if (const auto* opSym = state.rom.symbols.GetSymbolAtAddress(opAddr)) {
-                opText = "(" + opSym->name + opText.substr(endHex);
-            }
-        }
-    }
-}
-
-static void ResolveSymbolsForOperand(const Control::AppState& state, std::string& opText) {
-    if (opText.empty()) {
+static void ResolveSymbolsForOperand(const Control::AppState& state,
+                                     const Hardware::DisassembledInstruction& inst,
+                                     std::string& opText) {
+    if (!inst.hasOperand || inst.mode == Hardware::AddressingMode::Immediate) {
         return;
     }
-    
-    if (opText[0] == '$') {
-        ResolveDirectOperand(state, opText);
-    } else if (opText.size() > 2 && opText[0] == '(' && opText[1] == '$') {
-        ResolveIndirectOperand(state, opText);
+
+    const auto* opSym = state.rom.symbols.GetSymbolAtAddress(inst.operandValue);
+    if (!opSym) {
+        return;
+    }
+
+    switch (inst.mode) {
+        case Hardware::AddressingMode::ZeroPage:
+        case Hardware::AddressingMode::Absolute:
+        case Hardware::AddressingMode::Relative:
+            opText = opSym->name;
+            break;
+        case Hardware::AddressingMode::ZeroPageX:
+        case Hardware::AddressingMode::AbsoluteX:
+            opText = opSym->name + ",X";
+            break;
+        case Hardware::AddressingMode::ZeroPageY:
+        case Hardware::AddressingMode::AbsoluteY:
+            opText = opSym->name + ",Y";
+            break;
+        case Hardware::AddressingMode::Indirect:
+        case Hardware::AddressingMode::ZeroPageIndirect:
+            opText = "(" + opSym->name + ")";
+            break;
+        case Hardware::AddressingMode::IndirectX:
+            opText = "(" + opSym->name + ",X)";
+            break;
+        case Hardware::AddressingMode::IndirectY:
+            opText = "(" + opSym->name + "),Y";
+            break;
+        case Hardware::AddressingMode::AbsoluteIndexedIndirect:
+            opText = "(" + opSym->name + ",X)";
+            break;
+        case Hardware::AddressingMode::ZeroPageRelative: {
+            size_t comma = opText.find(',');
+            if (comma != std::string::npos) {
+                opText = opText.substr(0, comma + 2) + opSym->name;
+            }
+            break;
+        }
+        default:
+            break;
     }
 }
 
 static void ResolveSymbolsForInstruction(const Control::AppState& state, uint16_t currentAddr,
+                                         const Hardware::DisassembledInstruction& inst,
                                          std::string& labelText, std::string& opText, std::string& sourceText) {
     if (!state.rom.symbols.IsLoaded()) {
         return;
     }
     ResolveSymbolsForLocation(state, currentAddr, labelText, sourceText);
-    ResolveSymbolsForOperand(state, opText);
+    ResolveSymbolsForOperand(state, inst, opText);
 }
 
 void DrawDisassemblerContent(Control::AppState& state) {
@@ -160,7 +166,7 @@ void DrawDisassemblerContent(Control::AppState& state) {
             std::string sourceText;
             std::string opText = instr.operands;
 
-            ResolveSymbolsForInstruction(state, currentAddr, labelText, opText, sourceText);
+            ResolveSymbolsForInstruction(state, currentAddr, instr, labelText, opText, sourceText);
 
             if (showHybrid && state.rom.symbols.IsLoaded()) {
                 if (const auto* line = state.rom.symbols.GetLineForAddress(currentAddr)) {

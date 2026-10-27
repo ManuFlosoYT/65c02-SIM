@@ -55,4 +55,5 @@ struct EmulationState {
     RecordingSettings recordingSettings;
 };
 
+
 }  // namespace Control

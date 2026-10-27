@@ -1,4 +1,6 @@
 #include "Style.h"
+#include <cmath>
+#include <cstdint>
 #include "CascadiaMono.h"
 
 void SetupImGuiStyle() {
@@ -143,3 +145,26 @@ void SetupFont(){
     
     IM_ASSERT(mainFont != NULL);
 }
+
+namespace Theme {
+
+ImVec4 GetDeviceColor(std::string_view name) {
+    uint32_t hash = 0x811c9dc5;
+    for (char character : name) {
+        hash ^= static_cast<uint8_t>(character);
+        hash *= 0x01000193;
+    }
+
+    double hue = std::fmod(static_cast<double>(hash) * 0.618033988749895, 1.0);
+    double sat = 0.6 + std::fmod(static_cast<double>(hash) * 0.1, 0.3);
+    double val = 0.8 + std::fmod(static_cast<double>(hash) * 0.05, 0.2);
+
+    float red = 0.0F;
+    float green = 0.0F;
+    float blue = 0.0F;
+    ImGui::ColorConvertHSVtoRGB(static_cast<float>(hue), static_cast<float>(sat), static_cast<float>(val), red, green,
+                                blue);
+    return {red, green, blue, 0.6F};
+}
+
+}  // namespace Theme

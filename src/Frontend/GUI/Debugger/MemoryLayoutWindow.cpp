@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Debugger/MemoryLayoutWindow.h"
+#include "Frontend/GUI/Style/Style.h"
 
 #include <glad/gl.h>
 #include <imgui.h>
@@ -17,25 +18,6 @@ using namespace Core;
 
 namespace GUI {
 
-static ImVec4 GetDeviceColor(const std::string& name) {
-    uint32_t hash = 0x811c9dc5;
-    for (char character : name) {
-        hash ^= static_cast<uint8_t>(character);
-        hash *= 0x01000193;
-    }
-
-    double hue = std::fmod(static_cast<double>(hash) * 0.618033988749895, 1.0);
-    double sat = 0.6 + std::fmod(static_cast<double>(hash) * 0.1, 0.3);
-    double val = 0.8 + std::fmod(static_cast<double>(hash) * 0.05, 0.2);
-
-    float red = 0.0F;
-    float green = 0.0F;
-    float blue = 0.0F;
-    ImGui::ColorConvertHSVtoRGB(static_cast<float>(hue), static_cast<float>(sat), static_cast<float>(val), red, green,
-                                blue);
-    return {red, green, blue, 0.6F};
-}
-
 namespace {
 
 void UpdateMemoryLayoutTexture(AppState& state, const std::vector<DeviceRegistration>& devices,
@@ -47,7 +29,7 @@ void UpdateMemoryLayoutTexture(AppState& state, const std::vector<DeviceRegistra
             continue;
         }
 
-        ImVec4 color = GetDeviceColor(reg.device->GetName());
+        ImVec4 color = Theme::GetDeviceColor(reg.device->GetName());
         auto red = static_cast<unsigned char>(color.x * 255.0F);
         auto green = static_cast<unsigned char>(color.y * 255.0F);
         auto blue = static_cast<unsigned char>(color.z * 255.0F);
@@ -96,7 +78,7 @@ void DrawMemoryLayoutTooltip(const std::vector<DeviceRegistration>& devices, flo
 
         for (const auto& reg : devices) {
             if (reg.enabled && !reg.isVirtual && addr >= reg.startAddress && addr <= reg.endAddress) {
-                ImGui::PushStyleColor(ImGuiCol_Text, GetDeviceColor(reg.device->GetName()));
+                ImGui::PushStyleColor(ImGuiCol_Text, Theme::GetDeviceColor(reg.device->GetName()));
 
                 std::ostringstream txtBuf;
                 txtBuf << "- " << reg.device->GetName();
@@ -192,7 +174,7 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
             }
 
             ImGui::TableSetColumnIndex(5);
-            ImGui::ColorButton("##device_color", GetDeviceColor(reg.device->GetName()), ImGuiColorEditFlags_NoTooltip);
+            ImGui::ColorButton("##device_color", Theme::GetDeviceColor(reg.device->GetName()), ImGuiColorEditFlags_NoTooltip);
 
 #ifdef TARGET_WASM
             if (isESP) {

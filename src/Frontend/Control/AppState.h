@@ -68,4 +68,14 @@ struct AppState {
     GUI::CRTFilter crtFilter;
 };
 
+inline void SyncUIStateFromEmulator(AppState& state) {
+    state.rom.loaded = true;
+    state.emulation.gpuEnabled = state.emulator.IsGPUEnabled();
+    state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
+    state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
+    state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
+    state.emulation.sdLatencyEnabled = state.emulator.GetSDCard().IsReadLatencyEnabled();
+    state.rom.bin = state.emulator.GetCurrentBinPath();
+}
+
 }  // namespace Control

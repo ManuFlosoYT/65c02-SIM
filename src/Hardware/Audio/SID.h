@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "Hardware/Core/IBusDevice.h"
+#include "Hardware/Audio/ADSRBugMonitor.h"
 #include "Hardware/Audio/SIDFilter.h"
 #include "Hardware/Audio/SIDAudioSink.h"
 #include "Hardware/Audio/SIDTrackerLogger.h"
@@ -65,12 +66,9 @@ struct Oscillator {
     // Output state
     uint16_t oscOutput = 0;
 
-    uint64_t lastGateOffClock = 0;
-    bool gateWasActive = false;
-    bool hadHardRestart = false;
-    std::atomic<uint64_t> adsrDelayBugClock{0};
+    ADSRBugMonitor adsrBugMonitor;
 
-    [[nodiscard]] uint64_t GetADSRDelayBugClock() const { return adsrDelayBugClock.load(std::memory_order_relaxed); }
+    [[nodiscard]] uint64_t GetADSRDelayBugClock() const noexcept { return adsrBugMonitor.GetADSRDelayBugClock(); }
 
     void Next(SIDModel model);
 

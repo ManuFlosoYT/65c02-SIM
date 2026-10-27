@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Debugger/DebuggerWindow.h"
+#include "Hardware/Core/MemoryFuzzer.h"
 
 #include <imgui.h>
 
@@ -187,25 +188,12 @@ void DrawTools(Core::Emulator& emulator, float scale) {
     ImGui::SameLine();
     if (ImGui::Button("Fill Random Junk")) {
         emulator.WaitUntilSafeToMutate();
-        std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> dist(0, 255);
-        for (int i = startAddr; i <= static_cast<int>(endAddr); i++) {
-            Byte val = static_cast<Byte>(dist(rng));
-            Word addr = static_cast<Word>(i);
-            bus.WriteDirect(addr, val);
-        }
+        Hardware::MemoryFuzzer::FuzzMemory(bus, startAddr, endAddr);
     }
 
     if (ImGui::Button("Corrupt Random Byte")) {
         emulator.WaitUntilSafeToMutate();
-        std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> addrDist(0, 0xFFFF);
-        std::uniform_int_distribution<int> valDist(0, 0xFF);
-
-        Word addr = static_cast<Word>(addrDist(rng));
-        Byte val = static_cast<Byte>(valDist(rng));
-
-        bus.WriteDirect(addr, val);
+        Hardware::MemoryFuzzer::CorruptRandomByte(bus);
     }
 }
 

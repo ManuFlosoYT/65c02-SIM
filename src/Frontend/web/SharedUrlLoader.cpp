@@ -90,13 +90,7 @@ bool SharedUrlLoader::LoadPayload(const uint8_t* data, size_t size) {
             fclose(f);
             state.emulator.Pause();
             if (state.emulator.LoadState(virtualPath, true)) {
-                state.rom.loaded = true;
-                state.emulation.gpuEnabled = state.emulator.IsGPUEnabled();
-                state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
-                state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
-                state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
-                state.emulation.sdLatencyEnabled = state.emulator.GetSDCard().IsReadLatencyEnabled();
-                state.rom.bin = state.emulator.GetCurrentBinPath();
+                Control::SyncUIStateFromEmulator(state);
                 state.emulator.Resume();
                 std::cout << "Loaded shared savestate.\n";
                 BrowserFileBridge::ShowToast("Loaded state from URL!");

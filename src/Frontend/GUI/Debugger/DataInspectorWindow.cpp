@@ -1,4 +1,6 @@
 #include "Frontend/GUI/Debugger/DataInspectorWindow.h"
+#include "Frontend/GUI/Debugger/MemoryDataFormatter.h"
+#include "Frontend/GUI/Style/Style.h"
 
 #include <imgui.h>
 
@@ -18,25 +20,6 @@ using namespace Core;
 namespace GUI {
 
 namespace {
-
-ImVec4 GetDeviceColor(const std::string& name) {
-    uint32_t hash = 0x811c9dc5;
-    for (char character : name) {
-        hash ^= static_cast<uint8_t>(character);
-        hash *= 0x01000193;
-    }
-
-    double hue = std::fmod(static_cast<double>(hash) * 0.618033988749895, 1.0);
-    double sat = 0.6 + std::fmod(static_cast<double>(hash) * 0.1, 0.3);
-    double val = 0.8 + std::fmod(static_cast<double>(hash) * 0.05, 0.2);
-
-    float red = 0.0F;
-    float green = 0.0F;
-    float blue = 0.0F;
-    ImGui::ColorConvertHSVtoRGB(static_cast<float>(hue), static_cast<float>(sat), static_cast<float>(val), red, green,
-                                blue);
-    return {red, green, blue, 0.6F};
-}
 
 void RenderText(std::string_view text) { ImGui::TextUnformatted(text.data(), text.data() + text.size()); }
 
@@ -174,28 +157,11 @@ void DrawAsciiStringsView(Hardware::Bus& bus, uint16_t startAddr, uint16_t endAd
 
     if (ImGui::CollapsingHeader("Detected Strings in Range", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (ImGui::BeginChild("DetectedStringsChild", ImVec2(0, 110.0F), ImGuiChildFlags_Borders)) {
-            int strStart = -1;
-            std::string currentStr;
-            int foundCount = 0;
-
-            for (int i = 0; i <= totalBytes; ++i) {
-                uint8_t byte = (i < totalBytes) ? bus.ReadDirect(static_cast<Word>(startAddr + i)) : 0;
-                if (byte >= 32 && byte <= 126) {
-                    if (strStart == -1) {
-                        strStart = i;
-                    }
-                    currentStr.push_back(static_cast<char>(byte));
-                } else {
-                    if (currentStr.size() >= 3) {
-                        RenderText(std::format("0x{:04X} (+{}): \"{}\"", static_cast<Word>(startAddr + strStart),
-                                               static_cast<int>(currentStr.size()), currentStr));
-                        foundCount++;
-                    }
-                    currentStr.clear();
-                    strStart = -1;
-                }
+            auto strings = MemoryDataFormatter::DetectAsciiStrings(bus, startAddr, endAddr);
+            for (const auto& item : strings) {
+                RenderText(std::format("0x{:04X} (+{}): \"{}\"", item.address, item.length, item.text));
             }
-            if (foundCount == 0) {
+            if (strings.empty()) {
                 RenderTextDisabled("No strings (>= 3 chars) found in selected range.");
             }
         }
@@ -288,7 +254,7 @@ void DrawPointersView(Hardware::Bus& bus, const std::vector<DeviceRegistration>&
                     }
                 }
                 if (hitDev != nullptr) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, GetDeviceColor(hitDev->device->GetName()));
+                    ImGui::PushStyleColor(ImGuiCol_Text, Theme::GetDeviceColor(hitDev->device->GetName()));
                     ImGui::TextUnformatted(hitDev->device->GetName().c_str());
                     ImGui::PopStyleColor();
                 } else {
@@ -325,36 +291,14 @@ void DrawSignedIntegersView(Hardware::Bus& bus, uint16_t startAddr, uint16_t end
         return;
     }
 
-    std::ostringstream snippet;
-    snippet << "{ ";
-    int previewCount = std::min(totalItems, 24);
-    for (int i = 0; i < previewCount; ++i) {
-        if (i > 0) {
-            snippet << ", ";
-        }
-        if (mode == 0) {
-            auto addr = static_cast<Word>(startAddr + i);
-            auto val = static_cast<int8_t>(bus.ReadDirect(addr));
-            snippet << static_cast<int>(val);
-        } else {
-            auto addr = static_cast<Word>(startAddr + (i * 2));
-            uint8_t low = bus.ReadDirect(addr);
-            uint8_t high = bus.ReadDirect(static_cast<Word>(addr + 1));
-            auto val = static_cast<int16_t>(low | (high << 8));
-            snippet << static_cast<int>(val);
-        }
-    }
-    if (totalItems > previewCount) {
-        snippet << ", ...";
-    }
-    snippet << " }";
+    std::string snippet = MemoryDataFormatter::FormatAsCArray(bus, startAddr, endAddr, mode);
 
     RenderTextDisabled("Array preview:");
     ImGui::SameLine();
-    RenderText(snippet.str());
+    RenderText(snippet);
     ImGui::SameLine();
     if (ImGui::SmallButton("Copy")) {
-        ImGui::SetClipboardText(snippet.str().c_str());
+        ImGui::SetClipboardText(snippet.c_str());
     }
 
     if (ImGui::BeginTable("SignedIntTable", (mode == 0) ? 5 : 4,

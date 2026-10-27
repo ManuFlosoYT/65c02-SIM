@@ -1,7 +1,6 @@
 #include "Frontend/GUI/RecordingManager.h"
-#include <glad/gl.h>
-#include <imgui.h>
 #include "Frontend/Control/AppState.h"
+#include "Frontend/GUI/Video/SIDWindowFrameGrabber.h"
 #include "Frontend/MediaExporter.h"
 #include <memory>
 #include <vector>
@@ -15,74 +14,7 @@ namespace Frontend {
 static constexpr int sidSampleRate = 48000;
 
 static void HandleSIDWindowCapture(AppState& state) {
-    if (state.render.sidFBO == 0) {
-        glGenTextures(1, &state.render.sidTexture);
-        glBindTexture(GL_TEXTURE_2D, state.render.sidTexture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-
-        glGenFramebuffers(1, &state.render.sidFBO);
-        glBindFramebuffer(GL_FRAMEBUFFER, state.render.sidFBO);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, state.render.sidTexture, 0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-
-    const ImGuiIO& imguiIO = ImGui::GetIO();
-    int screenHeightPixels = static_cast<int>(imguiIO.DisplaySize.y * imguiIO.DisplayFramebufferScale.y);
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // Read from screen backbuffer
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, state.render.sidFBO);
-
-    float scaleX = imguiIO.DisplayFramebufferScale.x;
-    float scaleY = imguiIO.DisplayFramebufferScale.y;
-
-    float windowX = state.render.sidWindowPos[0];
-    float windowY = state.render.sidWindowPos[1];
-    float windowW = state.render.sidWindowSize[0];
-    float windowH = state.render.sidWindowSize[1];
-
-    if (windowW <= 0 || windowH <= 0) {
-        return;
-    }
-
-    // OpenGL coordinates start from bottom-left (pixels)
-    int srcX0 = static_cast<int>(windowX * scaleX);
-    int srcY0 = screenHeightPixels - static_cast<int>((windowY + windowH) * scaleY);
-    int srcX1 = static_cast<int>((windowX + windowW) * scaleX);
-    int srcY1 = screenHeightPixels - static_cast<int>(windowY * scaleY);
-
-    // Calculate centered aspect ratio in 720p
-    float targetW = 1280.0F;
-    float targetH = 720.0F;
-    float winAR = windowW / windowH;
-    float targetAR = targetW / targetH;
-
-    int drawW = 0;
-    int drawH = 0;
-    int offsetX = 0;
-    int offsetY = 0;
-
-    if (winAR > targetAR) {
-        drawW = 1280;
-        drawH = static_cast<int>(1280.0F / winAR);
-        offsetY = (720 - drawH) / 2;
-    } else {
-        drawH = 720;
-        drawW = static_cast<int>(720.0F * winAR);
-        offsetX = (1280 - drawW) / 2;
-    }
-
-    // Clear FBO each frame to avoid artifacts in pillarbox areas
-    glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Blit and flip vertically for FFmpeg compatibility
-    glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1,
-                        offsetX, offsetY + drawH, offsetX + drawW, offsetY, // Centered and Inverted Y
-                        GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    SIDWindowFrameGrabber::CaptureSIDWindow(state);
 }
 
 static bool InitializeExporter(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {

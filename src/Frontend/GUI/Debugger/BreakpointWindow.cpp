@@ -32,46 +32,6 @@ struct BreakpointFormState {
     std::vector<Hardware::BreakCondition> conditions;
 };
 
-std::string ConditionToString(const Hardware::BreakCondition& cond) {
-    std::ostringstream oss;
-    oss << std::uppercase << std::hex << std::setfill('0');
-    switch (cond.type) {
-        case Hardware::BreakpointType::PCAddress:
-            oss << "PC == 0x" << std::setw(4) << cond.address;
-            break;
-        case Hardware::BreakpointType::RegisterCondition:
-            oss << kRegNames.at(static_cast<int>(cond.reg)) << " " << kOpNames.at(static_cast<int>(cond.op)) << " 0x"
-                << std::setw(cond.reg >= Hardware::RegisterId::SP ? 4 : 2) << cond.value;
-            break;
-        case Hardware::BreakpointType::FlagCondition:
-            oss << kFlagNames.at(static_cast<int>(cond.flag)) << " " << kOpNames.at(static_cast<int>(cond.op)) << " "
-                << cond.value;
-            break;
-        case Hardware::BreakpointType::MemoryCondition:
-            oss << "[0x" << std::setw(4) << cond.address << "] " << kOpNames.at(static_cast<int>(cond.op)) << " 0x"
-                << std::setw(2) << cond.value;
-            break;
-        case Hardware::BreakpointType::MemoryWatchpoint:
-            oss << "write @ 0x" << std::setw(4) << cond.address;
-            break;
-        case Hardware::BreakpointType::Expression:
-            return cond.expression;
-    }
-    return oss.str();
-}
-
-std::string BreakpointSummary(const Hardware::Breakpoint& bkpt) {
-    std::string result;
-    const char* joiner = (bkpt.compoundOp == Hardware::LogicOp::And) ? " AND " : " OR ";
-    for (size_t index = 0; index < bkpt.conditions.size(); index++) {
-        if (index > 0) {
-            result += joiner;
-        }
-        result += ConditionToString(bkpt.conditions[index]);
-    }
-    return result;
-}
-
 Hardware::BreakCondition BuildConditionFromForm(const BreakpointFormState& form) {
     Hardware::BreakCondition cond;
     cond.type = static_cast<Hardware::BreakpointType>(form.typeIndex);
@@ -233,7 +193,7 @@ void DrawConditionList(BreakpointFormState& form) {
     for (size_t idx = 0; idx < form.conditions.size(); idx++) {
         ImGui::Bullet();
         ImGui::SameLine();
-        ImGui::TextUnformatted(ConditionToString(form.conditions[idx]).c_str());
+        ImGui::TextUnformatted(Hardware::BreakpointConditionEvaluator::ConditionToString(form.conditions[idx]).c_str());
         ImGui::SameLine();
         std::string btnLabel = "X##cond" + std::to_string(idx);
         if (ImGui::SmallButton(btnLabel.c_str())) {
@@ -288,7 +248,7 @@ void DrawBreakpointList(Hardware::BreakpointManager& manager, const std::vector<
             }
 
             ImGui::TableNextColumn();
-            std::string summary = BreakpointSummary(entry);
+            std::string summary = Hardware::BreakpointConditionEvaluator::BreakpointSummary(entry);
             ImGui::TextUnformatted(summary.c_str());
 
             ImGui::TableNextColumn();

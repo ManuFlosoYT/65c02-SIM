@@ -1,5 +1,9 @@
 #include "Hardware/Core/BreakpointConditionEvaluator.h"
 
+#include <array>
+#include <iomanip>
+#include <sstream>
+
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
 #include "Scripting/Lang/Interpreter.h"
@@ -188,6 +192,60 @@ bool BreakpointConditionEvaluator::ValidateExpression(const std::string& expr, s
         }
         return false;
     }
+}
+
+namespace {
+constexpr std::array<const char*, 6> kOpNames = {"==", "!=", "<", "<=", ">", ">="};
+constexpr std::array<const char*, 5> kRegNames = {"A", "X", "Y", "SP", "PC"};
+constexpr std::array<const char*, 7> kFlagNames = {"C", "Z", "I", "D", "B", "V", "N"};
+}  // namespace
+
+std::string BreakpointConditionEvaluator::ConditionToString(const BreakCondition& cond) {
+    std::ostringstream oss;
+    oss << std::uppercase << std::hex << std::setfill('0');
+    switch (cond.type) {
+        case BreakpointType::PCAddress:
+            oss << "PC == 0x" << std::setw(4) << cond.address;
+            break;
+        case BreakpointType::RegisterCondition:
+            oss << kRegNames.at(static_cast<size_t>(cond.reg)) << " " << kOpNames.at(static_cast<size_t>(cond.op)) << " 0x"
+                << std::setw(cond.reg >= RegisterId::SP ? 4 : 2) << cond.value;
+            break;
+        case BreakpointType::FlagCondition:
+            oss << kFlagNames.at(static_cast<size_t>(cond.flag)) << " " << kOpNames.at(static_cast<size_t>(cond.op)) << " "
+                << cond.value;
+            break;
+        case BreakpointType::MemoryCondition:
+            oss << "[0x" << std::setw(4) << cond.address << "] " << kOpNames.at(static_cast<size_t>(cond.op)) << " 0x"
+                << std::setw(2) << cond.value;
+            break;
+        case BreakpointType::MemoryWatchpoint:
+            oss << "write @ 0x" << std::setw(4) << cond.address;
+            break;
+        case BreakpointType::Expression:
+            return cond.expression;
+    }
+    return oss.str();
+}
+
+std::string BreakpointConditionEvaluator::BreakpointSummary(const Breakpoint& bkpt) {
+    std::string result;
+    const char* joiner = (bkpt.compoundOp == LogicOp::And) ? " AND " : " OR ";
+    for (size_t index = 0; index < bkpt.conditions.size(); index++) {
+        if (index > 0) {
+            result += joiner;
+        }
+        result += ConditionToString(bkpt.conditions[index]);
+    }
+    return result;
+}
+
+std::string BreakCondition::ToString() const {
+    return BreakpointConditionEvaluator::ConditionToString(*this);
+}
+
+std::string Breakpoint::Summary() const {
+    return BreakpointConditionEvaluator::BreakpointSummary(*this);
 }
 
 }  // namespace Hardware

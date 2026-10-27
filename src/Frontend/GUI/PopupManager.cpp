@@ -1,22 +1,9 @@
 #include "Frontend/GUI/PopupManager.h"
-#include <SDL3/SDL.h>
-#include <filesystem>
 #include <format>
-#include <fstream>
 #include <imgui.h>
 #include "Frontend/Control/AppState.h"
 #include "Frontend/Control/CartridgeUtils.h"
-#include "Frontend/GUI/ConsoleWindow.h"
-#include "Frontend/GUI/ControlWindow.h"
-#include "Frontend/GUI/LCDWindow.h"
-#include "Frontend/GUI/ScriptConsoleWindow.h"
-#include "Frontend/GUI/SIDViewerWindow.h"
 #include "Frontend/Control/SDUtils.h"
-#include "Frontend/GUI/UpdatePopup.h"
-#include "Frontend/GUI/SDKUpdatePopup.h"
-#include "Frontend/GUI/Video/VRAMViewerWindow.h"
-#include "Frontend/GUI/IDEWindow.h"
-#include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 #include <iostream>
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Hardware/Core/Console.h"
@@ -143,8 +130,7 @@ static void DrawSDCardPopups(AppState& state) {
         ImGui::Spacing();
         if (ImGui::Button("Create .65C02_SIM_mount & Allow Deletion")) {
             const auto& pending = state.popups.sdCardPendingMountFolder;
-            std::filesystem::path sentinelPath = std::filesystem::path(std::u8string(pending.begin(), pending.end())) / ".65C02_SIM_mount";
-            std::ofstream sentinel(sentinelPath);
+            GUI::CreateMountSentinel(pending);
             GUI::MountFolder(state, state.popups.sdCardPendingMountFolder, true);
             state.popups.sdCardPendingMountFolder.clear();
             ImGui::CloseCurrentPopup();
@@ -227,26 +213,6 @@ void DrawPopups(AppState& state) {
     DrawROMAndStatePopups(state);
     DrawSDCardPopups(state);
     DrawCartridgePopups(state);
-}
-
-void DrawGUIWindows(AppState& state, const ImVec2& work_pos, const ImVec2& work_size, float top_section_height, unsigned int windowFlags) {
-    GUI::DrawUpdatePopup(state);
-#ifndef TARGET_WASM
-    GUI::DrawSDKUpdatePopup(state);
-#endif
-    if (state.ide.open && state.ide.mode == Control::IDEMode::MIDI) {
-        GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, static_cast<ImGuiWindowFlags>(windowFlags));
-        GUI::DrawMIDIWorkspaceWindow(state, work_pos, work_size, top_section_height, static_cast<ImGuiWindowFlags>(windowFlags));
-        return;
-    }
-    GUI::DrawControlWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
-    GUI::DrawLCDWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
-    GUI::DrawSIDViewerWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
-    GUI::DrawConsoleWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
-    GUI::DrawScriptConsoleWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
-    state.crt.time = static_cast<float>(SDL_GetTicks()) / 1000.0F;
-    GUI::DrawVRAMViewerWindow(state, work_pos, work_size, top_section_height, (ImGuiWindowFlags)windowFlags);
-    GUI::DrawIDEWindow(state);
 }
 
 bool ShouldPromptCartridgeSDSave(const Control::AppState& state) {

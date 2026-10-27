@@ -1,6 +1,8 @@
 #include "Frontend/Control/SDUtils.h"
 #include "Hardware/Storage/FAT16Utils.h"
 #include "Hardware/Core/Emulator/Emulator.h"
+#include <filesystem>
+#include <fstream>
 
 namespace GUI {
 
@@ -28,6 +30,16 @@ bool MountFolder(Control::AppState& state, const std::string& folderPath, bool a
 
 bool CreateFAT16FromFolder(const std::string& folderPath, const std::string& outputPath) {
     return Hardware::Storage::CreateFAT16FromFolder(folderPath, outputPath);
+}
+
+bool CreateMountSentinel(const std::string& folderPath) {
+    try {
+        std::filesystem::path sentinelPath = std::filesystem::path(std::u8string(folderPath.begin(), folderPath.end())) / ".65C02_SIM_mount";
+        std::ofstream sentinel(sentinelPath);
+        return sentinel.good();
+    } catch (...) {
+        return false;
+    }
 }
 
 }  // namespace GUI

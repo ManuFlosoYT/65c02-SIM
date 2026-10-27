@@ -1,10 +1,9 @@
 #pragma once
-#include <bit>
-#include <cstdint>
 #include <iostream>
-#include <type_traits>
-#include <vector>
 #include <string>
+#include <vector>
+
+#include "Hardware/Core/BinarySerializer.h"
 
 namespace Hardware {
 
@@ -22,43 +21,30 @@ class ISerializable {
 
     template <typename T>
     static void Serialize(std::ostream& out, const T& value) {
-        static_assert(std::is_trivially_copyable_v<T>, "Only trivially copyable types can be serialized using this helper");
-        out.write(std::bit_cast<const char*>(&value), sizeof(T));
+        BinarySerializer::Serialize(out, value);
     }
 
     template <typename T>
     static void Serialize(std::ostream& out, const std::vector<T>& vec) {
-        static_assert(std::is_trivially_copyable_v<T>, "Only vectors of trivially copyable types can be serialized using this helper");
-        out.write(std::bit_cast<const char*>(vec.data()), static_cast<std::streamsize>(vec.size() * sizeof(T)));
+        BinarySerializer::Serialize(out, vec);
+    }
+
+    static void Serialize(std::ostream& out, const std::string& str) {
+        BinarySerializer::Serialize(out, str);
     }
 
     template <typename T>
     static void Deserialize(std::istream& inputStream, T& value) {
-        static_assert(std::is_trivially_copyable_v<T>, "Only trivially copyable types can be deserialized using this helper");
-        inputStream.read(std::bit_cast<char*>(&value), sizeof(T));
+        BinarySerializer::Deserialize(inputStream, value);
     }
 
     template <typename T>
     static void Deserialize(std::istream& inputStream, std::vector<T>& vec) {
-        static_assert(std::is_trivially_copyable_v<T>, "Only vectors of trivially copyable types can be deserialized using this helper");
-        inputStream.read(std::bit_cast<char*>(vec.data()), static_cast<std::streamsize>(vec.size() * sizeof(T)));
-    }
-
-    static void Serialize(std::ostream& out, const std::string& str) {
-        auto len = static_cast<uint32_t>(str.length());
-        Serialize(out, len);
-        out.write(str.c_str(), static_cast<std::streamsize>(len));
+        BinarySerializer::Deserialize(inputStream, vec);
     }
 
     static void Deserialize(std::istream& inputStream, std::string& str) {
-        uint32_t len = 0;
-        Deserialize(inputStream, len);
-        if (!inputStream.good() || len > 16U * 1024U * 1024U) {
-            inputStream.setstate(std::ios::failbit);
-            return;
-        }
-        str.assign(len, '\0');
-        inputStream.read(str.data(), static_cast<std::streamsize>(len));
+        BinarySerializer::Deserialize(inputStream, str);
     }
 };
 

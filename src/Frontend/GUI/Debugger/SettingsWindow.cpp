@@ -260,13 +260,7 @@ static void DrawSettingsSaveState(AppState& state) {
 
             state.emulator.Pause();
             state.emulator.LoadState(virtualPath, state.emulation.forceLoadSaveState);
-            state.rom.loaded = true;
-            state.emulation.gpuEnabled = state.emulator.IsGPUEnabled();
-            state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
-            state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
-            state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
-            state.emulation.sdLatencyEnabled = state.emulator.GetSDCard().IsReadLatencyEnabled();
-            state.rom.bin = state.emulator.GetCurrentBinPath();
+            Control::SyncUIStateFromEmulator(state);
         };
         WebFileUtils::open_browser_file_picker(".savestate");
     }

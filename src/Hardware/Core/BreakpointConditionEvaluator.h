@@ -38,6 +38,8 @@ struct BreakCondition {
     uint16_t value = 0;
     std::string expression;
     std::shared_ptr<System::Hardware::Scripting::Lang::Expr> ast;
+
+    [[nodiscard]] std::string ToString() const;
 };
 
 struct Breakpoint {
@@ -48,6 +50,8 @@ struct Breakpoint {
     LogicOp compoundOp = LogicOp::And;
     std::vector<BreakCondition> conditions;
     uint64_t hitCount = 0;
+
+    [[nodiscard]] std::string Summary() const;
 };
 
 class BreakpointConditionEvaluator {
@@ -68,9 +72,19 @@ class BreakpointConditionEvaluator {
     static bool Compare(CompareOp compareOp, uint16_t lhs, uint16_t rhs);
     static bool ValidateExpression(const std::string& expr, std::string* outError = nullptr);
     static std::shared_ptr<System::Hardware::Scripting::Lang::Expr> ParseExpression(const std::string& expr);
+    static std::string ConditionToString(const BreakCondition& cond);
+    static std::string BreakpointSummary(const Breakpoint& bkpt);
 
    private:
     mutable std::unique_ptr<System::Hardware::Scripting::Lang::Interpreter> interpreter;
 };
+
+inline std::string ConditionToString(const BreakCondition& cond) {
+    return BreakpointConditionEvaluator::ConditionToString(cond);
+}
+
+inline std::string BreakpointSummary(const Breakpoint& bkpt) {
+    return BreakpointConditionEvaluator::BreakpointSummary(bkpt);
+}
 
 }  // namespace Hardware

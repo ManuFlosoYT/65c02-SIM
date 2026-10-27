@@ -1,6 +1,8 @@
 #pragma once
 
 #include <imgui.h>
+#include <string>
+#include <string_view>
 
 namespace Theme {
 inline constexpr ImVec4 WindowBg{0.067F, 0.075F, 0.102F, 1.00F};
@@ -20,6 +22,9 @@ inline constexpr ImU32 LcdPetroleumBg = IM_COL32(7, 23, 18, 255);
 inline constexpr ImU32 LcdBevelBorder = IM_COL32(22, 56, 44, 255);
 inline constexpr ImU32 LcdCellInactive = IM_COL32(13, 38, 30, 255);
 inline constexpr ImU32 LcdActivePixel = IM_COL32(16, 185, 129, 255);
+
+ImVec4 GetDeviceColor(std::string_view name);
+inline ImVec4 GetDeviceColor(const std::string& name) { return GetDeviceColor(std::string_view(name)); }
 }  // namespace Theme
 
 void SetupImGuiStyle();

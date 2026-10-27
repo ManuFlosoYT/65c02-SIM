@@ -1,6 +1,9 @@
 #include "Frontend/GUI/ConsoleWindow.h"
 #include "Frontend/GUI/ConsoleView.h"
 #include "Frontend/GUI/Style/Style.h"
+#include "Frontend/GUI/SDKBrowserPopup.h"
+#include "Frontend/Control/RomCartridgeLoaderService.h"
+#include "Frontend/Control/CartridgeUtils.h"
 
 #include "Frontend/GUI/CustomFileDialog.h"
 #include <SDL3/SDL.h>
@@ -19,162 +22,11 @@ using namespace Hardware;
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
 #include <nlohmann/json.hpp>
-#include "Hardware/Core/CartridgeLoader.h"
-#include "Frontend/GUI/Video/VRAMViewerWindow.h"
-#include "Frontend/Control/CartridgeUtils.h"
 #else
-#include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/SDKManager.h"
-#include "Frontend/Control/CartridgeUtils.h"
 #endif
 
 namespace GUI {
-
-#ifdef TARGET_WASM
-static void HandleSDKFileLoading(AppState& state, const std::string& filename, const uint8_t* data, int size) {
-    if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".65c") {
-        state.emulator.Pause();
-        std::string errorMsg;
-        Core::Cartridge cart;
-        if (Core::CartridgeLoader::LoadFromMemory(data, size, cart, errorMsg)) {
-            Control::ApplyCartridgeConfig(state, cart);
-            if (state.emulator.InitFromMemory(cart.romData, cart.romFileName,
-                                              errorMsg)) {
-                state.rom.bin = filename;
-                state.rom.loaded = true;
-                state.emulator.ClearProfiler();
-            }
-        } else {
-            std::cerr << "Failed to load cartridge: " << errorMsg << "\n";
-        }
-    } else {
-        std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
-        state.rom.data.assign(dataSpan.begin(), dataSpan.end());
-        state.emulator.Pause();
-        std::string errorMsg;
-        if (state.emulator.InitFromMemory(state.rom.data, filename,
-                                          errorMsg)) {
-            Console::Clear();
-            state.rom.bin = filename;
-            state.rom.loaded = true;
-            state.rom.symbols.Clear();
-            state.emulator.ClearProfiler();
-        }
-    }
-}
-#endif
-
-static void DrawSDKColumn(AppState& state, const std::vector<std::string>& files, const std::string& subfolder) {
-    for (const auto& file : files) {
-        std::string displayName = file;
-        if (displayName.ends_with(".65c") || displayName.ends_with(".c65")) {
-            displayName.resize(displayName.size() - 4);
-        }
-        std::string label = displayName + "##" + file;
-        if (ImGui::Selectable(label.c_str())) {
-#ifdef TARGET_WASM
-            std::string url = "roms/";
-            if (subfolder != "cartridge") {
-                url += subfolder;
-                url += "/";
-            }
-            url += file;
-            WebFileUtils::onFilePickedCallback = [&state, file](const char* filename, const uint8_t* data, int size) {
-                HandleSDKFileLoading(state, filename, data, size);
-            };
-            WebFileUtils::fetch_file(url.c_str(), file.c_str());
-#else
-            std::string path = "SDK/";
-            path += subfolder;
-            path += "/";
-            path += file;
-            
-            std::string errorMsg;
-            Core::Cartridge cart;
-            state.emulator.Pause();
-            if (Core::CartridgeLoader::Load(path, cart, errorMsg)) {
-                Control::ApplyCartridgeConfig(state, cart);
-                if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
-                    Console::Clear();
-                    state.rom.bin = path;
-                    state.rom.loaded = true;
-                    state.emulator.ClearProfiler();
-                    ImGui::OpenPopup("Cartridge Loaded");
-                } else {
-                    std::cerr << "SDK: InitFromMemory failed for " << file << ": " << errorMsg << "\n";
-                    ImGui::OpenPopup("ErrorLoadingROM");
-                }
-            } else {
-                std::cerr << "SDK: Failed to load SDK cartridge " << file << ": " << errorMsg << "\n";
-                ImGui::OpenPopup("ErrorLoadingROM");
-            }
-#endif
-            ImGui::CloseCurrentPopup();
-        }
-    }
-}
-
-static void DrawSDKPopup(AppState& state) {
-    if (state.sdk.showPopup) {
-        ImGui::OpenPopup("SDK ROMs");
-        state.sdk.showPopup = false;
-    }
-
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    constexpr float verticalPadding = 40.0F;
-    const float popupHeight = std::max(200.0F, viewport->WorkSize.y - (verticalPadding * 2.0F));
-    const float popupWidth = std::min(800.0F, viewport->WorkSize.x - 40.0F);
-
-    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
-    ImGui::SetNextWindowSize(ImVec2(popupWidth, popupHeight), ImGuiCond_Appearing);
-
-    if (ImGui::BeginPopupModal("SDK ROMs", nullptr, ImGuiWindowFlags_None)) {
-        const float footerHeight = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
-        bool canScrollDown = false;
-
-        if (ImGui::BeginChild("SDKListRegion", ImVec2(0, -footerHeight), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
-            if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
-#ifdef TARGET_WASM
-                ImGui::TextUnformatted("Loading ROM list...");
-#else
-                ImGui::TextUnformatted("No SDK resources found in 'SDK/' directory.");
-                ImGui::TextUnformatted("Ensure SDK.zip was present at build time.");
-#endif
-            } else {
-                ImGui::Columns(3, "SDKColumns", true);
-                ImGui::Separator();
-                ImGui::TextUnformatted("ROMs");
-                ImGui::NextColumn();
-                ImGui::TextUnformatted("MIDIs");
-                ImGui::NextColumn();
-                ImGui::TextUnformatted("VRAMs");
-                ImGui::NextColumn();
-                ImGui::Separator();
-
-                DrawSDKColumn(state, state.sdk.roms, "cartridge");
-                ImGui::NextColumn();
-                DrawSDKColumn(state, state.sdk.midis, "midi");
-                ImGui::NextColumn();
-                DrawSDKColumn(state, state.sdk.vrams, "vram");
-                ImGui::NextColumn();
-
-                ImGui::Columns(1);
-            }
-            canScrollDown = ImGui::GetScrollY() < ImGui::GetScrollMaxY();
-        }
-        ImGui::EndChild();
-
-        ImGui::Separator();
-        if (ImGui::Button("Close", ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
-        }
-        if (canScrollDown) {
-            ImGui::SameLine();
-            ImGui::TextDisabled("▼ Scroll down for more");
-        }
-        ImGui::EndPopup();
-    }
-}
 
 static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
     const bool isLoaded = state.rom.loaded || cartLoaded;
@@ -191,45 +43,17 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
         } else {
 #ifdef TARGET_WASM
             WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
+                std::vector<uint8_t> dataVec(data, data + size);
                 std::string_view nameView(filename);
                 if (nameView.ends_with(".65c") || nameView.ends_with(".c65")) {
-                    std::string virtualPath = "/tmp/";
-                    virtualPath += filename;
-                    FILE* f = fopen(virtualPath.c_str(), "wb");
-                    if (f) {
-                        fwrite(data, 1, static_cast<size_t>(size), f);
-                        fclose(f);
-                    }
-                    state.emulator.Pause();
-                    std::string errorMsg;
-                    Core::Cartridge cart;
-                    if (Core::CartridgeLoader::Load(virtualPath, cart, errorMsg)) {
-                        Control::ApplyCartridgeConfig(state, cart);
-                        if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
-                            state.rom.bin = virtualPath;
-                            state.rom.loaded = true;
-                            state.emulator.ClearProfiler();
-                            ImGui::OpenPopup("Cartridge Loaded");
-                        } else {
-                            ImGui::OpenPopup("ErrorLoadingROM");
-                        }
+                    if (Control::LoadCartridge(state, filename, dataVec)) {
+                        ImGui::OpenPopup("Cartridge Loaded");
                     } else {
                         ImGui::OpenPopup("ErrorLoadingCartridge");
                     }
                 } else {
-                    std::span<const uint8_t> dataSpan(data, static_cast<size_t>(size));
-                    state.rom.data.assign(dataSpan.begin(), dataSpan.end());
-                    state.emulator.Pause();
-                    std::string errorMsg;
-                    if (state.emulator.InitFromMemory(state.rom.data, filename, errorMsg)) {
-                        Console::Clear();
-                        state.rom.bin = filename;
-                        state.rom.loaded = true;
-                        state.rom.symbols.Clear();
-                        state.emulator.ClearProfiler();
-                        state.emulator.ClearCartridge();
-                    } else {
-                        std::cerr << "Failed to load ROM: " << errorMsg << "\n";
+                    if (!Control::LoadBinaryRom(state, filename, dataVec)) {
+                        std::cerr << "Failed to load ROM\n";
                     }
                 }
             };
@@ -317,7 +141,7 @@ static void DrawConsoleButtonBar(AppState& state) {
 
     ImGui::SameLine();
     DrawSDKButton(state);
-    DrawSDKPopup(state);
+    DrawSDKBrowserPopup(state);
 
     ImGui::SameLine();
     if (ImGui::Button("Copy Output")) {

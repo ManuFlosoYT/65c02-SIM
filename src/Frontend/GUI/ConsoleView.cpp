@@ -1,5 +1,6 @@
 #include "Frontend/GUI/ConsoleView.h"
 #include "Frontend/GUI/Style/Style.h"
+#include "Frontend/GUI/TerminalInputMapper.h"
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
@@ -25,57 +26,28 @@ static void HandleQueueCharacters(Control::AppState& state, const ImGuiIO& imgui
         if (chr == '\r' || chr == '\n') {
             continue;
         }
-        if (chr < 0x80) {
-            state.emulator.InjectKey(static_cast<char>(chr));
-        } else if (chr < 0x800) {
-            state.emulator.InjectKey(static_cast<char>(0xC0 | (chr >> 6)));
-            state.emulator.InjectKey(static_cast<char>(0x80 | (chr & 0x3F)));
-        } else if (chr < 0x10000) {
-            state.emulator.InjectKey(static_cast<char>(0xE0 | (chr >> 12)));
-            state.emulator.InjectKey(static_cast<char>(0x80 | ((chr >> 6) & 0x3F)));
-            state.emulator.InjectKey(static_cast<char>(0x80 | (chr & 0x3F)));
-        } else if (chr < 0x110000) {
-            state.emulator.InjectKey(static_cast<char>(0xF0 | (chr >> 18)));
-            state.emulator.InjectKey(static_cast<char>(0x80 | ((chr >> 12) & 0x3F)));
-            state.emulator.InjectKey(static_cast<char>(0x80 | ((chr >> 6) & 0x3F)));
-            state.emulator.InjectKey(static_cast<char>(0x80 | (chr & 0x3F)));
+        std::array<char, 5> utf8Buf = {0};
+        size_t len = TerminalInputMapper::CodepointToUtf8(chr, utf8Buf);
+        for (size_t i = 0; i < len; ++i) {
+            state.emulator.InjectKey(utf8Buf[i]);
         }
     }
 }
 
 static void HandleNavigationKeys(Control::AppState& state, const ImGuiIO& imgui_io) {
-    if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
-        InjectSequence(state, "\x1b[A");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
-        InjectSequence(state, "\x1b[B");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) {
-        InjectSequence(state, "\x1b[C");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) {
-        InjectSequence(state, "\x1b[D");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_Home)) {
-        InjectSequence(state, "\x1b[H");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_End)) {
-        InjectSequence(state, "\x1b[F");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_Insert)) {
-        InjectSequence(state, "\x1b[2~");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_Delete)) {
-        InjectSequence(state, "\x1b[3~");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_PageUp)) {
-        InjectSequence(state, "\x1b[5~");
-    }
-    if (ImGui::IsKeyPressed(ImGuiKey_PageDown)) {
-        InjectSequence(state, "\x1b[6~");
-    }
-    if (imgui_io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Tab)) {
-        InjectSequence(state, "\x1b[Z");
+    static constexpr std::array<ImGuiKey, 11> navKeys = {
+        ImGuiKey_UpArrow, ImGuiKey_DownArrow, ImGuiKey_RightArrow, ImGuiKey_LeftArrow,
+        ImGuiKey_Home, ImGuiKey_End, ImGuiKey_Insert, ImGuiKey_Delete,
+        ImGuiKey_PageUp, ImGuiKey_PageDown, ImGuiKey_Tab
+    };
+
+    std::string seq;
+    for (ImGuiKey key : navKeys) {
+        if (ImGui::IsKeyPressed(key)) {
+            if (TerminalInputMapper::MapNavigationKey(key, imgui_io.KeyShift, imgui_io.KeyCtrl, imgui_io.KeyAlt, seq)) {
+                InjectSequence(state, seq);
+            }
+        }
     }
 }
 
@@ -96,9 +68,13 @@ static void HandleSpecialKeys(Control::AppState& state, const ImGuiIO& imgui_io)
 
 static void HandleCtrlKeys(Control::AppState& state, const ImGuiIO& imgui_io) {
     if (imgui_io.KeyCtrl) {
+        std::string seq;
         for (int key = ImGuiKey_A; key <= ImGuiKey_Z; key++) {
-            if (ImGui::IsKeyPressed(static_cast<ImGuiKey>(key))) {
-                state.emulator.InjectKey(static_cast<char>(1 + (key - static_cast<int>(ImGuiKey_A))));
+            auto imguiKey = static_cast<ImGuiKey>(key);
+            if (ImGui::IsKeyPressed(imguiKey)) {
+                if (TerminalInputMapper::MapCtrlKey(imguiKey, seq)) {
+                    InjectSequence(state, seq);
+                }
             }
         }
     }
@@ -123,25 +99,6 @@ void HandleConsoleInput(Control::AppState& state) {
         HandleNavigationKeys(state, imgui_io);
         HandleSpecialKeys(state, imgui_io);
         HandleCtrlKeys(state, imgui_io);
-    }
-}
-
-static void CodepointToUtf8(uint32_t cp, std::array<char, 5>& out) {
-    out.fill(0);
-    if (cp < 0x80) {
-        out[0] = static_cast<char>(cp);
-    } else if (cp < 0x800) {
-        out[0] = static_cast<char>(0xC0 | (cp >> 6));
-        out[1] = static_cast<char>(0x80 | (cp & 0x3F));
-    } else if (cp < 0x10000) {
-        out[0] = static_cast<char>(0xE0 | (cp >> 12));
-        out[1] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        out[2] = static_cast<char>(0x80 | (cp & 0x3F));
-    } else if (cp < 0x110000) {
-        out[0] = static_cast<char>(0xF0 | (cp >> 18));
-        out[1] = static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-        out[2] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        out[3] = static_cast<char>(0x80 | (cp & 0x3F));
     }
 }
 
@@ -227,7 +184,7 @@ void DrawConsoleView(Control::AppState& state) {
                 }
 
                 std::array<char, 5> utf8Buf = {0};
-                CodepointToUtf8(cell.codepoint, utf8Buf);
+                TerminalInputMapper::CodepointToUtf8(cell.codepoint, utf8Buf);
 
                 ImVec2 textPos(origin.x + static_cast<float>(col) * charWidth, rowY);
                 drawList->AddText(font, fontSize, textPos, fg, utf8Buf.data());
