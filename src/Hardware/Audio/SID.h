@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "Hardware/Core/IBusDevice.h"
-#include "Hardware/Audio/ADSRBugMonitor.h"
+#include "Hardware/Audio/Oscillator.h"
 #include "Hardware/Audio/SIDFilter.h"
 #include "Hardware/Audio/SIDAudioSink.h"
 #include "Hardware/Audio/SIDTrackerLogger.h"
@@ -20,61 +20,6 @@
 
 namespace Hardware {
 
-struct ADSREnvelope {
-    enum State : std::uint8_t { IDLE, ATTACK, DECAY, SUSTAIN, RELEASE };
-    State state = IDLE;
-    uint8_t level = 0;
-    
-    // 15-bit LFSR / Rate Counter and exponential divider logic
-    uint16_t rateCounter = 0;
-    uint16_t ratePeriod = 0;
-    uint8_t exponentialCounter = 0;
-    uint8_t exponentialCounterPeriod = 1;
-    bool holdZero = true;
-    bool gate = false;
-
-    // Parameters from registers
-    uint8_t attackRate = 0;
-    uint8_t decayRate = 0;
-    uint8_t sustainLevel = 0;
-    uint8_t releaseRate = 0;
-
-    // Registers updated by CPU, applied to the active rates only when the LFSR ticks
-    uint8_t targetAttackRate = 0;
-    uint8_t targetDecayRate = 0;
-    uint8_t targetSustainLevel = 0;
-    uint8_t targetReleaseRate = 0;
-
-    void Update(bool gate);
-
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& inStream);
-};
-
-struct Oscillator {
-    uint32_t accumulator = 0;
-    uint32_t frequency = 0;
-    uint16_t pulseWidth = 0;
-    uint8_t control = 0;  // Gate, Sync, Ring, Test, Tri, Saw, Pulse, Noise
-
-    ADSREnvelope env;
-    Oscillator* prevOsc = nullptr; // For Hard Sync and Ring Mod
-
-    // Noise generation
-    uint32_t noiseShift = 0x7FFFF8;
-    
-    // Output state
-    uint16_t oscOutput = 0;
-
-    ADSRBugMonitor adsrBugMonitor;
-
-    [[nodiscard]] uint64_t GetADSRDelayBugClock() const noexcept { return adsrBugMonitor.GetADSRDelayBugClock(); }
-
-    void Next(SIDModel model);
-
-    bool SaveState(std::ostream& out) const;
-    bool LoadState(std::istream& inStream);
-};
 
 struct SIDProfilingStats {
     std::uint64_t clockCount = 0;

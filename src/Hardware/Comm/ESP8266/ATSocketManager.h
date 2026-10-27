@@ -13,31 +13,14 @@
 #include <asio/ssl.hpp>
 #endif
 
+#include "Hardware/Comm/ESP8266/ATConnection.h"
+
 namespace Hardware {
 
 class ESP8266;
 class ATHttpClient;
 
 static constexpr int kMaxConnections = 5;
-
-struct ATConnection {
-    std::unique_ptr<asio::ip::tcp::socket> tcpSocket;
-#ifndef TARGET_WASM
-    std::unique_ptr<asio::ssl::stream<asio::ip::tcp::socket>> sslStream;
-#endif
-    std::unique_ptr<asio::ip::udp::socket> udpSocket;
-    asio::ip::udp::endpoint udpRemoteEndpoint;
-    int udpMode{0};
-    std::thread rxThread;
-    std::recursive_mutex rxThreadMutex;
-    std::atomic<bool> active{false};
-    bool isHttps{false};
-    std::string protocol;
-    std::string remoteHost;
-    int remotePort{0};
-
-    void StopRxThread();
-};
 
 class ATSocketManager {
 public:
