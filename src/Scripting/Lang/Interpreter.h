@@ -2,6 +2,7 @@
 
 #include "AST.h"
 #include "Environment.h"
+#include "Value.h"
 #include "EmulatorScriptContext.h"
 #include <memory>
 #include <functional>
@@ -47,6 +48,7 @@ public:
 
     static bool isTruthy(const Value& value);
     static bool isEqual(const Value& a, const Value& b);
+    static std::string stringify(const Value& value);
 
 private:
     std::function<void(const std::string&)> printHandler;

@@ -1,6 +1,6 @@
 #include "Frontend/GUI/UpdatePopup.h"
 
-#include <SDL3/SDL.h>
+#include "Frontend/Platform/PlatformUtils.h"
 
 #include <string>
 
@@ -43,7 +43,7 @@ void DrawUpdatePopup(AppState& state) {
 
         if (ImGui::Button("Download", ImVec2(btnWidth, 0))) {
             std::string url = "https://github.com/ManuFlosoYT/65c02-SIM/releases/latest";
-            SDL_OpenURL(url.c_str());
+            Frontend::Platform::OpenURL(url);
         }
         ImGui::SameLine();
         if (ImGui::Button("Ignore", ImVec2(btnWidth, 0))) {

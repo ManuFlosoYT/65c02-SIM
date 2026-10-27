@@ -1,7 +1,7 @@
 #include "Style.h"
 #include <cmath>
 #include <cstdint>
-#include "CascadiaMono.h"
+#include "Frontend/GUI/Style/FontLoader.h"
 
 void SetupImGuiStyle() {
     // Moonlight style by deathsu/madam-herta
@@ -127,23 +127,7 @@ void SetupModernStyle() {
 }
 
 void SetupFont(){
-    ImGuiIO& imguiio = ImGui::GetIO();
-    
-    static const ImWchar glyph_ranges[] = {
-        0x0020, 0x00FF,
-        0x2500, 0x257F,
-        0x2580, 0x259F,
-        0,
-    };
-    
-    ImFont* mainFont = imguiio.Fonts->AddFontFromMemoryCompressedBase85TTF(
-        GetCascadiaMonoCompressedBase85(),
-        14.0F,
-        nullptr,
-        glyph_ranges
-    );
-    
-    IM_ASSERT(mainFont != NULL);
+    GUI::FontLoader::SetupFont();
 }
 
 namespace Theme {

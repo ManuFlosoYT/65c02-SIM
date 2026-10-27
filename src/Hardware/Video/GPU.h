@@ -6,6 +6,7 @@
 #include <span>
 
 #include "Hardware/Core/IBusDevice.h"
+#include "Hardware/Video/RasterTimingGenerator.h"
 
 namespace Hardware {
 
@@ -31,18 +32,17 @@ class GPU : public IBusDevice {
     bool LoadState(std::istream& inputStream) override;
 
     // Clock the GPU to advance pixel counters
-    inline void Clock();
+    inline void Clock() { rasterTiming.Clock(); }
 
     // Bus control status
-    [[nodiscard]] inline Word GetPixelX() const { return static_cast<Word>(pixelX); }
-    [[nodiscard]] inline Word GetPixelY() const { return static_cast<Word>(pixelY); }
-    [[nodiscard]] inline bool IsInBlankingInterval() const;
+    [[nodiscard]] inline Word GetPixelX() const { return static_cast<Word>(rasterTiming.pixelX); }
+    [[nodiscard]] inline Word GetPixelY() const { return static_cast<Word>(rasterTiming.pixelY); }
+    [[nodiscard]] inline bool IsInBlankingInterval() const { return rasterTiming.IsInBlankingInterval(); }
     [[nodiscard]] uint32_t GetDrawingWaitCycles() const {
-        return (!isBlanking && ticksToNextEvent > 1) ? (ticksToNextEvent - 1) : 0;
+        return rasterTiming.GetDrawingWaitCycles();
     }
     void SkipDrawingCycles(uint32_t cycles) {
-        pixelX += cycles;
-        ticksToNextEvent -= cycles;
+        rasterTiming.SkipDrawingCycles(cycles);
     }
 
     [[nodiscard]] bool ConsumeVRAMDirty() const { return vramDirty.exchange(false, std::memory_order_relaxed); }
@@ -56,18 +56,14 @@ class GPU : public IBusDevice {
     [[nodiscard]] const std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT>& GetVRAM() const { return vram; }
     [[nodiscard]] std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT>& GetVRAM() { return vram; }
 
+    [[nodiscard]] const RasterTimingGenerator& GetRasterTiming() const { return rasterTiming; }
+    [[nodiscard]] RasterTimingGenerator& GetRasterTiming() { return rasterTiming; }
+
    private:
     std::array<std::array<Byte, VRAM_WIDTH>, VRAM_HEIGHT> vram{};
     mutable std::atomic<bool> vramDirty{true};
 
-    // Pixel counters (32-bit native to prevent partial register stalls on x86)
-    uint32_t pixelX = 0;  // 0-131 (132 total)
-    uint32_t pixelY = 0;  // 0-77 (78 total)
-
-    // Cached states for O(1) interval access without arithmetic/branches
-    bool isBlanking = true;
-    bool isYDrawing = true;
-    uint32_t ticksToNextEvent = 0;
+    RasterTimingGenerator rasterTiming;
 };
 
 }  // namespace Hardware
@@ -75,35 +71,6 @@ class GPU : public IBusDevice {
 namespace Hardware {
 
 inline GPU::GPU() { Reset(); }
-
-inline void GPU::Clock() {
-    pixelX++;
-    if (--ticksToNextEvent == 0) [[unlikely]] {
-        if (pixelX == VRAM_WIDTH) {  // Finished drawing area of scanline
-            isBlanking = true;
-            ticksToNextEvent = DISPLAY_WIDTH - VRAM_WIDTH;
-        } else {  // Finished scanline completely
-            pixelX = 0;
-
-            if (++pixelY == VRAM_HEIGHT_DRAWABLE_BY_CPU) {
-                isYDrawing = false;
-            } else if (pixelY == DISPLAY_HEIGHT) {
-                pixelY = 0;
-                isYDrawing = true;
-            }
-
-            if (isYDrawing) {
-                isBlanking = false;
-                ticksToNextEvent = VRAM_WIDTH;
-            } else {
-                isBlanking = true;
-                ticksToNextEvent = DISPLAY_WIDTH;
-            }
-        }
-    }
-}
-
-inline bool GPU::IsInBlankingInterval() const { return isBlanking; }
 
 inline void GPU::Write(Word addr, Byte val) {
     Byte pixelXAddr = addr & 0x7F;

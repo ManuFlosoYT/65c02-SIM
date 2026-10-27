@@ -1,7 +1,7 @@
 #include "Hardware/Memory/RAM.h"
+#include "Hardware/Memory/MemoryPatternInitializer.h"
 
 #include <algorithm>
-#include <random>
 
 namespace Hardware {
 
@@ -21,12 +21,7 @@ void RAM::Write(Word address, Byte data) {
 }
 
 void RAM::Reset() {
-    if (!powerOnPattern) {
-        std::ranges::fill(data, 0);
-        return;
-    }
-    std::mt19937 rng{std::random_device{}()};
-    std::ranges::generate(data, [&] { return static_cast<Byte>(rng()); });
+    MemoryPatternInitializer::Initialize(data, powerOnPattern);
 }
 
 bool RAM::SaveState(std::ostream& out) const {

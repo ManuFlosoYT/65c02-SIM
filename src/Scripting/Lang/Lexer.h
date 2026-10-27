@@ -1,14 +1,28 @@
 #pragma once
 
 #include "Token.h"
+#include <charconv>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace System::Hardware::Scripting::Lang {
 
+static inline bool ParseIntegerLiteral(std::string_view str, int base, int64_t& outVal) {
+    if (str.empty()) {
+        return false;
+    }
+    auto result = std::from_chars(str.data(), str.data() + str.size(), outVal, base);
+    return result.ec == std::errc{} && result.ptr == (str.data() + str.size());
+}
+
 class Lexer {
 public:
     explicit Lexer(std::string source);
+
+    static inline bool ParseIntegerLiteral(std::string_view str, int base, int64_t& outVal) {
+        return Lang::ParseIntegerLiteral(str, base, outVal);
+    }
 
     std::vector<Token> scanTokens();
 

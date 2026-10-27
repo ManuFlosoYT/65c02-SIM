@@ -3,13 +3,12 @@
 #include <sndfile.h>
 
 #include <atomic>
-#include <condition_variable>
 #include <cstdint>
-#include <mutex>
-#include <queue>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "Hardware/Core/SPSCQueue.h"
 
 namespace Hardware {
 
@@ -36,10 +35,8 @@ class AudioRecorder {
     SNDFILE* handle = nullptr;
     SF_INFO sfInfo{};
 
-    // Thread-safe queue for audio chunks
-    std::queue<std::vector<int16_t>> audioQueue;
-    std::mutex queueMutex;
-    std::condition_variable cv;
+    SPSCQueue<std::vector<int16_t>, 128> audioQueue;
+    std::atomic<uint32_t> wakeUpCount{0};
     
     std::thread worker;
     std::atomic<bool> running{false};

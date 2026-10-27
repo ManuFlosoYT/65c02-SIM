@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include "Hardware/Core/IMemoryBlockDevice.h"
 #include "Hardware/Core/ISerializable.h"
 
 namespace Hardware {
@@ -9,7 +10,7 @@ namespace Hardware {
 using Byte = uint8_t;
 using Word = uint16_t;
 
-class IBusDevice : public ISerializable {
+class IBusDevice : public ISerializable, public IMemoryBlockDevice {
    public:
     IBusDevice() = default;
     ~IBusDevice() override = default;
@@ -31,9 +32,9 @@ class IBusDevice : public ISerializable {
     bool LoadState(std::istream& inStream) override = 0;
 
     // Optional direct memory access for cache optimization (returns nullptr if not supported)
-    [[nodiscard]] virtual Byte* GetRawMemory() { return nullptr; }
-    [[nodiscard]] virtual size_t GetRawMemorySize() const { return 0; }
-    [[nodiscard]] virtual bool IsReadOnly() const { return false; }
+    [[nodiscard]] Byte* GetRawMemory() override { return nullptr; }
+    [[nodiscard]] size_t GetRawMemorySize() const override { return 0; }
+    [[nodiscard]] bool IsReadOnly() const override { return false; }
 };
 
 }  // namespace Hardware

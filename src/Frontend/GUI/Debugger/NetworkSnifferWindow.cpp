@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Debugger/NetworkSnifferWindow.h"
+#include "Frontend/GUI/Debugger/TrafficPayloadFormatter.h"
 
 #include <imgui.h>
 
@@ -54,39 +55,6 @@ const char* ChannelToString(Hardware::TrafficChannel ch) {
             return "System";
     }
     return "Unknown";
-}
-
-void DrawHexDump(const std::string& data) {
-    if (data.empty()) {
-        ImGui::TextDisabled("Empty payload");
-        return;
-    }
-
-    ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
-    constexpr size_t kBytesPerLine = 16;
-    for (size_t i = 0; i < data.size(); i += kBytesPerLine) {
-        size_t count = std::min(kBytesPerLine, data.size() - i);
-        std::string line = std::format("{:04X}: ", i);
-
-        for (size_t j = 0; j < kBytesPerLine; ++j) {
-            if (j < count) {
-                line += std::format("{:02X} ", static_cast<unsigned char>(data[i + j]));
-            } else {
-                line += "   ";
-            }
-            if (j == 7) {
-                line += " ";
-            }
-        }
-        line += " |";
-        for (size_t j = 0; j < count; ++j) {
-            unsigned char c = static_cast<unsigned char>(data[i + j]);
-            line += (std::isprint(c) != 0) ? static_cast<char>(c) : '.';
-        }
-        line += "|";
-        ImGui::TextUnformatted(line.c_str());
-    }
-    ImGui::PopStyleColor();
 }
 
 }  // namespace
@@ -249,7 +217,7 @@ void DrawNetworkSnifferContent(Control::AppState& state) {
                 if (ImGui::BeginTabItem("Hex Dump")) {
                     ImGui::BeginChild("HexChild", ImVec2(0, 0), ImGuiChildFlags_None,
                                       ImGuiWindowFlags_HorizontalScrollbar);
-                    DrawHexDump(sel.payload);
+                    TrafficPayloadFormatter::DrawHexDump(sel.payload);
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <format>
 #include <SDL3/SDL.h>
+#include "Frontend/Platform/PlatformUtils.h"
 #include <imgui.h>
 
 namespace Control {
@@ -155,7 +156,7 @@ bool CartridgeExporter::ExportCartridgeToUrl(AppState& state, const std::string&
 
     SDL_SetClipboardText(fullUrl.c_str());
     ImGui::SetClipboardText(fullUrl.c_str());
-    SDL_OpenURL(fullUrl.c_str());
+    Frontend::Platform::OpenURL(fullUrl);
     std::cout << "URL copied to clipboard: " << fullUrl << '\n';
 
     return true;

@@ -197,19 +197,11 @@ void Lexer::numberToken() {
 
     std::string numStr = source.substr(start, current - start);
     int64_t val = 0;
+    std::string_view literalView = (base == 16) ? std::string_view(numStr).substr(2) : std::string_view(numStr);
     
-    if (base == 16) {
-        auto result = std::from_chars(numStr.data() + 2, numStr.data() + numStr.size(), val, 16);
-        if (result.ec != std::errc()) {
-            tokens.push_back(errorToken("Invalid hex number format."));
-            return;
-        }
-    } else {
-        auto result = std::from_chars(numStr.data(), numStr.data() + numStr.size(), val, 10);
-        if (result.ec != std::errc()) {
-            tokens.push_back(errorToken("Invalid decimal number format."));
-            return;
-        }
+    if (!ParseIntegerLiteral(literalView, base, val)) {
+        tokens.push_back(errorToken(base == 16 ? "Invalid hex number format." : "Invalid decimal number format."));
+        return;
     }
 
     tokens.emplace_back(TokenType::Number, numStr, line, columnStart, val);
@@ -225,8 +217,7 @@ void Lexer::hexDollarToken() {
         return;
     }
     int64_t val = 0;
-    auto result = std::from_chars(numStr.data() + 1, numStr.data() + numStr.size(), val, 16);
-    if (result.ec != std::errc()) {
+    if (!ParseIntegerLiteral(std::string_view(numStr).substr(1), 16, val)) {
         tokens.push_back(errorToken("Invalid hex number format."));
         return;
     }

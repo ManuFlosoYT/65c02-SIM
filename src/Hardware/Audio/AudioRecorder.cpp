@@ -48,7 +48,8 @@ void AudioRecorder::Stop() {
     }
 
     running = false;
-    cv.notify_all();
+    wakeUpCount.fetch_add(1, std::memory_order_release);
+    wakeUpCount.notify_all();
 
     if (worker.joinable()) {
         worker.join();
@@ -59,10 +60,8 @@ void AudioRecorder::Stop() {
         handle = nullptr;
     }
 
-    // Clear remaining data in queue
-    std::lock_guard<std::mutex> lock(queueMutex);
-    while (!audioQueue.empty()) {
-        audioQueue.pop();
+    std::vector<int16_t> chunk;
+    while (audioQueue.pop(chunk)) {
     }
 }
 
@@ -71,40 +70,27 @@ void AudioRecorder::PushAudio(const int16_t* data, size_t numSamples) {
         return;
     }
 
-    // Copy data to a vector and push to queue
     std::span<const int16_t> dataSpan(data, numSamples);
     std::vector<int16_t> chunk(dataSpan.begin(), dataSpan.end());
-    
-    {
-        std::lock_guard<std::mutex> lock(queueMutex);
-        if (audioQueue.size() >= 1000) {
-            audioQueue.pop(); // Drop oldest chunk if OOM-bound
-        }
-        audioQueue.push(std::move(chunk));
+    if (audioQueue.push(std::move(chunk))) {
+        wakeUpCount.fetch_add(1, std::memory_order_release);
+        wakeUpCount.notify_one();
     }
-    cv.notify_one();
 }
 
 void AudioRecorder::WorkerThread() {
-    while (true) {
+    while (running || !audioQueue.empty()) {
         std::vector<int16_t> chunk;
-        
-        {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            cv.wait(lock, [this] { return !audioQueue.empty() || !running; });
-            
-            if (audioQueue.empty() && !running) {
+        if (audioQueue.pop(chunk)) {
+            if (!chunk.empty() && handle != nullptr) {
+                sf_writef_short(handle, chunk.data(), static_cast<sf_count_t>(chunk.size()));
+            }
+        } else {
+            if (!running) {
                 break;
             }
-            
-            if (!audioQueue.empty()) {
-                chunk = std::move(audioQueue.front());
-                audioQueue.pop();
-            }
-        }
-
-        if (!chunk.empty() && handle != nullptr) {
-            sf_writef_short(handle, chunk.data(), static_cast<sf_count_t>(chunk.size()));
+            auto val = wakeUpCount.load(std::memory_order_acquire);
+            wakeUpCount.wait(val, std::memory_order_acquire);
         }
     }
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glad/gl.h>
-#include <array>
+#include "Frontend/GUI/Video/GLPostProcessPass.h"
 
 namespace GUI {
 
@@ -55,21 +55,13 @@ class CRTFilter {
    public:
     void Init(int width, int height);
     void Destroy();
-    [[nodiscard]] bool IsInitialized() const { return m_shader != 0; }
+    [[nodiscard]] bool IsInitialized() const { return m_pass.IsInitialized(); }
 
     // Renders inputTex through the CRT shader and returns the output texture.
     GLuint Apply(GLuint inputTex, int width, int height, const CRTParams& params);
 
    private:
-    std::array<GLuint, 2> m_fbo = {0, 0};
-    std::array<GLuint, 2> m_outputTex = {0, 0};
-    int m_pingPong = 0;
-
-    GLuint m_shader = 0;
-    GLuint m_vao = 0;
-    GLuint m_vbo = 0;
-    int m_w = 0;
-    int m_h = 0;
+    GLPostProcessPass m_pass;
 
     GLint m_uTexture = -1;
     GLint m_uPrevFrame = -1;
@@ -97,10 +89,6 @@ class CRTFilter {
     GLint m_uSharpPixels = -1;
     GLint m_uHumBar = -1;
     GLint m_uMonitorType = -1;
-
-    void CreateFBO(int width, int height);
-    void Resize(int width, int height);
-    static GLuint CompileShader(const char* vertSrc, const char* fragSrc);
 };
 
 }  // namespace GUI

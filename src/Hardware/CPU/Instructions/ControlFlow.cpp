@@ -2,7 +2,6 @@
 
 #include "Hardware/CPU/CPU.h"
 #include "Hardware/Core/Bus.h"
-#include "Hardware/Core/SubroutineProfiler.h"
 
 namespace Hardware::Instructions {
 
@@ -11,11 +10,7 @@ void JSR::Execute(CPU& cpu, Bus& bus) {
     Word Dir = cpu.FetchWord<Debug>(bus);
     Word RetDir = cpu.PC - 1;
 
-    if constexpr (Debug) {
-        if (cpu.GetProfiler() != nullptr) {
-            cpu.GetProfiler()->OnJSR(Dir, RetDir, cpu.GetCycleCount());
-        }
-    }
+    cpu.TraceJSR<Debug>(Dir, RetDir);
 
     cpu.PushWord<Debug>(RetDir, bus);
 
@@ -25,11 +20,7 @@ void JSR::Execute(CPU& cpu, Bus& bus) {
 
 template <bool Debug>
 void RTS::Execute(CPU& cpu, Bus& bus) {
-    if constexpr (Debug) {
-        if (cpu.GetProfiler() != nullptr) {
-            cpu.GetProfiler()->OnRTS(cpu.GetCycleCount());
-        }
-    }
+    cpu.TraceRTS<Debug>();
     Word dir = cpu.PopWord<Debug>(bus) + 1;
     cpu.PC = dir;
     cpu.UpdatePagePtr(bus);
@@ -52,20 +43,12 @@ void BRK::Execute(CPU& cpu, Bus& bus) {
     cpu.PC = cpu.ReadWord<Debug>(vectorAddr, bus);
     cpu.UpdatePagePtr(bus);
 
-    if constexpr (Debug) {
-        if (cpu.GetProfiler() != nullptr) {
-            cpu.GetProfiler()->OnBRK(cpu.PC, returnPc, cpu.GetCycleCount());
-        }
-    }
+    cpu.TraceBRK<Debug>(cpu.PC, returnPc);
 }
 
 template <bool Debug>
 void RTI::Execute(CPU& cpu, Bus& bus) {
-    if constexpr (Debug) {
-        if (cpu.GetProfiler() != nullptr) {
-            cpu.GetProfiler()->OnRTI(cpu.GetCycleCount());
-        }
-    }
+    cpu.TraceRTI<Debug>();
     Byte status = cpu.PopByte<Debug>(bus);
     cpu.SetStatus(status);
     cpu.PC = cpu.PopWord<Debug>(bus);

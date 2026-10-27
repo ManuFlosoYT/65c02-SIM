@@ -3,11 +3,7 @@
 namespace Hardware {
 
 void GPU::Reset() {
-    pixelX = 0;
-    pixelY = 0;
-    isYDrawing = true;
-    isBlanking = false;
-    ticksToNextEvent = VRAM_WIDTH;
+    rasterTiming.Reset();
     for (auto& row : vram) {
         row.fill(0);
     }
@@ -28,38 +24,21 @@ void GPU::LoadVRAM(std::span<const uint8_t> data) {
 
 bool GPU::SaveState(std::ostream& out) const {
     ISerializable::Serialize(out, vram);
-    ISerializable::Serialize(out, pixelX);
-    ISerializable::Serialize(out, pixelY);
+    ISerializable::Serialize(out, rasterTiming.pixelX);
+    ISerializable::Serialize(out, rasterTiming.pixelY);
+    ISerializable::Serialize(out, rasterTiming.isBlanking);
+    ISerializable::Serialize(out, rasterTiming.isYDrawing);
+    ISerializable::Serialize(out, rasterTiming.ticksToNextEvent);
     return out.good();
 }
 
 bool GPU::LoadState(std::istream& inputStream) {
     ISerializable::Deserialize(inputStream, vram);
-    ISerializable::Deserialize(inputStream, pixelX);
-    ISerializable::Deserialize(inputStream, pixelY);
-
-    if (pixelX >= DISPLAY_WIDTH) {
-        pixelX %= DISPLAY_WIDTH;
-    }
-    if (pixelY >= DISPLAY_HEIGHT) {
-        pixelY %= DISPLAY_HEIGHT;
-    }
-
-    isYDrawing = (pixelY < VRAM_HEIGHT_DRAWABLE_BY_CPU);
-
-    if (!isYDrawing) {
-        isBlanking = true;
-        ticksToNextEvent = DISPLAY_WIDTH - pixelX;
-    } else {
-        if (pixelX < VRAM_WIDTH) {
-            isBlanking = false;
-            ticksToNextEvent = VRAM_WIDTH - pixelX;
-        } else {
-            isBlanking = true;
-            ticksToNextEvent = DISPLAY_WIDTH - pixelX;
-        }
-    }
-
+    ISerializable::Deserialize(inputStream, rasterTiming.pixelX);
+    ISerializable::Deserialize(inputStream, rasterTiming.pixelY);
+    ISerializable::Deserialize(inputStream, rasterTiming.isBlanking);
+    ISerializable::Deserialize(inputStream, rasterTiming.isYDrawing);
+    ISerializable::Deserialize(inputStream, rasterTiming.ticksToNextEvent);
     vramDirty.store(true, std::memory_order_relaxed);
     return inputStream.good();
 }

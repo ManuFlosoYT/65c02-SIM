@@ -81,6 +81,39 @@ class CPU : public CPURegisters, public ISerializable {
     [[nodiscard]] SubroutineProfiler* GetProfiler() const { return profiler; }
     [[nodiscard]] uint64_t GetCycleCount() const { return cycleCount; }
 
+    template <bool Debug>
+    inline void TraceJSR(Word target, Word returnAddr) {
+        if constexpr (Debug) {
+            if (profiler != nullptr) {
+                profiler->OnJSR(target, returnAddr, cycleCount);
+            }
+        }
+    }
+    template <bool Debug>
+    inline void TraceRTS() {
+        if constexpr (Debug) {
+            if (profiler != nullptr) {
+                profiler->OnRTS(cycleCount);
+            }
+        }
+    }
+    template <bool Debug>
+    inline void TraceBRK(Word target, Word returnAddr) {
+        if constexpr (Debug) {
+            if (profiler != nullptr) {
+                profiler->OnBRK(target, returnAddr, cycleCount);
+            }
+        }
+    }
+    template <bool Debug>
+    inline void TraceRTI() {
+        if constexpr (Debug) {
+            if (profiler != nullptr) {
+                profiler->OnRTI(cycleCount);
+            }
+        }
+    }
+
     [[nodiscard]] bool HasPendingNMI() const { return pendingNMI; }
     void TriggerNMI() { pendingNMI = true; }
     void ClearPendingNMI() { pendingNMI = false; }
