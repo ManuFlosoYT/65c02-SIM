@@ -99,6 +99,7 @@ echo "  Populating SD Card..."
 mmd -i "$SD_PATH" ::/bin
 mmd -i "$SD_PATH" ::/sid
 mmd -i "$SD_PATH" ::/SYSTEM
+mmd -i "$SD_PATH" ::/SYSTEM/SWAP
 
 python3 tools/microDOS/build_udos_sys.py assets/microDOS/strings.txt assets/microDOS/uDOS.sys
 mcopy -o -i "$SD_PATH" assets/microDOS/uDOS.sys ::/SYSTEM/
