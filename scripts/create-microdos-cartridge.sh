@@ -70,11 +70,6 @@ if [ "$MULTITHREAD" = true ]; then
     fi
 fi
 
-if [ -d "sdk/microdos/msbasic" ]; then
-    echo "    Building basic.app..."
-    "$SCRIPT_DIR/compile-bin.sh" basic
-fi
-
 # Create FAT16 SD Image (32MB)
 echo "  Creating 32MB SD Card Image..."
 mkdir -p output/img

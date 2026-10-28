@@ -59,7 +59,6 @@ list_programs() {
     echo "Available programs:"
     echo "  - all (Compile all programs)"
     echo "  - eater (WOZMON / BASIC)"
-    echo "  - basic (microDOS BASIC)"
     for f in sdk/src/*.c; do
         [ -f "$f" ] && echo "  - $(basename "${f%.c}") (C)"
     done
@@ -85,17 +84,6 @@ done
 
 mkdir -p sdk/src/build
 mkdir -p output
-
-if [ "$NAME" == "basic" ] || ([ "$NAME" == "--microDOS" ] && [ "$2" == "basic" ]); then
-    echo "--- Compiling basic.app (microDOS BASIC) ---"
-    (cd sdk/microdos/msbasic && ./make.sh)
-    mkdir -p output/apps
-    if [ -f "sdk/microdos/msbasic/tmp/basic.app" ]; then
-        cp sdk/microdos/msbasic/tmp/basic.app output/apps/basic.app
-    fi
-    echo "App saved to output/apps/basic.app"
-    exit 0
-fi
 
 # --microDOS: compile a .c file as a microDOS .app binary
 if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
