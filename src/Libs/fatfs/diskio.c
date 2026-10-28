@@ -15,8 +15,13 @@
 #include <stdint.h>
 
 /* MMIO SD register addresses */
+#if defined(MICRODOS) || defined(__MICRODOS__)
+#define SD_CTRL (*(volatile uint8_t*)0x7FC8)
+#define SD_DATA (*(volatile uint8_t*)0x7FC9)
+#else
 #define SD_CTRL (*(volatile uint8_t*)0x5008)
 #define SD_DATA (*(volatile uint8_t*)0x5009)
+#endif
 
 /* -----------------------------------------------------------------------
    Internal helpers
