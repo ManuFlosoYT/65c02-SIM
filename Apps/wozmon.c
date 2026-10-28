@@ -200,6 +200,7 @@ static int read_line(char *buf, uint8_t max_len) {
 int main(void) {
     char line[128];
 
+    println("WOZMON - Press Ctrl+C to exit\r\n");
     bios_putchar('\\');
     bios_putchar('\r');
     bios_putchar('\n');
