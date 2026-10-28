@@ -5,8 +5,13 @@
 
 #include "fatfs/ff.h"
 
+#if defined(MICRODOS) || defined(__MICRODOS__)
+#define SD_CTRL (*(volatile uint8_t*)0x7FC8)
+#define SD_DATA (*(volatile uint8_t*)0x7FC9)
+#else
 #define SD_CTRL (*(volatile uint8_t*)0x5008)
 #define SD_DATA (*(volatile uint8_t*)0x5009)
+#endif
 
 #define SD_CTRL_CS      0x01U
 #define SD_STAT_MOUNTED 0x01U
