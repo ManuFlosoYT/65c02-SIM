@@ -20,6 +20,7 @@ SID="true"
 SID_MODEL="8580"
 ESP="false"
 SD_ENABLED="false"
+MICRODOS="false"
 
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
@@ -40,6 +41,15 @@ while [[ "$#" -gt 0 ]]; do
         --sid-model) SID_MODEL="$2"; shift 2 ;;
         --esp) ESP="$2"; shift 2 ;;
         --sd) SD_ENABLED="$2"; shift 2 ;;
+        --microdos)
+            if [ "$2" == "true" ] || [ "$2" == "false" ]; then
+                MICRODOS="$2"
+                shift 2
+            else
+                MICRODOS="true"
+                shift 1
+            fi
+            ;;
         --type) TYPE="$2"; shift 2 ;;
         *) 
             if [ -z "$ROM_FILE" ] && [[ ! "$1" == --* ]]; then 
@@ -69,6 +79,11 @@ if [ -z "$ROM_FILE" ] && [ -z "$VRAM_FILE" ]; then
     echo "  --vram \"VRAM_FILE\""
     echo "  --sd-image \"sdcard.img\""
     exit 1
+fi
+
+if [ "$MICRODOS" == "true" ] || [ "$NAME" == "microDOS" ]; then
+    MICRODOS="true"
+    GPU="true"
 fi
 
 # Determine main name for the cartridge
@@ -135,14 +150,25 @@ fi
   echo "    \"sd_enabled\": $SD_ENABLED"
   echo "  },"
   echo "  \"bus\": ["
-  echo "    { \"name\": \"RAM\", \"start\": \"0x0000\", \"end\": \"0x7FFF\" },"
-  echo "    { \"name\": \"ROM\", \"start\": \"0x8000\", \"end\": \"0xFFFF\" },"
-  echo "    { \"name\": \"ACIA\", \"start\": \"0x5000\", \"end\": \"0x5003\" },"
-  echo "    { \"name\": \"VIA\", \"start\": \"0x6000\", \"end\": \"0x600F\" },"
-  echo "    { \"name\": \"ESP8266\", \"start\": \"0x5004\", \"end\": \"0x5007\" },"
-  echo "    { \"name\": \"SD Card\", \"start\": \"0x5008\", \"end\": \"0x500B\" },"
-  echo "    { \"name\": \"SID\", \"start\": \"0x4800\", \"end\": \"0x481F\" },"
-  echo "    { \"name\": \"GPU\", \"start\": \"0x2000\", \"end\": \"0x3FFF\" }"
+  if [ "$MICRODOS" == "true" ]; then
+    echo "    { \"name\": \"RAM\", \"start\": \"0x0000\", \"end\": \"0x7FFF\" },"
+    echo "    { \"name\": \"ROM\", \"start\": \"0x8000\", \"end\": \"0xFFFF\" },"
+    echo "    { \"name\": \"ACIA\", \"start\": \"0x7FC0\", \"end\": \"0x7FC3\" },"
+    echo "    { \"name\": \"ESP8266\", \"start\": \"0x7FC4\", \"end\": \"0x7FC7\" },"
+    echo "    { \"name\": \"SD Card\", \"start\": \"0x7FC8\", \"end\": \"0x7FCB\" },"
+    echo "    { \"name\": \"VIA\", \"start\": \"0x7FD0\", \"end\": \"0x7FDF\" },"
+    echo "    { \"name\": \"SID\", \"start\": \"0x7FE0\", \"end\": \"0x7FFF\" },"
+    echo "    { \"name\": \"microDOS-GPU\", \"start\": \"0x5FC0\", \"end\": \"0x7FBF\" }"
+  else
+    echo "    { \"name\": \"RAM\", \"start\": \"0x0000\", \"end\": \"0x7FFF\" },"
+    echo "    { \"name\": \"ROM\", \"start\": \"0x8000\", \"end\": \"0xFFFF\" },"
+    echo "    { \"name\": \"ACIA\", \"start\": \"0x5000\", \"end\": \"0x5003\" },"
+    echo "    { \"name\": \"VIA\", \"start\": \"0x6000\", \"end\": \"0x600F\" },"
+    echo "    { \"name\": \"ESP8266\", \"start\": \"0x5004\", \"end\": \"0x5007\" },"
+    echo "    { \"name\": \"SD Card\", \"start\": \"0x5008\", \"end\": \"0x500B\" },"
+    echo "    { \"name\": \"SID\", \"start\": \"0x4800\", \"end\": \"0x481F\" },"
+    echo "    { \"name\": \"GPU\", \"start\": \"0x2000\", \"end\": \"0x3FFF\" }"
+  fi
   echo "  ]"
   echo "}"
 } > "$TEMP_DIR/manifest.json"
