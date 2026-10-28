@@ -193,8 +193,8 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
         ld << "    core (rx) : ORIGIN = 0x0200, LENGTH = 0x3E00\n";
         ld << "    bss  (rw) : ORIGIN = 0x4000, LENGTH = 0x1000\n";
     } else {
-        ld << "    core (rx) : ORIGIN = 0x0200, LENGTH = 0x5600\n";
-        ld << "    bss  (rw) : ORIGIN = 0x5800, LENGTH = 0x1800\n";
+        ld << "    core (rx) : ORIGIN = 0x0200, LENGTH = 0x4E00\n";
+        ld << "    bss  (rw) : ORIGIN = 0x5000, LENGTH = 0x2000\n";
     }
     ld << "}\n\n";
     ld << "REGION_ALIAS(\"c_readonly\", core)\n";
