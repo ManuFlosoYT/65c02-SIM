@@ -128,6 +128,7 @@ echo "  Packaging Cartridge..."
     --sid-model "8580" \
     --sd true \
     --esp true \
-    --gpu false
+    --gpu true \
+    --microdos
 
 echo "Done! Cartridge created at output/cartridge/microDOS.65c"
