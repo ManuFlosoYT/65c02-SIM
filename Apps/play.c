@@ -13,10 +13,8 @@ enum {
     LZ_WINDOW_MASK = 0x07FF
 };
 
-#define SID_BASE 0x4800
+#define SID_BASE 0x7FE0
 #define SID_WRITE_REG(r, v) (*(volatile uint8_t*)(SID_BASE + (r)) = (v))
-
-extern char app_core_size[] __asm__("_CORE_SIZE__");
 
 static SD_FILE file;
 static uint8_t* buffer_pool;
@@ -208,7 +206,6 @@ int main(void) {
     uint16_t next_read_pause = 0;
     uint8_t next_read_blocks = 0;
     int32_t delay_cycles_left = 0;
-    uint16_t core_size = (uint16_t)app_core_size;
     uint8_t initial_fill = 0;
     uint8_t min_bufs = 0;
     uint8_t flo = 0;
@@ -227,8 +224,8 @@ int main(void) {
 
     println("microDOS SID Player v2");
 
-    buffer_pool = (uint8_t*)(APP_SAFE_RAM_START + core_size);
-    num_bufs = (APP_SAFE_RAM_END - (uint16_t)buffer_pool + 1) / CHUNK_SIZE;
+    buffer_pool = (uint8_t*)APP_EXTRA_RAM_START;
+    num_bufs = (uint8_t)(APP_EXTRA_RAM_SIZE / CHUNK_SIZE);
 
     if (num_bufs == 0) {
         println("Error: Not enough RAM for buffers");
