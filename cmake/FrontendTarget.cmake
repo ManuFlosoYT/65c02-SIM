@@ -142,6 +142,7 @@ target_compile_definitions(SIM_65C02 PRIVATE
     USE_BOOKMARK 
     CPPHTTPLIB_OPENSSL_SUPPORT
 )
+target_compile_definitions(SIM_65C02 PRIVATE PROJECT_VERSION="${GIT_VERSION}")
 
 if(SYSTEM_MOS_CLANG)
     target_compile_definitions(SIM_65C02 PRIVATE MOS_CLANG_DEFAULT_PATH="${SYSTEM_MOS_CLANG}")

@@ -84,5 +84,3 @@ endif()
 if("${GIT_VERSION}" STREQUAL "")
 	set(GIT_VERSION "v0.0.0")
 endif()
-
-add_compile_definitions(PROJECT_VERSION="${GIT_VERSION}")

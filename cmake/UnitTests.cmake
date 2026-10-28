@@ -34,6 +34,7 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
         "${CMAKE_SOURCE_DIR}/src/Hardware/CPU/Instructions/InstructionSet.h"
     )
     target_link_libraries(unit_tests PRIVATE 65c02_core_test GTest::gtest_main)
+    target_compile_definitions(unit_tests PRIVATE PROJECT_VERSION="${GIT_VERSION}")
 
     if(WIN32)
         target_link_options(unit_tests PRIVATE -static -static-libgcc -static-libstdc++)

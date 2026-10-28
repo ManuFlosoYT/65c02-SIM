@@ -84,7 +84,8 @@ endif()
 # SDL3
 set(SDL_SHARED OFF CACHE BOOL "Build shared SDL3" FORCE)
 set(SDL_STATIC ON CACHE BOOL "Build static SDL3" FORCE)
-set(SDL_TEST OFF CACHE BOOL "Build SDL3 test" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "Build SDL3 test library" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "Build SDL3 tests" FORCE)
 
 FetchContent_Declare(
     SDL3
@@ -93,7 +94,9 @@ FetchContent_Declare(
     PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sdl3.cmake
 )
 set(CMAKE_WARN_DEPRECATED OFF)
+set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 FetchContent_MakeAvailable(SDL3)
+set(CMAKE_DISABLE_PRECOMPILE_HEADERS OFF)
 set(CMAKE_WARN_DEPRECATED ON)
 
 # ImGui
