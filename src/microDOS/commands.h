@@ -17,6 +17,5 @@ bool try_run_app(const char* name);
 /* Built-in commands (kept in ROM) */
 void cmd_run(void);
 void cmd_help(void);
-void cmd_exit(void);
 
 #endif /* COMMANDS_H */
