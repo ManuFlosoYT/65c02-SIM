@@ -44,7 +44,7 @@ static volatile uint8_t* get_via_reg(const char *name) {
     if (str_eq(name, "T1L_H")) { return &VIA_T1L_H; }
     if (str_eq(name, "T2C_L")) { return &VIA_T2C_L; }
     if (str_eq(name, "T2C_H")) { return &VIA_T2C_H; }
-    if (str_eq(name, "SR")) { return (volatile uint8_t*)0x600A; } /* Offset for VIA_SR */
+    if (str_eq(name, "SR")) { return &VIA_SR; }
     if (str_eq(name, "ACR")) { return &VIA_ACR; }
     if (str_eq(name, "PCR")) { return &VIA_PCR; }
     if (str_eq(name, "IFR")) { return &VIA_IFR; }
