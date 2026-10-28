@@ -12,18 +12,19 @@ static const command_t command_table[] = {
 };
 
 void exec_command(const char* name) {
-    for (size_t i = 0; command_table[i].name != nullptr; ++i) {
-        if (strcmp(command_table[i].name, name) == 0) {
-            command_table[i].func();
-            return;
-        }
+    if (strcmp(name, "run") == 0) {
+        cmd_run();
+        return;
+    }
+    if (strcmp(name, "help") == 0) {
+        cmd_help();
+        return;
     }
 
     /* Transparent fallback: try /bin/<name>.app on the SD card */
     if (!try_run_app(name)) {
-        print_str("Error: Unknown command or application '");
-        print_str(name);
-        println("'");
+        print_str("Unknown: ");
+        println(name);
     }
 }
 
