@@ -18,8 +18,11 @@
 /* ========================================================================= */
 
 enum {
-    APP_SAFE_RAM_START = 0x0200,
-    APP_SAFE_RAM_END   = 0x47FF
+    APP_SAFE_RAM_START  = 0x0200,
+    APP_SAFE_RAM_END    = 0x53FF,
+    APP_EXTRA_RAM_START = 0x5FC0,
+    APP_EXTRA_RAM_END   = 0x7FBF,
+    APP_EXTRA_RAM_SIZE  = 0x2000
 };
 
 /* ========================================================================= */
@@ -93,8 +96,8 @@ int      sd_seek(SD_FILE* fp, uint32_t pos);
 /* ========================================================================= */
 
 /* ESP8266 MMIO */
-#define ESP8266_DATA   (*(volatile uint8_t*)0x5004)
-#define ESP8266_STATUS (*(volatile uint8_t*)0x5005)
+#define ESP8266_DATA   (*(volatile uint8_t*)0x7FC4)
+#define ESP8266_STATUS (*(volatile uint8_t*)0x7FC5)
 #define net_has_data() (ESP8266_STATUS & 0x80)
 #define net_putc(c)    (ESP8266_DATA = (c))
 #define net_getc()     (ESP8266_DATA)
@@ -111,25 +114,27 @@ void net_wifi(const char* ssid, const char* pass);
 /* ========================================================================= */
 
 /* VIA 6522 MMIO */
-#define VIA_ORB    (*(volatile uint8_t*)0x6000)
-#define VIA_IRB    (*(volatile uint8_t*)0x6000)
-#define VIA_ORA    (*(volatile uint8_t*)0x6001)
-#define VIA_IRA    (*(volatile uint8_t*)0x6001)
-#define VIA_DDRB   (*(volatile uint8_t*)0x6002)
-#define VIA_DDRA   (*(volatile uint8_t*)0x6003)
-#define VIA_T1C_L  (*(volatile uint8_t*)0x6004)
-#define VIA_T1C_H  (*(volatile uint8_t*)0x6005)
-#define VIA_T1L_L  (*(volatile uint8_t*)0x6006)
-#define VIA_T1L_H  (*(volatile uint8_t*)0x6007)
-#define VIA_T2C_L  (*(volatile uint8_t*)0x6008)
-#define VIA_T2C_H  (*(volatile uint8_t*)0x6009)
-#define VIA_SR     (*(volatile uint8_t*)0x600A)
-#define VIA_ACR    (*(volatile uint8_t*)0x600B)
-#define VIA_PCR    (*(volatile uint8_t*)0x600C)
-#define VIA_IFR    (*(volatile uint8_t*)0x600D)
-#define VIA_IER    (*(volatile uint8_t*)0x600E)
-#define VIA_ORA_NH (*(volatile uint8_t*)0x600F)
-#define VIA_IRA_NH (*(volatile uint8_t*)0x600F)
+#define VIA_ORB    (*(volatile uint8_t*)0x7FD0)
+#define VIA_IRB    (*(volatile uint8_t*)0x7FD0)
+#define VIA_ORA    (*(volatile uint8_t*)0x7FD1)
+#define VIA_IRA    (*(volatile uint8_t*)0x7FD1)
+#define VIA_DDRB   (*(volatile uint8_t*)0x7FD2)
+#define VIA_DDRA   (*(volatile uint8_t*)0x7FD3)
+#define VIA_T1C_L  (*(volatile uint8_t*)0x7FD4)
+#define VIA_T1C_H  (*(volatile uint8_t*)0x7FD5)
+#define VIA_T1L_L  (*(volatile uint8_t*)0x7FD6)
+#define VIA_T1L_H  (*(volatile uint8_t*)0x7FD7)
+#define VIA_T2C_L  (*(volatile uint8_t*)0x7FD8)
+#define VIA_T2C_H  (*(volatile uint8_t*)0x7FD9)
+#define VIA_SR     (*(volatile uint8_t*)0x7FDA)
+#define VIA_ACR    (*(volatile uint8_t*)0x7FDB)
+#define VIA_PCR    (*(volatile uint8_t*)0x7FDC)
+#define VIA_IFR    (*(volatile uint8_t*)0x7FDD)
+#define VIA_IER    (*(volatile uint8_t*)0x7FDE)
+#define VIA_ORA_NH (*(volatile uint8_t*)0x7FDF)
+#define VIA_IRA_NH (*(volatile uint8_t*)0x7FDF)
+#define PORTB      VIA_ORB
+#define DDRB       VIA_DDRB
 
 
 /* ========================================================================= */
