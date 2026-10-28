@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 enum {
-    SID_BASE = 0x4800
+    SID_BASE = 0x7FE0
 };
 
 void sid_write(uint8_t reg, uint8_t val) {
