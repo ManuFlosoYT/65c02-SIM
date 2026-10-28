@@ -14,6 +14,15 @@
 #define FOR_DEPTH     16
 #define STR_LEN       32
 
+#define OV1 __attribute__((section(".overlay_1"), used))
+#define OV2 __attribute__((section(".overlay_2"), used))
+#define OV3 __attribute__((section(".overlay_3"), used))
+#define OV4 __attribute__((section(".overlay_4"), used))
+// Resident stub: jsr overlay_dispatcher + page + real address (same layout as OVERLAY_TRAMPOLINE in App-Runtime.s).
+#define OVSTUB(page, name) typeof(name##_ov) name; \
+    __asm__(".pushsection .text." #name ",\"ax\"\n.globl " #name "\n" #name ":\n" \
+            "\tjsr overlay_dispatcher\n\t.byte " #page "\n\t.byte <" #name "_ov\n\t.byte >" #name "_ov\n.popsection")
+
 typedef enum : uint8_t {
     VAL_NUM = 0,
     VAL_STR = 1
@@ -107,19 +116,21 @@ static inline float basic_floor(float x) {
     return (float)n;
 }
 
-static float basic_sqrt(float x) {
+OV2 static float basic_sqrt_ov(float x) {
     if (x <= 0.0f) return 0.0f;
     float g = (x > 1.0f) ? (x * 0.5f) : 1.0f;
     for (int i = 0; i < 8; i++) g = 0.5f * (g + x / g);
     return g;
 }
+OVSTUB(1, basic_sqrt);
 
-static float basic_sin(float x) {
+OV2 static float basic_sin_ov(float x) {
     while (x > BASIC_PI) x -= 2.0f * BASIC_PI;
     while (x < -BASIC_PI) x += 2.0f * BASIC_PI;
     float x2 = x * x;
     return x * (1.0f - x2 * (0.16666667f - x2 * (0.00833333f - x2 * 0.00019841f)));
 }
+OVSTUB(1, basic_sin);
 
 static inline float basic_cos(float x) { return basic_sin(x + (BASIC_PI * 0.5f)); }
 
@@ -128,14 +139,15 @@ static inline float basic_tan(float x) {
     return (c == 0.0f) ? 999999.0f : (basic_sin(x) / c);
 }
 
-static float basic_atan(float x) {
-    if (x > 1.0f) return (BASIC_PI * 0.5f) - basic_atan(1.0f / x);
-    if (x < -1.0f) return -(BASIC_PI * 0.5f) - basic_atan(1.0f / x);
+OV2 static float basic_atan_ov(float x) {
+    if (x > 1.0f) return (BASIC_PI * 0.5f) - basic_atan_ov(1.0f / x);
+    if (x < -1.0f) return -(BASIC_PI * 0.5f) - basic_atan_ov(1.0f / x);
     float x2 = x * x;
     return x * (1.0f - x2 * (0.33333333f - x2 * (0.2f - x2 * 0.14285714f)));
 }
+OVSTUB(1, basic_atan);
 
-static float basic_exp(float x) {
+OV2 static float basic_exp_ov(float x) {
     if (x < -20.0f) return 0.0f;
     if (x > 20.0f) return 1e9f;
     float term = 1.0f, sum = 1.0f;
@@ -145,8 +157,9 @@ static float basic_exp(float x) {
     }
     return sum;
 }
+OVSTUB(1, basic_exp);
 
-static float basic_log(float x) {
+OV2 static float basic_log_ov(float x) {
     if (x <= 0.0f) return -999999.0f;
     int k = 0;
     while (x > 2.0f) { x *= 0.5f; k++; }
@@ -156,8 +169,9 @@ static float basic_log(float x) {
     float sum = z * (2.0f + 0.66666667f * z2 + 0.4f * z2 * z2);
     return sum + (float)k * 0.69314718f;
 }
+OVSTUB(1, basic_log);
 
-static float basic_pow(float x, float y) {
+OV2 static float basic_pow_ov(float x, float y) {
     if (y == 0.0f) return 1.0f;
     if (x == 0.0f) return 0.0f;
     long iy = (long)y;
@@ -167,10 +181,11 @@ static float basic_pow(float x, float y) {
         return r;
     }
     if (x < 0.0f) return 0.0f;
-    return basic_exp(y * basic_log(x));
+    return basic_exp_ov(y * basic_log_ov(x));
 }
+OVSTUB(1, basic_pow);
 
-static float basic_strtof(const char* s, const char** endptr) {
+OV1 static float basic_strtof_ov(const char* s, const char** endptr) {
     while (*s == ' ' || *s == '\t') s++;
     bool neg = false;
     if (*s == '-') { neg = true; s++; }
@@ -204,12 +219,13 @@ static float basic_strtof(const char* s, const char** endptr) {
     if (endptr) *endptr = s;
     return neg ? -val : val;
 }
+OVSTUB(0, basic_strtof);
 
 static inline float basic_atof(const char* s) {
     return basic_strtof(s, nullptr);
 }
 
-static uint8_t format_float(float f, char* buf, uint8_t max_len) {
+OV2 static uint8_t format_float_ov(float f, char* buf, uint8_t max_len) {
     if (max_len < 2) { if (max_len > 0) buf[0] = '\0'; return 0; }
     if (basic_isnan(f)) { strncpy(buf, "NAN", max_len); return 3; }
     if (basic_isinf(f)) {
@@ -256,8 +272,9 @@ static uint8_t format_float(float f, char* buf, uint8_t max_len) {
     buf[idx] = '\0';
     return idx;
 }
+OVSTUB(1, format_float);
 
-static void uint_to_str(uint16_t n, char* buf, uint8_t max_len) {
+OV2 static void uint_to_str_ov(uint16_t n, char* buf, uint8_t max_len) {
     char tmp[6];
     int i = 0;
     if (n == 0) tmp[i++] = '0';
@@ -271,6 +288,7 @@ static void uint_to_str(uint16_t n, char* buf, uint8_t max_len) {
     while (i > 0 && j < max_len - 1) buf[j++] = tmp[--i];
     buf[j] = '\0';
 }
+OVSTUB(1, uint_to_str);
 
 static Value make_num(float n) {
     return (Value){ .type = VAL_NUM, .num = n, .str = nullptr, .len = 0 };
@@ -352,7 +370,7 @@ static uint8_t* find_line(uint16_t target) {
     return nullptr;
 }
 
-static void delete_line(uint16_t num) {
+OV2 static void delete_line_ov(uint16_t num) {
     uint8_t* p = find_line(num);
     if (!p) return;
     uint16_t cur = (uint16_t)(p[0] | (p[1] << 8));
@@ -368,9 +386,10 @@ static void delete_line(uint16_t num) {
     size_t move_len = (size_t)(end - next) + 2;
     memmove(p, next, move_len);
 }
+OVSTUB(1, delete_line);
 
-static bool insert_line(uint16_t num, const char* text) {
-    delete_line(num);
+OV2 static bool insert_line_ov(uint16_t num, const char* text) {
+    delete_line_ov(num);
     skip_spaces(&text);
     if (*text == '\0') return true;
     size_t tlen = strlen(text);
@@ -397,8 +416,9 @@ static bool insert_line(uint16_t num, const char* text) {
     p[3 + tlen] = '\0';
     return true;
 }
+OVSTUB(1, insert_line);
 
-static void clear_vars(void) {
+OV2 static void clear_vars_ov(void) {
     memset(vars, 0, sizeof(vars));
     memset(vars_ext, 0, sizeof(vars_ext));
     memset(str_vars, 0, sizeof(str_vars));
@@ -422,8 +442,9 @@ static void clear_vars(void) {
     data_line_ptr = nullptr;
     data_item_ptr = nullptr;
 }
+OVSTUB(1, clear_vars);
 
-static bool parse_var_name(const char** p, VarRef* ref) {
+OV2 static bool parse_var_name_ov(const char** p, VarRef* ref) {
     skip_spaces(p);
     char c = **p;
     if (!isalpha((unsigned char)c)) return false;
@@ -441,19 +462,22 @@ static bool parse_var_name(const char** p, VarRef* ref) {
     }
     return true;
 }
+OVSTUB(1, parse_var_name);
 
-static Value eval_expr(const char** p);
+static Value eval_expr_ov(const char** p);
 
-static Value eval_paren_expr(const char** p) {
+OV1 static Value eval_paren_expr_ov(const char** p) {
     skip_paren(p, '(');
-    Value v = eval_expr(p);
+    Value v = eval_expr_ov(p);
     skip_paren(p, ')');
     return v;
 }
+OVSTUB(0, eval_paren_expr);
 
-static float eval_paren_num(const char** p) {
-    return eval_paren_expr(p).num;
+OV1 static float eval_paren_num_ov(const char** p) {
+    return eval_paren_expr_ov(p).num;
 }
+OVSTUB(0, eval_paren_num);
 
 static struct Array* find_array(const char* name) {
     for (int i = 0; i < MAX_ARRAYS; i++) {
@@ -504,13 +528,13 @@ static void set_str_var(const VarRef* ref, const char* val, uint8_t len) {
     }
 }
 
-static bool check_math_fn(const char** p, Value* out) {
+OV1 static bool check_math_fn_ov(const char** p, Value* out) {
     static const char* const names[] = {
         "ABS", "INT", "SGN", "SQR", "SIN", "COS", "TAN", "ATN", "EXP", "LOG"
     };
     for (uint8_t i = 0; i < 10; i++) {
         if (match_kw(p, names[i])) {
-            float x = eval_paren_num(p);
+            float x = eval_paren_num_ov(p);
             float r = 0.0f;
             switch (i) {
                 case 0: r = basic_fabs(x); break;
@@ -530,8 +554,9 @@ static bool check_math_fn(const char** p, Value* out) {
     }
     return false;
 }
+OVSTUB(0, check_math_fn);
 
-static Value eval_factor(const char** p) {
+OV1 static Value eval_factor_ov(const char** p) {
     skip_spaces(p);
     if (**p == '"') {
         (*p)++;
@@ -543,28 +568,28 @@ static Value eval_factor(const char** p) {
     }
 
     if (**p == '(') {
-        return eval_paren_expr(p);
+        return eval_paren_expr_ov(p);
     }
 
     if (isdigit((unsigned char)**p) || **p == '.') {
         const char* end_ptr;
-        float num = basic_strtof(*p, &end_ptr);
+        float num = basic_strtof_ov(*p, &end_ptr);
         *p = end_ptr;
         return make_num(num);
     }
 
     if (match_kw(p, "PEEK")) {
-        uint16_t addr = (uint16_t)eval_paren_num(p);
+        uint16_t addr = (uint16_t)eval_paren_num_ov(p);
         return make_num((float)(*(volatile uint8_t*)addr));
     }
 
     Value math_val;
-    if (check_math_fn(p, &math_val)) {
+    if (check_math_fn_ov(p, &math_val)) {
         return math_val;
     }
 
     if (match_kw(p, "RND")) {
-        float arg = eval_paren_num(p);
+        float arg = eval_paren_num_ov(p);
         if (arg < 0.0f) {
             srand((unsigned int)(-(long)arg));
             last_rnd = (float)rand() / (float)RAND_MAX;
@@ -575,19 +600,19 @@ static Value eval_factor(const char** p) {
     }
 
     if (match_kw(p, "LEN")) {
-        Value arg = eval_paren_expr(p);
+        Value arg = eval_paren_expr_ov(p);
         return make_num((float)arg.len);
     }
 
     if (match_kw(p, "STR$")) {
-        float n = eval_paren_num(p);
+        float n = eval_paren_num_ov(p);
         char buf[20];
         uint8_t len = format_float(n, buf, sizeof(buf));
         return make_str_tmp(buf, len);
     }
 
     if (match_kw(p, "VAL")) {
-        Value arg = eval_paren_expr(p);
+        Value arg = eval_paren_expr_ov(p);
         char buf[32];
         uint8_t l = arg.len < 31 ? arg.len : 31;
         memcpy(buf, arg.str, l);
@@ -596,22 +621,22 @@ static Value eval_factor(const char** p) {
     }
 
     if (match_kw(p, "CHR$")) {
-        float n = eval_paren_num(p);
+        float n = eval_paren_num_ov(p);
         char c = (char)(int)n;
         return make_str_tmp(&c, 1);
     }
 
     if (match_kw(p, "ASC")) {
-        Value arg = eval_paren_expr(p);
+        Value arg = eval_paren_expr_ov(p);
         return make_num((arg.len > 0) ? (float)(unsigned char)arg.str[0] : 0.0f);
     }
 
     if (match_kw(p, "LEFT$") || match_kw(p, "RIGHT$")) {
         bool is_left = (*(*p - 6) == 'L' || *(*p - 6) == 'l');
         skip_paren(p, '(');
-        Value s = eval_expr(p);
+        Value s = eval_expr_ov(p);
         skip_paren(p, ',');
-        float n = eval_expr(p).num;
+        float n = eval_expr_ov(p).num;
         skip_paren(p, ')');
         int len = (int)n;
         if (len < 0) len = 0;
@@ -622,14 +647,14 @@ static Value eval_factor(const char** p) {
 
     if (match_kw(p, "MID$")) {
         skip_paren(p, '(');
-        Value s = eval_expr(p);
+        Value s = eval_expr_ov(p);
         skip_paren(p, ',');
-        int start = (int)eval_expr(p).num - 1;
+        int start = (int)eval_expr_ov(p).num - 1;
         int len = s.len;
         skip_spaces(p);
         if (**p == ',') {
             (*p)++;
-            len = (int)eval_expr(p).num;
+            len = (int)eval_expr_ov(p).num;
         }
         skip_paren(p, ')');
         if (start < 0) start = 0;
@@ -639,12 +664,12 @@ static Value eval_factor(const char** p) {
     }
 
     if (match_kw(p, "FRE")) {
-        eval_paren_expr(p);
+        eval_paren_expr_ov(p);
         return make_num(3000.0f);
     }
 
     if (match_kw(p, "POS")) {
-        eval_paren_expr(p);
+        eval_paren_expr_ov(p);
         return make_num((float)current_col);
     }
 
@@ -654,7 +679,7 @@ static Value eval_factor(const char** p) {
         skip_spaces(p);
         if (**p == '(') {
             (*p)++;
-            float idx = eval_expr(p).num;
+            float idx = eval_expr_ov(p).num;
             skip_paren(p, ')');
             char aname[4] = { ref.base, ref.ext ? ref.ext : '\0', ref.is_str ? '$' : '\0', '\0' };
             struct Array* arr = find_array(aname);
@@ -681,33 +706,36 @@ static Value eval_factor(const char** p) {
     runtime_error = true;
     return make_num(0.0f);
 }
+OVSTUB(0, eval_factor);
 
-static Value eval_unary(const char** p) {
+OV1 static Value eval_unary_ov(const char** p) {
     skip_spaces(p);
-    if (**p == '+') { (*p)++; return eval_unary(p); }
-    if (**p == '-') { (*p)++; Value v = eval_unary(p); v.num = -v.num; return v; }
-    return eval_factor(p);
+    if (**p == '+') { (*p)++; return eval_unary_ov(p); }
+    if (**p == '-') { (*p)++; Value v = eval_unary_ov(p); v.num = -v.num; return v; }
+    return eval_factor_ov(p);
 }
+OVSTUB(0, eval_unary);
 
-static Value eval_power(const char** p) {
-    Value a = eval_unary(p);
+OV1 static Value eval_power_ov(const char** p) {
+    Value a = eval_unary_ov(p);
     skip_spaces(p);
     while (**p == '^') {
         (*p)++;
-        Value b = eval_unary(p);
+        Value b = eval_unary_ov(p);
         a.num = basic_pow(a.num, b.num);
         skip_spaces(p);
     }
     return a;
 }
+OVSTUB(0, eval_power);
 
-static Value eval_mul_div(const char** p) {
-    Value a = eval_power(p);
+OV1 static Value eval_mul_div_ov(const char** p) {
+    Value a = eval_power_ov(p);
     skip_spaces(p);
     while (**p == '*' || **p == '/') {
         char op = **p;
         (*p)++;
-        Value b = eval_power(p);
+        Value b = eval_power_ov(p);
         if (op == '*') a.num *= b.num;
         else {
             if (b.num == 0.0f) {
@@ -721,14 +749,15 @@ static Value eval_mul_div(const char** p) {
     }
     return a;
 }
+OVSTUB(0, eval_mul_div);
 
-static Value eval_add_sub(const char** p) {
-    Value a = eval_mul_div(p);
+OV1 static Value eval_add_sub_ov(const char** p) {
+    Value a = eval_mul_div_ov(p);
     skip_spaces(p);
     while (**p == '+' || **p == '-') {
         char op = **p;
         (*p)++;
-        Value b = eval_mul_div(p);
+        Value b = eval_mul_div_ov(p);
         if (op == '+') {
             if (a.type == VAL_STR || b.type == VAL_STR) {
                 char buf[STR_LEN];
@@ -749,9 +778,10 @@ static Value eval_add_sub(const char** p) {
     }
     return a;
 }
+OVSTUB(0, eval_add_sub);
 
-static Value eval_rel(const char** p) {
-    Value a = eval_add_sub(p);
+OV1 static Value eval_rel_ov(const char** p) {
+    Value a = eval_add_sub_ov(p);
     skip_spaces(p);
     while (1) {
         uint8_t op = 0;
@@ -763,7 +793,7 @@ static Value eval_rel(const char** p) {
         else if ((*p)[0] == '=') { op = 6; (*p)++; }
         else break;
 
-        Value b = eval_add_sub(p);
+        Value b = eval_add_sub_ov(p);
         bool res = false;
         if (a.type == VAL_STR && b.type == VAL_STR) {
             int c = strncmp(a.str, b.str, a.len < b.len ? a.len : b.len);
@@ -787,22 +817,24 @@ static Value eval_rel(const char** p) {
     }
     return a;
 }
+OVSTUB(0, eval_rel);
 
-static Value eval_not(const char** p) {
+OV1 static Value eval_not_ov(const char** p) {
     skip_spaces(p);
     if (match_kw(p, "NOT")) {
-        Value a = eval_not(p);
+        Value a = eval_not_ov(p);
         float res = (a.num == 0.0f) ? -1.0f : 0.0f;
         if (a.num != 0.0f && a.num != -1.0f) res = (float)(~(int)a.num);
         return make_num(res);
     }
-    return eval_rel(p);
+    return eval_rel_ov(p);
 }
+OVSTUB(0, eval_not);
 
-static Value eval_and(const char** p) {
-    Value a = eval_not(p);
+OV1 static Value eval_and_ov(const char** p) {
+    Value a = eval_not_ov(p);
     while (match_kw(p, "AND")) {
-        Value b = eval_not(p);
+        Value b = eval_not_ov(p);
         bool ta = (a.num != 0.0f), tb = (b.num != 0.0f);
         if ((a.num == -1.0f || a.num == 0.0f) && (b.num == -1.0f || b.num == 0.0f)) {
             a.num = (ta && tb) ? -1.0f : 0.0f;
@@ -812,11 +844,12 @@ static Value eval_and(const char** p) {
     }
     return a;
 }
+OVSTUB(0, eval_and);
 
-static Value eval_or(const char** p) {
-    Value a = eval_and(p);
+OV1 static Value eval_or_ov(const char** p) {
+    Value a = eval_and_ov(p);
     while (match_kw(p, "OR")) {
-        Value b = eval_and(p);
+        Value b = eval_and_ov(p);
         bool ta = (a.num != 0.0f), tb = (b.num != 0.0f);
         if ((a.num == -1.0f || a.num == 0.0f) && (b.num == -1.0f || b.num == 0.0f)) {
             a.num = (ta || tb) ? -1.0f : 0.0f;
@@ -826,10 +859,12 @@ static Value eval_or(const char** p) {
     }
     return a;
 }
+OVSTUB(0, eval_or);
 
-static Value eval_expr(const char** p) {
-    return eval_or(p);
+OV1 static Value eval_expr_ov(const char** p) {
+    return eval_or_ov(p);
 }
+OVSTUB(0, eval_expr);
 
 static void read_line_raw(char* buf, size_t max) {
     size_t len = 0;
@@ -865,7 +900,7 @@ static void read_line_raw(char* buf, size_t max) {
     }
 }
 
-static void exec_print(const char** p) {
+OV3 static void exec_print_ov(const char** p) {
     skip_spaces(p);
     if (**p == '\0' || **p == ':') {
         println("");
@@ -905,8 +940,9 @@ static void exec_print(const char** p) {
     }
     if (!trailing) println("");
 }
+OVSTUB(2, exec_print);
 
-static void exec_let(const char** p) {
+OV3 static void exec_let_ov(const char** p) {
     VarRef ref;
     if (!parse_var_name(p, &ref)) {
         println("?SYNTAX ERROR");
@@ -942,6 +978,7 @@ static void exec_let(const char** p) {
     if (ref.is_str) set_str_var(&ref, v.str, v.len);
     else set_num_var(&ref, v.num);
 }
+OVSTUB(2, exec_let);
 
 static void goto_line(uint16_t target) {
     uint8_t* p = find_line(target);
@@ -956,9 +993,9 @@ static void goto_line(uint16_t target) {
     line_jumped = true;
 }
 
-static void execute_statement(const char** p);
+static void execute_statement_ov(const char** p);
 
-static void exec_if(const char** p) {
+OV4 static void exec_if_ov(const char** p) {
     Value cond = eval_expr(p);
     skip_spaces(p);
     if (!match_kw(p, "THEN") && !match_kw(p, "GOTO")) {
@@ -973,20 +1010,21 @@ static void exec_if(const char** p) {
             uint16_t lnum = (uint16_t)strtoul(*p, (char**)p, 10);
             goto_line(lnum);
         } else {
-            execute_statement(p);
+            execute_statement_ov(p);
         }
     } else {
         while (**p && **p != ':') {
             if (match_kw(p, "ELSE")) {
-                execute_statement(p);
+                execute_statement_ov(p);
                 return;
             }
             (*p)++;
         }
     }
 }
+OVSTUB(3, exec_if);
 
-static void exec_for(const char** p) {
+OV3 static void exec_for_ov(const char** p) {
     VarRef ref;
     if (!parse_var_name(p, &ref) || ref.is_str) {
         println("?SYNTAX ERROR");
@@ -1019,8 +1057,9 @@ static void exec_for(const char** p) {
     for_stack[for_sp].loop_stmt = *p;
     for_sp++;
 }
+OVSTUB(2, exec_for);
 
-static void exec_next(const char** p) {
+OV3 static void exec_next_ov(const char** p) {
     VarRef ref;
     bool has_var = parse_var_name(p, &ref);
     if (for_sp == 0) {
@@ -1053,8 +1092,9 @@ static void exec_next(const char** p) {
         for_sp = (uint8_t)slot;
     }
 }
+OVSTUB(2, exec_next);
 
-static void exec_input(const char** p) {
+OV3 static void exec_input_ov(const char** p) {
     skip_spaces(p);
     if (**p == '"') {
         (*p)++;
@@ -1096,8 +1136,9 @@ static void exec_input(const char** p) {
         else break;
     }
 }
+OVSTUB(2, exec_input);
 
-static void find_next_data(void) {
+OV2 static void find_next_data_ov(void) {
     uint8_t* p = data_line_ptr ? data_line_ptr : prog_buf;
     if (data_line_ptr && data_item_ptr) p += 4 + p[2];
     while (p < prog_buf + PROG_BUF_SIZE - 2) {
@@ -1119,12 +1160,13 @@ static void find_next_data(void) {
     data_line_ptr = nullptr;
     data_item_ptr = nullptr;
 }
+OVSTUB(1, find_next_data);
 
-static void exec_read(const char** p) {
+OV2 static void exec_read_ov(const char** p) {
     while (**p && **p != ':') {
         VarRef ref;
-        if (!parse_var_name(p, &ref)) break;
-        if (!data_item_ptr) find_next_data();
+        if (!parse_var_name_ov(p, &ref)) break;
+        if (!data_item_ptr) find_next_data_ov();
         if (!data_item_ptr) {
             println("?OUT OF DATA");
             runtime_error = true;
@@ -1156,10 +1198,11 @@ static void exec_read(const char** p) {
         else break;
     }
 }
+OVSTUB(1, exec_read);
 
-static void exec_dim(const char** p) {
+OV2 static void exec_dim_ov(const char** p) {
     VarRef ref;
-    if (!parse_var_name(p, &ref)) {
+    if (!parse_var_name_ov(p, &ref)) {
         println("?SYNTAX ERROR");
         runtime_error = true;
         return;
@@ -1190,15 +1233,17 @@ static void exec_dim(const char** p) {
     println("?OUT OF MEMORY");
     runtime_error = true;
 }
+OVSTUB(1, exec_dim);
 
-static void exec_poke(const char** p) {
+OV2 static void exec_poke_ov(const char** p) {
     Value a = eval_expr(p);
     skip_paren(p, ',');
     Value v = eval_expr(p);
     *(volatile uint8_t*)(uint16_t)a.num = (uint8_t)v.num;
 }
+OVSTUB(1, exec_poke);
 
-static void exec_wait(const char** p) {
+OV2 static void exec_wait_ov(const char** p) {
     Value a = eval_expr(p);
     skip_paren(p, ',');
     Value m = eval_expr(p);
@@ -1218,10 +1263,11 @@ static void exec_wait(const char** p) {
         }
     }
 }
+OVSTUB(1, exec_wait);
 
 static void run_program_from(uint8_t* start_line);
 
-static void exec_on(const char** p) {
+OV4 static void exec_on_ov(const char** p) {
     Value v = eval_expr(p);
     int idx = (int)v.num;
     bool is_gosub = match_kw(p, "GOSUB");
@@ -1253,8 +1299,9 @@ static void exec_on(const char** p) {
         else break;
     }
 }
+OVSTUB(3, exec_on);
 
-static void exec_list(const char** p) {
+OV4 static void exec_list_ov(const char** p) {
     skip_spaces(p);
     uint16_t from = 0, to = 0xFFFF;
     if (isdigit((unsigned char)**p)) {
@@ -1279,8 +1326,9 @@ static void exec_list(const char** p) {
         cur += 4 + cur[2];
     }
 }
+OVSTUB(3, exec_list);
 
-static void get_filename(const char** p, char* buf, size_t max) {
+OV4 static void get_filename_ov(const char** p, char* buf, size_t max) {
     skip_spaces(p);
     if (**p == '"') {
         (*p)++;
@@ -1294,10 +1342,11 @@ static void get_filename(const char** p, char* buf, size_t max) {
         buf[i] = '\0';
     }
 }
+OVSTUB(3, get_filename);
 
-static void exec_save(const char** p) {
+OV4 static void exec_save_ov(const char** p) {
     char filename[32];
-    get_filename(p, filename, sizeof(filename));
+    get_filename_ov(p, filename, sizeof(filename));
     if (!filename[0]) {
         println("?MISSING FILENAME");
         return;
@@ -1323,10 +1372,11 @@ static void exec_save(const char** p) {
     sd_close(&fp);
     println("OK");
 }
+OVSTUB(3, exec_save);
 
-static void exec_load(const char** p) {
+OV4 static void exec_load_ov(const char** p) {
     char filename[32];
-    get_filename(p, filename, sizeof(filename));
+    get_filename_ov(p, filename, sizeof(filename));
     if (!filename[0]) {
         println("?MISSING FILENAME");
         return;
@@ -1360,8 +1410,9 @@ static void exec_load(const char** p) {
     sd_close(&fp);
     println("OK");
 }
+OVSTUB(3, exec_load);
 
-static void exec_beep(const char** p) {
+OV4 static void exec_beep_ov(const char** p) {
     uint16_t freq = 0x1CD5;
     uint8_t dur = 20;
     skip_spaces(p);
@@ -1388,24 +1439,27 @@ static void exec_beep(const char** p) {
     }
     sid_write(0x04, 0x40);
 }
+OVSTUB(3, exec_beep);
 
-static void exec_sound(const char** p) {
+OV4 static void exec_sound_ov(const char** p) {
     Value vr = eval_expr(p);
     skip_spaces(p);
     if (**p == ',') (*p)++;
     Value vv = eval_expr(p);
     sid_write((uint8_t)vr.num, (uint8_t)vv.num);
 }
+OVSTUB(3, exec_sound);
 
-static void exec_exit(const char** p) {
+OV4 static void exec_exit_ov(const char** p) {
     (void)p;
     sid_reset();
     println("");
     exit_requested = true;
     program_running = false;
 }
+OVSTUB(3, exec_exit);
 
-static void execute_statement(const char** p) {
+OV4 static void execute_statement_ov(const char** p) {
     skip_spaces(p);
     if (**p == '\0') return;
 
@@ -1415,7 +1469,7 @@ static void execute_statement(const char** p) {
         return;
     }
     if (match_kw(p, "REM")) { *p += strlen(*p); return; }
-    if (match_kw(p, "IF")) { exec_if(p); return; }
+    if (match_kw(p, "IF")) { exec_if_ov(p); return; }
     if (match_kw(p, "ELSE")) { *p += strlen(*p); return; }
     if (match_kw(p, "GOTO")) { goto_line((uint16_t)eval_expr(p).num); return; }
     if (match_kw(p, "GOSUB")) {
@@ -1462,7 +1516,7 @@ static void execute_statement(const char** p) {
     if (match_kw(p, "DIM")) { exec_dim(p); return; }
     if (match_kw(p, "POKE")) { exec_poke(p); return; }
     if (match_kw(p, "WAIT")) { exec_wait(p); return; }
-    if (match_kw(p, "ON")) { exec_on(p); return; }
+    if (match_kw(p, "ON")) { exec_on_ov(p); return; }
     if (match_kw(p, "END")) { program_running = false; return; }
     if (match_kw(p, "STOP")) {
         break_line_num = current_line_num;
@@ -1487,7 +1541,7 @@ static void execute_statement(const char** p) {
     }
     if (match_kw(p, "NEW")) { clear_program(); clear_vars(); return; }
     if (match_kw(p, "CLEAR")) { clear_vars(); return; }
-    if (match_kw(p, "LIST")) { exec_list(p); return; }
+    if (match_kw(p, "LIST")) { exec_list_ov(p); return; }
     if (match_kw(p, "RUN")) {
         clear_vars();
         skip_spaces(p);
@@ -1515,11 +1569,11 @@ static void execute_statement(const char** p) {
         }
         return;
     }
-    if (match_kw(p, "BEEP")) { exec_beep(p); return; }
-    if (match_kw(p, "SOUND")) { exec_sound(p); return; }
-    if (match_kw(p, "SAVE")) { exec_save(p); return; }
-    if (match_kw(p, "LOAD")) { exec_load(p); return; }
-    if (match_kw(p, "EXIT")) { exec_exit(p); return; }
+    if (match_kw(p, "BEEP")) { exec_beep_ov(p); return; }
+    if (match_kw(p, "SOUND")) { exec_sound_ov(p); return; }
+    if (match_kw(p, "SAVE")) { exec_save_ov(p); return; }
+    if (match_kw(p, "LOAD")) { exec_load_ov(p); return; }
+    if (match_kw(p, "EXIT")) { exec_exit_ov(p); return; }
 
     const char* probe = *p;
     VarRef ref;
@@ -1538,6 +1592,7 @@ static void execute_statement(const char** p) {
     println("?SYNTAX ERROR");
     runtime_error = true;
 }
+OVSTUB(3, execute_statement);
 
 static void run_program_from(uint8_t* start_line) {
     program_running = true;
