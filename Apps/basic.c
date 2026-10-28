@@ -4,14 +4,159 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <math.h>
 #include "Libs/app-bios.h"
 
+#define BASIC_PI      3.14159265f
 #define PROG_BUF_SIZE 3072
 #define MAX_ARRAYS    8
 #define GOSUB_DEPTH   16
 #define FOR_DEPTH     16
 #define STR_LEN       32
+
+static inline bool basic_isnan(float f) {
+    return __builtin_isnan(f);
+}
+
+static inline bool basic_isinf(float f) {
+    uint32_t u;
+    memcpy(&u, &f, 4);
+    return (u & 0x7FFFFFFFu) == 0x7F800000u;
+}
+
+static inline float basic_fabs(float x) {
+    return (x < 0.0f) ? -x : x;
+}
+
+static inline float basic_floor(float x) {
+    long n = (long)x;
+    if (x < (float)n) n--;
+    return (float)n;
+}
+
+static float basic_sqrt(float x) {
+    if (x <= 0.0f) return 0.0f;
+    float guess = (x > 1.0f) ? (x * 0.5f) : 1.0f;
+    for (int i = 0; i < 8; i++) {
+        guess = 0.5f * (guess + x / guess);
+    }
+    return guess;
+}
+
+static float basic_sin(float x) {
+    while (x > BASIC_PI) x -= 2.0f * BASIC_PI;
+    while (x < -BASIC_PI) x += 2.0f * BASIC_PI;
+    float x2 = x * x;
+    return x * (1.0f - x2 * (0.16666667f - x2 * (0.00833333f - x2 * 0.00019841f)));
+}
+
+static inline float basic_cos(float x) {
+    return basic_sin(x + (BASIC_PI * 0.5f));
+}
+
+static inline float basic_tan(float x) {
+    float c = basic_cos(x);
+    if (c == 0.0f) return 999999.0f;
+    return basic_sin(x) / c;
+}
+
+static float basic_atan(float x) {
+    if (x > 1.0f) return (BASIC_PI * 0.5f) - basic_atan(1.0f / x);
+    if (x < -1.0f) return -(BASIC_PI * 0.5f) - basic_atan(1.0f / x);
+    float x2 = x * x;
+    return x * (1.0f - x2 * (0.33333333f - x2 * (0.2f - x2 * 0.14285714f)));
+}
+
+static float basic_exp(float x) {
+    if (x < -20.0f) return 0.0f;
+    if (x > 20.0f) return 1e9f;
+    float term = 1.0f;
+    float sum = 1.0f;
+    for (int i = 1; i <= 10; i++) {
+        term *= x / (float)i;
+        sum += term;
+    }
+    return sum;
+}
+
+static float basic_log(float x) {
+    if (x <= 0.0f) return -999999.0f;
+    int k = 0;
+    while (x > 2.0f) { x *= 0.5f; k++; }
+    while (x < 1.0f) { x *= 2.0f; k--; }
+    float z = (x - 1.0f) / (x + 1.0f);
+    float z2 = z * z;
+    float sum = z * (2.0f + 0.66666667f * z2 + 0.4f * z2 * z2);
+    return sum + (float)k * 0.69314718f;
+}
+
+static float basic_pow(float x, float y) {
+    if (y == 0.0f) return 1.0f;
+    if (x == 0.0f) return 0.0f;
+    long iy = (long)y;
+    if ((float)iy == y && iy > 0 && iy < 16) {
+        float r = 1.0f;
+        for (long i = 0; i < iy; i++) r *= x;
+        return r;
+    }
+    if (x < 0.0f) return 0.0f;
+    return basic_exp(y * basic_log(x));
+}
+
+static float basic_strtof(const char* s, const char** endptr) {
+    while (*s == ' ' || *s == '\t') s++;
+    bool neg = false;
+    if (*s == '-') { neg = true; s++; }
+    else if (*s == '+') { s++; }
+    float val = 0.0f;
+    while (*s >= '0' && *s <= '9') {
+        val = val * 10.0f + (float)(*s - '0');
+        s++;
+    }
+    if (*s == '.') {
+        s++;
+        float div = 10.0f;
+        while (*s >= '0' && *s <= '9') {
+            val += (float)(*s - '0') / div;
+            div *= 10.0f;
+            s++;
+        }
+    }
+    if (*s == 'e' || *s == 'E') {
+        s++;
+        bool exp_neg = false;
+        if (*s == '-') { exp_neg = true; s++; }
+        else if (*s == '+') { s++; }
+        int exp = 0;
+        while (*s >= '0' && *s <= '9') {
+            exp = exp * 10 + (*s - '0');
+            s++;
+        }
+        while (exp-- > 0) {
+            val = exp_neg ? (val * 0.1f) : (val * 10.0f);
+        }
+    }
+    if (endptr) *endptr = s;
+    return neg ? -val : val;
+}
+
+static inline float basic_atof(const char* s) {
+    return basic_strtof(s, NULL);
+}
+
+static void uint_to_str(uint16_t n, char* buf, size_t max) {
+    char tmp[6];
+    int i = 0;
+    if (n == 0) tmp[i++] = '0';
+    else {
+        while (n > 0 && i < 5) {
+            tmp[i++] = (char)('0' + (n % 10));
+            n /= 10;
+        }
+    }
+    size_t j = 0;
+    while (i > 0 && j < max - 1) buf[j++] = tmp[--i];
+    buf[j] = '\0';
+}
 
 typedef enum {
     VAL_NUM,
@@ -110,11 +255,11 @@ static void out_str(const char* s) {
 }
 
 static void out_float(float f) {
-    if (isnan(f)) {
+    if (basic_isnan(f)) {
         out_str("NAN");
         return;
     }
-    if (isinf(f)) {
+    if (basic_isinf(f)) {
         if (f < 0.0f) {
             out_char('-');
         }
@@ -151,28 +296,60 @@ static void print_basic_number(float f) {
 }
 
 static void float_to_str(float f, char* buf, size_t max) {
-    if (isnan(f)) {
+    if (max < 2) {
+        if (max > 0) buf[0] = '\0';
+        return;
+    }
+    if (basic_isnan(f)) {
         strncpy(buf, "NAN", max);
         return;
     }
-    if (isinf(f)) {
+    if (basic_isinf(f)) {
         strncpy(buf, (f < 0.0f) ? "-INF" : " INF", max);
         return;
     }
-    long n = (long)f;
-    if ((float)n == f) {
-        if (f >= 0.0f) {
-            snprintf(buf, max, " %ld", n);
-        } else {
-            snprintf(buf, max, "%ld", n);
-        }
+    if (f == 0.0f) {
+        strncpy(buf, " 0", max);
+        return;
+    }
+
+    size_t idx = 0;
+    if (f < 0.0f) {
+        buf[idx++] = '-';
+        f = -f;
     } else {
-        if (f >= 0.0f) {
-            snprintf(buf, max, " %g", (double)f);
-        } else {
-            snprintf(buf, max, "%g", (double)f);
+        buf[idx++] = ' ';
+    }
+
+    long int_part = (long)f;
+    float frac = f - (float)int_part;
+
+    char tmp[12];
+    int tmp_idx = 0;
+    if (int_part == 0) {
+        tmp[tmp_idx++] = '0';
+    } else {
+        long n = int_part;
+        while (n > 0 && tmp_idx < 11) {
+            tmp[tmp_idx++] = (char)('0' + (n % 10));
+            n /= 10;
         }
     }
+    while (tmp_idx > 0 && idx < max - 1) {
+        buf[idx++] = tmp[--tmp_idx];
+    }
+
+    if (frac > 0.00001f && idx < max - 2) {
+        buf[idx++] = '.';
+        for (int i = 0; i < 5 && idx < max - 1; i++) {
+            frac *= 10.0f;
+            int d = (int)frac;
+            buf[idx++] = (char)('0' + d);
+            frac -= (float)d;
+            if (frac < 0.00001f) break;
+        }
+    }
+    buf[idx] = '\0';
 }
 
 static void skip_spaces(const char** p) {
@@ -515,8 +692,8 @@ static Value eval_factor(const char** p) {
     }
 
     if (isdigit((unsigned char)**p) || **p == '.') {
-        char* end_ptr;
-        v.num = strtof(*p, &end_ptr);
+        const char* end_ptr;
+        v.num = basic_strtof(*p, &end_ptr);
         *p = end_ptr;
         return v;
     }
@@ -538,7 +715,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = fabsf(arg.num);
+        v.num = basic_fabs(arg.num);
         return v;
     }
 
@@ -548,7 +725,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = floorf(arg.num);
+        v.num = basic_floor(arg.num);
         return v;
     }
 
@@ -568,7 +745,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = sqrtf(arg.num);
+        v.num = basic_sqrt(arg.num);
         return v;
     }
 
@@ -594,7 +771,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = sinf(arg.num);
+        v.num = basic_sin(arg.num);
         return v;
     }
 
@@ -604,7 +781,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = cosf(arg.num);
+        v.num = basic_cos(arg.num);
         return v;
     }
 
@@ -614,7 +791,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = tanf(arg.num);
+        v.num = basic_tan(arg.num);
         return v;
     }
 
@@ -624,7 +801,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = atanf(arg.num);
+        v.num = basic_atan(arg.num);
         return v;
     }
 
@@ -634,7 +811,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = expf(arg.num);
+        v.num = basic_exp(arg.num);
         return v;
     }
 
@@ -644,7 +821,7 @@ static Value eval_factor(const char** p) {
         Value arg = eval_expr(p);
         skip_spaces(p);
         if (**p == ')') (*p)++;
-        v.num = logf(arg.num);
+        v.num = basic_log(arg.num);
         return v;
     }
 
@@ -677,7 +854,7 @@ static Value eval_factor(const char** p) {
         if (**p == ')') (*p)++;
         const char* s = arg.str;
         while (*s == ' ') s++;
-        v.num = (float)atof(s);
+        v.num = basic_atof(s);
         return v;
     }
 
@@ -857,7 +1034,7 @@ static Value eval_power(const char** p) {
     while (**p == '^') {
         (*p)++;
         Value b = eval_unary(p);
-        a.num = powf(a.num, b.num);
+        a.num = basic_pow(a.num, b.num);
         skip_spaces(p);
     }
     return a;
@@ -1318,7 +1495,7 @@ static void exec_input(const char** p) {
             val_str[idx] = '\0';
             set_str_var(&ref, val_str);
         } else {
-            float f = (float)atof(in_p);
+            float f = basic_atof(in_p);
             set_num_var(&ref, f);
             while (*in_p && *in_p != ',') in_p++;
         }
@@ -1395,7 +1572,7 @@ static void exec_read(const char** p) {
             val_str[idx] = '\0';
             set_str_var(&ref, val_str);
         } else {
-            float f = (float)atof(data_item_ptr);
+            float f = basic_atof(data_item_ptr);
             set_num_var(&ref, f);
             while (*data_item_ptr && *data_item_ptr != ',' && *data_item_ptr != ':') {
                 data_item_ptr++;
@@ -1640,8 +1817,9 @@ static void exec_save(const char** p) {
         uint16_t lnum = (uint16_t)(cur[0] | (cur[1] << 8));
         if (lnum == 0xFFFF) break;
         uint8_t len = cur[2];
-        snprintf(num_buf, sizeof(num_buf), "%u ", lnum);
+        uint_to_str(lnum, num_buf, sizeof(num_buf));
         sd_write(&fp, num_buf, (uint16_t)strlen(num_buf));
+        sd_write(&fp, " ", 1);
         sd_write(&fp, cur + 3, len);
         sd_write(&fp, "\r\n", 2);
         cur += 4 + len;
@@ -1905,14 +2083,11 @@ static void execute_statement(const char** p) {
             }
         } else {
             char num_buf[16];
-            long n = (long)v.num;
-            if ((float)n == v.num) {
-                snprintf(num_buf, sizeof(num_buf), "%ld", n);
-            } else {
-                snprintf(num_buf, sizeof(num_buf), "%g", (double)v.num);
-            }
+            float_to_str(v.num, num_buf, sizeof(num_buf));
             for (const char* s = num_buf; *s; s++) {
-                lcd_print_char(*s);
+                if (*s != ' ') {
+                    lcd_print_char(*s);
+                }
             }
         }
         return;
