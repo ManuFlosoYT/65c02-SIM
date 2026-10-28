@@ -9,7 +9,7 @@ public:
     static std::string StripComments(const std::string& source);
     static CompilerFrontend::HardwareRequirements DetectHardwareRequirements(const std::string& code);
     static std::string GenerateLinkerScript(const std::string& code);
-    static std::string GenerateAppLinkerScript();
+    static std::string GenerateAppLinkerScript(bool hasGpu = false);
 };
 
 #endif

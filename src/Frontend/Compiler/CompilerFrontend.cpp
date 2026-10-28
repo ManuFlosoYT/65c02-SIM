@@ -88,7 +88,9 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
 
     std::string linkScript = tempDir + "/link.ld";
     if (type == BuildType::MicroDOS) {
-        WriteTextFile(linkScript, LinkerScriptGenerator::GenerateAppLinkerScript());
+        std::string cleanCode = LinkerScriptGenerator::StripComments(code);
+        bool hasGpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos;
+        WriteTextFile(linkScript, LinkerScriptGenerator::GenerateAppLinkerScript(hasGpu));
     } else {
         WriteTextFile(linkScript, LinkerScriptGenerator::GenerateLinkerScript(code));
     }
@@ -109,7 +111,7 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
 
         std::ostringstream cmdStream;
         if (type == BuildType::MicroDOS) {
-            cmdStream << "\"" << compiler << "\" -mcpu=mosw65c02 " << opt << " -g -std=c23 -T \"" << linkScript
+            cmdStream << "\"" << compiler << "\" -mcpu=mosw65c02 " << opt << " -g -std=c23 -D MICRODOS=1 -T \"" << linkScript
                       << "\" -I \"" << tempDir << "/include\" -I \"" << tempDir
                       << "/include/Libs\" -linit-stack -lcopy-data -lzero-bss \"" << tempDir
                       << "/Linker/App-Runtime.s\" \"" << srcFile << "\" \"-Wl,-Map=" << mapFile << "\" -o \"" << elfFile << "\"";

@@ -180,7 +180,7 @@ std::string LinkerScriptGenerator::GenerateLinkerScript(const std::string& code)
     return ld.str();
 }
 
-std::string LinkerScriptGenerator::GenerateAppLinkerScript() {
+std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
     std::ostringstream ld;
     ld << "/* Auto-generated link.ld for microDOS apps with LLVM-MOS */\n\n";
     ld << "__rc0 = 0x00;\n";
@@ -189,8 +189,13 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript() {
     ld << "ASSERT(__rc31 <= 0x5F, \"Registros virtuales exceden Zero Page de app.\")\n\n";
     ld << "MEMORY {\n";
     ld << "    zp   (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x60 - (__rc31 + 1)\n";
-    ld << "    core (rx) : ORIGIN = 0x0200,   LENGTH = 0x4600\n";
-    ld << "    bss  (rw) : ORIGIN = 0x6010,  LENGTH = 0x1BF0\n";
+    if (hasGpu) {
+        ld << "    core (rx) : ORIGIN = 0x0200, LENGTH = 0x3E00\n";
+        ld << "    bss  (rw) : ORIGIN = 0x4000, LENGTH = 0x1000\n";
+    } else {
+        ld << "    core (rx) : ORIGIN = 0x0200, LENGTH = 0x5600\n";
+        ld << "    bss  (rw) : ORIGIN = 0x5800, LENGTH = 0x1800\n";
+    }
     ld << "}\n\n";
     ld << "REGION_ALIAS(\"c_readonly\", core)\n";
     ld << "REGION_ALIAS(\"c_writeable\", bss)\n";
@@ -208,7 +213,7 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript() {
     ld << "    PROVIDE(__CORE_SIZE__ = LOADADDR(.data) + SIZEOF(.data) - 0x0200);\n";
     ld << "    PROVIDE(_CORE_SIZE__ = __CORE_SIZE__);\n";
     ld << "}\n\n";
-    ld << "__stack = 0x7BFF;\n\n";
+    ld << "__stack = 0x" << (hasGpu ? "4FFF" : "6FFF") << ";\n\n";
     ld << "/* OS ABI Jump Table Symbols */\n";
 
     struct SymbolDef {
