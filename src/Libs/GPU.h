@@ -5,8 +5,13 @@
 #include <string.h>
 
 enum GpuConstants {
+#if defined(MICRODOS) || defined(__MICRODOS__)
+    GPU_VRAM_START = 0x5FC0U,
+    GPU_VRAM_END   = 0x7FBFU,
+#else
     GPU_VRAM_START = 0x2000U,
     GPU_VRAM_END   = 0x3FFFU,
+#endif
     GPU_WIDTH      = 100,
     GPU_STRIDE     = 128,
     GPU_HEIGHT     = 64,
