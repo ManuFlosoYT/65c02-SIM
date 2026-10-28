@@ -5,16 +5,15 @@ generate_app_link_ld.py — Linker script generator for microDOS .app binaries (
 import sys
 import argparse
 
-APP_BASE    = 0x0200
-APP_END     = 0x47FF
-BSS_START   = 0x6010
-BSS_END     = 0x7BFF
 ZP_APP_BASE = 0x00
 ZP_APP_END  = 0x5F
 
 JUMPTABLE = 0xFF90
 
-def generate_app_link_ld():
+def generate_app_link_ld(has_gpu=False):
+    app_base = 0x0200
+    app_end = 0x53FF
+
     ld = []
     ld.append("/* Auto-generated link.ld for microDOS apps with LLVM-MOS */")
     ld.append("")
@@ -25,12 +24,13 @@ def generate_app_link_ld():
     ld.append("")
     ld.append("MEMORY {")
     ld.append(f"    zp   (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x{ZP_APP_END + 1:02X} - (__rc31 + 1)")
-    ld.append(f"    core (rx) : ORIGIN = 0x{APP_BASE:04X},   LENGTH = 0x{APP_END - APP_BASE + 1:04X}")
-    ld.append(f"    bss  (rw) : ORIGIN = 0x{BSS_START:04X},  LENGTH = 0x{BSS_END - BSS_START + 1:04X}")
+    ld.append(f"    ram  (rw) : ORIGIN = 0x{app_base:04X},   LENGTH = 0x{app_end - app_base + 1:04X}")
+    if not has_gpu:
+        ld.append("    extra_ram (rw) : ORIGIN = 0x5FC0,   LENGTH = 0x2000")
     ld.append("}")
     ld.append("")
-    ld.append("REGION_ALIAS(\"c_readonly\", core)")
-    ld.append("REGION_ALIAS(\"c_writeable\", bss)")
+    ld.append("REGION_ALIAS(\"c_readonly\", ram)")
+    ld.append("REGION_ALIAS(\"c_writeable\", ram)")
     ld.append("EXTERN(__do_init_stack)")
     ld.append("EXTERN(__do_copy_data)")
     ld.append("EXTERN(__do_copy_zp_data)")
@@ -38,17 +38,26 @@ def generate_app_link_ld():
     ld.append("EXTERN(__do_zero_zp_bss)")
     ld.append("")
     ld.append("SECTIONS {")
-    ld.append(f"    .header 0x{APP_BASE:04X} : {{")
+    ld.append(f"    .header 0x{app_base:04X} : {{")
     ld.append("        KEEP(*(SORT_BY_NAME(.header*)))")
     ld.append("        KEEP(*(.header))")
-    ld.append("    } > core")
+    ld.append("    } > ram")
     ld.append("")
     ld.append("    INCLUDE c.ld")
-    ld.append(f"    PROVIDE(__CORE_SIZE__ = LOADADDR(.data) + SIZEOF(.data) - 0x{APP_BASE:04X});")
+    ld.append(f"    PROVIDE(__CORE_SIZE__ = LOADADDR(.data) + SIZEOF(.data) - 0x{app_base:04X});")
     ld.append("    PROVIDE(_CORE_SIZE__ = __CORE_SIZE__);")
+    if not has_gpu:
+        ld.append("    .extra_ram (NOLOAD) : {")
+        ld.append("        KEEP(*(SORT_BY_NAME(.extra_ram*)))")
+        ld.append("        *(.extra_ram)")
+        ld.append("    } > extra_ram")
+        ld.append("")
+        ld.append("    PROVIDE(__extra_ram_start = 0x5FC0);")
+        ld.append("    PROVIDE(__extra_ram_end = 0x7FBF);")
+        ld.append("    PROVIDE(__extra_ram_size = 0x2000);")
     ld.append("}")
     ld.append("")
-    ld.append(f"__stack = 0x{BSS_END:04X};")
+    ld.append(f"__stack = 0x{app_end:04X};")
     ld.append("")
     ld.append("/* OS ABI Jump Table Symbols */")
     
@@ -95,7 +104,7 @@ def generate_app_link_ld():
         
     ld.append("")
     ld.append("OUTPUT_FORMAT {")
-    ld.append("    TRIM(core)")
+    ld.append("    TRIM(ram)")
     ld.append("}")
     ld.append("")
     
@@ -103,6 +112,7 @@ def generate_app_link_ld():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate linker script for microDOS apps with LLVM-MOS.")
+    parser.add_argument('--gpu', action='store_true', help='Reserve GPU VRAM for app')
     args = parser.parse_args()
-    print(generate_app_link_ld())
+    print(generate_app_link_ld(args.gpu))
 

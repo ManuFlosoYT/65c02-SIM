@@ -12,10 +12,6 @@ import sys
 import argparse
 
 # Fixed layout for apps
-APP_BASE    = 0x0200  # Where the app loader puts the binary (Resident Core)
-APP_END     = 0x47FF  # Max code+rodata end for the resident core (17.5KB)
-BSS_START   = 0x6010  # BSS / static data starts here (safe RAM_5 area)
-BSS_END     = 0x7BFF  # Large BSS (6.9KB)
 ZP_APP_BASE = 0x00    # MISMO ZP que microDOS para compartir el 'sp' de CC65
 ZP_APP_END  = 0x5F    # 96 bytes for app virtual registers
 
@@ -26,28 +22,33 @@ PAGE_WINDOW_END  = 0x47FF
 # Fixed addresses of the BIOS jump table entries (matches bios.s JUMPTABLE)
 JUMPTABLE = 0xFF90
 
-def generate_cfg(flags):
+def generate_cfg(flags=None, has_gpu=False):
+    if flags is None:
+        flags = []
+    app_base = 0x0200
+    app_end = 0x53FF
+    stack_start = 0x53FF
+
     cfg = []
     cfg.append("MEMORY {")
     cfg.append(f"    ZP:     start = ${ZP_APP_BASE:02X}, size = ${ZP_APP_END - ZP_APP_BASE + 1:02X}, type = rw, file = \"\";")
     cfg.append("")
-    cfg.append(f"    CORE:   start = ${APP_BASE:04X}, size = ${APP_END - APP_BASE + 1:04X}, type = rw, file = %O;")
-    cfg.append(f"    BSS:    start = ${BSS_START:04X}, size = ${BSS_END - BSS_START + 1:04X}, type = rw, file = \"\";")
+    cfg.append(f"    CORE:   start = ${app_base:04X}, size = ${app_end - app_base + 1:04X}, type = rw, file = %O;")
     cfg.append("}")
     cfg.append("")
     cfg.append("SEGMENTS {")
     cfg.append("    ZEROPAGE: load = ZP,  type = zp;")
     cfg.append("")
-    cfg.append("    # App code and read-only data, loaded at $1000")
+    cfg.append(f"    # App code and read-only data, loaded at ${app_base:04X}")
     cfg.append("    HEADER:   load = CORE, type = ro;")
     cfg.append("    CODE:     load = CORE, type = ro;")
     cfg.append("    RODATA:   load = CORE, type = ro;")
     cfg.append("")
-    cfg.append("    # Initialized data (copied from CORE image to BSS area at startup)")
-    cfg.append("    DATA:     load = CORE, run = BSS, type = rw, define = yes;")
+    cfg.append("    # Initialized data")
+    cfg.append("    DATA:     load = CORE, type = rw, define = yes;")
     cfg.append("")
     cfg.append("    # Uninitialized data")
-    cfg.append("    BSS:      load = BSS, type = bss, define = yes;")
+    cfg.append("    BSS:      load = CORE, type = bss, define = yes;")
     cfg.append("")
     cfg.append("    # C constructors / init")
     cfg.append("    STARTUP:  load = CORE, type = ro, optional = yes;")
@@ -60,10 +61,8 @@ def generate_cfg(flags):
     cfg.append("}")
     cfg.append("")
     cfg.append("SYMBOLS {")
-    stack_start = 0x7BFF
-    
     cfg.append(f"    __STACKSTART__: type = weak, value = ${stack_start:04X};")
-    cfg.append(f"    __CORE_SIZE__:  type = weak, value = __ONCE_LOAD__ + __ONCE_SIZE__ - ${APP_BASE:04X};")
+    cfg.append(f"    __CORE_SIZE__:  type = weak, value = __ONCE_LOAD__ + __ONCE_SIZE__ - ${app_base:04X};")
     cfg.append("")
     cfg.append("    # OS ABI: resolve calls directly to jump table entries in ROM")
 
@@ -106,5 +105,9 @@ def generate_cfg(flags):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate linker config for microDOS .app binaries.")
+    parser.add_argument('--gpu', action='store_true', help='Reserve GPU VRAM for app')
     args = parser.parse_args()
-    print(generate_cfg([]))
+    flags = []
+    if args.gpu:
+        flags.append('--gpu')
+    print(generate_cfg(flags, has_gpu=args.gpu))

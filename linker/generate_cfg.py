@@ -6,27 +6,29 @@ def generate_cfg(flags):
     ram_start = 0x0400
     ram_end = 0x8000
     
-    # Base reservations
-    reserved_blocks = [
-        (0x5000, 0x5003, "ACIA"),
-        (0x6000, 0x600F, "VIA")
-    ]
-    
-    if '--sid' in flags:
-        reserved_blocks.append((0x4800, 0x481F, "SID"))
-
     if '--microDOS' in flags:
-        reserved_blocks.append((0x0200, 0x47FF, "App Load Area (Reserved)"))
-        reserved_blocks.append((0x6010, 0x7BFF, "App RAM / BSS (Reserved)"))
+        reserved_blocks = [
+            (0x0200, 0x53FF, "App Area (Reserved)"),
+            (0x5FC0, 0x7FFF, "Hardware (microDOS-GPU + MMIO)")
+        ]
+    else:
+        # Base reservations
+        reserved_blocks = [
+            (0x5000, 0x5003, "ACIA"),
+            (0x6000, 0x600F, "VIA")
+        ]
         
-    if '--gpu' in flags or '--double-buffer' in flags:
-        reserved_blocks.append((0x2000, 0x3FFF, "GPU VRAM Front Buffer"))
-        
-    if '--double-buffer' in flags:
-        reserved_blocks.append((0x6010, 0x790F, "GPU VRAM Back Buffer"))
-        
-    if '--net' in flags:
-        reserved_blocks.append((0x5004, 0x5007, "ESP8266"))
+        if '--sid' in flags:
+            reserved_blocks.append((0x4800, 0x481F, "SID"))
+            
+        if '--gpu' in flags or '--double-buffer' in flags:
+            reserved_blocks.append((0x2000, 0x3FFF, "GPU VRAM Front Buffer"))
+            
+        if '--double-buffer' in flags:
+            reserved_blocks.append((0x6010, 0x790F, "GPU VRAM Back Buffer"))
+            
+        if '--net' in flags:
+            reserved_blocks.append((0x5004, 0x5007, "ESP8266"))
         
     # Sort blocks
     reserved_blocks.sort()
@@ -145,7 +147,7 @@ def generate_cfg(flags):
     cfg.append("SYMBOLS {")
     
     # Calculate C stack start (end of the last RAM block)
-    stack_start = ram_blocks[-1][1]
+    stack_start = 0x5FBF if '--microDOS' in flags else ram_blocks[-1][1]
     
     cfg.append(f"    # C stack definition")
     cfg.append(f"    __STACKSTART__: type = weak, value = ${stack_start:04X};")
