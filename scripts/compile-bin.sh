@@ -48,7 +48,16 @@ compile_with_opt_fallback() {
             echo "  [LLVM-MOS] Compiling with $opt $gflag..."
             local err_log
             err_log=$(mktemp)
-            if "$MOS_CLANG" -mcpu=mosw65c02 $opt $gflag -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
+
+            local opt_flags=()
+            if [ "$opt" == "-Oz" ]; then
+                opt_flags=(
+                    "-fno-inline-functions"
+                    "-Wl,-mllvm,-inline-threshold=0"
+                )
+            fi
+
+            if "$MOS_CLANG" -mcpu=mosw65c02 $opt $gflag -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 "${opt_flags[@]}" -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
                 cat "$err_log"
                 rm -f "$err_log"
                 echo "  [LLVM-MOS] Successfully compiled with $opt $gflag."
@@ -87,7 +96,7 @@ list_programs() {
 }
 
 if [ -z "$1" ]; then
-    echo "Usage: $0 <program_name> [--microDOS]"
+    echo "Usage: $0 <program_name> [--microDOS] [--unity|--no-unity] [-multithread]"
     list_programs
     exit 1
 fi
@@ -95,9 +104,15 @@ fi
 NAME=$1
 
 MULTITHREAD=false
+UNITY=false
+NO_UNITY=false
 for arg in "$@"; do
     if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
         MULTITHREAD=true
+    elif [ "$arg" == "-unity" ] || [ "$arg" == "--unity" ]; then
+        UNITY=true
+    elif [ "$arg" == "-no-unity" ] || [ "$arg" == "--no-unity" ]; then
+        NO_UNITY=true
     fi
 done
 
@@ -324,12 +339,36 @@ elif [ "$NAME" == "microDOS" ]; then
         sdk/src/Libs/fatfs/diskio.c
     )
 
+    USE_UNITY=false
+    if [ "$NO_UNITY" != true ]; then
+        USE_UNITY=true
+    fi
+
+    COMPILE_SRCS=()
+    if [ "$USE_UNITY" = true ]; then
+        echo "  [Unity Build] Consolidating C sources into sdk/src/build/microDOS_unity.c..."
+        UNITY_C="sdk/src/build/microDOS_unity.c"
+        rm -f "$UNITY_C"
+        echo "/* Auto-generated Unity Build for microDOS */" > "$UNITY_C"
+
+        for s in "${MICRODOS_SRCS[@]}"; do
+            if [[ "$s" == *.c ]]; then
+                echo "#include \"$PWD/$s\"" >> "$UNITY_C"
+            else
+                COMPILE_SRCS+=("$s")
+            fi
+        done
+        COMPILE_SRCS+=("$UNITY_C")
+    else
+        COMPILE_SRCS=("${MICRODOS_SRCS[@]}")
+    fi
+
     compile_with_opt_fallback "sdk/src/build/microDOS.bin" "$LINKER_LD" \
         -std=c23 \
         -D MICRODOS=1 \
         -mlto-zp=200 \
-        -I "sdk/src" -I "sdk/microdos" -I "sdk/microdos/src" -D ENABLE_SD_SUPPORT=1 \
-        "${MICRODOS_SRCS[@]}"
+        -I "sdk/src" -I "sdk/microdos" -I "sdk/microdos/src" -I . -D ENABLE_SD_SUPPORT=1 \
+        "${COMPILE_SRCS[@]}"
 
     mkdir -p output/rom
     cp "sdk/src/build/microDOS.bin" "output/rom/microDOS.bin"
@@ -372,8 +411,31 @@ elif [ -f "sdk/src/$NAME.c" ]; then
         EXTRA_FLAGS+=("-D" "ENABLE_SD_SUPPORT=1")
     fi
 
+    COMPILE_SRCS=()
+    if [ "$UNITY" = true ]; then
+        echo "  [Unity Build] Consolidating C sources for $NAME..."
+        UNITY_C="sdk/src/build/${NAME}_unity.c"
+        rm -f "$UNITY_C"
+        echo "/* Auto-generated Unity Build */" > "$UNITY_C"
+
+        ALL_C=("sdk/src/$NAME.c")
+        for s in "${EXTRA_SRCS[@]}"; do
+            if [[ "$s" == *.c ]]; then
+                ALL_C+=("$s")
+            else
+                COMPILE_SRCS+=("$s")
+            fi
+        done
+        for c_file in "${ALL_C[@]}"; do
+            echo "#include \"$PWD/$c_file\"" >> "$UNITY_C"
+        done
+        COMPILE_SRCS+=("$UNITY_C")
+    else
+        COMPILE_SRCS=("sdk/src/$NAME.c" "${EXTRA_SRCS[@]}")
+    fi
+
     compile_with_opt_fallback "sdk/src/build/$NAME.bin" "$LINKER_LD" \
-        "${EXTRA_FLAGS[@]}" "sdk/src/$NAME.c" "${EXTRA_SRCS[@]}"
+        "${EXTRA_FLAGS[@]}" "${COMPILE_SRCS[@]}"
 
     mkdir -p output/rom
     cp "sdk/src/build/$NAME.bin" "output/rom/$NAME.bin"
