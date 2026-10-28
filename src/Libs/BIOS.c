@@ -102,7 +102,11 @@ void delay(uint16_t ms) {
 #ifdef ENABLE_SD_SUPPORT
 
 enum SwapConfig {
+#if defined(MICRODOS) || defined(__MICRODOS__)
+    SWAP_WINDOW_ADDR = 0x5FC0U,
+#else
     SWAP_WINDOW_ADDR = 0x2800U,
+#endif
     SWAP_WINDOW_SIZE = 0x2000U,
     MAX_SWAP_BLOCKS  = 16U,
 };
@@ -180,12 +184,15 @@ static bool is_safe_memory(uintptr_t start, uint16_t size) {
         return false;
     }
     uintptr_t end = start + size - 1U;
-    if (start >= 0x2800U && end <= 0x47FFU) {
+#if defined(MICRODOS) || defined(__MICRODOS__)
+    if (start >= 0x0200U && end <= 0x5FBFU) {
         return true;
     }
-    if (start >= 0x6010U && end <= 0x7BFFU) {
+#else
+    if (start >= 0x0200U && end <= 0x6FFFU) {
         return true;
     }
+#endif
     return false;
 }
 
