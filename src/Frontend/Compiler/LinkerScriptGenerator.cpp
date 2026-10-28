@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <format>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
 #include <vector>
 
 std::string LinkerScriptGenerator::StripComments(const std::string& source) {
@@ -180,50 +182,124 @@ std::string LinkerScriptGenerator::GenerateLinkerScript(const std::string& code)
     return ld.str();
 }
 
-std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
-    std::ostringstream ld;
-    ld << "/* Auto-generated link.ld for microDOS apps with LLVM-MOS */\n\n";
-    ld << "__rc0 = 0x00;\n";
-    ld << "INCLUDE imag-regs.ld\n";
-    ld << "ASSERT(__rc0 == 0x00, \"Error en mapeo de Zero Page.\")\n";
-    ld << "ASSERT(__rc31 <= 0x5F, \"Registros virtuales exceden Zero Page de app.\")\n\n";
-    ld << "MEMORY {\n";
-    ld << "    zp   (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x60 - (__rc31 + 1)\n";
-    ld << "    ram  (rw) : ORIGIN = 0x0200,   LENGTH = 0x5200\n";
-    if (!hasGpu) {
-        ld << "    extra_ram (rw) : ORIGIN = 0x5FC0,   LENGTH = 0x2000\n";
+size_t LinkerScriptGenerator::DetectOverlayCount(std::string_view code) {
+    auto pos = code.find("--overlays");
+    if (pos != std::string_view::npos) {
+        pos += 10;
+        while (pos < code.size() && (code[pos] == ' ' || code[pos] == '=')) {
+            ++pos;
+        }
+        size_t count = 0;
+        while (pos < code.size() && code[pos] >= '0' && code[pos] <= '9') {
+            count = count * 10 + static_cast<size_t>(code[pos] - '0');
+            ++pos;
+        }
+        if (count > 0) {
+            return count;
+        }
     }
-    ld << "}\n\n";
-    ld << "REGION_ALIAS(\"c_readonly\", ram)\n";
-    ld << "REGION_ALIAS(\"c_writeable\", ram)\n";
-    ld << "EXTERN(__do_init_stack)\n";
-    ld << "EXTERN(__do_copy_data)\n";
-    ld << "EXTERN(__do_copy_zp_data)\n";
-    ld << "EXTERN(__do_zero_bss)\n";
-    ld << "EXTERN(__do_zero_zp_bss)\n\n";
-    ld << "SECTIONS {\n";
-    ld << "    .header 0x0200 : {\n";
-    ld << "        KEEP(*(SORT_BY_NAME(.header*)))\n";
-    ld << "        KEEP(*(.header))\n";
-    ld << "    } > ram\n\n";
-    ld << "    INCLUDE c.ld\n";
-    ld << "    PROVIDE(__CORE_SIZE__ = LOADADDR(.data) + SIZEOF(.data) - 0x0200);\n";
-    ld << "    PROVIDE(_CORE_SIZE__ = __CORE_SIZE__);\n";
-    if (!hasGpu) {
-        ld << "    .extra_ram (NOLOAD) : {\n";
-        ld << "        KEEP(*(SORT_BY_NAME(.extra_ram*)))\n";
-        ld << "        *(.extra_ram)\n";
-        ld << "    } > extra_ram\n\n";
-        ld << "    PROVIDE(__extra_ram_start = 0x5FC0);\n";
-        ld << "    PROVIDE(__extra_ram_end = 0x7FBF);\n";
-        ld << "    PROVIDE(__extra_ram_size = 0x2000);\n";
+
+    for (size_t i = 16; i >= 1; --i) {
+        std::string pattern1 = std::format(".overlay_{}", i);
+        std::string pattern2 = std::format(".overlay{}", i);
+        if (code.find(pattern1) != std::string_view::npos || code.find(pattern2) != std::string_view::npos) {
+            return i;
+        }
     }
-    ld << "}\n\n";
-    ld << "__stack = 0x53FF;\n\n";
-    ld << "/* OS ABI Jump Table Symbols */\n";
+    return 0;
+}
+
+std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu, size_t numOverlays) {
+    return GenerateAppLinkerScript(AppLinkerOptions{.hasGpu = hasGpu, .numOverlays = numOverlays});
+}
+
+std::string LinkerScriptGenerator::GenerateAppLinkerScript(const AppLinkerOptions& options) {
+    std::string ld;
+    ld.reserve(4096);
+
+    ld += "/* Auto-generated link.ld for microDOS apps with LLVM-MOS */\n\n";
+    ld += "__rc0 = 0x00;\n";
+    ld += "INCLUDE imag-regs.ld\n";
+    ld += "ASSERT(__rc0 == 0x00, \"Error en mapeo de Zero Page.\")\n";
+    ld += "ASSERT(__rc31 <= 0x5F, \"Registros virtuales exceden Zero Page de app.\")\n\n";
+
+    ld += "MEMORY {\n";
+    ld += "    zp   (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x60 - (__rc31 + 1)\n";
+
+    const std::string_view mainRegion = (options.numOverlays > 0) ? "core_ram" : "ram";
+    if (options.numOverlays > 0) {
+        ld += "    core_ram  (rw) : ORIGIN = 0x0200,   LENGTH = 0x2600\n";
+        for (size_t i = 1; i <= options.numOverlays; ++i) {
+            uint32_t bankOrigin = (static_cast<uint32_t>(i) << 16) | 0x2800;
+            ld += std::format("    overlay_{} (rx) : ORIGIN = 0x{:06X}, LENGTH = 0x2000\n", i, bankOrigin);
+        }
+    } else {
+        ld += "    ram  (rw) : ORIGIN = 0x0200,   LENGTH = 0x5200\n";
+    }
+
+    if (!options.hasGpu) {
+        ld += "    extra_ram (rw) : ORIGIN = 0x5FC0,   LENGTH = 0x2000\n";
+    }
+    ld += "}\n\n";
+
+    ld += std::format("REGION_ALIAS(\"c_readonly\", {})\n", mainRegion);
+    if (!options.hasGpu) {
+        ld += "REGION_ALIAS(\"c_writeable\", extra_ram)\n";
+    } else {
+        ld += std::format("REGION_ALIAS(\"c_writeable\", {})\n", mainRegion);
+    }
+
+    ld += "EXTERN(__do_init_stack)\n";
+    ld += "EXTERN(__do_copy_data)\n";
+    ld += "EXTERN(__do_copy_zp_data)\n";
+    ld += "EXTERN(__do_zero_bss)\n";
+    ld += "EXTERN(__do_zero_zp_bss)\n\n";
+
+    ld += "SECTIONS {\n";
+    ld += std::format("    .header 0x0200 : {{\n"
+                      "        KEEP(*(SORT_BY_NAME(.header*)))\n"
+                      "        KEEP(*(.header))\n"
+                      "    }} > {}\n\n", mainRegion);
+
+    ld += "    INCLUDE c.ld\n";
+    ld += "    PROVIDE(__CORE_SIZE__ = LOADADDR(.data) + SIZEOF(.data) - 0x0200);\n";
+    ld += "    PROVIDE(_CORE_SIZE__ = __CORE_SIZE__);\n\n";
+
+    if (options.numOverlays > 0) {
+        for (size_t i = 1; i <= options.numOverlays; ++i) {
+            uint32_t bankAddr = (static_cast<uint32_t>(i) << 16) | 0x2800;
+            ld += std::format(
+                "    .overlay_{0} 0x{1:06X} : {{\n"
+                "        KEEP(*(SORT_BY_NAME(.overlay_{0}*)))\n"
+                "        *(.overlay_{0} .overlay_{0}.*)\n"
+                "        KEEP(*(SORT_BY_NAME(.overlay{0}*)))\n"
+                "        *(.overlay{0} .overlay{0}.*)\n"
+                "    }} > overlay_{0}\n\n",
+                i, bankAddr);
+        }
+    }
+
+    if (!options.hasGpu) {
+        ld += "    .extra_ram (NOLOAD) : {\n";
+        ld += "        KEEP(*(SORT_BY_NAME(.extra_ram*)))\n";
+        ld += "        *(.extra_ram)\n";
+        ld += "    } > extra_ram\n\n";
+        ld += "    PROVIDE(__extra_ram_start = 0x5FC0);\n";
+        ld += "    PROVIDE(__extra_ram_end = 0x7FBF);\n";
+        ld += "    PROVIDE(__extra_ram_size = 0x2000);\n";
+        ld += "    PROVIDE(__app_heap_start = DEFINED(__heap_start) ? __heap_start : 0x5FC0);\n";
+        ld += "    PROVIDE(_app_heap_start = __app_heap_start);\n";
+    } else {
+        ld += "    PROVIDE(__app_heap_start = DEFINED(__heap_start) ? __heap_start : 0x0200);\n";
+        ld += "    PROVIDE(_app_heap_start = __app_heap_start);\n";
+    }
+    ld += "}\n\n";
+
+    ld += "__stack = 0x53FF;\n\n";
+    ld += "/* OS ABI Jump Table Symbols */\n";
 
     struct SymbolDef {
-        const char* name;
+        std::string_view name;
         uint16_t offset;
     };
     static constexpr std::array<SymbolDef, 33> symbols = {{
@@ -263,18 +339,21 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
     }};
 
     constexpr uint16_t jumptable = 0xFF90;
-    for (const auto& sym : symbols) {
-        uint16_t addr = jumptable + sym.offset;
-        ld << "PROVIDE(" << sym.name << " = 0x" << std::hex << std::uppercase << std::setw(4) << std::setfill('0')
-           << addr << ");\n";
-        ld << "PROVIDE(_" << sym.name << " = 0x" << std::hex << std::uppercase << std::setw(4) << std::setfill('0')
-           << addr << ");\n";
+    for (const auto& [name, offset] : symbols) {
+        uint16_t addr = jumptable + offset;
+        ld += std::format("PROVIDE({0} = 0x{1:04X});\nPROVIDE(_{0} = 0x{1:04X});\n", name, addr);
     }
 
-    ld << "\nOUTPUT_FORMAT {\n";
-    ld << "    TRIM(ram)\n";
-    ld << "}\n";
-    return ld.str();
+    ld += "\nOUTPUT_FORMAT {\n";
+    ld += std::format("    TRIM({})\n", mainRegion);
+    if (options.numOverlays > 0) {
+        for (size_t i = 1; i <= options.numOverlays; ++i) {
+            ld += std::format("    FULL(overlay_{})\n", i);
+        }
+    }
+    ld += "}\n";
+
+    return ld;
 }
 
 #endif
