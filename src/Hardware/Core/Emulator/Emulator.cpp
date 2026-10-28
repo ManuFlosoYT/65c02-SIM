@@ -15,7 +15,7 @@ using namespace Hardware;
 namespace Core {
 
 Emulator::Emulator() : cpu(), scriptEngine(*this), engine(*this), savestateManager(*this) {
-    components = {&bus, &cpu, &ram, &rom, &via, &sid, &acia, &sdcard, &esp8266, &lcd, &gpu, &consoleSerializable};
+    components = {&bus, &cpu, &ram, &rom, &via, &sid, &acia, &sdcard, &esp8266, &lcd, &gpu, &microDosGpu, &consoleSerializable};
     esp8266.SetRxByteCallback([this](Byte b) {
         if (serialBridge.IsACIAESPBridge()) {
             esp8266.RecordTraffic(TrafficDirection::RX, TrafficChannel::ATResponse, -1, "ESP8266 -> ACIA",
@@ -116,14 +116,14 @@ int Emulator::Step() {
     bool hooks = bus.HasActiveHooks() || breakpointManager.HasAnyBreakpointsFast() ||
                  logicAnalyzerEnabled.load(std::memory_order_relaxed);
 
-    if (!gpuEnabled || rasterBeamSlowMotion.load(std::memory_order_relaxed)) {
+    if (!gpuEnabled || !activeGpu->BlocksCPU() || rasterBeamSlowMotion.load(std::memory_order_relaxed)) {
         res = hooks ? Step<true>() : Step<false>();
     } else {
         // Advance through the full drawing interval until the CPU executes one instruction
         static constexpr int MAX_GPU_STEP_CYCLES = GPU::DISPLAY_WIDTH * GPU::DISPLAY_HEIGHT;
         bool cpuRan = false;
         for (int i = 0; i < MAX_GPU_STEP_CYCLES && !cpuRan; ++i) {
-            cpuRan = gpu.IsInBlankingInterval();
+            cpuRan = activeGpu->IsInBlankingInterval();
             res = hooks ? Step<true>() : Step<false>();
             if (res != 0) {
                 break;
@@ -144,14 +144,24 @@ int Emulator::Step() {
 template <bool Debug, bool CycleAccurateMode>
 void Emulator::RunCPUTick(int& res, bool& cpuStepped) {
     if (gpuEnabled) {
-        gpu.Clock();
-        if (gpu.IsInBlankingInterval()) {
+        if (activeGpu->BlocksCPU()) {
+            activeGpu->Clock();
+            if (activeGpu->IsInBlankingInterval()) {
+                if constexpr (CycleAccurateMode) {
+                    res = cpu.StepCycleAccurate<Debug>(bus);
+                } else {
+                    res = cpu.StepFast<Debug>(bus);
+                }
+                cpuStepped = true;
+            }
+        } else {
             if constexpr (CycleAccurateMode) {
                 res = cpu.StepCycleAccurate<Debug>(bus);
             } else {
                 res = cpu.StepFast<Debug>(bus);
             }
             cpuStepped = true;
+            activeGpu->Clock();
         }
     } else {
         if constexpr (CycleAccurateMode) {
@@ -425,15 +435,15 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
             int localInstructions = 0;
             int i = 0;
             while (i < count) {
-                if (gpuEnabled && !gpu.IsInBlankingInterval()) {
-                    const uint32_t waitCycles = gpu.GetDrawingWaitCycles();
+                if (gpuEnabled && activeGpu->BlocksCPU() && !activeGpu->IsInBlankingInterval()) {
+                    const uint32_t waitCycles = activeGpu->GetDrawingWaitCycles();
                     if (waitCycles > 0 && (!sidEnabled || sid.IsDormant()) && via.IsIdle() &&
                         acia.IsIdle() && serialBridge.GetBaudDelay() == 0 &&
                         !pendingInterruptAny.load(std::memory_order_relaxed) &&
                         !serialBridge.HasInput()) [[likely]] {
                         const auto rem = static_cast<uint32_t>(count - i);
                         const uint32_t skip = (rem < waitCycles) ? rem : waitCycles;
-                        gpu.SkipDrawingCycles(skip);
+                        activeGpu->SkipDrawingCycles(skip);
                         via.Clock(skip);
                         if (sidEnabled) {
                             sid.Clock(skip);
@@ -448,10 +458,16 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
                 bool cpuStepped = false;
                 int res = 0;
                 if (gpuEnabled) {
-                    gpu.Clock();
-                    if (gpu.IsInBlankingInterval()) {
+                    if (activeGpu->BlocksCPU()) {
+                        activeGpu->Clock();
+                        if (activeGpu->IsInBlankingInterval()) {
+                            res = cpu.StepCycleAccurate<false>(bus);
+                            cpuStepped = true;
+                        }
+                    } else {
                         res = cpu.StepCycleAccurate<false>(bus);
                         cpuStepped = true;
+                        activeGpu->Clock();
                     }
                 } else {
                     res = cpu.StepCycleAccurate<false>(bus);

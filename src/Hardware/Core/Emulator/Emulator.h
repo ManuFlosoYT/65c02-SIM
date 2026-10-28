@@ -23,6 +23,7 @@
 #include "Hardware/Memory/RAM.h"
 #include "Hardware/Memory/ROM.h"
 #include "Hardware/Video/GPU.h"
+#include "Hardware/Video/MicroDosGPU.h"
 #include "Hardware/Video/LCD.h"
 #include "Hardware/Core/ISerializable.h"
 #include "Hardware/Core/Cartridge.h"
@@ -79,7 +80,10 @@ class Emulator {
     CPU& GetCPU();
     const Bus& GetMem() const;
     Bus& GetMem();
+    const GPU& GetGPU() const;
     GPU& GetGPU();
+    Hardware::MicroDosGPU& GetMicroDosGPU();
+    const Hardware::MicroDosGPU& GetMicroDosGPU() const;
     void SetGPUEnabled(bool enabled);
     bool IsGPUEnabled() const;
     void SetRasterBeamSlowMotion(bool enabled);
@@ -212,6 +216,8 @@ class Emulator {
     ROM rom;
     ACIA acia;
     GPU gpu;
+    Hardware::MicroDosGPU microDosGpu;
+    Hardware::GPU* activeGpu = &gpu;
     Hardware::SID sid;
     Hardware::VIA via;
     Hardware::SDCard sdcard;
@@ -253,7 +259,10 @@ inline const Hardware::CPU& Core::Emulator::GetCPU() const { return cpu; }
 inline Hardware::CPU& Core::Emulator::GetCPU() { return cpu; }
 inline const Hardware::Bus& Core::Emulator::GetMem() const { return bus; }
 inline Hardware::Bus& Core::Emulator::GetMem() { return bus; }
-inline Hardware::GPU& Core::Emulator::GetGPU() { return gpu; }
+inline const Hardware::GPU& Core::Emulator::GetGPU() const { return *activeGpu; }
+inline Hardware::GPU& Core::Emulator::GetGPU() { return *activeGpu; }
+inline Hardware::MicroDosGPU& Core::Emulator::GetMicroDosGPU() { return microDosGpu; }
+inline const Hardware::MicroDosGPU& Core::Emulator::GetMicroDosGPU() const { return microDosGpu; }
 inline void Core::Emulator::SetGPUEnabled(bool enabled) { 
     if (gpuEnabled == enabled) { return; }
     gpuEnabled = enabled; 

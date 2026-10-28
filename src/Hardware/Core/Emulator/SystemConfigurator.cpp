@@ -27,7 +27,11 @@ void SystemConfigurator::RegisterCartridgeDevice(Emulator& emu, const DeviceConf
     } else if (dev.name == "ESP8266") {
         emu.bus.RegisterDevice(dev.start, dev.end, &emu.esp8266, emu.cartridge.config.espEnabled.value_or(emu.espEnabled), true);
     } else if (dev.name == "GPU") {
+        emu.activeGpu = &emu.gpu;
         emu.bus.RegisterDevice(dev.start, dev.end, &emu.gpu, emu.cartridge.config.gpuEnabled.value_or(emu.gpuEnabled), true);
+    } else if (dev.name == "microDOS-GPU") {
+        emu.activeGpu = &emu.microDosGpu;
+        emu.bus.RegisterDevice(dev.start, dev.end, &emu.microDosGpu, emu.cartridge.config.gpuEnabled.value_or(emu.gpuEnabled), true);
     } else if (dev.name == "LCD") {
         emu.bus.RegisterVirtualDevice(&emu.lcd, true);
     } else if (dev.name == "SD Card") {
@@ -77,6 +81,7 @@ void SystemConfigurator::RegisterDefaultLayout(Emulator& emu) {
         emu.sidEnabled = emu.cartridge.config.sidEnabled.value_or(true);
     }
     emu.bus.RegisterDevice(0x4800, 0x481F, &emu.sid, emu.sidEnabled, true);
+    emu.activeGpu = &emu.gpu;
     emu.bus.RegisterDevice(0x2000, 0x3FFF, &emu.gpu, emu.cartridge.config.gpuEnabled.value_or(emu.gpuEnabled), true);
     emu.bus.RegisterVirtualDevice(&emu.lcd, true);
 }
@@ -89,6 +94,7 @@ void SystemConfigurator::ResetHardwareDevices(Emulator& emu) {
     emu.via.Reset();
     emu.sid.Reset();
     emu.gpu.Reset();
+    emu.microDosGpu.Reset();
     emu.lcd.Reset();
     emu.sdcard.Reset();
     emu.esp8266.Reset();
@@ -96,7 +102,7 @@ void SystemConfigurator::ResetHardwareDevices(Emulator& emu) {
 
 void SystemConfigurator::LoadCartridgeVRAMIfPresent(Emulator& emu) {
     if (emu.cartridge.loaded && !emu.cartridge.vramData.empty()) {
-        emu.gpu.LoadVRAM(emu.cartridge.vramData);
+        emu.activeGpu->LoadVRAM(emu.cartridge.vramData);
     }
 }
 

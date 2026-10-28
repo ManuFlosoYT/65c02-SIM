@@ -26,7 +26,7 @@ class GPU : public IBusDevice {
 
     GPU();
     void Reset() override;
-    void LoadVRAM(std::span<const uint8_t> data);
+    virtual void LoadVRAM(std::span<const uint8_t> data);
 
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inputStream) override;
@@ -46,6 +46,8 @@ class GPU : public IBusDevice {
     }
 
     [[nodiscard]] bool ConsumeVRAMDirty() const { return vramDirty.exchange(false, std::memory_order_relaxed); }
+    void SetVRAMDirty() const { vramDirty.store(true, std::memory_order_relaxed); }
+    [[nodiscard]] virtual bool BlocksCPU() const { return true; }
 
     inline void Write(Word addr, Byte val) override;
     inline void WriteDirect(Word addr, Byte val) override;

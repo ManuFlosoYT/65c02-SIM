@@ -124,7 +124,7 @@ DeviceConfig CartridgeManifestParser::ParseDeviceConfig(const nlohmann::json& de
 
     if (dev.name != "RAM" && dev.name != "ROM" && dev.name != "VIA" && dev.name != "LCD" &&
         dev.name != "ESP32" && dev.name != "ESP8266" && dev.name != "ACIA" && dev.name != "GPU" && dev.name != "SID" && 
-        dev.name != "SD Card") {
+        dev.name != "SD Card" && dev.name != "microDOS-GPU") {
         throw std::runtime_error("Unknown device name: " + dev.name);
     }
 
@@ -157,7 +157,8 @@ void CartridgeManifestParser::ValidateBusRequirements(const std::vector<DeviceCo
         {"ESP8266", 0x0004},
         {"SD Card", 0x0004},
         {"SID", 0x0020},
-        {"GPU", 0x2000}
+        {"GPU", 0x2000},
+        {"microDOS-GPU", 0x2000}
     };
 
     struct RangeEntry {
