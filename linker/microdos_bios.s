@@ -39,12 +39,12 @@ RAMSTART2 = 0x0400
 READ_PTR  = 0xFC
 WRITE_PTR = 0xFD
 
-ACIA_DATA   = 0x5000
-ACIA_STATUS = 0x5001
-ACIA_CMD    = 0x5002
-ACIA_CTRL   = 0x5003
-PORTA       = 0x6001
-DDRA        = 0x6003
+ACIA_DATA   = 0x7FC0
+ACIA_STATUS = 0x7FC1
+ACIA_CMD    = 0x7FC2
+ACIA_CTRL   = 0x7FC3
+PORTA       = 0x7FD1
+DDRA        = 0x7FD3
 
 .section .input_buffer, "aw", @nobits
 .globl INPUT_BUFFER
