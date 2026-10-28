@@ -180,7 +180,7 @@ std::string LinkerScriptGenerator::GenerateLinkerScript(const std::string& code)
     return ld.str();
 }
 
-std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
+std::string LinkerScriptGenerator::GenerateAppLinkerScript([[maybe_unused]] bool hasGpu) {
     std::ostringstream ld;
     ld << "/* Auto-generated link.ld for microDOS apps with LLVM-MOS */\n\n";
     ld << "__rc0 = 0x00;\n";
@@ -189,16 +189,10 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
     ld << "ASSERT(__rc31 <= 0x5F, \"Registros virtuales exceden Zero Page de app.\")\n\n";
     ld << "MEMORY {\n";
     ld << "    zp   (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x60 - (__rc31 + 1)\n";
-    if (hasGpu) {
-        ld << "    core (rx) : ORIGIN = 0x0200, LENGTH = 0x3E00\n";
-        ld << "    bss  (rw) : ORIGIN = 0x4000, LENGTH = 0x1000\n";
-    } else {
-        ld << "    core (rx) : ORIGIN = 0x0200, LENGTH = 0x4E00\n";
-        ld << "    bss  (rw) : ORIGIN = 0x5000, LENGTH = 0x2000\n";
-    }
+    ld << "    ram  (rw) : ORIGIN = 0x0200,   LENGTH = 0x5200\n";
     ld << "}\n\n";
-    ld << "REGION_ALIAS(\"c_readonly\", core)\n";
-    ld << "REGION_ALIAS(\"c_writeable\", bss)\n";
+    ld << "REGION_ALIAS(\"c_readonly\", ram)\n";
+    ld << "REGION_ALIAS(\"c_writeable\", ram)\n";
     ld << "EXTERN(__do_init_stack)\n";
     ld << "EXTERN(__do_copy_data)\n";
     ld << "EXTERN(__do_copy_zp_data)\n";
@@ -208,12 +202,12 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
     ld << "    .header 0x0200 : {\n";
     ld << "        KEEP(*(SORT_BY_NAME(.header*)))\n";
     ld << "        KEEP(*(.header))\n";
-    ld << "    } > core\n\n";
+    ld << "    } > ram\n\n";
     ld << "    INCLUDE c.ld\n";
     ld << "    PROVIDE(__CORE_SIZE__ = LOADADDR(.data) + SIZEOF(.data) - 0x0200);\n";
     ld << "    PROVIDE(_CORE_SIZE__ = __CORE_SIZE__);\n";
     ld << "}\n\n";
-    ld << "__stack = 0x" << (hasGpu ? "4FFF" : "6FFF") << ";\n\n";
+    ld << "__stack = 0x53FF;\n\n";
     ld << "/* OS ABI Jump Table Symbols */\n";
 
     struct SymbolDef {
@@ -265,7 +259,9 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
            << addr << ");\n";
     }
 
-    ld << "\n";
+    ld << "\nOUTPUT_FORMAT {\n";
+    ld << "    TRIM(ram)\n";
+    ld << "}\n";
     return ld.str();
 }
 
