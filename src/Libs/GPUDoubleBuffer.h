@@ -5,8 +5,13 @@
 #include <string.h>
 
 enum GpuDoubleBufferConstants {
+#if defined(MICRODOS) || defined(__MICRODOS__)
+    GPU_VRAM_START       = 0x5FC0U,
+    GPU_VRAM_END         = 0x7FBFU,
+#else
     GPU_VRAM_START       = 0x2000U,
     GPU_VRAM_END         = 0x3FFFU,
+#endif
     GPU_BACKBUF_START    = 0x6010U,
     GPU_WIDTH            = 100,
     GPU_STRIDE           = 128,
