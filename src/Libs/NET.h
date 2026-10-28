@@ -3,8 +3,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if defined(MICRODOS) || defined(__MICRODOS__)
+#define ESP8266_DATA   (*(volatile uint8_t*)0x7FC4)
+#define ESP8266_STATUS (*(volatile uint8_t*)0x7FC5)
+#else
 #define ESP8266_DATA   (*(volatile uint8_t*)0x5004)
 #define ESP8266_STATUS (*(volatile uint8_t*)0x5005)
+#endif
 
 static inline bool net_has_data(void) {
     return (ESP8266_STATUS & 0x80U) != 0U;
