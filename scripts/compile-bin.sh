@@ -17,6 +17,25 @@ else
     exit 1
 fi
 
+MOS_BIN_DIR="$(dirname "$MOS_CLANG")"
+LLVM_OBJCOPY="$MOS_BIN_DIR/llvm-objcopy"
+if [ ! -x "$LLVM_OBJCOPY" ]; then
+    if command -v llvm-objcopy >/dev/null 2>&1; then
+        LLVM_OBJCOPY="$(command -v llvm-objcopy)"
+    else
+        LLVM_OBJCOPY="llvm-objcopy"
+    fi
+fi
+
+LLVM_OBJDUMP="$MOS_BIN_DIR/llvm-objdump"
+if [ ! -x "$LLVM_OBJDUMP" ]; then
+    if command -v llvm-objdump >/dev/null 2>&1; then
+        LLVM_OBJDUMP="$(command -v llvm-objdump)"
+    else
+        LLVM_OBJDUMP="llvm-objdump"
+    fi
+fi
+
 compile_with_opt_fallback() {
     local out="$1"
     local ld_script="$2"
@@ -86,7 +105,7 @@ mkdir -p sdk/src/build
 mkdir -p output
 
 # --microDOS: compile a .c file as a microDOS .app binary
-if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
+if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ] || [ "$4" == "--microDOS" ]; then
     echo "--- Compiling $NAME.app (microDOS App with LLVM-MOS -Os) ---"
     SRC=""
     if [ -f "sdk/microdos/Apps/$NAME.c" ]; then
@@ -103,6 +122,29 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
     if grep -q "Libs/GPU.h" "$SRC" || grep -q "GPUDoubleBuffer.h" "$SRC"; then
         APP_FLAGS="--gpu"
     fi
+
+    NUM_OVERLAYS=0
+    prev_arg=""
+    for arg in "$@"; do
+        if [ "$prev_arg" == "--overlays" ] && [[ "$arg" =~ ^[0-9]+$ ]]; then
+            NUM_OVERLAYS="$arg"
+        elif [[ "$arg" =~ ^--overlays=([0-9]+)$ ]]; then
+            NUM_OVERLAYS="${BASH_REMATCH[1]}"
+        fi
+        prev_arg="$arg"
+    done
+    if [ "$NUM_OVERLAYS" -eq 0 ]; then
+        MAX_OVERLAY=$(grep -ho -E '\.overlay_?([0-9]+)' "$SRC" 2>/dev/null | sed -E 's/\.overlay_?//' | sort -n | tail -n 1 || true)
+        if [ -n "$MAX_OVERLAY" ] && [ "$MAX_OVERLAY" -gt 0 ]; then
+            NUM_OVERLAYS="$MAX_OVERLAY"
+        fi
+    fi
+
+    if [ "$NUM_OVERLAYS" -gt 0 ]; then
+        APP_FLAGS="$APP_FLAGS --overlays $NUM_OVERLAYS"
+        echo "  [Overlays configured] Using $NUM_OVERLAYS overlay pages for $NAME.app"
+    fi
+
     python3 tools/linker/generate_app_link_ld.py $APP_FLAGS > "$APP_LD"
 
     APP_RAW="sdk/src/build/${NAME}.raw"
@@ -113,8 +155,85 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
         sdk/linker/App-Runtime.s "$SRC"
 
     mkdir -p output/apps
-    cp "$APP_RAW" "output/apps/${NAME}.app"
-    echo "App saved to output/apps/${NAME}.app"
+    APP_OUT="output/apps/${NAME}.app"
+
+    ELF_FILE="${APP_RAW}.elf"
+    if [ ! -f "$ELF_FILE" ] && [ -f "${APP_RAW%.raw}.elf" ]; then
+        ELF_FILE="${APP_RAW%.raw}.elf"
+    fi
+
+    OVERLAY_SECTIONS=()
+    if [ -f "$ELF_FILE" ]; then
+        while IFS= read -r sec; do
+            [ -n "$sec" ] && OVERLAY_SECTIONS+=("$sec")
+        done < <("$LLVM_OBJDUMP" -h "$ELF_FILE" 2>/dev/null | awk '$2 ~ /^\.overlay_/ && $3 != "00000000" { print $2 }' | sort -V || true)
+    fi
+
+    if [ ${#OVERLAY_SECTIONS[@]} -eq 0 ]; then
+        cp "$APP_RAW" "$APP_OUT"
+        echo "App saved to $APP_OUT"
+    else
+        echo "  [Overlay packaging] Processing ${#OVERLAY_SECTIONS[@]} overlay sections: ${OVERLAY_SECTIONS[*]}"
+
+        RAW_SIZE=$(wc -c < "$APP_RAW" | tr -d ' ')
+        EXPECTED_OVERLAY_BYTES=$((${#OVERLAY_SECTIONS[@]} * 8192))
+        HEADER_CORE_SIZE=$(python3 -c "import struct, sys
+try:
+    with open(sys.argv[1], 'rb') as f:
+        hdr = f.read(16)
+        print(struct.unpack('<4sBBHHHHH', hdr)[4])
+except Exception:
+    print(0)
+" "$APP_RAW" 2>/dev/null || echo 0)
+
+        if [ "$RAW_SIZE" -ge $((HEADER_CORE_SIZE + EXPECTED_OVERLAY_BYTES)) ] && [ "$HEADER_CORE_SIZE" -gt 0 ]; then
+            echo "  [Overlay packaging] Binary already contains fully padded overlay pages from linker OUTPUT_FORMAT."
+            cp "$APP_RAW" "$APP_OUT"
+            CORE_SIZE=$HEADER_CORE_SIZE
+        else
+            echo "  [Overlay packaging] Extracting and padding overlay sections via llvm-objcopy..."
+            cp "$APP_RAW" "$APP_OUT"
+            CORE_SIZE=$(wc -c < "$APP_RAW" | tr -d ' ')
+
+            PAGE_IDX=0
+            for sec in "${OVERLAY_SECTIONS[@]}"; do
+                TMP_PAGE="sdk/src/build/${NAME}_${sec}.bin"
+                rm -f "$TMP_PAGE"
+                "$LLVM_OBJCOPY" --dump-section="${sec}=${TMP_PAGE}" "$ELF_FILE"
+
+                SEC_SIZE=$(wc -c < "$TMP_PAGE" | tr -d ' ')
+                if [ "$SEC_SIZE" -gt 8192 ]; then
+                    echo "Error: Overlay section $sec ($SEC_SIZE bytes) exceeds 8192 bytes (0x2000) window capacity!"
+                    rm -f "$TMP_PAGE"
+                    exit 1
+                fi
+
+                truncate -s 8192 "$TMP_PAGE"
+                cat "$TMP_PAGE" >> "$APP_OUT"
+                rm -f "$TMP_PAGE"
+                echo "  [Overlay Page $PAGE_IDX] Section $sec ($SEC_SIZE bytes -> padded to 8192 bytes)"
+                PAGE_IDX=$((PAGE_IDX + 1))
+            done
+        fi
+
+        NUM_PAGES=${#OVERLAY_SECTIONS[@]}
+        python3 -c "
+import struct, sys
+app_path = sys.argv[1]
+core_size = int(sys.argv[2])
+num_pages = int(sys.argv[3])
+with open(app_path, 'r+b') as f:
+    f.seek(8)
+    f.write(struct.pack('<H', core_size))
+    f.seek(14)
+    val = struct.unpack('<H', f.read(2))[0]
+    if val < 0x5FC0:
+        f.seek(14)
+        f.write(struct.pack('<H', num_pages))
+" "$APP_OUT" "$CORE_SIZE" "$NUM_PAGES"
+        TOTAL_SIZE=$(wc -c < "$APP_OUT" | tr -d ' ')
+        echo "App with $NUM_PAGES overlay pages successfully packaged to $APP_OUT (core: $CORE_SIZE bytes, total: $TOTAL_SIZE bytes)"
+    fi
     exit 0
 fi
 
