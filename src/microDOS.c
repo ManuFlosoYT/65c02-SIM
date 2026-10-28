@@ -13,10 +13,10 @@ int main(void) {
     INIT_BUFFER();
 
     println("microDOS");
-    print_str("Mounting SD Card...");
+    print_str("Mounting Disk...");
     
     if (!sd_is_present()) {
-        print_str(M_ERR); println("SD Card not found");
+        print_str(M_ERR); println("Disk not found");
         return 1;
     }
 
@@ -29,7 +29,7 @@ int main(void) {
 
     println(M_RDY);
 
-    println("[i] Initializing system...");
+    println("Initializing system...");
     os_clear_swap_blocks();
 
     while (true) {
@@ -45,11 +45,6 @@ int main(void) {
 
         if (arg_count == 0) {
             continue;
-        }
-
-        if (strcmp(args[0], "exit") == 0) {
-            cmd_exit();
-            break;
         }
 
         exec_command(args[0]);
