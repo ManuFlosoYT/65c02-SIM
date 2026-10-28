@@ -90,7 +90,8 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     if (type == BuildType::MicroDOS) {
         std::string cleanCode = LinkerScriptGenerator::StripComments(code);
         bool hasGpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos;
-        WriteTextFile(linkScript, LinkerScriptGenerator::GenerateAppLinkerScript(hasGpu));
+        size_t numOverlays = LinkerScriptGenerator::DetectOverlayCount(code);
+        WriteTextFile(linkScript, LinkerScriptGenerator::GenerateAppLinkerScript(hasGpu, numOverlays));
     } else {
         WriteTextFile(linkScript, LinkerScriptGenerator::GenerateLinkerScript(code));
     }
