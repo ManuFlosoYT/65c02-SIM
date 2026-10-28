@@ -50,12 +50,6 @@ compile_with_opt_fallback() {
             err_log=$(mktemp)
 
             local opt_flags=()
-            if [ "$opt" == "-Oz" ]; then
-                opt_flags=(
-                    "-fno-inline-functions"
-                    "-Wl,-mllvm,-inline-threshold=0"
-                )
-            fi
 
             if "$MOS_CLANG" -mcpu=mosw65c02 $opt $gflag -flto -ffunction-sections -fdata-sections -fno-unroll-loops -fnonreentrant -Wl,--gc-sections -Wl,--lto-O2 "${opt_flags[@]}" -T "$ld_script" "${sources[@]}" -o "$out" > "$err_log" 2>&1; then
                 cat "$err_log"
