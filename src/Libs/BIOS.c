@@ -120,8 +120,6 @@ typedef struct {
 static SwapBlock swap_blocks[MAX_SWAP_BLOCKS];
 static uintptr_t swap_heap_base = SWAP_WINDOW_ADDR;
 
-static const char* const SWP_PFX = "/SYSTEM/SWAP/";
-
 void os_set_swap_base(uintptr_t base) {
     if (base >= SWAP_WINDOW_ADDR && base < (SWAP_WINDOW_ADDR + SWAP_WINDOW_SIZE)) {
         swap_heap_base = base;
@@ -136,7 +134,7 @@ void os_clear_swap_blocks(void) {
     if (base == SWAP_WINDOW_ADDR) {
         const uint8_t* const hdr = (const uint8_t*)0x0200U;
         if (hdr[0] == 'u' && hdr[1] == 'D' && hdr[2] == 'O' && hdr[3] == 'S' && hdr[4] == 3U) {
-            uint16_t app_heap = (uint16_t)(hdr[14] | ((uint16_t)hdr[15] << 8));
+            uint16_t app_heap = *(const uint16_t*)&hdr[14];
             if (app_heap >= SWAP_WINDOW_ADDR && app_heap < (SWAP_WINDOW_ADDR + SWAP_WINDOW_SIZE)) {
                 base = app_heap;
             }
@@ -188,24 +186,17 @@ void os_free(void* ptr) {
     for (uint8_t i = 0U; i < MAX_SWAP_BLOCKS; ++i) {
         if (swap_blocks[i].used && swap_blocks[i].start == (uintptr_t)ptr) {
             swap_blocks[i].used = 0U;
-            bool merged = true;
-            while (merged) {
-                merged = false;
-                for (uint8_t j = 0U; j < MAX_SWAP_BLOCKS; ++j) {
-                    if (i != j && !swap_blocks[j].used && swap_blocks[j].size > 0U) {
-                        if (swap_blocks[i].start + swap_blocks[i].size == swap_blocks[j].start) {
-                            swap_blocks[i].size = (uint16_t)(swap_blocks[i].size + swap_blocks[j].size);
-                            swap_blocks[j].size = 0U;
-                            merged = true;
-                            break;
-                        }
-                        if (swap_blocks[j].start + swap_blocks[j].size == swap_blocks[i].start) {
-                            swap_blocks[i].start = swap_blocks[j].start;
-                            swap_blocks[i].size = (uint16_t)(swap_blocks[i].size + swap_blocks[j].size);
-                            swap_blocks[j].size = 0U;
-                            merged = true;
-                            break;
-                        }
+            for (uint8_t j = 0U; j < MAX_SWAP_BLOCKS; ++j) {
+                if (i != j && !swap_blocks[j].used && swap_blocks[j].size > 0U) {
+                    if (swap_blocks[i].start + swap_blocks[i].size == swap_blocks[j].start) {
+                        swap_blocks[i].size += swap_blocks[j].size;
+                        swap_blocks[j].size = 0U;
+                        j = 255U; /* restart scan */
+                    } else if (swap_blocks[j].start + swap_blocks[j].size == swap_blocks[i].start) {
+                        swap_blocks[i].start = swap_blocks[j].start;
+                        swap_blocks[i].size += swap_blocks[j].size;
+                        swap_blocks[j].size = 0U;
+                        j = 255U; /* restart scan */
                     }
                 }
             }
@@ -214,37 +205,22 @@ void os_free(void* ptr) {
     }
 }
 
-static bool is_safe_memory(uintptr_t start, uint16_t size) {
-    if (size == 0U) {
-        return false;
-    }
+static bool check_and_build_swap(char* path, const char* name, void* addr, uint16_t size) {
+    uintptr_t start = (uintptr_t)addr;
     uintptr_t end = start + size - 1U;
-    if (end < start) {
-        return false;
-    }
+    if (size == 0U || end < start ||
 #if defined(MICRODOS) || defined(__MICRODOS__)
-    if ((start >= 0x0200U && end <= 0x53FFU) || (start >= 0x5FC0U && end <= 0x7FBFU)) {
-        return true;
-    }
+        !((start >= 0x0200U && end <= 0x53FFU) || (start >= 0x5FC0U && end <= 0x7FBFU))
 #else
-    if (start >= 0x0200U && end <= 0x6FFFU) {
-        return true;
-    }
+        !(start >= 0x0200U && end <= 0x6FFFU)
 #endif
-    return false;
-}
-
-static void make_swap_path(char* path, const char* name) {
-    strcpy(path, SWP_PFX);
-    strncat(path, name, 8U);
-    strcat(path, ".SWP");
-}
-
-static bool check_addr(void* addr, uint16_t size) {
-    if (!is_safe_memory((uintptr_t)addr, size)) {
-        print_str("[ERR] Swap addr err\n");
+    ) {
+        print_str("[ERR] Swap addr\n");
         return false;
     }
+    strcpy(path, "/SYSTEM/SWAP/");
+    strcat(path, name);
+    strcat(path, ".SWP");
     return true;
 }
 
@@ -252,10 +228,9 @@ uint8_t os_swap_save(const char* name, void* addr, uint16_t size) {
     char path[32];
     SD_FILE fp;
 
-    if (!check_addr(addr, size)) {
+    if (!check_and_build_swap(path, name, addr, size)) {
         return 1U;
     }
-    make_swap_path(path, name);
 
     if (!sd_open(&fp, path, SD_WRITE | SD_CREATE_ALWAYS)) {
         sd_mkdir("/SYSTEM");
@@ -273,10 +248,9 @@ uint8_t os_swap_load(const char* name, void* addr, uint16_t size) {
     char path[32];
     SD_FILE fp;
 
-    if (!check_addr(addr, size)) {
+    if (!check_and_build_swap(path, name, addr, size)) {
         return 1U;
     }
-    make_swap_path(path, name);
 
     if (sd_open(&fp, path, SD_READ)) {
         sd_read(&fp, addr, size);
@@ -290,28 +264,24 @@ static char msg_buffer[128];
 
 const char* os_get_msg(uint8_t msg_id) {
     SD_FILE f;
-    uint16_t offset = 0U;
-    uint16_t len = 0U;
+    uint16_t meta[2]; /* meta[0] = offset, meta[1] = len */
 
     if (!sd_open(&f, "/SYSTEM/uDOS.sys", SD_READ)) {
         return "ResErr";
     }
 
-    sd_seek(&f, 1U + ((uint32_t)msg_id * 4U));
-    if (sd_read(&f, &offset, 2U) != 2) {
-        sd_close(&f);
-        return "ResErr";
-    }
-    if (sd_read(&f, &len, 2U) != 2) {
+    sd_seek(&f, 1U + ((uint32_t)msg_id << 2));
+    if (sd_read(&f, meta, 4U) != 4) {
         sd_close(&f);
         return "ResErr";
     }
 
+    uint16_t len = meta[1];
     if (len >= sizeof(msg_buffer)) {
         len = (uint16_t)(sizeof(msg_buffer) - 1U);
     }
 
-    sd_seek(&f, offset);
+    sd_seek(&f, meta[0]);
     if (sd_read(&f, msg_buffer, len) != (int16_t)len) {
         sd_close(&f);
         return "ResErr";
