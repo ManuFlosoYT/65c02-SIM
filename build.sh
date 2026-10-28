@@ -8,34 +8,57 @@ DO_CLEAN=false
 DO_RUN=false
 FORCE_CONFIGURE=false
 
-for arg in "$@"; do
-    if [[ "$arg" == "--clean" ]]; then
-        DO_CLEAN=true
-    elif [[ "$arg" == "--debug" ]]; then
-        BUILD_TYPE="Debug"
-    elif [[ "$arg" == "--run" ]]; then
-        DO_RUN=true
-    elif [[ "$arg" == "--reconfigure" || "$arg" == "--configure" ]]; then
-        FORCE_CONFIGURE=true
-    elif [[ "$arg" == "--target" ]]; then
-        # Skip this iteration, handle below
-        continue
-    elif [[ "$arg" == "linux" || "$arg" == "win" || "$arg" == "web" ]]; then
-        # Check if previous arg was --target. A simple way:
-        TARGET_OS="$arg"
-    elif [[ "$arg" == "--target="* ]]; then
-        TARGET_OS="${arg#*=}"
-    fi
-done
-
-# Secondary pass for simple --target <val>
-for ((i=1; i<=$#; i++)); do
-    if [[ "${!i}" == "--target" ]]; then
-        next_i=$((i+1))
-        if [ $next_i -le $# ]; then
-            TARGET_OS="${!next_i}"
-        fi
-    fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --clean)
+            DO_CLEAN=true
+            shift
+            ;;
+        --debug)
+            BUILD_TYPE="Debug"
+            shift
+            ;;
+        --release)
+            BUILD_TYPE="Release"
+            shift
+            ;;
+        --run)
+            DO_RUN=true
+            shift
+            ;;
+        --reconfigure|--configure)
+            FORCE_CONFIGURE=true
+            shift
+            ;;
+        --target)
+            TARGET_OS="$2"
+            shift 2
+            ;;
+        --target=*)
+            TARGET_OS="${1#*=}"
+            shift
+            ;;
+        linux|win|web)
+            TARGET_OS="$1"
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: ./build.sh [OPTIONS] [linux|win|web]"
+            echo "Options:"
+            echo "  --release          Build in Release mode (default)"
+            echo "  --debug            Build in Debug mode"
+            echo "  --clean            Clean build directory before building"
+            echo "  --reconfigure      Force CMake reconfiguration"
+            echo "  --run              Run application after build"
+            echo "  --target <os>      Target OS: linux, win, web"
+            echo "  -h, --help         Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
 done
 
 echo "Building for OS: $TARGET_OS in $BUILD_TYPE mode"
@@ -56,9 +79,12 @@ fi
 
 if command -v ccache >/dev/null 2>&1; then
     echo "ccache found, enabling..."
-    CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-    ccache -M 15G
-    ccache -z
+    export CCACHE_SLOPPINESS="pch_defines,time_macros"
+    CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    ccache -M 15G >/dev/null 2>&1 || true
+    if [ "$DO_CLEAN" = true ]; then
+        ccache -z
+    fi
 fi
 
 if command -v ninja >/dev/null 2>&1; then
