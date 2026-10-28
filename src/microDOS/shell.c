@@ -6,7 +6,7 @@
 
 char line[MAX_LINE];
 char* args[MAX_ARGS];
-int arg_count;
+uint8_t arg_count;
 
 void tokenize(char* buf) {
     char* p = buf;
@@ -32,8 +32,8 @@ void tokenize(char* buf) {
     }
 }
 
-void os_read_line(char* buf, int max_len) {
-    int len = 0;
+void os_read_line(char* buf, uint8_t max_len) {
+    uint8_t len = 0;
     while (true) {
         char c = bios_getchar();
         if (c == '\r' || c == '\n') {
