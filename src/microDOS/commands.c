@@ -8,7 +8,6 @@
 static const command_t command_table[] = {
     {"run",   cmd_run},
     {"help",  cmd_help},
-    {"exit",  cmd_exit},
     {nullptr, nullptr}
 };
 
@@ -42,8 +41,4 @@ void cmd_help(void) {
     } else {
         println("  (Directory /bin not found)");
     }
-}
-
-void cmd_exit(void) {
-    println("Exiting microDOS... Goodbye!");
 }
