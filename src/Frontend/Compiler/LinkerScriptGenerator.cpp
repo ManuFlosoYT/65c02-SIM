@@ -180,7 +180,7 @@ std::string LinkerScriptGenerator::GenerateLinkerScript(const std::string& code)
     return ld.str();
 }
 
-std::string LinkerScriptGenerator::GenerateAppLinkerScript([[maybe_unused]] bool hasGpu) {
+std::string LinkerScriptGenerator::GenerateAppLinkerScript(bool hasGpu) {
     std::ostringstream ld;
     ld << "/* Auto-generated link.ld for microDOS apps with LLVM-MOS */\n\n";
     ld << "__rc0 = 0x00;\n";
@@ -190,6 +190,9 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript([[maybe_unused]] bool
     ld << "MEMORY {\n";
     ld << "    zp   (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x60 - (__rc31 + 1)\n";
     ld << "    ram  (rw) : ORIGIN = 0x0200,   LENGTH = 0x5200\n";
+    if (!hasGpu) {
+        ld << "    extra_ram (rw) : ORIGIN = 0x5FC0,   LENGTH = 0x2000\n";
+    }
     ld << "}\n\n";
     ld << "REGION_ALIAS(\"c_readonly\", ram)\n";
     ld << "REGION_ALIAS(\"c_writeable\", ram)\n";
@@ -206,6 +209,15 @@ std::string LinkerScriptGenerator::GenerateAppLinkerScript([[maybe_unused]] bool
     ld << "    INCLUDE c.ld\n";
     ld << "    PROVIDE(__CORE_SIZE__ = LOADADDR(.data) + SIZEOF(.data) - 0x0200);\n";
     ld << "    PROVIDE(_CORE_SIZE__ = __CORE_SIZE__);\n";
+    if (!hasGpu) {
+        ld << "    .extra_ram (NOLOAD) : {\n";
+        ld << "        KEEP(*(SORT_BY_NAME(.extra_ram*)))\n";
+        ld << "        *(.extra_ram)\n";
+        ld << "    } > extra_ram\n\n";
+        ld << "    PROVIDE(__extra_ram_start = 0x5FC0);\n";
+        ld << "    PROVIDE(__extra_ram_end = 0x7FBF);\n";
+        ld << "    PROVIDE(__extra_ram_size = 0x2000);\n";
+    }
     ld << "}\n\n";
     ld << "__stack = 0x53FF;\n\n";
     ld << "/* OS ABI Jump Table Symbols */\n";
