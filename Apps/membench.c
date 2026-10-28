@@ -25,7 +25,7 @@ static uint16_t timer_elapsed(void) {
 // Safe RAM region for testing (avoiding Code $1000, GPU $2000, BSS $6010)
 enum {
     MEM_START = 0x4000,
-    MEM_END   = 0x5000,
+    MEM_END   = 0x53FF,
     STACK_RESERVE = 512
 };
 
