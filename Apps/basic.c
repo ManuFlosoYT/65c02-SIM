@@ -29,7 +29,7 @@
 // Resident stub: jsr overlay_dispatcher + page + real address (same layout as OVERLAY_TRAMPOLINE in App-Runtime.s).
 #define OVSTUB(page, name) typeof(name##_ov) name; \
     __asm__(".pushsection .text." #name ",\"ax\"\n.globl " #name "\n" #name ":\n" \
-            "\tjsr overlay_dispatcher\n\t.byte " #page "\n\t.byte <" #name "_ov\n\t.byte >" #name "_ov\n.popsection")
+            "\tjsr overlay_dispatcher\n\t.byte " #page "\n\t.word " #name "_ov\n.popsection")
 
 typedef enum : uint8_t {
     VAL_NUM = 0,
