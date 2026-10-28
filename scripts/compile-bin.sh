@@ -99,11 +99,15 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ]; then
     fi
 
     APP_LD="sdk/src/build/${NAME}_app.ld"
-    python3 tools/linker/generate_app_link_ld.py > "$APP_LD"
+    APP_FLAGS=""
+    if grep -q "Libs/GPU.h" "$SRC" || grep -q "GPUDoubleBuffer.h" "$SRC"; then
+        APP_FLAGS="--gpu"
+    fi
+    python3 tools/linker/generate_app_link_ld.py $APP_FLAGS > "$APP_LD"
 
     APP_RAW="sdk/src/build/${NAME}.raw"
     compile_with_opt_fallback "$APP_RAW" "$APP_LD" \
-        -std=c23 \
+        -std=c23 -D MICRODOS=1 \
         -I "sdk/src" -I "sdk/microdos" \
         -linit-stack -lcopy-data -lzero-bss \
         sdk/linker/App-Runtime.s "$SRC"
@@ -203,6 +207,7 @@ elif [ "$NAME" == "microDOS" ]; then
 
     compile_with_opt_fallback "sdk/src/build/microDOS.bin" "$LINKER_LD" \
         -std=c23 \
+        -D MICRODOS=1 \
         -mlto-zp=200 \
         -I "sdk/src" -I "sdk/microdos" -I "sdk/microdos/src" -D ENABLE_SD_SUPPORT=1 \
         "${MICRODOS_SRCS[@]}"
