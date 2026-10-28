@@ -17,7 +17,7 @@
 #define FF_USE_STRFUNC 0
 
 /* --- Locale / Namespace --- */
-#define FF_CODE_PAGE 1
+#define FF_CODE_PAGE 437
 #define FF_USE_LFN 0     /* No LFN – saves RAM */
 #define FF_MAX_LFN 255
 #define FF_LFN_UNICODE 0
