@@ -18,6 +18,10 @@ int main(void) {
                 if (chr == '\r') {
                     continue;
                 }
+                if (chr == '\n') {
+                    println("");
+                    continue;
+                }
                 bios_putchar(chr);
                 if (chr == 'K') {
                     break; /* OK */
@@ -46,6 +50,10 @@ int main(void) {
         if (net_has_data()) {
             chr = (char)net_getc();
             if (chr == '\r') {
+                continue;
+            }
+            if (chr == '\n') {
+                println("");
                 continue;
             }
             bios_putchar(chr);
