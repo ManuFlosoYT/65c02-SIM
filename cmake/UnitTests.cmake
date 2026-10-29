@@ -15,6 +15,7 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
         "src/UnitTests/RasterBeam_Test.cpp"
         "src/UnitTests/LogicAnalyzer_Test.cpp"
         "src/UnitTests/Interrupts_Test.cpp"
+        "src/UnitTests/MicroDosGPU_Test.cpp"
         "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDIFile.cpp"
         "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDISoundBank.cpp"
         "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDISoundBankLoader.cpp"
