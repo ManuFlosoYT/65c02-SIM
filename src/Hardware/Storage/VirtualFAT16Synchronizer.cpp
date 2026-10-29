@@ -64,7 +64,7 @@ void GetDosDateTime(const std::filesystem::file_time_type& ft, uint16_t& dosDate
     dosDate = static_cast<uint16_t>((((2026 - 1980) & 0x7F) << 9) | ((1 & 0x0F) << 5) | (1 & 0x1F));
     dosTime = 0;
     try {
-        auto sctp = std::chrono::file_clock::to_sys(ft);
+        auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(std::chrono::file_clock::to_sys(ft));
         std::time_t cftime = std::chrono::system_clock::to_time_t(sctp);
         std::tm tm_buf{};
 #if defined(_WIN32)
