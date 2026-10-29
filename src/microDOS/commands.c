@@ -40,6 +40,6 @@ void cmd_help(void) {
         }
         sd_closedir(&dir);
     } else {
-        println("  (Directory /bin not found)");
+        println(" (Directory /bin not found)");
     }
 }
