@@ -7,10 +7,17 @@
 #include "Libs/VIA.h"
 
 enum GameTiming {
-    CLOCK_HZ        = 1000000UL,
+    CLOCK_HZ        = 10000000UL,
     TARGET_FPS      = 60,
-    VIA_T1_COUNT    = (uint16_t)(1000000UL / 60),
+    VIA_T1_COUNT    = (uint16_t)(10000000UL / 60 / 3),
 };
+
+/* T1 solo llega a 65535 ciclos: un frame a 10 MHz son 3 desbordamientos */
+static void wait_frame(void) {
+    for (uint8_t t = 0; t < 3; ++t) {
+        via_wait_frame();
+    }
+}
 
 void via_init(void) {
     via_disable_interrupt(0x7FU);
@@ -206,7 +213,7 @@ int main(void) {
             }
         }
 
-        via_wait_frame();
+        wait_frame();
     }
 
     return 0;
