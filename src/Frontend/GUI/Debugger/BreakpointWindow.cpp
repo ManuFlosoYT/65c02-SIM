@@ -252,7 +252,7 @@ void DrawBreakpointList(Hardware::BreakpointManager& manager, const std::vector<
             ImGui::TextUnformatted(summary.c_str());
 
             ImGui::TableNextColumn();
-            ImGui::Text("%u", entry.hitCount);
+            ImGui::Text("%llu", static_cast<unsigned long long>(entry.hitCount));
 
             ImGui::TableNextColumn();
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.3F, 0.3F, 1.0F));
