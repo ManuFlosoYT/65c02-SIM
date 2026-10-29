@@ -38,7 +38,7 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
     target_compile_definitions(unit_tests PRIVATE PROJECT_VERSION="${GIT_VERSION}")
 
     if(WIN32)
-        target_link_options(unit_tests PRIVATE -static -static-libgcc -static-libstdc++)
+        target_link_options(unit_tests PRIVATE -static -static-libgcc -static-libstdc++ -Wl,--stack,8388608)
     else()
         target_link_options(unit_tests PRIVATE -static-libgcc -static-libstdc++)
     endif()
