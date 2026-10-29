@@ -45,10 +45,8 @@ def generate_app_link_ld(has_gpu=False, num_overlays=0):
     ld.append("}")
     ld.append("")
     ld.append(f"REGION_ALIAS(\"c_readonly\", {main_region})")
-    if not has_gpu:
-        ld.append("REGION_ALIAS(\"c_writeable\", extra_ram)")
-    else:
-        ld.append(f"REGION_ALIAS(\"c_writeable\", {main_region})")
+    writeable_region = "extra_ram" if num_overlays > 0 and not has_gpu else main_region
+    ld.append(f"REGION_ALIAS(\"c_writeable\", {writeable_region})")
     ld.append("EXTERN(__do_init_stack)")
     ld.append("EXTERN(__do_copy_data)")
     ld.append("EXTERN(__do_copy_zp_data)")
