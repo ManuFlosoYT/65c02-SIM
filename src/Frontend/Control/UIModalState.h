@@ -65,6 +65,7 @@ struct PopupState {
     bool sdCardMountSentinelWarning = false;
     std::string sdCardPendingMountFolder;
     bool showCartridgeSavePrompt = false;
+    bool showCartridgeLoaded = false;
     PendingCartridgeAction pendingCartridgeAction = PendingCartridgeAction::None;
 };
 

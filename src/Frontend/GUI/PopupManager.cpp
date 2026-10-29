@@ -152,6 +152,11 @@ static void DrawSDCardPopups(AppState& state) {
 
 static void DrawCartridgePopups(AppState& state) {
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    if (state.popups.showCartridgeLoaded) {
+        ImGui::OpenPopup("Cartridge Loaded");
+        state.popups.showCartridgeLoaded = false;
+    }
+
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
 
     if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {

@@ -46,11 +46,8 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
                 std::vector<uint8_t> dataVec(data, data + size);
                 std::string_view nameView(filename);
                 if (nameView.ends_with(".65c") || nameView.ends_with(".c65")) {
-                    if (Control::LoadCartridge(state, filename, dataVec)) {
-                        ImGui::OpenPopup("Cartridge Loaded");
-                    } else {
-                        ImGui::OpenPopup("ErrorLoadingCartridge");
-                    }
+                    // ImGui calls are invalid here (JS callback, outside a frame): defer to the draw loop
+                    state.popups.showCartridgeLoaded = Control::LoadCartridge(state, filename, dataVec);
                 } else {
                     if (!Control::LoadBinaryRom(state, filename, dataVec)) {
                         std::cerr << "Failed to load ROM\n";
