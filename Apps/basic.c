@@ -332,10 +332,7 @@ static void read_line_raw(char* buf, size_t max) {
             return;
         }
         if (c >= 32 && c <= 126) {
-            if (len < max - 1) {
-                buf[len++] = c;
-                bios_putchar(c);
-            }
+            if (len < max - 1) buf[len++] = c;
         }
     }
 }
