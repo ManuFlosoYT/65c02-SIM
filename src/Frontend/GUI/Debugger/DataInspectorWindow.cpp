@@ -69,12 +69,12 @@ void DrawInspectorRangeControls(const std::vector<DeviceRegistration>& devices, 
     if (!validDevices.empty()) {
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0F);
-        const char* previewText =
+        const std::string previewText =
             (state.selectedDeviceIdx >= 0 && std::cmp_less(state.selectedDeviceIdx, validDevices.size()))
-                ? validDevices.at(static_cast<size_t>(state.selectedDeviceIdx))->device->GetName().c_str()
+                ? std::string(validDevices.at(static_cast<size_t>(state.selectedDeviceIdx))->device->GetName())
                 : "Select Device...";
         ImGui::SetNextItemWidth(180.0F * scale);
-        if (ImGui::BeginCombo("##DevicePreset", previewText)) {
+        if (ImGui::BeginCombo("##DevicePreset", previewText.c_str())) {
             for (size_t i = 0; i < validDevices.size(); ++i) {
                 bool isSelected = std::cmp_equal(state.selectedDeviceIdx, i);
                 if (ImGui::Selectable(validDevices.at(i)->device->GetName().c_str(), isSelected)) {
