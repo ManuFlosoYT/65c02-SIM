@@ -162,7 +162,10 @@ static void DrawConsoleButtonBar(AppState& state) {
 }
 
 static void DrawCopyOutputModal(AppState& state) {
-    if (ImGui::BeginPopupModal("CopyConsoleOutput", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowSize(ImVec2(displaySize.x * 0.75F, displaySize.y * 0.75F), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5F, displaySize.y * 0.5F), ImGuiCond_Always, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("CopyConsoleOutput", nullptr, ImGuiWindowFlags_NoResize)) {
         static std::string fullText;
         if (ImGui::IsWindowAppearing()) {
             fullText.clear();
@@ -173,9 +176,9 @@ static void DrawCopyOutputModal(AppState& state) {
             fullText += Console::GetCurrentLine();
         }
 
-        const float popupWidth = 260.0F * state.render.uiScale;
-        const float popupHeight = 160.0F * state.render.uiScale;
-        ImGui::InputTextMultiline("##CopySource", fullText.data(), fullText.size() + 1, ImVec2(popupWidth, popupHeight),
+        const float buttonRowHeight = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
+        ImGui::InputTextMultiline("##CopySource", fullText.data(), fullText.size() + 1,
+                                  ImVec2(-FLT_MIN, ImGui::GetContentRegionAvail().y - buttonRowHeight),
                                   ImGuiInputTextFlags_ReadOnly);
 
         if (ImGui::Button("Close", ImVec2(120.0F * state.render.uiScale, 0))) {
