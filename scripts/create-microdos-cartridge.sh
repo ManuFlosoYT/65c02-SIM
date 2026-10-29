@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Automation script for microDOS Cartridge version 3.0
+# Automation script for microDOS Cartridge
 # Requires: dosfstools (mkfs.fat), mtools (mformat, mcopy)
 
 IPS=10000000
@@ -123,7 +123,7 @@ echo "  Packaging Cartridge..."
     --name "microDOS" \
     --author "ManuFloso" \
     --desc "microDOS Operating System with pre-loaded apps" \
-    --version "6.0" \
+    --version "7.0" \
     --ips "$IPS" \
     --sid true \
     --sid-model "8580" \
