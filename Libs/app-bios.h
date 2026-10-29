@@ -52,7 +52,7 @@ void bios_putchar(char c);
 /* ========================================================================= */
 
 /* Opaque handles for FatFs (sizes for TINY=1 config) */
-typedef struct { uint8_t reserved[34]; } SD_FILE;
+typedef struct { uint8_t reserved[40]; } SD_FILE;
 typedef struct { uint8_t reserved[40]; } SD_DIR;
 typedef struct {
     uint32_t fsize;
