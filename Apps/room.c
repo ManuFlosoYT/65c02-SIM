@@ -1,9 +1,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "Libs/app-bios.h"
 #include "Libs/GPUDoubleBuffer.h"
 #include "Libs/LCD.h"
-#include "Libs/app-bios.h"
 
 enum RoomConfig {
     NUM_VERTICES = 21,
