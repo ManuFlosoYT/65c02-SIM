@@ -334,9 +334,6 @@ elif [ "$NAME" == "microDOS" ]; then
     )
 
     USE_UNITY=false
-    if [ "$NO_UNITY" != true ]; then
-        USE_UNITY=true
-    fi
 
     COMPILE_SRCS=()
     if [ "$USE_UNITY" = true ]; then
@@ -360,7 +357,7 @@ elif [ "$NAME" == "microDOS" ]; then
     compile_with_opt_fallback "sdk/src/build/microDOS.bin" "$LINKER_LD" \
         -std=c23 \
         -D MICRODOS=1 \
-        -mlto-zp=200 \
+        -mlto-zp=128 \
         -I "sdk/src" -I "sdk/microdos" -I "sdk/microdos/src" -I . -D ENABLE_SD_SUPPORT=1 \
         "${COMPILE_SRCS[@]}"
 
