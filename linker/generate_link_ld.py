@@ -63,7 +63,10 @@ def generate_link_ld(flags):
     ld.append("ASSERT(__rc31 == 0x1f, \"Error en mapeo de Zero Page.\")")
     ld.append("")
     ld.append("MEMORY {")
-    ld.append("    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0xFC - (__rc31 + 1)")
+    if '--microDOS' in flags:
+        ld.append("    zp           (rw) : ORIGIN = 0x78,       LENGTH = 0xFC - 0x78")
+    else:
+        ld.append("    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0xFC - (__rc31 + 1)")
     if '--microDOS' not in flags:
         ld.append("    input_buffer (rw) : ORIGIN = 0x0300,     LENGTH = 0x0100")
     
