@@ -149,8 +149,8 @@ std::vector<std::string> SDKManager::GetAvailableLibraries(IDEMode mode) {
     }
 
     if (!scannedAny) {
-        static const std::array<const char*, 8> standardLibs = {
-            "BIOS.h", "GPU.h", "GPUDoubleBuffer.h", "LCD.h", "NET.h", "SD.h", "SID.h", "VIA.h"
+        static const std::array<const char*, 9> standardLibs = {
+            "BIOS.h", "GPU.h", "GPUDoubleBuffer.h", "LCD.h", "Mouse.h", "NET.h", "SD.h", "SID.h", "VIA.h"
         };
         for (const auto* lib : standardLibs) {
             if (seen.find(lib) == seen.end()) {
