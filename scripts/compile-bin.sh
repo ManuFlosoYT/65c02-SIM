@@ -128,7 +128,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ] || [ "$4" == "--microDOS
 
     APP_LD="sdk/src/build/${NAME}_app.ld"
     APP_FLAGS=""
-    if grep -q "Libs/GPU.h" "$SRC" || grep -q "GPUDoubleBuffer.h" "$SRC"; then
+    if grep -q "Libs/GPU.h" "$SRC" || grep -q "GPUDoubleBuffer.h" "$SRC" || grep -q "Mouse.h" "$SRC"; then
         APP_FLAGS="--gpu"
     fi
 
@@ -376,7 +376,7 @@ elif [ -f "sdk/src/$NAME.c" ]; then
     if grep -q '#include "Libs/GPUDoubleBuffer.h"' "sdk/src/$NAME.c"; then
         echo "  [GPUDoubleBuffer detected] Added --double-buffer to Linker"
         CFG_FLAGS="$CFG_FLAGS --double-buffer"
-    elif grep -q '#include "Libs/GPU.h"' "sdk/src/$NAME.c"; then
+    elif grep -q '#include "Libs/GPU.h"' "sdk/src/$NAME.c" || grep -q '#include "Libs/Mouse.h"' "sdk/src/$NAME.c"; then
         echo "  [GPU detected] Added --gpu to Linker"
         CFG_FLAGS="$CFG_FLAGS --gpu"
     fi
