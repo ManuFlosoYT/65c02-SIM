@@ -85,20 +85,40 @@ int main(void) {
     via_init();
 
     while (true) {
-        char key = bios_getchar_nb();
+        char k;
+        bool move_left = false;
+        bool move_right = false;
+        bool jump = false;
+        bool quit = false;
 
-        if (key == 'a' || key == 'A') {
+        while ((k = bios_getchar_nb()) != 0) {
+            if (k == 'a' || k == 'A') {
+                move_left = true;
+                move_right = false;
+            } else if (k == 'd' || k == 'D') {
+                move_right = true;
+                move_left = false;
+            } else if (k == 'w' || k == 'W') {
+                jump = true;
+            } else if (k == 'q' || k == 'Q' || k == 3) {
+                quit = true;
+            }
+        }
+
+        if (quit) {
+            break;
+        }
+
+        if (move_left) {
             if (p_dx > -3) {
                 p_dx--;
             }
-            inertia_cnt = on_ground ? 5 : 50;
-        } else if (key == 'd' || key == 'D') {
+            inertia_cnt = 5;
+        } else if (move_right) {
             if (p_dx < 3) {
                 p_dx++;
             }
-            inertia_cnt = on_ground ? 5 : 50;
-        } else if (key == 'q' || key == 'Q' || key == 3) {
-            break;
+            inertia_cnt = 5;
         }
 
         if (inertia_cnt > 0) {
@@ -187,7 +207,7 @@ int main(void) {
             p_dy = 0;
         }
 
-        if ((key == 'w' || key == 'W') && on_ground) {
+        if (jump && on_ground) {
             p_dy = JUMP_FORCE;
             on_ground = false;
         }
