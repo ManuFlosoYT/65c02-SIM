@@ -3,6 +3,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if defined(MICRODOS) || defined(__MICRODOS__)
+#include "Libs/app-bios.h"
+#else
 #define VIA_PORTB (*(volatile uint8_t*)0x6000)
 #define VIA_PORTA (*(volatile uint8_t*)0x6001)
 #define VIA_DDRB (*(volatile uint8_t*)0x6002)
@@ -19,6 +22,7 @@
 #define VIA_IFR (*(volatile uint8_t*)0x600D)
 #define VIA_IER (*(volatile uint8_t*)0x600E)
 #define VIA_ORA_NH (*(volatile uint8_t*)0x600F)
+#endif
 
 static inline void via_set_timer1(uint16_t count) {
     VIA_T1C_L = (uint8_t)(count & 0xFFU);
