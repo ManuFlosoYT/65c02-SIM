@@ -1,0 +1,80 @@
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "../Libs/app-bios.h"
+#include "Libs/GPU.h"
+#include "Libs/Mouse.h"
+
+typedef struct {
+    uint8_t x, y, w, h;
+    uint8_t color;
+    const char* name;
+} Box;
+
+static const Box boxes[6] = {
+    {8, 8, 24, 20, 0x30, "Red"},
+    {38, 8, 24, 20, 0x0C, "Green"},
+    {68, 8, 24, 20, 0x03, "Blue"},
+    {8, 36, 24, 20, 0x3C, "Yellow"},
+    {38, 36, 24, 20, 0x33, "Magenta"},
+    {68, 36, 24, 20, 0x0F, "Cyan"}
+};
+
+static void draw_boxes(void) {
+    gpu_fill_screen(0x00);
+    for (uint8_t i = 0; i < 6; ++i) {
+        const Box* b = &boxes[i];
+        gpu_draw_rect((int8_t)b->x, (int8_t)b->y, (int8_t)b->w, (int8_t)b->h, b->color);
+        gpu_draw_rect((int8_t)(b->x - 1), (int8_t)(b->y - 1), (int8_t)(b->w + 2), 1, 0x3F);
+        gpu_draw_rect((int8_t)(b->x - 1), (int8_t)(b->y + b->h), (int8_t)(b->w + 2), 1, 0x3F);
+        gpu_draw_rect((int8_t)(b->x - 1), (int8_t)b->y, 1, (int8_t)b->h, 0x3F);
+        gpu_draw_rect((int8_t)(b->x + b->w), (int8_t)b->y, 1, (int8_t)b->h, 0x3F);
+    }
+}
+
+int main(void) {
+    println("--- microDOS Color Boxes Mouse Test ---");
+    println("Click on any box with the mouse. Press 'q' to exit.");
+
+    draw_boxes();
+
+    bool was_pressed = false;
+    while (true) {
+        char c = bios_getchar_nb();
+        if (c == 'q' || c == 'Q' || c == 0x03 || c == 0x1B) {
+            break;
+        }
+
+        bool is_pressed = mouse_btn_left();
+        if (is_pressed && !was_pressed) {
+            uint8_t mx = mouse_get_x();
+            uint8_t my = mouse_get_y();
+            int8_t hit = -1;
+            for (uint8_t i = 0; i < 6; ++i) {
+                if (mouse_in_rect(boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h)) {
+                    hit = (int8_t)i;
+                    break;
+                }
+            }
+            if (hit >= 0) {
+                print_str("Clicked: ");
+                print_str(boxes[hit].name);
+                print_str(" box at (");
+                print_num(mx);
+                print_str(", ");
+                print_num(my);
+                println(")");
+            } else {
+                print_str("Clicked: Background at (");
+                print_num(mx);
+                print_str(", ");
+                print_num(my);
+                println(")");
+            }
+        }
+        was_pressed = is_pressed;
+    }
+
+    println("Exiting boxes app...");
+    return 0;
+}
