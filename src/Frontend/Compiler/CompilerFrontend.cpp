@@ -89,7 +89,8 @@ CompilerFrontend::BuildResult CompilerFrontend::Compile(BuildType type, const st
     std::string linkScript = tempDir + "/link.ld";
     if (type == BuildType::MicroDOS) {
         std::string cleanCode = LinkerScriptGenerator::StripComments(code);
-        bool hasGpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos;
+        bool hasGpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos ||
+                      cleanCode.find("Mouse.h") != std::string::npos;
         size_t numOverlays = LinkerScriptGenerator::DetectOverlayCount(code);
         WriteTextFile(linkScript, LinkerScriptGenerator::GenerateAppLinkerScript(hasGpu, numOverlays));
     } else {
