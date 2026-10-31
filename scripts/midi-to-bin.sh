@@ -31,7 +31,9 @@ for arg in "$@"; do
         SDK_MODE=true
     elif [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
         MULTITHREAD=true
-    elif [ "$arg" == "--chip" ] || [ "$arg" == "--system" ] || [ "$arg" == "--sd-cost" ] || [ "$arg" == "--stream-bufs" ] || [ "$arg" == "--clock" ] || [ "$arg" == "--cpu-clock" ] || [ "$arg" == "--sid-clock" ] || [ "$arg" == "--main-track" ] || [ "$arg" == "--melody-channel" ] || [ "$arg" == "--bass-channel" ]; then
+    elif [ "$arg" == "-d" ] || [ "$arg" == "--duration" ]; then
+        prev_arg="--duration"
+    elif [ "$arg" == "--chip" ] || [ "$arg" == "--system" ] || [ "$arg" == "--sd-cost" ] || [ "$arg" == "--stream-bufs" ] || [ "$arg" == "--clock" ] || [ "$arg" == "--cpu-clock" ] || [ "$arg" == "--sid-clock" ] || [ "$arg" == "--main-track" ] || [ "$arg" == "--melody-channel" ] || [ "$arg" == "--bass-channel" ] || [ "$arg" == "--export-midi" ]; then
         prev_arg="$arg"
     elif [ "$arg" == "--no-verify" ]; then
         EXTRA_ARGS="$EXTRA_ARGS --no-verify"
@@ -121,7 +123,7 @@ for midi_file in "${files[@]}"; do
         continue
     fi
 
-    if [ "${ext,,}" == "nsf" ] || [ "$SDK_MODE" = true ]; then
+    if [ "$SDK_MODE" = true ]; then
         current_modes=("max_quality")
     else
         current_modes=("${MODES[@]}")
@@ -131,7 +133,12 @@ for midi_file in "${files[@]}"; do
         echo ">> Attempting Mode: $mode"
 
         # Convert MIDI to ASM
-        if ! python3 tools/sid/audio_to_sid.py "$midi_file" --mode "$mode" $EXTRA_ARGS; then
+        conv_rc=0
+        python3 tools/sid/audio_to_sid.py "$midi_file" --mode "$mode" $EXTRA_ARGS || conv_rc=$?
+        if [ $conv_rc -eq 2 ]; then
+            echo "   [X] Mode '$mode' exceeds 32KB limit."
+            continue
+        elif [ $conv_rc -ne 0 ]; then
             echo "   [!] Conversion script failed. Skipping."
             break
         fi
