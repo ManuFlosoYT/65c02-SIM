@@ -73,6 +73,8 @@ static void DrawEmulationSettings(AppState& state) {
     ImGui::SetItemTooltip("Locks voice preview waveform to phase reset/zero-crossing to keep waves static for observing Pulse Width (PW) changes.");
     ImGui::Checkbox("SID ADSR Bug Warning", &state.emulation.sidADSRWarning);
     ImGui::SetItemTooltip("Displays a warning indicator in the SID Viewer when rapid Gate transitions cause an ADSR delay bug.");
+    ImGui::Checkbox("VRAM Pixel Inspector", &state.emulation.vramPixelInspector);
+    ImGui::SetItemTooltip("Enables tooltip inspection and pixel locking on click in the VRAM Viewer.");
 }
 
 static void DrawScriptingSettings(AppState& state) {
