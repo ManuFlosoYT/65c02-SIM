@@ -50,6 +50,7 @@ struct EmulationState {
     bool ramPowerOnPattern = false;
     bool sidPhaseTrigger = true;
     bool sidADSRWarning = false;
+    bool vramPixelInspector = false;
     bool isRecordingVideo = false;
     std::string recordingVideoPath;
     RecordingSettings recordingSettings;
