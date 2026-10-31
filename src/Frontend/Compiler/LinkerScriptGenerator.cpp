@@ -66,6 +66,7 @@ CompilerFrontend::HardwareRequirements LinkerScriptGenerator::DetectHardwareRequ
     std::string cleanCode = StripComments(code);
     CompilerFrontend::HardwareRequirements hw;
     hw.gpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos ||
+             cleanCode.find("Mouse.h") != std::string::npos ||
              cleanCode.find("--double-buffer") != std::string::npos ||
              cleanCode.find("GPUDoubleBuffer.h") != std::string::npos;
     hw.sid = cleanCode.find("--sid") != std::string::npos || cleanCode.find("SID.h") != std::string::npos;
@@ -76,7 +77,8 @@ CompilerFrontend::HardwareRequirements LinkerScriptGenerator::DetectHardwareRequ
 
 std::string LinkerScriptGenerator::GenerateLinkerScript(const std::string& code) {
     std::string cleanCode = StripComments(code);
-    bool hasGpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos;
+    bool hasGpu = cleanCode.find("--gpu") != std::string::npos || cleanCode.find("GPU.h") != std::string::npos ||
+                  cleanCode.find("Mouse.h") != std::string::npos;
     bool hasDoubleBuffer =
         cleanCode.find("--double-buffer") != std::string::npos || cleanCode.find("GPUDoubleBuffer.h") != std::string::npos;
     bool hasNet = cleanCode.find("--net") != std::string::npos || cleanCode.find("NET.h") != std::string::npos;
