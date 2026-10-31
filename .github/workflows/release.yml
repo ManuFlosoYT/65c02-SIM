@@ -216,18 +216,54 @@ jobs:
       - name: Run Windows Tests
         run: wine unit_tests.exe
 
-  sdk:
+  build-core-nsf:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
       - name: Install dependencies
         run: |
           dnf -y update
-          dnf -y install cc65 python3-pip zip git dosfstools mtools curl tar xz
-          pip3 install pillow mido py65
+          dnf -y install libstdc++-static gcc-c++ ninja-build mold cmake git
 
       - name: Checkout master
         uses: actions/checkout@v5
+
+      - name: Fix Git Trust
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
+
+      - name: Build Minimal NSF Core
+        run: |
+          chmod +x build.sh
+          ./build.sh --minimal-core
+
+      - name: Upload Minimal Core Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: SIM_65C02-nsf-core
+          path: output/SIM_65C02
+
+  sdk:
+    runs-on: ubuntu-latest
+    needs: build-core-nsf
+    container: fedora:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf -y update
+          dnf -y install cc65 python3-pip zip git dosfstools mtools curl tar xz
+          pip3 install pillow mido
+
+      - name: Checkout master
+        uses: actions/checkout@v5
+
+      - name: Download Minimal Core Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: SIM_65C02-nsf-core
+          path: output
+
+      - name: Set Core Executable Permissions
+        run: chmod +x output/SIM_65C02
 
       - name: Checkout SDK
         uses: actions/checkout@v5
@@ -344,7 +380,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cc65 jq python3-pip zip imagemagick librsvg2-bin dosfstools mtools
-          pip3 install pillow mido py65 --break-system-packages
+          pip3 install pillow mido --break-system-packages
 
       - name: Download SDK Artifact
         uses: actions/download-artifact@v8

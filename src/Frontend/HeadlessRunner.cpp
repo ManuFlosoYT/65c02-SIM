@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 
+#include "Hardware/Audio/NSFRunner.h"
 #include "Hardware/Core/Emulator/Emulator.h"
 
 namespace Frontend {
@@ -34,6 +35,30 @@ std::string ResolveHeadlessRomPath(const Args& args) {
 }  // namespace
 
 int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
+    if (!args.nsfTracePath.empty()) {
+        if (args.romPath.empty()) {
+            std::cerr << "[NSFRunner] Error: No input .nsf path specified.\n";
+            return 1;
+        }
+        const Hardware::NSFRunConfig nsfConfig{
+            .maxDurationSec = args.nsfMaxDuration,
+            .songIndex = args.nsfSong,
+        };
+        const Hardware::NSFRunResult res = Hardware::NSFRunner::RunFile(args.romPath, nsfConfig);
+        if (!res.success) {
+            std::cerr << "[NSFRunner] Error: " << res.errorMessage << '\n';
+            return 1;
+        }
+        if (!Hardware::NSFRunner::WriteTraceJson(res, args.nsfTracePath)) {
+            std::cerr << "[NSFRunner] Error: Failed to write trace JSON to " << args.nsfTracePath << '\n';
+            return 1;
+        }
+        std::cout << std::fixed << std::setprecision(2)
+                  << "[NSFRunner] Trace written to " << args.nsfTracePath
+                  << " (" << res.totalFrames << " frames, " << res.durationSec << "s, stop=" << res.stopReason << ")\n";
+        return 0;
+    }
+
     Core::Emulator emulator;
     emulator.SetRewindSnapshotsEnabled(false);
     emulator.GetSID().Init(sidSampleRate);

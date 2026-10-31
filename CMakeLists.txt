@@ -1,7 +1,13 @@
 cmake_minimum_required(VERSION 3.24)
 project(SIM_65C02)
 
+option(BUILD_NSF_RUNNER_ONLY "Build only the minimal headless core for NSF tracing" OFF)
+
 include(cmake/CompilerOptions.cmake)
+if(BUILD_NSF_RUNNER_ONLY)
+    include(cmake/MinimalNSFRunner.cmake)
+    return()
+endif()
 include(cmake/Dependencies.cmake)
 include(cmake/EmbeddedResources.cmake)
 include(cmake/CoreTarget.cmake)

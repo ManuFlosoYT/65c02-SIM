@@ -7,9 +7,14 @@ CMAKE_OPTS=""
 DO_CLEAN=false
 DO_RUN=false
 FORCE_CONFIGURE=false
+MINIMAL_CORE=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --minimal-core)
+            MINIMAL_CORE=true
+            shift
+            ;;
         --clean)
             DO_CLEAN=true
             shift
@@ -49,6 +54,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --debug            Build in Debug mode"
             echo "  --clean            Clean build directory before building"
             echo "  --reconfigure      Force CMake reconfiguration"
+            echo "  --minimal-core     Build only minimal headless core for NSF compilation"
             echo "  --run              Run application after build"
             echo "  --target <os>      Target OS: linux, win, web"
             echo "  -h, --help         Show this help message"
@@ -64,7 +70,9 @@ done
 echo "Building for OS: $TARGET_OS in $BUILD_TYPE mode"
 
 # Setup Build Directory based on OS and TYPE
-if [[ "$TARGET_OS" == "win" ]]; then
+if [ "$MINIMAL_CORE" = true ]; then
+    BUILD_DIR="build/nsf_core"
+elif [[ "$TARGET_OS" == "win" ]]; then
     if [[ "$BUILD_TYPE" == "Debug" ]]; then BUILD_DIR="build_win/debug"; else BUILD_DIR="build_win/release"; fi
 elif [[ "$TARGET_OS" == "web" ]]; then
     BUILD_DIR="build/web"
@@ -97,6 +105,15 @@ if command -v ninja >/dev/null 2>&1; then
             rm -rf "$BUILD_DIR"
         fi
     fi
+fi
+
+if [ "$MINIMAL_CORE" = true ]; then
+    cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_NSF_RUNNER_ONLY=ON $CMAKE_OPTS
+    cmake --build "$BUILD_DIR" -j$(nproc)
+    mkdir -p output
+    cp "$BUILD_DIR/SIM_65C02" output/ 2>/dev/null || true
+    echo "Minimal NSF core build completed in output/SIM_65C02"
+    exit 0
 fi
 
 if [[ "$TARGET_OS" == "web" ]]; then

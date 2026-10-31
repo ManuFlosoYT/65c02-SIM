@@ -14,6 +14,9 @@ struct Args {
     std::string romPath;
     std::string dumpMemPath;
     int runCycles = 0;
+    std::string nsfTracePath;
+    double nsfMaxDuration = 0.0;
+    int nsfSong = 0;
 };
 
 struct ParseArgsResult {

@@ -18,6 +18,16 @@ bool ParseStrictInt(std::string_view text, int& outValue) {
     return ec == std::errc() && ptr == end;
 }
 
+bool ParseStrictDouble(std::string_view text, double& outValue) {
+    if (text.empty()) {
+        return false;
+    }
+    const char* begin = text.data();
+    const char* end = text.data() + text.size();
+    auto [ptr, ec] = std::from_chars(begin, end, outValue);
+    return ec == std::errc() && ptr == end;
+}
+
 }  // namespace
 
 void CliArgsParser::PrintUsage(const char* exeName) {
@@ -31,6 +41,9 @@ void CliArgsParser::PrintUsage(const char* exeName) {
               << "  --sid-device <on|off>  Enable or disable the SID device\n"
               << "  --profile-sid           Print SID timing counters\n"
               << "  --dump-mem <file>       Dump 64KB memory to file\n"
+              << "  --nsf-trace <path>      Simulate NSF and write 60Hz APU trace JSON\n"
+              << "  --nsf-max-duration <S>  Maximum NSF duration in seconds (0 = auto)\n"
+              << "  --nsf-song <N>          1-based NSF song index (0 = header default)\n"
               << "  --help                  Show this help\n";
 }
 
@@ -113,6 +126,39 @@ ParseArgsResult CliArgsParser::Parse(std::span<const char* const> argv) {
                 return result;
             }
             args.romPath = argv[++i];
+        } else if (arg == "--nsf-trace") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --nsf-trace";
+                return result;
+            }
+            args.nsfTracePath = argv[++i];
+        } else if (arg == "--nsf-max-duration") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --nsf-max-duration";
+                return result;
+            }
+            double parsedDuration = 0.0;
+            if (!ParseStrictDouble(argv[++i], parsedDuration) || parsedDuration < 0.0) {
+                result.ok = false;
+                result.error = "Invalid value for --nsf-max-duration: " + std::string(argv[i]);
+                return result;
+            }
+            args.nsfMaxDuration = parsedDuration;
+        } else if (arg == "--nsf-song") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --nsf-song";
+                return result;
+            }
+            int parsedSong = 0;
+            if (!ParseStrictInt(argv[++i], parsedSong) || parsedSong < 0) {
+                result.ok = false;
+                result.error = "Invalid value for --nsf-song: " + std::string(argv[i]);
+                return result;
+            }
+            args.nsfSong = parsedSong;
         } else if (!arg.empty() && arg[0] == '-') {
             result.ok = false;
             result.error = "Unknown option: " + std::string(arg);
