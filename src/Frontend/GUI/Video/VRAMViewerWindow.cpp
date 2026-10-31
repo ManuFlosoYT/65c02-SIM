@@ -366,6 +366,19 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             int hoveredY = std::clamp(static_cast<int>((mousePos.y - imgMin.y) / imgH * static_cast<float>(GPU::VRAM_HEIGHT)),
                                       0, static_cast<int>(GPU::VRAM_HEIGHT - 1));
 
+            Byte mouseButtons = 0U;
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                mouseButtons |= MicroDosGPU::MOUSE_BTN_LEFT;
+            }
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+                mouseButtons |= MicroDosGPU::MOUSE_BTN_RIGHT;
+            }
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+                mouseButtons |= MicroDosGPU::MOUSE_BTN_MIDDLE;
+            }
+            state.emulator.GetMicroDosGPU().UpdateHostMouse(static_cast<Byte>(hoveredX), static_cast<Byte>(hoveredY),
+                                                            mouseButtons);
+
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                 selectedPixelX = hoveredX;
                 selectedPixelY = hoveredY;

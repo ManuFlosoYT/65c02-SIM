@@ -32,7 +32,7 @@ class GPU : public IBusDevice {
     bool LoadState(std::istream& inputStream) override;
 
     // Clock the GPU to advance pixel counters
-    inline void Clock() { rasterTiming.Clock(); }
+    virtual inline void Clock() { rasterTiming.Clock(); }
 
     // Bus control status
     [[nodiscard]] inline Word GetPixelX() const { return static_cast<Word>(rasterTiming.pixelX); }

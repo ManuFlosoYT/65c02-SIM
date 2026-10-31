@@ -151,3 +151,158 @@ TEST(MicroDosGPU_Test, DualPhaseExecution) {
     EXPECT_FALSE(gpu.IsInBlankingInterval());
     EXPECT_GT(gpu.GetPixelX(), initialX);
 }
+
+TEST(MicroDosGPU_Test, PS2InitializationAndFrameEncoding) {
+    uint16_t frameAA = PS2MouseController::EncodeFrame(0xAAU);
+    EXPECT_EQ(frameAA & 0x01U, 0U);
+    EXPECT_EQ((frameAA >> 1U) & 0xFFU, 0xAAU);
+    EXPECT_EQ((frameAA >> 10U) & 0x01U, 1U);
+
+    uint8_t decoded = 0U;
+    EXPECT_TRUE(PS2MouseController::DecodeFrame(frameAA, decoded));
+    EXPECT_EQ(decoded, 0xAAU);
+    EXPECT_FALSE(PS2MouseController::DecodeFrame(static_cast<uint16_t>(frameAA ^ (1U << 3U)), decoded));
+    EXPECT_FALSE(PS2MouseController::DecodeFrame(static_cast<uint16_t>(frameAA | 0x01U), decoded));
+
+    MicroDosGPU gpu;
+    gpu.Reset();
+    EXPECT_FALSE(gpu.GetMouse().IsStreamMode());
+
+    bool sawSelfTestAA = false;
+    bool sawMouseId00 = false;
+    bool sawHostInhibitClk = false;
+    bool sawHostTxF4 = false;
+    bool sawAckFA = false;
+
+    for (int cycle = 0; cycle < 500 && !gpu.GetMouse().IsStreamMode(); ++cycle) {
+        gpu.Clock();
+        if (gpu.GetMouse().GetLastRxByte() == 0xAAU) {
+            sawSelfTestAA = true;
+        }
+        if (sawSelfTestAA && gpu.GetMouse().GetLastRxByte() == 0x00U) {
+            sawMouseId00 = true;
+        }
+        if (!gpu.GetMouse().GetPS2Clk()) {
+            sawHostInhibitClk = true;
+        }
+        if (gpu.GetMouse().GetLastHostTxByte() == 0xF4U) {
+            sawHostTxF4 = true;
+        }
+        if (gpu.GetMouse().GetLastRxByte() == 0xFAU) {
+            sawAckFA = true;
+        }
+    }
+
+    EXPECT_TRUE(sawSelfTestAA);
+    EXPECT_TRUE(sawMouseId00);
+    EXPECT_TRUE(sawHostInhibitClk);
+    EXPECT_TRUE(sawHostTxF4);
+    EXPECT_TRUE(sawAckFA);
+    EXPECT_TRUE(gpu.GetMouse().IsStreamMode());
+}
+
+TEST(MicroDosGPU_Test, PS2PacketSyncAndCoordinateClamping) {
+    MicroDosGPU gpu;
+    gpu.GetMouse().CompleteInit();
+    ASSERT_TRUE(gpu.GetMouse().IsStreamMode());
+
+    gpu.GetMouse().ReceiveByte(0x00U);
+    EXPECT_EQ(gpu.GetMouse().GetPacketIndex(), 0U);
+    EXPECT_FALSE(gpu.GetMouse().IsDirty());
+
+    gpu.GetMouse().ReceiveByte(0x29U);
+    EXPECT_EQ(gpu.GetMouse().GetPacketIndex(), 1U);
+    gpu.GetMouse().ReceiveByte(25U);
+    EXPECT_EQ(gpu.GetMouse().GetPacketIndex(), 2U);
+    gpu.GetMouse().ReceiveByte(static_cast<uint8_t>(-20));
+    EXPECT_EQ(gpu.GetMouse().GetPacketIndex(), 0U);
+    EXPECT_TRUE(gpu.GetMouse().IsDirty());
+    EXPECT_EQ(gpu.GetMouse().GetButtons(), MicroDosGPU::MOUSE_BTN_LEFT);
+    EXPECT_EQ(gpu.GetMouse().GetPosX(), 25U);
+    EXPECT_EQ(gpu.GetMouse().GetPosY(), 20U);
+
+    gpu.GetMouse().InjectPacket(-10, 5, MicroDosGPU::MOUSE_BTN_RIGHT);
+    EXPECT_EQ(gpu.GetMouse().GetButtons(), MicroDosGPU::MOUSE_BTN_RIGHT);
+    EXPECT_EQ(gpu.GetMouse().GetPosX(), 15U);
+    EXPECT_EQ(gpu.GetMouse().GetPosY(), 15U);
+
+    gpu.GetMouse().InjectPacket(200, -200, 0U);
+    EXPECT_EQ(gpu.GetMouse().GetPosX(), 99U);
+    EXPECT_EQ(gpu.GetMouse().GetPosY(), 74U);
+
+    gpu.GetMouse().InjectPacket(-200, 200, 0U);
+    EXPECT_EQ(gpu.GetMouse().GetPosX(), 0U);
+    EXPECT_EQ(gpu.GetMouse().GetPosY(), 0U);
+}
+
+TEST(MicroDosGPU_Test, BlankingArbiterThreeCycleBurst) {
+    MicroDosGPU gpu;
+    gpu.GetMouse().CompleteInit();
+    ASSERT_FALSE(gpu.IsInBlankingInterval());
+
+    gpu.GetMouse().InjectPacket(45, -30,
+                                static_cast<uint8_t>(MicroDosGPU::MOUSE_BTN_LEFT | MicroDosGPU::MOUSE_BTN_RIGHT));
+    EXPECT_TRUE(gpu.GetMouse().IsDirty());
+
+    while (gpu.GetPixelX() < 99U) {
+        gpu.Clock();
+        EXPECT_FALSE(gpu.IsInBlankingInterval());
+        EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_BTNS_OFFSET), 0U);
+        EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_X_OFFSET), 0U);
+        EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_Y_OFFSET), 0U);
+        EXPECT_TRUE(gpu.GetFpgaRw());
+    }
+
+    gpu.Clock();
+    EXPECT_EQ(gpu.GetPixelX(), 100U);
+    EXPECT_TRUE(gpu.IsInBlankingInterval());
+    if (gpu.Read(MicroDosGPU::MOUSE_BTNS_OFFSET) == 0U) {
+        gpu.Clock();
+    }
+
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_BTNS_OFFSET), 0x03U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_X_OFFSET), 0U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_Y_OFFSET), 0U);
+    EXPECT_TRUE(gpu.GetMouse().IsDirty());
+
+    gpu.Clock();
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_BTNS_OFFSET), 0x03U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_X_OFFSET), 45U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_Y_OFFSET), 0U);
+    EXPECT_TRUE(gpu.GetMouse().IsDirty());
+
+    gpu.Clock();
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_BTNS_OFFSET), 0x03U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_X_OFFSET), 45U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_Y_OFFSET), 30U);
+    EXPECT_FALSE(gpu.GetMouse().IsDirty());
+}
+
+TEST(MicroDosGPU_Test, HostMouseInputIntegration) {
+    Core::Emulator emu;
+    std::string errorMsg;
+    emu.InitFromMemory({}, "", errorMsg);
+
+    Core::Cartridge cart;
+    cart.loaded = true;
+    cart.busDevices = {{"RAM", 0x0000, 0x5FFF}, {"microDOS-GPU", 0x6000, 0x7FFF}, {"ROM", 0x8000, 0xFFFF}};
+    emu.SetCartridge(cart);
+    emu.SetupHardware();
+    emu.SetGPUEnabled(true);
+
+    MicroDosGPU& gpu = emu.GetMicroDosGPU();
+    gpu.GetMouse().CompleteInit();
+    gpu.UpdateHostMouse(80U, 60U, MicroDosGPU::MOUSE_BTN_MIDDLE);
+
+    for (int i = 0; i < 200; ++i) {
+        gpu.Clock();
+    }
+
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_BTNS_OFFSET), 0x04U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_X_OFFSET), 80U);
+    EXPECT_EQ(gpu.Read(MicroDosGPU::MOUSE_Y_OFFSET), 60U);
+
+    EXPECT_EQ(emu.GetMem().ReadDirect(0x7FF0U), 0x04U);
+    EXPECT_EQ(emu.GetMem().ReadDirect(0x7FF1U), 80U);
+    EXPECT_EQ(emu.GetMem().ReadDirect(0x7FF2U), 60U);
+}
