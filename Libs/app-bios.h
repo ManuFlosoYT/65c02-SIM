@@ -12,6 +12,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "Libs/Mouse.h"
 
 /* ========================================================================= */
 /*                              APP MEMORY                                   */
