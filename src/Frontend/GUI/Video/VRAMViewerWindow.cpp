@@ -124,7 +124,7 @@ static void DrawVRAMControls(AppState& state) {
     }
 #endif
 
-    if (hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
+    if (state.emulation.vramPixelInspector && hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
         selectedPixelY < GPU::VRAM_HEIGHT) {
         ImGui::SameLine();
         if (ImGui::Button("Clear")) {
@@ -379,41 +379,43 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             state.emulator.GetMicroDosGPU().UpdateHostMouse(static_cast<Byte>(hoveredX), static_cast<Byte>(hoveredY),
                                                             mouseButtons);
 
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-                selectedPixelX = hoveredX;
-                selectedPixelY = hoveredY;
-                hasPixelSelection = true;
-            }
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                hasPixelSelection = false;
-            }
-
-            if (ImGui::BeginItemTooltip()) {
-                Byte val = state.emulator.GetGPU().GetVRAM().at(static_cast<size_t>(hoveredY)).at(static_cast<size_t>(hoveredX));
-                uint8_t r = (val >> 4) & 0x03;
-                uint8_t g = (val >> 2) & 0x03;
-                uint8_t b = val & 0x03;
-                ImVec4 col = VRAMColorToRGBA(val);
-
-                bool isMapped = false;
-                Word busAddr = GetVRAMBusAddress(state, hoveredX, hoveredY, isMapped);
-
-                ImGui::Text("Pixel: (%d, %d)", hoveredX, hoveredY);
-                if (isMapped) {
-                    ImGui::Text("Bus: $%04X", busAddr);
-                } else {
-                    ImGui::Text("Bus: $%04X (Unmapped)", busAddr);
+            if (state.emulation.vramPixelInspector) {
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                    selectedPixelX = hoveredX;
+                    selectedPixelY = hoveredY;
+                    hasPixelSelection = true;
                 }
-                ImGui::Text("Palette: 0x%02X (%u) [R:%u G:%u B:%u]", static_cast<unsigned int>(val & 0x3FU),
-                            static_cast<unsigned int>(val & 0x3FU), r, g, b);
-                ImGui::SameLine();
-                ImGui::ColorButton("##hover_color", col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs,
-                                   ImVec2(14, 14));
-                ImGui::EndTooltip();
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                    hasPixelSelection = false;
+                }
+
+                if (ImGui::BeginItemTooltip()) {
+                    Byte val = state.emulator.GetGPU().GetVRAM().at(static_cast<size_t>(hoveredY)).at(static_cast<size_t>(hoveredX));
+                    uint8_t r = (val >> 4) & 0x03;
+                    uint8_t g = (val >> 2) & 0x03;
+                    uint8_t b = val & 0x03;
+                    ImVec4 col = VRAMColorToRGBA(val);
+
+                    bool isMapped = false;
+                    Word busAddr = GetVRAMBusAddress(state, hoveredX, hoveredY, isMapped);
+
+                    ImGui::Text("Pixel: (%d, %d)", hoveredX, hoveredY);
+                    if (isMapped) {
+                        ImGui::Text("Bus: $%04X", busAddr);
+                    } else {
+                        ImGui::Text("Bus: $%04X (Unmapped)", busAddr);
+                    }
+                    ImGui::Text("Palette: 0x%02X (%u) [R:%u G:%u B:%u]", static_cast<unsigned int>(val & 0x3FU),
+                                static_cast<unsigned int>(val & 0x3FU), r, g, b);
+                    ImGui::SameLine();
+                    ImGui::ColorButton("##hover_color", col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoInputs,
+                                       ImVec2(14, 14));
+                    ImGui::EndTooltip();
+                }
             }
         }
 
-        if (hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
+        if (state.emulation.vramPixelInspector && hasPixelSelection && selectedPixelX >= 0 && selectedPixelX < GPU::VRAM_WIDTH && selectedPixelY >= 0 &&
             selectedPixelY < GPU::VRAM_HEIGHT) {
             float scaleF = static_cast<float>(scale);
             float px = imgMin.x + static_cast<float>(selectedPixelX) * scaleF;
