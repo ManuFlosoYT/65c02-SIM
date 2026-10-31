@@ -19,7 +19,7 @@ def analyze_file(file_path):
 
     try:
         if ext == 'nsf':
-            processor = NsfProcessor(file_path, MODE_MAX_QUALITY, duration=60)
+            processor = NsfProcessor(file_path, MODE_MAX_QUALITY, duration=0)
         else:
             processor = MidiProcessor(file_path, MODE_MAX_QUALITY)
 

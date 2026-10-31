@@ -22,7 +22,8 @@ def main():
     parser.add_argument("--sid-clock", type=float, default=None,
                         help="Target SID clock frequency in Hz (default: 1000000.0 NTSC / 985248.0 PAL)")
     parser.add_argument("--microDOS", action='store_true', help="Output raw execution bytes instead of ASM")
-    parser.add_argument("--duration", type=int, default=180, help="Max duration in seconds for infinite NSF loops")
+    parser.add_argument("--duration", type=float, default=0, help="Max duration in seconds for NSF files (0 = auto-detect song length)")
+    parser.add_argument("--export-midi", default=None, help="Optional path to export intermediate .mid file when input is .nsf")
     parser.add_argument("--sd-cost", type=int, default=49731, help="Cycles per 512B SD read")
     parser.add_argument("--stream-bufs", type=int, default=16, help="Target buffer budget in microDOS play.c")
     parser.add_argument("--no-verify", action='store_true', help="Skip formal lossless roundtrip verification")
@@ -57,6 +58,8 @@ def main():
             bass_channel=args.bass_channel
         )
     events = processor.process()
+    if ext == 'nsf' and args.export_midi:
+        processor.export_midi(args.export_midi, events)
 
     noise_channel = getattr(processor, 'noise_channel', -1)
     custom_wave_overrides = getattr(processor, 'custom_wave_overrides', None)
@@ -85,7 +88,7 @@ def main():
             verify=not args.no_verify
         )
         if not fits:
-            sys.exit(1)
+            sys.exit(2)
 
 
 if __name__ == "__main__":

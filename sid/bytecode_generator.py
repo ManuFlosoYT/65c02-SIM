@@ -84,6 +84,7 @@ class BytecodeGenerator:
         self.melody_channel = melody_channel
         self.noise_channel = noise_channel
         self.custom_wave_overrides = custom_wave_overrides or {}
+        self.channel_custom_pw = {}
         self.voices = [Voice(i) for i in range(1, 4)]
         self.sid_state = [-1] * 25
         if sid_clock is not None:
@@ -391,6 +392,8 @@ class BytecodeGenerator:
 
             if ev['type'] == 'program_change':
                 channel_patches[ev['channel']] = ev['program']
+                if ev['program'] not in (128, 129, 130):
+                    self.channel_custom_pw[ev['channel']] = None
 
             elif ev['type'] == 'control_change':
                 ch = ev['channel']
@@ -432,8 +435,10 @@ class BytecodeGenerator:
                     # 0: 12.5%, 1: 25%, 2: 50%, 3: 25% negated
                     duty_map = {0: 0x0200, 1: 0x0400, 2: 0x0800, 3: 0x0C00}
                     pw_val = duty_map.get(val, 0x0800)
+                    self.channel_custom_pw[ch] = pw_val
                     for v in self.voices:
                         if v.active and getattr(v, 'channel', None) == ch:
+                            v.pwm_val = pw_val
                             base = get_voice_offset(v.index)
                             self._emit_reg(bytecode, base + PW_LO_1, pw_val & 0xFF)
                             self._emit_reg(bytecode, base + PW_HI_1, (pw_val >> 8) & 0xFF)
@@ -456,6 +461,8 @@ class BytecodeGenerator:
                 vel = ev.get('velocity', 100)
                 role = ev.get('role')
                 wave, ad, sr, pw, features = get_instrument_params(prog, ev['channel'], note_val, vel, self.chip)
+                if self.channel_custom_pw.get(ev['channel']) is not None and (wave & WAVE_PULSE):
+                    pw = self.channel_custom_pw[ev['channel']]
                 if ev['channel'] in self.custom_wave_overrides and self.custom_wave_overrides[ev['channel']] != 0:
                     wave = self.custom_wave_overrides[ev['channel']]
                     if self.chip == "6581" and (wave & 0x80) and (wave != 0x80):

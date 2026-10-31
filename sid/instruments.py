@@ -79,8 +79,11 @@ def get_instrument_params(program, channel, note, velocity, chip="8580"):
     
     # Velocity -> Sustain Level mapping (High nibble of SR)
     if not is_drum:
-        sus_nibble = int((velocity / 127.0) * 15)
-        if sus_nibble < 4: sus_nibble = 4 # Min sustain
+        if program in (128, 129, 130):
+            sus_nibble = max(1, min(15, round((velocity / 127.0) * 15)))
+        else:
+            sus_nibble = int((velocity / 127.0) * 15)
+            if sus_nibble < 4: sus_nibble = 4 # Min sustain
         # Some configs might hardcode a 0 sustain base (like APU waves)
         if sr_base > 0x0F: 
             sustain_release = sr_base # It provided the full byte (e.g. 0xF0)

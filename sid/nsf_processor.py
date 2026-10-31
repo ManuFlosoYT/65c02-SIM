@@ -1,203 +1,320 @@
-# NSF (Nintendo Sound Format) processor using py65
+# NSF (Nintendo Sound Format) processor using headless SIM_65C02 APU trace
 
-import os
-import struct
+import json
 import math
+import os
+import shutil
+import struct
+import subprocess
+import tempfile
+from typing import Any, Dict, List, Optional, Union
 
 try:
-    from py65.devices.mpu6502 import MPU
+    import mido
 except ImportError:
-    import sys
-    print("Error: 'py65' library not found.")
-    print("Please install it using: pip install py65")
-    sys.exit(1)
+    mido = None
 
 from midi_processor import MidiProcessor
 from sid_constants import MODE_MAX_QUALITY
 
-class NsfMemory:
-    def __init__(self, processor):
-        self.mem = bytearray(65536)
-        self.processor = processor
-    
-    def __getitem__(self, addr):
-        return self.mem[addr]
-        
-    def __setitem__(self, addr, val):
-        self.mem[addr] = val
-        if 0x4000 <= addr <= 0x4017:
-            self.processor._apu_write_hook(addr, val)
+NOISE_PERIODS = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068]
+
+_EVENT_PRIORITY = {
+    'note_off': 0,
+    'program_change': 1,
+    'control_change': 2,
+    'pitchwheel': 3,
+    'note_on': 4,
+    'arpeggio_on': 4,
+}
 
 
 class NsfProcessor(MidiProcessor):
-    def __init__(self, nsf_path, mode=MODE_MAX_QUALITY, duration=180):
-        self.midi_path = nsf_path # For compatibility
-        self.nsf_path = nsf_path
+    def __init__(
+        self,
+        nsf_path: Optional[Union[str, Dict[str, Any]]] = None,
+        mode: Union[str, int] = MODE_MAX_QUALITY,
+        duration: float = 0.0,
+        song_idx: int = 0,
+        trace_data: Optional[Dict[str, Any]] = None,
+        target_polyphony: Optional[int] = None,
+    ):
+        if isinstance(nsf_path, dict):
+            trace_data = nsf_path
+            nsf_path = "<trace_dict>"
+        if isinstance(mode, int):
+            target_polyphony = mode
+            mode = MODE_MAX_QUALITY
+
+        self.midi_path = nsf_path or ""
+        self.nsf_path = nsf_path or ""
         self.mode = mode
-        self.duration = duration
-        self.events = []
-        self.bass_channel = -1
-        self.melody_channel = -1
-        
+        self.duration = float(duration) if duration is not None else 0.0
+        self.song_idx = int(song_idx)
+        self.trace_data = trace_data
+        self.events: List[Dict[str, Any]] = []
+        self.bass_channel = 2
+        self.melody_channel = 0
+        self.noise_channel = 3
+        self.custom_wave_overrides: Dict[int, int] = {}
+
+        self.fps = 60.098814
+        self.total_frames = 0
+        self.detected_duration = 0.0
+        self.stop_reason = "unknown"
+        self.loop_start_frame = -1
+        self.loop_end_frame = -1
+        self.song_name = ""
+        self.artist = ""
+        self.copyright = ""
+
         self.quant_grid = 0.001
         self.min_note_duration = 0.0
         self.chord_reduce = False
-        
+
         self._configure_mode()
-        
-        self.cpu = MPU()
-        self.memory = NsfMemory(self)
-        self.cpu.memory = self.memory
-        
-        self.apu_state = {}
-        for i in range(0x4000, 0x4018):
-            self.apu_state[i] = 0
+        if target_polyphony is not None:
+            self.max_polyphony = int(target_polyphony)
 
-        self.has_apu_changes = False
-        self._load_nsf()
+    @staticmethod
+    def _find_sim_binary() -> str:
+        env_bin = os.environ.get("SIM_65C02_BIN")
+        if env_bin and os.path.isfile(env_bin):
+            return env_bin
 
-    def _apu_write_hook(self, address, value):
-        self.apu_state[address] = value
-        self.has_apu_changes = True
-        
-    def _load_nsf(self):
-        with open(self.nsf_path, "rb") as f:
-            header = f.read(128)
-            
-            if header[0:5] != b'NESM\x1a':
-                raise ValueError("Invalid NSF file")
-                
-            self.version = header[0x05]
-            self.total_songs = header[0x06]
-            self.starting_song = header[0x07]
-            
-            self.load_addr = struct.unpack("<H", header[0x08:0x0A])[0]
-            self.init_addr = struct.unpack("<H", header[0x0A:0x0C])[0]
-            self.play_addr = struct.unpack("<H", header[0x0C:0x0E])[0]
-            
-            self.song_name = header[0x0E:0x2E].split(b'\x00')[0].decode('ascii', errors='ignore')
-            self.artist = header[0x2E:0x4E].split(b'\x00')[0].decode('ascii', errors='ignore')
-            self.copyright = header[0x4E:0x6E].split(b'\x00')[0].decode('ascii', errors='ignore')
-            
-            self.play_speed_ntsc = struct.unpack("<H", header[0x6E:0x70])[0]
-            self.bank_switch = list(header[0x70:0x78])
-            self.play_speed_pal = struct.unpack("<H", header[0x78:0x7A])[0]
-            
-            self.ntsc_pal_bits = header[0x7A]
-            self.extra_chips = header[0x7B]
-            
-            data = f.read()
-            
-            # Load into memory
-            addr = self.load_addr
-            for b in data:
-                self.memory.mem[addr] = b
-                addr = (addr + 1) & 0xFFFF
-                
-        print(f">> NSF Loaded: {self.song_name} by {self.artist}")
-        print(f"   Load: ${self.load_addr:04X}, Init: ${self.init_addr:04X}, Play: ${self.play_addr:04X}")
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        exe_suffix = ".exe" if os.name == "nt" else ""
+        candidates = [
+            os.path.join(repo_root, "output", f"SIM_65C02{exe_suffix}"),
+            os.path.join(repo_root, "output", "SIM_65C02"),
+            os.path.join(repo_root, "build", "release", f"SIM_65C02{exe_suffix}"),
+            os.path.join(repo_root, "build", "release", "SIM_65C02"),
+            os.path.join(repo_root, "build", "debug", f"SIM_65C02{exe_suffix}"),
+            os.path.join(repo_root, "build", "debug", "SIM_65C02"),
+        ]
+        for cand in candidates:
+            if os.path.isfile(cand) and os.access(cand, os.X_OK):
+                return cand
 
-    def process(self):
-        print(f"Parsing '{self.nsf_path}' using py65...")
-        
-        # Setup stack
-        self.cpu.sp = 0xFF
-        
-        # Init routine
-        self.cpu.a = self.starting_song - 1
-        self.cpu.x = 0 # NTSC
-        
-        # Let's put a JMP at 0x3FFF to itself to catch return
-        self.memory.mem[0x3FFF] = 0x4C # JMP
-        self.memory.mem[0x4000] = 0xFF
-        self.memory.mem[0x4001] = 0x3F
-        
-        def call_subroutine(addr):
-            # Push return address 0x3FFF - 1 = 0x3FFE
-            ret = 0x3FFE
-            self.memory.mem[0x0100 + self.cpu.sp] = (ret >> 8) & 0xFF
-            self.cpu.sp = (self.cpu.sp - 1) & 0xFF
-            self.memory.mem[0x0100 + self.cpu.sp] = ret & 0xFF
-            self.cpu.sp = (self.cpu.sp - 1) & 0xFF
-            
-            self.cpu.pc = addr
-            
-            # Run until PC reaches 0x3FFF
-            cycles = 0
-            while self.cpu.pc != 0x3FFF:
-                self.cpu.step()
-                cycles += 1
-                if cycles > 100000: # Timeout
-                    break
-        
-        call_subroutine(self.init_addr)
-        
-        fps = 60.0
-        if self.play_speed_ntsc == 0:
-            frame_time = 1.0 / 60.0
-        else:
-            frame_time = self.play_speed_ntsc / 1000000.0
-            
-        current_time = 0.0
-        max_time = self.duration
-        
-        self.prev_ch_states = [{'vol': 0, 'freq': 0, 'duty': None, 'active_note': None} for _ in range(4)]
-        silence_frames = 0
-        
-        # Setup Pitchbend Range to 24 for all channels
+        which_bin = shutil.which("SIM_65C02")
+        if which_bin:
+            return which_bin
+
+        raise FileNotFoundError(
+            "SIM_65C02 binary not found. Set SIM_65C02_BIN or build SIM_65C02 in output/ or build/release/."
+        )
+
+    def _load_trace(self, duration: float) -> Dict[str, Any]:
+        if self.trace_data is not None:
+            return self.trace_data
+
+        if self.nsf_path.lower().endswith(".json"):
+            with open(self.nsf_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+        sim_bin = self._find_sim_binary()
+        fd, tmp_json_path = tempfile.mkstemp(suffix=".json", prefix="nsf_trace_")
+        os.close(fd)
+        try:
+            cmd = [sim_bin, "--headless", "--rom", self.nsf_path, "--nsf-trace", tmp_json_path]
+            if duration and duration > 0:
+                cmd.extend(["--nsf-max-duration", str(duration)])
+            if self.song_idx > 0:
+                cmd.extend(["--nsf-song", str(self.song_idx)])
+            subprocess.run(cmd, check=True)
+            with open(tmp_json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        finally:
+            if os.path.exists(tmp_json_path):
+                os.remove(tmp_json_path)
+
+    @staticmethod
+    def noise_period_to_note(period_idx: int) -> int:
+        period = NOISE_PERIODS[int(period_idx) & 0x0F]
+        freq = 1789773.0 / (32.0 * period)
+        exact_note = 69.0 + 12.0 * math.log2(freq / 440.0)
+        return max(0, min(127, int(round(exact_note))))
+
+    def parse(self, duration: Optional[float] = None) -> List[Dict[str, Any]]:
+        eff_duration = self.duration if duration is None else float(duration)
+        trace = self._load_trace(eff_duration)
+
+        self.fps = float(trace.get("fps", 60.098814)) or 60.098814
+        frames = trace.get("frames", [])
+        self.total_frames = int(trace.get("total_frames", len(frames)))
+        self.detected_duration = float(
+            trace.get("duration_sec", self.total_frames / self.fps if self.fps > 0 else 0.0)
+        )
+        self.stop_reason = str(trace.get("stop_reason", "unknown"))
+        self.loop_start_frame = int(trace.get("loop_start_frame", -1))
+        self.loop_end_frame = int(trace.get("loop_end_frame", -1))
+        self.song_name = str(trace.get("song_name", ""))
+        self.artist = str(trace.get("artist", ""))
+        self.copyright = str(trace.get("copyright", ""))
+
+        print(f"[NSF] Auto-detected duration: {self.detected_duration:.2f}s (reason: {self.stop_reason})")
+
+        self.events = []
+        channel_programs = {0: 128, 1: 128, 2: 129, 3: 130}
         for ch in range(4):
-            self.events.append({'time': 0, 'type': 'control_change', 'control': 101, 'value': 0, 'channel': ch})
-            self.events.append({'time': 0, 'type': 'control_change', 'control': 100, 'value': 0, 'channel': ch})
-            self.events.append({'time': 0, 'type': 'control_change', 'control': 6, 'value': 24, 'channel': ch})
+            self.events.append({'time': 0.0, 'type': 'program_change', 'program': channel_programs[ch], 'channel': ch})
+            self.events.append({'time': 0.0, 'type': 'control_change', 'control': 101, 'value': 0, 'channel': ch})
+            self.events.append({'time': 0.0, 'type': 'control_change', 'control': 100, 'value': 0, 'channel': ch})
+            self.events.append({'time': 0.0, 'type': 'control_change', 'control': 6, 'value': 24, 'channel': ch})
 
-        while current_time < max_time:
-            self.has_apu_changes = False
-            call_subroutine(self.play_addr)
-            
-            if self.has_apu_changes or current_time == 0.0:
-                self._capture_frame(current_time)
-                
-            # Detect silence
-            is_silent = True
+        ch_states = [
+            {
+                'active_note': None,
+                'active_note_id': None,
+                'active_note_ev': None,
+                'last_pitchbend': 0,
+                'last_vol': 0,
+                'last_duty': -1,
+            }
+            for _ in range(4)
+        ]
+        note_id_counter = 0
+        last_time = 0.0
+
+        def close_active_note(ch: int, st: Dict[str, Any], t: float) -> None:
+            if st['active_note'] is not None:
+                on_ev = st['active_note_ev']
+                if on_ev is not None:
+                    on_ev['duration'] = max(0.0, t - on_ev['time'])
+                self.events.append({
+                    'time': t,
+                    'type': 'note_off',
+                    'note': st['active_note'],
+                    'channel': ch,
+                    'id': st['active_note_id'],
+                })
+                st['active_note'] = None
+                st['active_note_id'] = None
+                st['active_note_ev'] = None
+                st['last_vol'] = 0
+
+        for frame in frames:
+            frame_idx = int(frame[0])
+            current_time = frame_idx / self.fps
+            last_time = current_time
+
             for ch in range(4):
-                if self.prev_ch_states[ch] and self.prev_ch_states[ch]['vol'] > 0:
-                    is_silent = False
-                    break
-                    
-            if is_silent:
-                silence_frames += 1
-            else:
-                silence_frames = 0
-                
-            if silence_frames > fps * 3: # 3 seconds of silence
-                print(f"   Detected 3s silence at {current_time:.1f}s, stopping.")
-                break
-                
-            current_time += frame_time
-            
-        # Ensure trailing note_offs
+                ch_data = frame[ch + 1]
+                vol = int(ch_data[0])
+                p1 = int(ch_data[1])
+                p2 = int(ch_data[2])
+                retrigger = int(ch_data[3])
+                st = ch_states[ch]
+
+                exact_note = -1.0
+                duty = 0
+
+                if vol > 0:
+                    if ch in (0, 1):
+                        duty = p2 & 0x03
+                        if p1 < 8:
+                            vol = 0
+                        else:
+                            freq = 1789773.0 / (16.0 * (p1 + 1))
+                            exact_note = 69.0 + 12.0 * math.log2(freq / 440.0)
+                    elif ch == 2:
+                        if p1 < 2:
+                            vol = 0
+                        else:
+                            freq = 1789773.0 / (32.0 * (p1 + 1))
+                            if freq < 20.0:
+                                vol = 0
+                            else:
+                                exact_note = 69.0 + 12.0 * math.log2(freq / 440.0)
+                    else:
+                        period = NOISE_PERIODS[p1 & 0x0F]
+                        freq = 1789773.0 / (32.0 * period)
+                        exact_note = 69.0 + 12.0 * math.log2(freq / 440.0)
+
+                if vol <= 0 or (ch < 3 and (exact_note < 0.0 or exact_note > 135.0)):
+                    close_active_note(ch, st, current_time)
+                    continue
+
+                target_note = max(0, min(127, int(round(exact_note))))
+                vel = max(1, min(127, int(round((vol / 15.0) * 127.0))))
+
+                if ch in (0, 1) and duty != st['last_duty']:
+                    self.events.append({
+                        'time': current_time,
+                        'type': 'control_change',
+                        'control': 14,
+                        'value': duty,
+                        'channel': ch,
+                    })
+                    st['last_duty'] = duty
+
+                need_new_note = (
+                    st['active_note'] is None
+                    or target_note != st['active_note']
+                    or retrigger == 1
+                )
+
+                if need_new_note:
+                    close_active_note(ch, st, current_time)
+                    note_id_counter += 1
+                    st['active_note'] = target_note
+                    st['active_note_id'] = note_id_counter
+
+                    if ch < 3:
+                        frac_diff = exact_note - target_note
+                        pb = 0 if abs(frac_diff) < 0.05 else max(-8192, min(8191, int(round(frac_diff * (8192.0 / 24.0)))))
+                    else:
+                        pb = 0
+
+                    if pb != st['last_pitchbend']:
+                        self.events.append({
+                            'time': current_time,
+                            'type': 'pitchwheel',
+                            'pitch': pb,
+                            'channel': ch,
+                        })
+                        st['last_pitchbend'] = pb
+
+                    on_ev = {
+                        'time': current_time,
+                        'type': 'note_on',
+                        'note': target_note,
+                        'velocity': vel,
+                        'channel': ch,
+                        'id': note_id_counter,
+                    }
+                    st['active_note_ev'] = on_ev
+                    self.events.append(on_ev)
+                    st['last_vol'] = vol
+                else:
+                    if ch < 3:
+                        frac_diff = exact_note - st['active_note']
+                        pb = max(-8192, min(8191, int(round(frac_diff * (8192.0 / 24.0)))))
+                        if abs(pb - st['last_pitchbend']) >= 68:
+                            self.events.append({
+                                'time': current_time,
+                                'type': 'pitchwheel',
+                                'pitch': pb,
+                                'channel': ch,
+                            })
+                            st['last_pitchbend'] = pb
+
+                    if vol != st['last_vol']:
+                        self.events.append({
+                            'time': current_time,
+                            'type': 'control_change',
+                            'control': 7,
+                            'value': vel,
+                            'channel': ch,
+                        })
+                        st['last_vol'] = vol
+
+        end_time = max(last_time, self.total_frames / self.fps if self.fps > 0 else last_time)
         for ch in range(4):
-            if self.prev_ch_states[ch]['vol'] > 0:
-                active_note = self.prev_ch_states[ch].get('active_note', 60)
-                self.events.append({'time': current_time, 'type': 'note_off', 'note': active_note, 'channel': ch})
-            
-        print(f"   Generated {len(self.events)} raw events.")
-        
-        # Post-processing pipeline shared with MidiProcessor
-        self._pair_notes()
+            close_active_note(ch, ch_states[ch], end_time)
+
         self._analyze_channels()
-        for ev in self.events:
-            ch = ev.get('channel', 0)
-            if ch == self.melody_channel:
-                ev['role'] = 'melody'
-            elif ch == self.bass_channel:
-                ev['role'] = 'bass'
-            elif ch == self.noise_channel:
-                ev['role'] = 'percussion'
-            else:
-                ev['role'] = 'harmony'
-        
-        # We don't analyze density or key unless we want to
+        self._analyze_roles_segmented()
         self._filter_short_notes()
         self._simplify_chords()
 
@@ -212,162 +329,237 @@ class NsfProcessor(MidiProcessor):
             for ev in self.events:
                 ev['time'] = round(ev['time'] / self.quant_grid) * self.quant_grid
 
-        self.events.sort(key=lambda x: (x['time'], 0 if x['type'] == 'note_off' else 1))
-
+        self.events.sort(key=lambda x: (x['time'], _EVENT_PRIORITY.get(x['type'], 5), x.get('channel', 0)))
         self._deduplicate()
-        print(f"   Optimized to {len(self.events)} events.")
-        
         return self.events
 
-    def _analyze_channels(self):
-        avg_note = {0: [], 1: [], 2: [], 3: []}
+    def process(self, duration: Optional[float] = None) -> List[Dict[str, Any]]:
+        return self.parse(duration=duration)
+
+    def _analyze_channels(self) -> None:
+        avg_note: Dict[int, List[int]] = {0: [], 1: [], 2: [], 3: []}
         for ev in self.events:
             if ev['type'] == 'note_on':
-                avg_note[ev.get('channel', 0)].append(ev['note'])
-                
-        avg_0 = sum(avg_note[0])/len(avg_note[0]) if avg_note[0] else 0
-        avg_1 = sum(avg_note[1])/len(avg_note[1]) if avg_note[1] else 0
-        
+                avg_note.setdefault(ev.get('channel', 0), []).append(ev['note'])
+
+        avg_0 = sum(avg_note[0]) / len(avg_note[0]) if avg_note[0] else 0.0
+        avg_1 = sum(avg_note[1]) / len(avg_note[1]) if avg_note[1] else 0.0
+
         self.melody_channel = 0 if avg_0 >= avg_1 else 1
         self.bass_channel = 2
         self.noise_channel = 3
-        
-        print(f"   NSF Roles -> Bass: Ch{self.bass_channel}, Melody: Ch{self.melody_channel}, Noise: Ch{self.noise_channel}")
 
-    def _cull_polyphony(self):
-        def get_prio(ev):
+    def _analyze_roles_segmented(self, window_size: float = 2.0) -> None:
+        duration = max((ev['time'] for ev in self.events), default=0.0)
+        if duration <= 0.0:
+            for ev in self.events:
+                ch = ev.get('channel', 0)
+                ev['role'] = 'percussion' if ch == 3 else ('bass' if ch == 2 else ('melody' if ch == self.melody_channel else 'harmony'))
+            return
+
+        num_windows = max(1, int(math.ceil(duration / window_size)))
+        prev_melody = self.melody_channel
+        self.window_roles = []
+
+        for w in range(num_windows):
+            t_start = w * window_size
+            t_end = (w + 1) * window_size
+
+            pulse_notes: Dict[int, List[Dict[str, Any]]] = {0: [], 1: []}
+            for ev in self.events:
+                if ev['type'] == 'note_on' and t_start <= ev['time'] < t_end:
+                    ch = ev.get('channel', 0)
+                    if ch in (0, 1):
+                        pulse_notes[ch].append(ev)
+
+            roles: Dict[int, str] = {2: 'bass', 3: 'percussion'}
+            if pulse_notes[0] or pulse_notes[1]:
+                scores = {}
+                for ch in (0, 1):
+                    notes = pulse_notes[ch]
+                    if not notes:
+                        scores[ch] = -1e9
+                        continue
+                    count = len(notes)
+                    avg_pitch = sum(n['note'] for n in notes) / count
+                    score = (avg_pitch - 55.0) * 1.5 + count * 1.2
+                    if ch == prev_melody:
+                        score *= 1.15
+                    scores[ch] = score
+
+                best_mel = 0 if scores[0] >= scores[1] else 1
+                roles[best_mel] = 'melody'
+                roles[1 - best_mel] = 'harmony'
+                prev_melody = best_mel
+            else:
+                roles[prev_melody] = 'melody'
+                roles[1 - prev_melody] = 'harmony'
+
+            self.window_roles.append({'start': t_start, 'end': t_end, 'roles': roles})
+
+        for ev in self.events:
             ch = ev.get('channel', 0)
-            score = 0
-            if ch == self.melody_channel: score += 8000
-            elif ch == self.bass_channel: score += 5000
-            elif ch == self.noise_channel: score -= 5000 # Noise only plays if free
+            if ch == 3:
+                ev['role'] = 'percussion'
+            elif ch == 2:
+                ev['role'] = 'bass'
+            else:
+                w_idx = min(len(self.window_roles) - 1, max(0, int(ev['time'] / window_size)))
+                ev['role'] = self.window_roles[w_idx]['roles'].get(ch, 'harmony')
+
+    def _cull_polyphony(self) -> None:
+        role_scores = {'melody': 8000, 'bass': 5000, 'harmony': 1000, 'percussion': -5000}
+
+        def get_prio(ev: Dict[str, Any]) -> int:
+            ch = ev.get('channel', 0)
+            if ch == self.noise_channel:
+                score = -5000
+            else:
+                role = ev.get('role')
+                score = role_scores.get(role, 8000 if ch == self.melody_channel else (5000 if ch == self.bass_channel else 1000))
             note = ev.get('note', 60)
-            if note > 80: score += 500
-            if note < 40: score += 500
+            if note > 80:
+                score += 500
+            if note < 40:
+                score += 500
             return score + note
 
-        new_events = []
+        dropped_note_ids = set()
+        note_ons = [ev for ev in self.events if ev['type'] == 'note_on']
         i = 0
-        while i < len(self.events):
-            ev = self.events[i]
-            if ev['type'] == 'note_on':
-                window_events = [ev]
-                j = i + 1
-                while j < len(self.events) and (self.events[j]['time'] - ev['time'] < 0.002):
-                    if self.events[j]['type'] == 'note_on':
-                        window_events.append(self.events[j])
-                    j += 1
-                
-                if len(window_events) > self.max_polyphony:
-                    window_events.sort(key=get_prio, reverse=True)
-                    kept = window_events[:self.max_polyphony]
-                    for k_ev in kept:
-                        new_events.append(k_ev)
-                else:
-                    for k_ev in window_events:
-                        new_events.append(k_ev)
-                
-                for k in range(i + 1, j):
-                    if self.events[k]['type'] != 'note_on':
-                        new_events.append(self.events[k])
-                
-                i = j
-            else:
-                new_events.append(ev)
+        while i < len(note_ons):
+            ev = note_ons[i]
+            if ev.get('id') in dropped_note_ids:
                 i += 1
-                
-        print(f"   NSF Polyphony Culling: Dropped {len(self.events) - len(new_events)} overlapping Note Ons.")
-        self.events = new_events
+                continue
 
-    def _capture_frame(self, current_time):
-        self._process_pulse(0, 0x4000, current_time)
-        self._process_pulse(1, 0x4004, current_time)
-        self._process_triangle(2, 0x4008, current_time)
-        self._process_noise(3, 0x400C, current_time)
+            window_events = [ev]
+            j = i + 1
+            while j < len(note_ons) and (note_ons[j]['time'] - ev['time'] < 0.002):
+                if note_ons[j].get('id') not in dropped_note_ids:
+                    window_events.append(note_ons[j])
+                j += 1
 
-    def _process_pulse(self, ch, base, current_time):
-        ctrl = self.apu_state[base]
-        timer_lo = self.apu_state[base+2]
-        timer_hi = self.apu_state[base+3]
-        
-        vol = ctrl & 0x0F
-        duty = (ctrl >> 6) & 0x03
-        timer = timer_lo | ((timer_hi & 0x07) << 8)
-        
-        if timer < 8:
-            vol = 0
-            
-        freq = 1789773.0 / (16.0 * (timer + 1)) if timer > 0 else 0
-        self._emit_channel_state(ch, current_time, vol, freq, duty=duty)
+            if len(window_events) > self.max_polyphony:
+                window_events.sort(key=get_prio, reverse=True)
+                for drop_ev in window_events[self.max_polyphony:]:
+                    if drop_ev.get('id') is not None:
+                        dropped_note_ids.add(drop_ev['id'])
 
-    def _process_triangle(self, ch, base, current_time):
-        ctrl = self.apu_state[base]
-        timer_lo = self.apu_state[base+2]
-        timer_hi = self.apu_state[base+3]
-        
-        linear_counter = ctrl & 0x7F
-        timer = timer_lo | ((timer_hi & 0x07) << 8)
-        
-        vol = 15 if linear_counter > 0 and timer > 0 else 0
-        freq = 1789773.0 / (32.0 * (timer + 1)) if timer > 0 else 0
-        
-        if freq < 20: vol = 0
-        self._emit_channel_state(ch, current_time, vol, freq)
+            i = j
 
-    def _process_noise(self, ch, base, current_time):
-        ctrl = self.apu_state[base]
-        period_idx = self.apu_state[base+2] & 0x0F
-        
-        vol = ctrl & 0x0F
-        periods = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068]
-        timer = periods[period_idx]
-        freq = 1789773.0 / timer
-        
-        self._emit_channel_state(ch, current_time, vol, freq)
+        if dropped_note_ids:
+            self.events = [ev for ev in self.events if ev.get('id') not in dropped_note_ids]
 
-    def _freq_to_note(self, freq):
-        if freq <= 0: return 0
-        note = 69.0 + 12.0 * math.log2(freq / 440.0)
-        return note
+    def export_midi(self, output_mid_path: str, events: Optional[List[Dict[str, Any]]] = None) -> str:
+        ev_list = events if events is not None else (self.events if self.events else self.parse())
+        tempo = 500000
+        gm_program_map = {128: 80, 129: 38, 130: 127}
+        track_names = {0: 'APU Pulse 1', 1: 'APU Pulse 2', 2: 'APU Triangle', 3: 'APU Noise'}
 
-    def _emit_channel_state(self, ch, current_time, vol, freq, duty=None):
-        prev = self.prev_ch_states[ch]
-        note = self._freq_to_note(freq)
-        
-        if vol > 0:
-            if prev['vol'] == 0:
-                prog = 128 # APU Pulse
-                if ch == 2: prog = 129 # APU Triangle
-                elif ch == 3: prog = 130 # APU Noise
-                
-                self.events.append({'time': current_time, 'type': 'program_change', 'program': prog, 'channel': ch})
-                self.events.append({'time': current_time, 'type': 'note_on', 'note': round(note), 'velocity': int((vol / 15.0) * 127), 'channel': ch})
-                prev['active_note'] = round(note)
-            else:
-                if prev['vol'] != vol:
-                    self.events.append({'time': current_time, 'type': 'control_change', 'control': 7, 'value': int((vol / 15.0) * 127), 'channel': ch})
-                if abs(prev['freq'] - freq) > 0.05:
-                    active_note = prev.get('active_note', round(note))
-                    diff = note - active_note
-                    
-                    if abs(diff) > 24:
-                        self.events.append({'time': current_time, 'type': 'note_off', 'note': active_note, 'channel': ch})
-                        self.events.append({'time': current_time, 'type': 'note_on', 'note': round(note), 'velocity': int((vol / 15.0) * 127), 'channel': ch})
-                        prev['active_note'] = round(note)
-                    else:
-                        pb_val = int((diff / 24.0) * 8191)
-                        pb_val = max(-8192, min(8191, pb_val))
-                        self.events.append({'time': current_time, 'type': 'pitchwheel', 'pitch': pb_val, 'channel': ch})
-            
-            if duty is not None and duty != prev['duty']:
-                self.events.append({'time': current_time, 'type': 'control_change', 'control': 14, 'value': duty, 'channel': ch})
-                
-        else:
-            if prev['vol'] > 0:
-                active_note = prev.get('active_note', round(note))
-                self.events.append({'time': current_time, 'type': 'note_off', 'note': active_note, 'channel': ch})
-                prev['active_note'] = None
+        if mido is not None:
+            mid = mido.MidiFile(ticks_per_beat=480)
+            meta_track = mido.MidiTrack()
+            mid.tracks.append(meta_track)
+            meta_track.append(mido.MetaMessage('track_name', name=self.song_name or 'NSF Track', time=0))
+            meta_track.append(mido.MetaMessage('set_tempo', tempo=tempo, time=0))
+            meta_track.append(mido.MetaMessage('end_of_track', time=0))
 
-        prev['vol'] = vol
-        prev['freq'] = freq
-        prev['duty'] = duty
+            for ch in range(4):
+                ch_events = [e for e in ev_list if e.get('channel', 0) == ch]
+                if not ch_events:
+                    continue
+                ch_events.sort(key=lambda x: (x['time'], _EVENT_PRIORITY.get(x['type'], 5)))
+
+                track = mido.MidiTrack()
+                mid.tracks.append(track)
+                track.append(mido.MetaMessage('track_name', name=track_names.get(ch, f'Channel {ch}'), time=0))
+
+                last_tick = 0
+                for ev in ch_events:
+                    abs_tick = max(last_tick, int(round(ev['time'] * (480.0 * 1000000.0 / tempo))))
+                    delta = abs_tick - last_tick
+                    last_tick = abs_tick
+
+                    etype = ev['type']
+                    if etype == 'program_change':
+                        raw_prog = int(ev.get('program', 0))
+                        prog = gm_program_map.get(raw_prog, max(0, min(127, raw_prog)))
+                        track.append(mido.Message('program_change', channel=ch, program=prog, time=delta))
+                    elif etype == 'control_change':
+                        ctrl = max(0, min(127, int(ev.get('control', 0))))
+                        val = max(0, min(127, int(ev.get('value', 0))))
+                        track.append(mido.Message('control_change', channel=ch, control=ctrl, value=val, time=delta))
+                    elif etype == 'pitchwheel':
+                        pitch = max(-8192, min(8191, int(ev.get('pitch', 0))))
+                        track.append(mido.Message('pitchwheel', channel=ch, pitch=pitch, time=delta))
+                    elif etype == 'note_on':
+                        note = max(0, min(127, int(ev.get('note', 60))))
+                        vel = max(1, min(127, int(ev.get('velocity', 100))))
+                        track.append(mido.Message('note_on', channel=ch, note=note, velocity=vel, time=delta))
+                    elif etype == 'note_off':
+                        note = max(0, min(127, int(ev.get('note', 60))))
+                        track.append(mido.Message('note_off', channel=ch, note=note, velocity=0, time=delta))
+
+                track.append(mido.MetaMessage('end_of_track', time=0))
+
+            mid.save(output_mid_path)
+            return output_mid_path
+
+        def encode_vlq(val: int) -> bytes:
+            val = max(0, int(val))
+            buf = [val & 0x7F]
+            val >>= 7
+            while val > 0:
+                buf.append((val & 0x7F) | 0x80)
+                val >>= 7
+            return bytes(reversed(buf))
+
+        tracks_bin: List[bytes] = []
+        t0 = bytearray()
+        title_bytes = (self.song_name or 'NSF Track').encode('ascii', errors='ignore')
+        t0.extend(b'\x00\xFF\x03' + encode_vlq(len(title_bytes)) + title_bytes)
+        t0.extend(b'\x00\xFF\x51\x03' + tempo.to_bytes(3, 'big'))
+        t0.extend(b'\x00\xFF\x2F\x00')
+        tracks_bin.append(bytes(t0))
+
+        for ch in range(4):
+            ch_events = [e for e in ev_list if e.get('channel', 0) == ch]
+            if not ch_events:
+                continue
+            ch_events.sort(key=lambda x: (x['time'], _EVENT_PRIORITY.get(x['type'], 5)))
+            tb = bytearray()
+            tname = track_names.get(ch, f'Channel {ch}').encode('ascii', errors='ignore')
+            tb.extend(b'\x00\xFF\x03' + encode_vlq(len(tname)) + tname)
+            last_tick = 0
+            for ev in ch_events:
+                abs_tick = max(last_tick, int(round(ev['time'] * (480.0 * 1000000.0 / tempo))))
+                delta = abs_tick - last_tick
+                last_tick = abs_tick
+                etype = ev['type']
+                if etype == 'program_change':
+                    raw_prog = int(ev.get('program', 0))
+                    prog = gm_program_map.get(raw_prog, max(0, min(127, raw_prog)))
+                    tb.extend(encode_vlq(delta) + bytes([0xC0 | (ch & 0x0F), prog]))
+                elif etype == 'control_change':
+                    ctrl = max(0, min(127, int(ev.get('control', 0))))
+                    val = max(0, min(127, int(ev.get('value', 0))))
+                    tb.extend(encode_vlq(delta) + bytes([0xB0 | (ch & 0x0F), ctrl, val]))
+                elif etype == 'pitchwheel':
+                    pitch = max(-8192, min(8191, int(ev.get('pitch', 0)))) + 8192
+                    tb.extend(encode_vlq(delta) + bytes([0xE0 | (ch & 0x0F), pitch & 0x7F, (pitch >> 7) & 0x7F]))
+                elif etype == 'note_on':
+                    note = max(0, min(127, int(ev.get('note', 60))))
+                    vel = max(1, min(127, int(ev.get('velocity', 100))))
+                    tb.extend(encode_vlq(delta) + bytes([0x90 | (ch & 0x0F), note, vel]))
+                elif etype == 'note_off':
+                    note = max(0, min(127, int(ev.get('note', 60))))
+                    tb.extend(encode_vlq(delta) + bytes([0x80 | (ch & 0x0F), note, 0]))
+            tb.extend(b'\x00\xFF\x2F\x00')
+            tracks_bin.append(bytes(tb))
+
+        with open(output_mid_path, 'wb') as f:
+            f.write(b'MThd' + struct.pack('>IHHH', 6, 1, len(tracks_bin), 480))
+            for trk in tracks_bin:
+                f.write(b'MTrk' + struct.pack('>I', len(trk)) + trk)
+        return output_mid_path

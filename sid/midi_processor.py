@@ -5,10 +5,7 @@ import math
 try:
     import mido
 except ImportError:
-    import sys
-    print("Error: 'mido' library not found.")
-    print("Please install it using: pip install mido")
-    sys.exit(1)
+    mido = None
 
 from sid_constants import (
     MODE_MAX_QUALITY, MODE_QUALITY, MODE_BALANCED,
@@ -27,6 +24,11 @@ class MidiProcessor:
         self.detected_meta_melody_tracks = set()
         self.detected_meta_bass_tracks = set()
         self.custom_wave_overrides = {}
+        if mido is None:
+            import sys
+            print("Error: 'mido' library not found.")
+            print("Please install it using: pip install mido")
+            sys.exit(1)
         self.mid = mido.MidiFile(midi_path, clip=True)
         self.events = []
         self.bass_channel = -1
