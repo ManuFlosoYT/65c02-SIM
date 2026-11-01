@@ -63,6 +63,21 @@ std::uint16_t ParseFeatureName(const std::string& featureName) {
     if (featureName == "snare_macro") {
         return FlagBit(SIDFeatureFlags::SnareMacro);
     }
+    if (featureName == "filter_pluck") {
+        return FlagBit(SIDFeatureFlags::FilterPluck);
+    }
+    if (featureName == "filter_brass") {
+        return FlagBit(SIDFeatureFlags::FilterBrass);
+    }
+    if (featureName == "lead_filter") {
+        return FlagBit(SIDFeatureFlags::LeadFilter);
+    }
+    if (featureName == "pad_filter") {
+        return FlagBit(SIDFeatureFlags::PadFilter);
+    }
+    if (featureName == "filter_lfo") {
+        return FlagBit(SIDFeatureFlags::FilterLFO);
+    }
     return 0;
 }
 
