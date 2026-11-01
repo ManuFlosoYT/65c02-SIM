@@ -7,14 +7,14 @@
 namespace GUI {
 
 void DrawSDKUpdatePopup(AppState& state) {
-    if (state.sdk.showUpdatePopup) {
+    if (state.sdk.showUpdatePopup && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) || ImGui::IsPopupOpen("SDK Update Available"))) {
         ImGui::OpenPopup("SDK Update Available");
         state.sdk.showUpdatePopup = false;
     }
 
     // Always center the modal
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
 
     if (ImGui::BeginPopupModal(
             "SDK Update Available", nullptr,

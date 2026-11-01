@@ -11,15 +11,13 @@ using namespace Hardware;
 namespace GUI {
 
 void DrawUpdatePopup(AppState& state) {
-    static bool updatePopupOpen = false;
-    if (state.update.available && !updatePopupOpen) {
+    if (state.update.available && (!ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId) || ImGui::IsPopupOpen("Update Available")) && !ImGui::IsPopupOpen("Update Available")) {
         ImGui::OpenPopup("Update Available");
-        updatePopupOpen = true;
     }
 
     // Always center the modal
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
 
     if (ImGui::BeginPopupModal(
             "Update Available", nullptr,
@@ -44,6 +42,8 @@ void DrawUpdatePopup(AppState& state) {
         if (ImGui::Button("Download", ImVec2(btnWidth, 0))) {
             std::string url = "https://github.com/ManuFlosoYT/65c02-SIM/releases/latest";
             Frontend::Platform::OpenURL(url);
+            state.update.available = false;
+            ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
         if (ImGui::Button("Ignore", ImVec2(btnWidth, 0))) {
