@@ -1,5 +1,6 @@
 #include "Hardware/Audio/SIDAudioSink.h"
 
+#include <algorithm>
 #include <iostream>
 
 namespace Hardware {
@@ -82,7 +83,7 @@ void SIDAudioSink::OnResumePlayback(bool soundEnabled) {
 void SIDAudioSink::FlushAvailableOutput(SIDResampler& resampler, bool emulationPaused, bool soundEnabled) {
     while (resampler.HasOutput()) {
         double finalMix = resampler.GetOutput();
-        sampleBuffer.push_back(static_cast<int16_t>(finalMix * 18000.0));
+        sampleBuffer.push_back(static_cast<int16_t>(std::clamp(finalMix * 18000.0, -32768.0, 32767.0)));
 
         const size_t wIdx = visualizerWriteIndex.load(std::memory_order_relaxed);
         visualizerBuffer[wIdx % AUDIO_SNAPSHOT_SIZE] = static_cast<float>(finalMix);
