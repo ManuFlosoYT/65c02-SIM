@@ -566,6 +566,24 @@ bool MIDIFile::ParseFromBytes(const std::vector<std::uint8_t>& data, MIDIProject
         ++mtrkIndex;
     }
 
+    double minStartBeat = 0.0;
+    bool hasAnyNote = false;
+    for (const auto& track : outProject.tracks) {
+        for (const auto& note : track.notes) {
+            if (!hasAnyNote || note.startBeat < minStartBeat) {
+                minStartBeat = note.startBeat;
+                hasAnyNote = true;
+            }
+        }
+    }
+    if (hasAnyNote && minStartBeat > 0.0) {
+        for (auto& track : outProject.tracks) {
+            for (auto& note : track.notes) {
+                note.startBeat = std::max(0.0, note.startBeat - minStartBeat);
+            }
+        }
+    }
+
     if (outProject.tracks.empty()) {
         outProject.InitDefaultProject();
     } else {
