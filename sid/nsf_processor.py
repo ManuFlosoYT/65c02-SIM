@@ -338,6 +338,9 @@ class NsfProcessor(MidiProcessor):
     def process(self, duration: Optional[float] = None) -> List[Dict[str, Any]]:
         return self.parse(duration=duration)
 
+    def _simplify_chords(self):
+        pass
+
     def _analyze_channels(self) -> None:
         avg_note: Dict[int, List[int]] = {0: [], 1: [], 2: [], 3: []}
         for ev in self.events:
