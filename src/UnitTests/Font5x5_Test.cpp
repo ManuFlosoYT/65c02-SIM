@@ -37,7 +37,13 @@ void verify_glyph_at(int8_t originX, int8_t originY, char ch, uint8_t color) {
 
 } // namespace
 
+void (*g_gpuPutPixelHandler)(int8_t x, int8_t y, uint8_t color) = nullptr;
+
 extern "C" void gpu_put_pixel(int8_t x, int8_t y, uint8_t color) {
+    if (g_gpuPutPixelHandler) {
+        g_gpuPutPixelHandler(x, y, color);
+        return;
+    }
     if (x >= 0 && static_cast<size_t>(x) < VRAM_WIDTH && y >= 0 && static_cast<size_t>(y) < VRAM_HEIGHT) {
         s_simulatedVram[static_cast<size_t>(y)][static_cast<size_t>(x)] = color;
     }
