@@ -76,7 +76,7 @@ struct SIDFilter {
 
     inline double Process(double filteredInput, double directOutput, uint8_t filterMode, uint8_t currentVolume,
                           SIDModel model, bool voicesSilent) {
-        double hp = (filteredInput - filterLow - (filterBand * filterRPlusG)) * filterDenomInv;
+        double hp = ((filteredInput * 0.75) - filterLow - (filterBand * filterRPlusG)) * filterDenomInv;
         double bp = filterBand + (filterG * hp);
         double lp = filterLow + (filterG * bp);
 
@@ -112,7 +112,7 @@ struct SIDFilter {
             mix += (volScaled - 0.5) * 0.45;
         }
 
-        double pole = (model == SIDModel::MOS6581) ? 0.99995 : 0.995;
+        double pole = (model == SIDModel::MOS6581) ? 0.99995 : 0.9999;
         double filteredMix = mix - dcBlockerPrevIn + (pole * dcBlockerState);
         if (std::abs(filteredMix) < 1e-15 && voicesSilent) {
             filteredMix = 0.0;
