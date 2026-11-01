@@ -192,7 +192,7 @@ TEST(NSFRunnerTest, SilenceDetectionAndTrim) {
 TEST(NSFRunnerTest, TrueLoopDetectionRejectsInternalRepeat) {
     // Plays sequence A (512 frames), A (512 frames), B (512 frames) = 1536 frames total cycle, repeating forever.
     auto nsf = BuildSyntheticNSFHeader(0x8000U, 0x8000U, 0x8007U);
-    std::vector<uint8_t> image(0x60U, 0x60U);
+    std::vector<uint8_t> image(0x80U, 0x60U);
     const std::vector<uint8_t> exactCode = {
         // $8000 INIT:
         0x64, 0x00,                            // STZ $00
@@ -220,7 +220,7 @@ TEST(NSFRunnerTest, TrueLoopDetectionRejectsInternalRepeat) {
         0x69, 0x08,                            // ADC #$08 (2)
         // write_apu:
         0xAA,                                  // TAX
-        0xBD, 0x40, 0x80,                      // LDA $8040,X
+        0xBD, 0x50, 0x80,                      // LDA $8050,X
         0x8D, 0x02, 0x40,                      // STA $4002
         0xA9, 0x3C,                            // LDA #$3C
         0x8D, 0x00, 0x40,                      // STA $4000
@@ -236,14 +236,14 @@ TEST(NSFRunnerTest, TrueLoopDetectionRejectsInternalRepeat) {
         // done:
         0x60                                   // RTS
     };
-    ASSERT_LE(exactCode.size(), 0x40U);
+    ASSERT_LE(exactCode.size(), 0x50U);
     std::copy(exactCode.begin(), exactCode.end(), image.begin());
 
     const std::array<uint8_t, 16> noteTable = {
         40U,  50U,  60U,  70U,  80U,  90U,  100U, 110U,
         150U, 165U, 180U, 195U, 210U, 225U, 240U, 250U,
     };
-    std::copy(noteTable.begin(), noteTable.end(), image.begin() + 0x40U);
+    std::copy(noteTable.begin(), noteTable.end(), image.begin() + 0x50U);
 
     nsf.insert(nsf.end(), image.begin(), image.end());
 
