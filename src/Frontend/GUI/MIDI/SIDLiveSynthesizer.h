@@ -29,6 +29,14 @@ struct ActiveSIDVoice {
     int lfoCounter = 0;
     int kickSlideStep = 0;
     std::uint16_t kickBaseFreqHi = 0;
+    bool filterEnabled = false;
+    std::uint8_t filterMode = 0x10;
+    std::uint8_t filterRes = 0x30;
+    double cutoffBaseHz = 1000.0;
+    double filterSweepAmount = 0.0;
+    double filterEnvDurSec = 0.15;
+    double filterEnvTimerSec = 0.0;
+    std::uint8_t filterEnvType = 0;
 };
 
 class SIDLiveSynthesizer {
@@ -72,6 +80,8 @@ class SIDLiveSynthesizer {
     [[nodiscard]] int GetRegCache(std::size_t reg) const { return sidRegCache_.at(reg); }
 
    private:
+    void UpdateFilterRouting(Hardware::SID& sid);
+
     std::array<ActiveSIDVoice, 3> voices_{{{0}, {1}, {2}}};
     std::array<int, 25> sidRegCache_{
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}};
