@@ -40,11 +40,18 @@ void PopulateDefaultTables(SoundBankStorage& storage) {
     const std::uint16_t fVib = FlagBit(SIDFeatureFlags::Vibrato);
     const std::uint16_t fBassF = FlagBit(SIDFeatureFlags::BassFilter);
     const std::uint16_t fVelF = FlagBit(SIDFeatureFlags::VelocityFilter);
+    const std::uint16_t fHP = FlagBit(SIDFeatureFlags::FilterHP);
+    const std::uint16_t fBP = FlagBit(SIDFeatureFlags::FilterBP);
     const std::uint16_t fSync = FlagBit(SIDFeatureFlags::HardSync);
     const std::uint16_t fRing = FlagBit(SIDFeatureFlags::RingMod);
     const std::uint16_t fKick = FlagBit(SIDFeatureFlags::KickSlide);
     const std::uint16_t fPCM = FlagBit(SIDFeatureFlags::PCMSample);
     const std::uint16_t fSnare = FlagBit(SIDFeatureFlags::SnareMacro);
+    const std::uint16_t fPluck = FlagBit(SIDFeatureFlags::FilterPluck);
+    const std::uint16_t fBrass = FlagBit(SIDFeatureFlags::FilterBrass);
+    const std::uint16_t fLeadF = FlagBit(SIDFeatureFlags::LeadFilter);
+    const std::uint16_t fPadF = FlagBit(SIDFeatureFlags::PadFilter);
+    const std::uint16_t fFLFO = FlagBit(SIDFeatureFlags::FilterLFO);
 
     storage.melodicPresets = {
         MakeMelodicPreset(0, 7, "Piano", SID_WAVE_PULSE, 0x09, 0x05, 0x0600, 0),
@@ -54,25 +61,25 @@ void PopulateDefaultTables(SoundBankStorage& storage) {
         MakeMelodicPreset(29, 31, "Electric/Overdrive Guitar", SID_WAVE_PULSE | SID_WAVE_SAW, 0x09,
                           0x04, 0x0800, fSync),
         MakeMelodicPreset(32, 34, "Acoustic/Electric Bass", SID_WAVE_PULSE, 0x05, 0x04, 0x0800,
-                          fBassF | fVelF),
+                          fBassF | fVelF | fPluck),
         MakeMelodicPreset(35, 37, "Fretless/Slap Bass", SID_WAVE_SAW, 0x05, 0x04, 0x0800,
-                          fBassF | fVelF),
+                          fBassF | fVelF | fPluck),
         MakeMelodicPreset(38, 39, "Synth Bass", SID_WAVE_TRI | SID_WAVE_PULSE, 0x05, 0x04, 0x0800,
-                          fBassF | fVelF | fPWM),
+                          fBassF | fVelF | fPluck | fPWM),
         MakeMelodicPreset(40, 47, "Strings", SID_WAVE_SAW, 0x68, 0x09, 0x0800, fPWM | fVib),
         MakeMelodicPreset(48, 55, "Ensemble", SID_WAVE_SAW | SID_WAVE_TRI, 0x88, 0x0A, 0x0800,
                           fPWM),
-        MakeMelodicPreset(56, 63, "Brass", SID_WAVE_SAW, 0x25, 0x05, 0x0800, fVelF),
+        MakeMelodicPreset(56, 63, "Brass", SID_WAVE_SAW, 0x25, 0x05, 0x0800, fVelF | fBrass),
         MakeMelodicPreset(64, 71, "Reed", SID_WAVE_TRI | SID_WAVE_PULSE, 0x45, 0x06, 0x0800, fVib),
         MakeMelodicPreset(72, 79, "Pipe", SID_WAVE_TRI, 0x56, 0x06, 0x0800, fVib),
         MakeMelodicPreset(80, 80, "Synth Lead (Square)", SID_WAVE_PULSE | SID_WAVE_TRI, 0x05, 0x09,
-                          0x0800, fPWM | fVib),
+                          0x0800, fPWM | fVib | fLeadF | fFLFO),
         MakeMelodicPreset(81, 81, "Synth Lead (Sawtooth)", SID_WAVE_SAW | SID_WAVE_TRI, 0x05, 0x09,
-                          0x0800, fPWM | fVib | fRing),
+                          0x0800, fPWM | fVib | fRing | fLeadF | fFLFO),
         MakeMelodicPreset(82, 87, "Synth Lead (Other)", SID_WAVE_PULSE | SID_WAVE_TRI, 0x05, 0x09,
-                          0x0800, fPWM | fVib),
+                          0x0800, fPWM | fVib | fLeadF | fFLFO),
         MakeMelodicPreset(88, 95, "Synth Pad", SID_WAVE_SAW | SID_WAVE_TRI, 0xAA, 0x0A, 0x0800,
-                          fPWM),
+                          fPWM | fPadF | fFLFO),
         MakeMelodicPreset(96, 103, "Synth Effects", SID_WAVE_PULSE | SID_WAVE_NOISE, 0x2A, 0x0A,
                           0x0800, fPWM),
         MakeMelodicPreset(104, 111, "Ethnic", SID_WAVE_TRI, 0x05, 0x06, 0x0800, 0),
@@ -88,15 +95,15 @@ void PopulateDefaultTables(SoundBankStorage& storage) {
         MakePercussionKit({35, 36}, "Kick", "kick", 0.15F, SID_WAVE_TRI, 0x05, 0x00, 0x0800,
                           fKick | fPCM),
         MakePercussionKit({37, 38, 40}, "Snare", "snare", 0.15F, SID_WAVE_NOISE | SID_WAVE_TRI,
-                          0x05, 0x00, 0x0800, fSnare | fPCM),
+                          0x05, 0x00, 0x0800, fSnare | fPCM | fBP),
         MakePercussionKit({49, 51, 52, 53, 55, 57, 59}, "Crash & Cymbals", "crash", 0.25F,
-                          SID_WAVE_NOISE, 0x0F, 0x08, 0x0800, 0),
+                          SID_WAVE_NOISE, 0x0F, 0x08, 0x0800, fHP),
         MakePercussionKit({41, 43, 45, 47, 48, 50}, "Toms", "tom", 0.15F, SID_WAVE_TRI, 0x05, 0x00,
                           0x0800, 0),
         MakePercussionKit({46}, "Open Hi-Hat", "open_hat", 0.12F, SID_WAVE_NOISE, 0x00, 0x04,
-                          0x0800, 0),
+                          0x0800, fHP),
         MakePercussionKit({42, 44}, "Closed Hi-Hat", "closed_hat", 0.06F, SID_WAVE_NOISE, 0x00,
-                          0x02, 0x0800, 0),
+                          0x02, 0x0800, fHP),
         MakePercussionKit({}, "Generic Percussion", "default", 0.10F, SID_WAVE_NOISE, 0x05, 0x00,
                           0x0800, 0),
     };
@@ -314,6 +321,21 @@ std::vector<std::string> MIDISoundBank::FormatFeatureList(std::uint16_t features
     }
     if ((features & FlagBit(SIDFeatureFlags::SnareMacro)) != 0) {
         list.emplace_back("snare_macro");
+    }
+    if ((features & FlagBit(SIDFeatureFlags::FilterPluck)) != 0) {
+        list.emplace_back("filter_pluck");
+    }
+    if ((features & FlagBit(SIDFeatureFlags::FilterBrass)) != 0) {
+        list.emplace_back("filter_brass");
+    }
+    if ((features & FlagBit(SIDFeatureFlags::LeadFilter)) != 0) {
+        list.emplace_back("lead_filter");
+    }
+    if ((features & FlagBit(SIDFeatureFlags::PadFilter)) != 0) {
+        list.emplace_back("pad_filter");
+    }
+    if ((features & FlagBit(SIDFeatureFlags::FilterLFO)) != 0) {
+        list.emplace_back("filter_lfo");
     }
     return list;
 }

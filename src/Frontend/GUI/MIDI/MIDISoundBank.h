@@ -28,7 +28,12 @@ enum class SIDFeatureFlags : std::uint16_t {
     RingMod = 1U << 7U,
     KickSlide = 1U << 8U,
     PCMSample = 1U << 9U,
-    SnareMacro = 1U << 10U
+    SnareMacro = 1U << 10U,
+    FilterPluck = 1U << 11U,
+    FilterBrass = 1U << 12U,
+    LeadFilter = 1U << 13U,
+    PadFilter = 1U << 14U,
+    FilterLFO = 1U << 15U
 };
 
 struct SIDPatchParams {
