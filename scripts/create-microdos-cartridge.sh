@@ -93,11 +93,16 @@ else
     "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --cpu-clock "$IPS" || true
 fi
 
+# Compile VRAM images with image-to-bin.sh
+echo "  Compiling VRAM images..."
+"$SCRIPT_DIR/image-to-bin.sh" all || true
+
 # Populate SD Card with /bin, /sid, and apps
 echo "  Populating SD Card..."
 # Use mtools (mmd, mcopy) to manipulate the raw image
 mmd -i "$SD_PATH" ::/bin
 mmd -i "$SD_PATH" ::/sid
+mmd -i "$SD_PATH" ::/vram
 mmd -i "$SD_PATH" ::/SYSTEM
 mmd -i "$SD_PATH" ::/SYSTEM/SWAP
 
@@ -113,6 +118,12 @@ done
 for sidfile in output/midi/*.sid output/nsf/*.sid; do
     if [ -f "$sidfile" ]; then
         mcopy -o -i "$SD_PATH" "$sidfile" ::/sid/
+    fi
+done
+
+for imgfile in output/vram/*.bin; do
+    if [ -f "$imgfile" ]; then
+        mcopy -o -i "$SD_PATH" "$imgfile" ::/vram/
     fi
 done
 
