@@ -313,6 +313,7 @@ class NsfProcessor(MidiProcessor):
         for ch in range(4):
             close_active_note(ch, ch_states[ch], end_time)
 
+        self._trim_leading_silence()
         self._analyze_channels()
         self._analyze_roles_segmented()
         self._filter_short_notes()
@@ -322,6 +323,7 @@ class NsfProcessor(MidiProcessor):
             self._reduce_chords()
 
         self._cull_polyphony()
+        self._trim_leading_silence()
 
         if hasattr(self, 'density_map') and self.density_map:
             self._quantize_dynamic()

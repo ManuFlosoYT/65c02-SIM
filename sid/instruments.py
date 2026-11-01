@@ -27,7 +27,7 @@ def _parse_wave_array(waves_array):
         result |= wave_map.get(w.upper(), 0)
     return result
 
-def get_instrument_params(program, channel, note, velocity, chip="8580"):
+def get_instrument_params(program, channel, note, velocity, chip="8580", role=None):
     """
     Returns SID voice parameters for a given GM program, channel, note and velocity.
     """
@@ -84,6 +84,8 @@ def get_instrument_params(program, channel, note, velocity, chip="8580"):
         else:
             sus_nibble = int((velocity / 127.0) * 15)
             if sus_nibble < 4: sus_nibble = 4 # Min sustain
+            if role == 'harmony':
+                sus_nibble = max(4, min(12, sus_nibble - 2))
         # Some configs might hardcode a 0 sustain base (like APU waves)
         if sr_base > 0x0F: 
             sustain_release = sr_base # It provided the full byte (e.g. 0xF0)

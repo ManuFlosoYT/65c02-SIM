@@ -102,10 +102,10 @@ class BytecodeGenerator:
     def _freq_to_cutoff_dac(self, hz):
         if self.chip == "6581":
             dac = int(2047.0 * math.pow(hz / 12500.0, 0.4))
-            return max(0, min(2047, dac))
         else:
             dac = int((hz / 12500.0) * 2047.0)
-            return max(0, min(2047, dac))
+        dac = max(0, min(2047, dac))
+        return min(2040, (dac + 4) & ~0x07)
 
     def _emit_reg(self, bytecode, reg, val):
         if self.sid_state[reg] != val:
@@ -151,6 +151,8 @@ class BytecodeGenerator:
         import math
 
         channel_patches = {}
+        channel_vol = {i: 100 for i in range(16)}
+        channel_expr = {i: 127 for i in range(16)}
         channel_mod = {i: 0 for i in range(16)}
         channel_pitchbend = {i: 0 for i in range(16)}
         channel_pitchbend_range = {i: 2 for i in range(16)}
@@ -160,41 +162,41 @@ class BytecodeGenerator:
         channel_cc71 = {i: 64 for i in range(16)}
 
         def update_filter_routing():
-            filt_route = sum(1 << (v.index - 1) for v in self.voices if v.active and v.filter_enabled)
+            filtered_voices = [v for v in self.voices if v.active and v.filter_enabled]
             curr_vol_mode = self.sid_state[MODE_VOL]
             if curr_vol_mode == -1:
                 curr_vol_mode = 0x0F
             vol = curr_vol_mode & 0x0F
 
-            if filt_route == 0:
+            if not filtered_voices:
                 self._emit_reg(bytecode, RESON_FILT, 0x00)
-                off3 = FILT_OFF3 if self.voices[2].is_modulator else 0
-                self._emit_reg(bytecode, MODE_VOL, off3 | vol)
+                self._emit_reg(bytecode, MODE_VOL, vol)
                 return
 
-            filt_mode = 0
-            res_nibbles = []
-            for v in self.voices:
-                if v.active and v.filter_enabled:
-                    filt_mode |= v.filter_mode
-                    ch = getattr(v, 'channel', 0)
-                    cc71 = channel_cc71.get(ch, 64)
-                    base_nibble = (v.filter_res >> 4) & 0x0F
-                    scaled = int(round(base_nibble * (cc71 / 64.0)))
-                    res_nibbles.append(max(0, min(15, scaled)))
+            lead_v = max(filtered_voices, key=lambda v: v.priority_score)
+            routed_voices = [
+                v for v in filtered_voices
+                if v.index == lead_v.index or (
+                    v.filter_mode == lead_v.filter_mode and
+                    v.filter_env_type is None and
+                    lead_v.filter_env_type is None and
+                    abs(v.cutoff_base_hz - lead_v.cutoff_base_hz) < 100.0
+                )
+            ]
+            filt_route = sum(1 << (v.index - 1) for v in routed_voices)
+            filt_mode = lead_v.filter_mode or FILT_LP
 
-            if not filt_mode:
-                filt_mode = FILT_LP
+            ch = getattr(lead_v, 'channel', 0)
+            cc71 = channel_cc71.get(ch, 64)
+            base_nibble = (lead_v.filter_res >> 4) & 0x0F
+            res_nibble = max(0, min(15, int(round(base_nibble * (cc71 / 64.0)))))
+            if len(routed_voices) > 1:
+                res_nibble = min(3, res_nibble)
 
-            if self.voices[2].is_modulator or (self.voices[2].active and (
-                "filter_off3" in getattr(self.voices[2], 'features', []) or
-                self.voices[2].role == 'percussion' or
-                getattr(self.voices[2], 'channel', -1) == self.noise_channel
-            )):
+            if self.voices[2].active and "filter_off3" in getattr(self.voices[2], 'features', []):
                 filt_mode |= FILT_OFF3
 
-            composite_res = (max(res_nibbles) << 4) if res_nibbles else 0x40
-            self._emit_reg(bytecode, RESON_FILT, (composite_res & 0xF0) | filt_route)
+            self._emit_reg(bytecode, RESON_FILT, ((res_nibble << 4) & 0xF0) | filt_route)
             self._emit_reg(bytecode, MODE_VOL, (filt_mode & 0xF0) | vol)
 
         current_time = 0.0
@@ -212,7 +214,8 @@ class BytecodeGenerator:
             for v in self.voices:
                 if v.active:
                     ch = getattr(v, 'channel', 0)
-                    if (len(getattr(v, 'arpeggio_notes', [])) > 1 or "pwm_sweep" in getattr(v, 'features', []) or
+                    if (bool(getattr(v, 'kick_slide_notes', [])) or
+                        len(getattr(v, 'arpeggio_notes', [])) > 1 or "pwm_sweep" in getattr(v, 'features', []) or
                         "vibrato" in getattr(v, 'features', []) or channel_pitchbend.get(ch, 0) != 0 or
                         channel_mod.get(ch, 0) > 0 or getattr(v, 'released', False) or
                         (v.filter_enabled and (v.filter_env_type is not None or "filter_lfo" in getattr(v, 'features', [])))):
@@ -258,47 +261,56 @@ class BytecodeGenerator:
                             v.released = False
                             v.reset_filter()
                             update_filter_routing()
-                            continue
+                        continue
 
                     base = get_voice_offset(v.index)
                     ch = getattr(v, 'channel', 0)
 
                     # 1. Pitch Update (Arp, Bend, Vibrato)
-                    note = getattr(v, 'note', 60)
-                    is_arp = len(getattr(v, 'arpeggio_notes', [])) > 1
-                    if is_arp:
-                        v.arp_index = (v.arp_index + 1) % len(v.arpeggio_notes)
-                        note = v.arpeggio_notes[v.arp_index]
-
-                    pb = channel_pitchbend.get(ch, 0)
-                    pb_range = channel_pitchbend_range.get(ch, 2)
-                    semitones_shift = (pb / 8192.0) * pb_range
-
                     mod_val = channel_mod.get(ch, 0) / 127.0
-                    if mod_val == 0 and "vibrato" in getattr(v, 'features', []):
-                        if ch == self.melody_channel:
-                            is_highest = True
-                            for other_v in self.voices:
-                                if other_v.active and other_v.index != v.index and getattr(other_v, 'channel', -1) == ch:
-                                    if getattr(other_v, 'note', 0) > getattr(v, 'note', 0):
-                                        is_highest = False
-                                        break
-                            if is_highest:
-                                mod_val = 0.3
+                    if getattr(v, 'kick_slide_notes', []):
+                        kn = v.kick_slide_notes.pop(0)
+                        v.note = kn
+                        kfreq = freq_for_note(kn, self.sid_clock)
+                        if kfreq > 0xFFFF: kfreq = 0xFFFF
+                        self._emit_reg(bytecode, base + FREQ_LO_1, int(kfreq) & 0xFF)
+                        self._emit_reg(bytecode, base + FREQ_HI_1, (int(kfreq) >> 8) & 0xFF)
+                    else:
+                        note = getattr(v, 'note', 60)
+                        is_arp = len(getattr(v, 'arpeggio_notes', [])) > 1
+                        if is_arp:
+                            v.arp_index = (v.arp_index + 1) % len(v.arpeggio_notes)
+                            note = v.arpeggio_notes[v.arp_index]
 
-                    vib_semitones = 0.0
-                    if mod_val > 0:
-                        v.arp_counter += 1
-                        lfo_phase = v.arp_counter * 0.5
-                        vib_semitones = math.sin(lfo_phase) * 0.5 * mod_val
-                        vib_semitones = round(vib_semitones * 16.0) / 16.0
+                        pb = channel_pitchbend.get(ch, 0)
+                        pb_range = channel_pitchbend_range.get(ch, 2)
+                        semitones_shift = (pb / 8192.0) * pb_range
 
-                    if semitones_shift != 0.0 or vib_semitones != 0.0 or is_arp:
-                        freq = freq_for_note(note + semitones_shift + vib_semitones, self.sid_clock)
-                        if freq < 0: freq = 0
-                        if freq > 0xFFFF: freq = 0xFFFF
-                        self._emit_reg(bytecode, base + FREQ_LO_1, int(freq) & 0xFF)
-                        self._emit_reg(bytecode, base + FREQ_HI_1, (int(freq) >> 8) & 0xFF)
+                        if mod_val == 0 and "vibrato" in getattr(v, 'features', []):
+                            v.pwm_counter += 1
+                            if v.pwm_counter >= 2 and ch == self.melody_channel:
+                                is_highest = True
+                                for other_v in self.voices:
+                                    if other_v.active and other_v.index != v.index and getattr(other_v, 'channel', -1) == ch:
+                                        if getattr(other_v, 'note', 0) > getattr(v, 'note', 0):
+                                            is_highest = False
+                                            break
+                                if is_highest:
+                                    mod_val = 0.3
+
+                        vib_semitones = 0.0
+                        if mod_val > 0:
+                            v.arp_counter += 1
+                            lfo_phase = v.arp_counter * 0.5
+                            vib_semitones = math.sin(lfo_phase) * 0.5 * mod_val
+                            vib_semitones = round(vib_semitones * 16.0) / 16.0
+
+                        if semitones_shift != 0.0 or vib_semitones != 0.0 or is_arp:
+                            freq = freq_for_note(note + semitones_shift + vib_semitones, self.sid_clock)
+                            if freq < 0: freq = 0
+                            if freq > 0xFFFF: freq = 0xFFFF
+                            self._emit_reg(bytecode, base + FREQ_LO_1, int(freq) & 0xFF)
+                            self._emit_reg(bytecode, base + FREQ_HI_1, (int(freq) >> 8) & 0xFF)
 
                     # 2. PWM Sweep
                     if "pwm_sweep" in getattr(v, 'features', []) and not getattr(v, 'released', False):
@@ -324,8 +336,7 @@ class BytecodeGenerator:
                 # 4. Filter Cutoff Envelope & Sweeps
                 filtered_voices = [v for v in self.voices if v.active and v.filter_enabled]
                 if filtered_voices:
-                    active_envs = [v for v in filtered_voices if v.filter_env_type is not None or "filter_lfo" in getattr(v, 'features', [])]
-                    lead_v = max(active_envs if active_envs else filtered_voices, key=lambda v: v.priority_score)
+                    lead_v = max(filtered_voices, key=lambda v: v.priority_score)
                     hz = lead_v.cutoff_base_hz
                     if lead_v.filter_env_type == 'pluck':
                         decay = (1.0 - min(1.0, lead_v.filter_env_timer / lead_v.filter_env_dur)) ** 2
@@ -351,7 +362,8 @@ class BytecodeGenerator:
 
                     dac_val = self._freq_to_cutoff_dac(target_hz)
                     self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
-                    self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
+                    if self.sid_state[CUTOFF_HI] == -1 or abs((dac_val >> 3) - self.sid_state[CUTOFF_HI]) >= 1:
+                        self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
 
                 if len(bytecode) > prev_len:
                     new_writes = bytecode[prev_len:]
@@ -399,16 +411,26 @@ class BytecodeGenerator:
                 ch = ev['channel']
                 ctrl = ev['control']
                 val = ev['value']
-                if ctrl == 7: # Volume
-                    val = ev['value']
-                    sustain = val >> 3 # 0-127 -> 0-15
+                if ctrl in (7, 11): # Volume / Expression
+                    if ctrl == 7:
+                        channel_vol[ch] = val
+                    else:
+                        channel_expr[ch] = val
+                    scale = (channel_vol[ch] / 100.0) * (channel_expr[ch] / 127.0)
                     for v in self.voices:
                         if getattr(v, 'channel', -1) == ch and v.active:
                             patch = channel_patches.get(ch, 0)
+                            base = get_voice_offset(v.index)
                             if 128 <= patch <= 130:
-                                base = get_voice_offset(v.index)
+                                sustain = max(0, min(15, int(round(15.0 * scale))))
                                 sr = (sustain << 4) | 0x00
                                 self._emit_reg(bytecode, base + SR_1, sr)
+                            elif ch != 9 and not getattr(v, 'released', False) and self.sid_state[base + SR_1] != -1:
+                                cur_sr = self.sid_state[base + SR_1]
+                                base_sus = getattr(v, 'base_sustain', (cur_sr >> 4) & 0x0F)
+                                new_sus = max(2, min(15, int(round(base_sus * min(1.2, scale)))))
+                                if abs(new_sus - ((cur_sr >> 4) & 0x0F)) >= 2:
+                                    self._emit_reg(bytecode, base + SR_1, (new_sus << 4) | (cur_sr & 0x0F))
                 elif ctrl == 1: # Modulation
                     channel_mod[ch] = val
                 elif ctrl == 71: # Resonance
@@ -458,7 +480,9 @@ class BytecodeGenerator:
                     note_val = ev['note']
 
                 prog = channel_patches.get(ev['channel'], 0)
-                vel = ev.get('velocity', 100)
+                raw_vel = ev.get('velocity', 100)
+                ch_scale = (channel_vol.get(ev['channel'], 100) / 100.0) * (channel_expr.get(ev['channel'], 127) / 127.0)
+                vel = max(1, min(127, int(round(raw_vel * ch_scale))))
                 role = ev.get('role')
                 wave, ad, sr, pw, features = get_instrument_params(prog, ev['channel'], note_val, vel, self.chip)
                 if self.channel_custom_pw.get(ev['channel']) is not None and (wave & WAVE_PULSE):
@@ -473,6 +497,10 @@ class BytecodeGenerator:
                     v.note = note_val
                     v.channel = ev['channel']
                     v.role = role if role else ('melody' if ev['channel'] == self.melody_channel else ('bass' if ev['channel'] == self.bass_channel else ('percussion' if ev['channel'] == 9 else 'harmony')))
+                    if v.role == 'harmony' and ev['channel'] != 9 and prog not in (128, 129, 130):
+                        sus = max(4, min(12, ((sr >> 4) & 0x0F) - 2))
+                        sr = (sus << 4) | (sr & 0x0F)
+                    v.base_sustain = (sr >> 4) & 0x0F
                     v.active = True
                     v.start_time = ev['time']
                     v.priority_score = self._get_priority(note_val, ev['channel'], ev['time'], v.role)
@@ -485,18 +513,14 @@ class BytecodeGenerator:
                     v.pwm_counter = 0
 
                     base = get_voice_offset(v.index)
-                    freq = freq_for_note(notes[0], self.sid_clock)
+                    trig_note = min(95, note_val + 14) if "kick_slide" in features else notes[0]
+                    v.kick_slide_notes = [min(95, note_val + 7), note_val] if "kick_slide" in features else []
+                    freq = freq_for_note(trig_note, self.sid_clock)
                     if freq > 0xFFFF: freq = 0xFFFF
                     v.wave = wave
                     v.features = features
                     v.pwm_val = pw
                     v.pwm_dir = 1
-
-                    # 1. Gate Off (Hard Restart)
-                    curr_ctrl = self.sid_state[base + CTRL_1]
-                    if curr_ctrl != -1 and (curr_ctrl & WAVE_GATE):
-                        self.sid_state[base + CTRL_1] = curr_ctrl & ~WAVE_GATE
-                        bytecode.extend([0x93 + (v.index - 1)])
 
                     # 2. Setup Registers
                     self._emit_reg(bytecode, base + AD_1, ad)
@@ -519,11 +543,11 @@ class BytecodeGenerator:
                             v.filter_mode = FILT_LP
 
                         if "bass_filter" in features or "lead_filter" in features:
-                            v.filter_res = 0x80
+                            v.filter_res = 0x50
                         elif "filter_bp" in features:
-                            v.filter_res = 0x60
-                        else:
                             v.filter_res = 0x40
+                        else:
+                            v.filter_res = 0x30
 
                         if "filter_pluck" in features:
                             v.cutoff_base_hz = 800.0
@@ -570,15 +594,18 @@ class BytecodeGenerator:
 
                         v.filter_env_timer = 0.0
 
-                        initial_hz = v.cutoff_base_hz
-                        if v.filter_env_type == 'pluck':
-                            initial_hz += v.filter_sweep_amount
-                        cc74 = channel_cc74.get(ev['channel'], 64)
-                        initial_hz *= (cc74 / 64.0)
-                        initial_hz = max(30.0, min(12000.0, initial_hz))
-                        dac_val = self._freq_to_cutoff_dac(initial_hz)
-                        self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
-                        self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
+                        filtered_voices = [fv for fv in self.voices if fv.active and fv.filter_enabled]
+                        lead_v = max(filtered_voices, key=lambda fv: fv.priority_score) if filtered_voices else v
+                        if lead_v.index == v.index:
+                            initial_hz = v.cutoff_base_hz
+                            if v.filter_env_type == 'pluck':
+                                initial_hz += v.filter_sweep_amount
+                            cc74 = channel_cc74.get(ev['channel'], 64)
+                            initial_hz *= (cc74 / 64.0)
+                            initial_hz = max(30.0, min(12000.0, initial_hz))
+                            dac_val = self._freq_to_cutoff_dac(initial_hz)
+                            self._emit_reg(bytecode, CUTOFF_LO, dac_val & 0x07)
+                            self._emit_reg(bytecode, CUTOFF_HI, (dac_val >> 3) & 0xFF)
 
                         update_filter_routing()
                     else:
@@ -586,33 +613,16 @@ class BytecodeGenerator:
                         update_filter_routing()
 
                     # 3. Trigger
-                    if "pcm_sample" in features and self.chip == "6581":
-                        # Fast Volume DAC manipulation for PCM
-                        for vol in [15, 12, 9, 6, 3, 0]:
-                            curr = self.sid_state[MODE_VOL]
-                            if curr == -1: curr = 0x00
-                            self._emit_reg(bytecode, MODE_VOL, (curr & 0xF0) | vol)
-                            bytecode.extend([0x82, 0x10]) # micro delay
-                        self._emit_reg(bytecode, MODE_VOL, (curr & 0xF0) | 0x0F)
-                    elif "kick_slide" in features:
-                        start_freq = freq_for_note(note_val + 12, self.sid_clock)
-                        self._emit_reg(bytecode, base + FREQ_LO_1, start_freq & 0xFF)
-                        self._emit_reg(bytecode, base + FREQ_HI_1, (start_freq >> 8) & 0xFF)
-                        self._emit_reg(bytecode, base + CTRL_1, wave | WAVE_GATE)
-                        self._emit_reg(bytecode, base + FREQ_HI_1, ((start_freq >> 8) - 2) & 0xFF)
-                        self._emit_reg(bytecode, base + FREQ_HI_1, ((start_freq >> 8) - 4) & 0xFF)
-                        self._emit_reg(bytecode, base + FREQ_HI_1, ((start_freq >> 8) - 8) & 0xFF)
-                    else:
-                        cmd = 0x90 + (v.index - 1)
-                        f_lo = freq & 0xFF
-                        f_hi = (freq >> 8) & 0xFF
-                        ctrl_val = wave | WAVE_GATE
-                        
-                        self.sid_state[base + FREQ_LO_1] = f_lo
-                        self.sid_state[base + FREQ_HI_1] = f_hi
-                        self.sid_state[base + CTRL_1] = ctrl_val
-                        
-                        bytecode.extend([cmd, f_lo, f_hi, ctrl_val])
+                    cmd = 0x90 + (v.index - 1)
+                    f_lo = freq & 0xFF
+                    f_hi = (freq >> 8) & 0xFF
+                    ctrl_val = wave | WAVE_GATE
+
+                    self.sid_state[base + FREQ_LO_1] = f_lo
+                    self.sid_state[base + FREQ_HI_1] = f_hi
+                    self.sid_state[base + CTRL_1] = ctrl_val
+
+                    bytecode.extend([cmd, f_lo, f_hi, ctrl_val])
 
             elif ev['type'] == 'note_off':
                 target_note = ev['note']
@@ -706,10 +716,6 @@ class BytecodeGenerator:
 
             candidates.sort(key=lambda x: x[0])
             chosen = candidates[0][1]
-
-        if "hard_sync" in features or "ring_mod" in features:
-            mod_idx = (chosen.index - 2) % 3
-            self.voices[mod_idx].is_modulator = True
 
         return chosen
 

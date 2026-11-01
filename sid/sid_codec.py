@@ -96,12 +96,20 @@ def encode_semantic_v2(ir_bytes, pw_step=DEFAULT_PW_STEP, clock=CLOCK_NTSC, sid_
     notes_used = set()
     delay_counts = collections.Counter()
 
-    for o in ops:
+    for idx_op, o in enumerate(ops):
         if o[0] == 'note_on':
             flo, fhi = o[2], o[3]
             note = freq_to_note.get((flo, fhi))
             if note is not None:
                 notes_used.add(note)
+        elif o[0] == 'reg':
+            r, val = o[1], o[2]
+            if r // 7 < 3 and r % 7 == 0 and idx_op + 1 < len(ops):
+                nxt = ops[idx_op + 1]
+                if nxt[0] == 'reg' and nxt[1] == r + 1:
+                    note = freq_to_note.get((val, nxt[2]))
+                    if note is not None:
+                        notes_used.add(note)
         elif o[0] == 'delay':
             delay_counts[o[1]] += 1
 
@@ -497,7 +505,7 @@ def compress_sidlz(data, window_size=2048):
             key = (data[pos], data[pos + 1])
             matches = idx.get(key)
             if matches:
-                for p in reversed(matches[-48:]):
+                for p in reversed(matches[-128:]):
                     off = pos - p
                     if off > window_size:
                         break
@@ -516,6 +524,27 @@ def compress_sidlz(data, window_size=2048):
                 add_hash(q)
             pos += rep_len
         elif best_len >= 2:
+            next_best_len = 0
+            if pos + 3 <= n:
+                nkey = (data[pos + 1], data[pos + 2])
+                nmatches = idx.get(nkey)
+                if nmatches:
+                    for p in reversed(nmatches[-128:]):
+                        off = (pos + 1) - p
+                        if off > window_size:
+                            break
+                        l = 0
+                        while pos + 1 + l < n and l < 255 and data[p + l] == data[pos + 1 + l]:
+                            l += 1
+                        if l > next_best_len:
+                            next_best_len = l
+            if next_best_len >= best_len + 2:
+                lit_run.append(data[pos])
+                add_hash(pos)
+                pos += 1
+                if len(lit_run) >= 255:
+                    flush_literals()
+                continue
             flush_literals()
             enc.write_bit(1)
             enc.write_bit(0)
