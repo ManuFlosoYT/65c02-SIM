@@ -32,7 +32,11 @@ constexpr std::uint8_t REG_MODE_VOL = 0x18;
 constexpr std::uint8_t FILT_LP = 0x10;
 constexpr std::uint8_t FILT_BP = 0x20;
 constexpr std::uint8_t FILT_HP = 0x40;
-constexpr std::uint8_t FILT_OFF3 = 0x80;
+
+constexpr std::uint8_t ENV_NONE = 0;
+constexpr std::uint8_t ENV_PLUCK = 1;
+constexpr std::uint8_t ENV_SWELL = 2;
+constexpr std::uint8_t ENV_LFO = 3;
 
 constexpr double CLOCK_NTSC_HZ = 1000000.0;
 constexpr double CLOCK_PAL_HZ = 985248.0;
@@ -163,12 +167,56 @@ int SIDLiveSynthesizer::AllocateVoice(int note, int channel, double nowSec, std:
         }
     }
 
-    if (HasFeature(features, SIDFeatureFlags::HardSync) || HasFeature(features, SIDFeatureFlags::RingMod)) {
-        const auto modIdx = static_cast<std::size_t>((chosenIdx + 2) % 3);
-        voices_.at(modIdx).isModulator = true;
+    (void)features;
+    return chosenIdx;
+}
+
+void SIDLiveSynthesizer::UpdateFilterRouting(Hardware::SID& sid) {
+    int ownerIdx = -1;
+    int bestPrio = std::numeric_limits<int>::min();
+    for (int i = 0; i < 3; ++i) {
+        const auto& v = voices_.at(static_cast<std::size_t>(i));
+        if (v.active && v.filterEnabled && v.priorityScore > bestPrio) {
+            bestPrio = v.priorityScore;
+            ownerIdx = i;
+        }
     }
 
-    return chosenIdx;
+    int currVol = sidRegCache_.at(REG_MODE_VOL);
+    if (currVol == -1) {
+        currVol = 0x0F;
+    }
+    const auto vol = static_cast<std::uint8_t>(static_cast<std::uint8_t>(currVol) & 0x0FU);
+
+    if (ownerIdx == -1) {
+        WriteReg(sid, REG_RESON_FILT, 0x00);
+        WriteReg(sid, REG_MODE_VOL, vol);
+        return;
+    }
+
+    const auto& owner = voices_.at(static_cast<std::size_t>(ownerIdx));
+    auto filtRoute = static_cast<std::uint8_t>(1U << static_cast<unsigned>(ownerIdx));
+    int routedCount = 1;
+    for (int i = 0; i < 3; ++i) {
+        if (i == ownerIdx) {
+            continue;
+        }
+        const auto& v = voices_.at(static_cast<std::size_t>(i));
+        if (v.active && v.filterEnabled && v.filterMode == owner.filterMode &&
+            std::abs(v.cutoffBaseHz - owner.cutoffBaseHz) < 1.0 &&
+            v.filterEnvType == owner.filterEnvType) {
+            filtRoute |= static_cast<std::uint8_t>(1U << static_cast<unsigned>(i));
+            ++routedCount;
+        }
+    }
+
+    std::uint8_t res =
+        (routedCount > 1) ? std::min<std::uint8_t>(owner.filterRes, 0x30U) : owner.filterRes;
+    if (sid.GetModel() == Hardware::SIDModel::MOS6581 && owner.cutoffBaseHz > 8000.0) {
+        res = 0x10U;
+    }
+    WriteReg(sid, REG_RESON_FILT, static_cast<std::uint8_t>((res & 0xF0U) | filtRoute));
+    WriteReg(sid, REG_MODE_VOL, static_cast<std::uint8_t>((owner.filterMode & 0x70U) | vol));
 }
 
 void SIDLiveSynthesizer::TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, int channel, int program, int note,
@@ -183,6 +231,13 @@ void SIDLiveSynthesizer::TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, in
     const MIDITrackRole effectiveRole =
         MIDIVoiceAllocator::ResolveTrackRole(role, channel, mainChannel, bassChannel);
 
+    std::uint8_t effectiveSr = params.effectiveSustainRelease;
+    if (effectiveRole == MIDITrackRole::Harmony && channel != 9 && program < 128) {
+        const int susNibble = std::clamp(((static_cast<int>(effectiveSr) >> 4) & 0x0F) - 2, 4, 12);
+        effectiveSr = static_cast<std::uint8_t>((static_cast<unsigned int>(susNibble) << 4U) |
+                                                (effectiveSr & 0x0FU));
+    }
+
     ActiveSIDVoice& v = voices_.at(static_cast<std::size_t>(voiceIdx));
     v.index = voiceIdx;
     v.note = note;
@@ -194,12 +249,13 @@ void SIDLiveSynthesizer::TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, in
     v.released = false;
     v.releaseTimerSec = 0.0;
     v.noteId = 0;
-    v.maxReleaseTimeSec = SID_RELEASE_TIMES.at(static_cast<std::size_t>(params.effectiveSustainRelease & 0x0FU));
+    v.maxReleaseTimeSec = SID_RELEASE_TIMES.at(static_cast<std::size_t>(effectiveSr & 0x0FU));
     v.priorityScore = ComputePriority(note, channel, effectiveRole, mainChannel, bassChannel);
     v.waveMask = params.waveMask;
     v.pulseWidth = params.pulseWidth;
     v.pwmDir = 1;
     v.features = params.features;
+    v.isModulator = false;
     v.lfoCounter = 0;
     v.kickSlideStep = 0;
     v.kickBaseFreqHi = 0;
@@ -212,7 +268,7 @@ void SIDLiveSynthesizer::TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, in
     WriteReg(sid, static_cast<std::uint8_t>(base + REG_SR), 0x00, true);
     sid.Clock(10U);
     WriteReg(sid, static_cast<std::uint8_t>(base + REG_AD), params.attackDecay, true);
-    WriteReg(sid, static_cast<std::uint8_t>(base + REG_SR), params.effectiveSustainRelease, true);
+    WriteReg(sid, static_cast<std::uint8_t>(base + REG_SR), effectiveSr, true);
 
     if ((params.waveMask & (SID_WAVE_PULSE | SID_WAVE_TEST)) != 0) {
         WriteReg(sid, static_cast<std::uint8_t>(base + REG_PW_LO), static_cast<std::uint8_t>(params.pulseWidth & 0xFFU));
@@ -222,70 +278,117 @@ void SIDLiveSynthesizer::TriggerVoiceNoteOn(Hardware::SID& sid, int voiceIdx, in
 
     const bool hasFilt = HasFeature(params.features, SIDFeatureFlags::BassFilter) ||
                          HasFeature(params.features, SIDFeatureFlags::VelocityFilter) ||
+                         HasFeature(params.features, SIDFeatureFlags::FilterPluck) ||
+                         HasFeature(params.features, SIDFeatureFlags::FilterBrass) ||
+                         HasFeature(params.features, SIDFeatureFlags::LeadFilter) ||
+                         HasFeature(params.features, SIDFeatureFlags::PadFilter) ||
                          HasFeature(params.features, SIDFeatureFlags::FilterHP) ||
-                         HasFeature(params.features, SIDFeatureFlags::FilterBP);
+                         HasFeature(params.features, SIDFeatureFlags::FilterBP) ||
+                         HasFeature(params.features, SIDFeatureFlags::FilterLFO);
 
     if (hasFilt) {
-        const bool isMelody = (effectiveRole == MIDITrackRole::Melody);
-        bool melodyActive = false;
-        for (const auto& vo : voices_) {
-            if (vo.active && vo.role == MIDITrackRole::Melody) {
-                melodyActive = true;
+        v.filterEnabled = true;
+        if (HasFeature(params.features, SIDFeatureFlags::FilterHP)) {
+            v.filterMode = FILT_HP;
+        } else if (HasFeature(params.features, SIDFeatureFlags::FilterBP)) {
+            v.filterMode = FILT_BP;
+        } else {
+            v.filterMode = FILT_LP;
+        }
+
+        if (HasFeature(params.features, SIDFeatureFlags::BassFilter) ||
+            HasFeature(params.features, SIDFeatureFlags::LeadFilter)) {
+            v.filterRes = 0x50;
+        } else if (HasFeature(params.features, SIDFeatureFlags::FilterBP)) {
+            v.filterRes = 0x40;
+        } else {
+            v.filterRes = 0x30;
+        }
+
+        const double velNorm = static_cast<double>(std::clamp(velocity, 0, 127)) / 127.0;
+        if (HasFeature(params.features, SIDFeatureFlags::FilterPluck)) {
+            v.cutoffBaseHz = 800.0;
+            v.filterSweepAmount = 2500.0 + (velNorm * 1000.0);
+            v.filterEnvDurSec = 0.15;
+            v.filterEnvType = ENV_PLUCK;
+        } else if (HasFeature(params.features, SIDFeatureFlags::FilterBrass)) {
+            v.cutoffBaseHz = 800.0;
+            v.filterSweepAmount = 2000.0;
+            v.filterEnvDurSec = 0.25;
+            v.filterEnvType = ENV_SWELL;
+        } else if (HasFeature(params.features, SIDFeatureFlags::FilterBP)) {
+            v.cutoffBaseHz = 1200.0;
+            v.filterSweepAmount = 2000.0;
+            v.filterEnvDurSec = 0.10;
+            v.filterEnvType = ENV_PLUCK;
+        } else if (HasFeature(params.features, SIDFeatureFlags::FilterHP)) {
+            v.cutoffBaseHz = 5000.0;
+            v.filterSweepAmount = 0.0;
+            v.filterEnvDurSec = 0.10;
+            v.filterEnvType = ENV_NONE;
+        } else if (HasFeature(params.features, SIDFeatureFlags::BassFilter)) {
+            v.cutoffBaseHz = 800.0;
+            v.filterSweepAmount = 2500.0 + (velNorm * 1000.0);
+            v.filterEnvDurSec = 0.15;
+            v.filterEnvType = ENV_PLUCK;
+        } else if (HasFeature(params.features, SIDFeatureFlags::LeadFilter) ||
+                   HasFeature(params.features, SIDFeatureFlags::PadFilter)) {
+            v.cutoffBaseHz =
+                HasFeature(params.features, SIDFeatureFlags::LeadFilter) ? 2000.0 : 1500.0;
+            if (HasFeature(params.features, SIDFeatureFlags::VelocityFilter)) {
+                v.cutoffBaseHz += velNorm * 1500.0;
+            }
+            v.filterSweepAmount = 0.0;
+            v.filterEnvDurSec = 0.15;
+            v.filterEnvType =
+                HasFeature(params.features, SIDFeatureFlags::FilterLFO) ? ENV_LFO : ENV_NONE;
+        } else if (HasFeature(params.features, SIDFeatureFlags::VelocityFilter)) {
+            v.cutoffBaseHz = 300.0 + (velNorm * 6000.0);
+            v.filterSweepAmount = 0.0;
+            v.filterEnvDurSec = 0.15;
+            v.filterEnvType =
+                HasFeature(params.features, SIDFeatureFlags::FilterLFO) ? ENV_LFO : ENV_NONE;
+        } else {
+            v.cutoffBaseHz = 1000.0;
+            v.filterSweepAmount = 0.0;
+            v.filterEnvDurSec = 0.15;
+            v.filterEnvType =
+                HasFeature(params.features, SIDFeatureFlags::FilterLFO) ? ENV_LFO : ENV_NONE;
+        }
+        v.filterEnvTimerSec = 0.0;
+
+        bool isFilterOwner = true;
+        for (const auto& other : voices_) {
+            if (other.active && other.filterEnabled && other.index != voiceIdx &&
+                other.priorityScore > v.priorityScore) {
+                isFilterOwner = false;
                 break;
             }
         }
-
-        if (isMelody || !melodyActive) {
-            const auto filtRoute = static_cast<std::uint8_t>(1U << static_cast<unsigned>(voiceIdx));
-            double targetHz = 1000.0;
-            if (HasFeature(params.features, SIDFeatureFlags::VelocityFilter)) {
-                targetHz = 200.0 + ((static_cast<double>(velocity) / 127.0) * 8000.0);
-            } else if (HasFeature(params.features, SIDFeatureFlags::BassFilter)) {
-                targetHz = 1500.0;
+        if (isFilterOwner) {
+            double initialHz = v.cutoffBaseHz;
+            if (v.filterEnvType == ENV_PLUCK) {
+                initialHz += v.filterSweepAmount;
             }
-
-            const std::uint16_t dacVal = FreqHzToCutoffDAC(targetHz, sid.GetModel());
+            initialHz = std::clamp(initialHz, 30.0, 12000.0);
+            const std::uint16_t dacVal = FreqHzToCutoffDAC(initialHz, sid.GetModel());
             WriteReg(sid, REG_CUTOFF_LO, static_cast<std::uint8_t>(dacVal & 0x07U));
             WriteReg(sid, REG_CUTOFF_HI, static_cast<std::uint8_t>((dacVal >> 3U) & 0xFFU));
-
-            std::uint8_t res = 0x40;
-            if (sid.GetModel() == Hardware::SIDModel::MOS6581 && dacVal > 1500U) {
-                res = 0x10;
-            }
-            WriteReg(sid, REG_RESON_FILT, static_cast<std::uint8_t>(res | filtRoute));
-
-            int currVol = sidRegCache_.at(REG_MODE_VOL);
-            if (currVol == -1) {
-                currVol = 0x0F;
-            }
-            std::uint8_t fmode = FILT_LP;
-            if (HasFeature(params.features, SIDFeatureFlags::FilterHP)) {
-                fmode = FILT_HP;
-            } else if (HasFeature(params.features, SIDFeatureFlags::FilterBP)) {
-                fmode = FILT_BP;
-            }
-            if (voices_.at(2).isModulator) {
-                fmode |= FILT_OFF3;
-            }
-            const auto modeVol = static_cast<std::uint8_t>(
-                (static_cast<std::uint8_t>(currVol) & ~(FILT_LP | FILT_BP | FILT_HP | FILT_OFF3)) | fmode);
-            WriteReg(sid, REG_MODE_VOL, modeVol);
         }
-    } else if (sidRegCache_.at(REG_RESON_FILT) != -1) {
-        const auto voiceBit = static_cast<std::uint8_t>(1U << static_cast<unsigned>(voiceIdx));
-        const auto currResFilt = static_cast<std::uint8_t>(sidRegCache_.at(REG_RESON_FILT));
-        if ((currResFilt & voiceBit) != 0) {
-            WriteReg(sid, REG_RESON_FILT, static_cast<std::uint8_t>(currResFilt & ~voiceBit));
-        }
+        UpdateFilterRouting(sid);
+    } else {
+        v.filterEnabled = false;
+        v.filterMode = FILT_LP;
+        v.filterRes = 0x30;
+        v.cutoffBaseHz = 1000.0;
+        v.filterSweepAmount = 0.0;
+        v.filterEnvDurSec = 0.15;
+        v.filterEnvTimerSec = 0.0;
+        v.filterEnvType = ENV_NONE;
+        UpdateFilterRouting(sid);
     }
 
-    auto ctrlVal = static_cast<std::uint8_t>(params.waveMask | SID_WAVE_GATE);
-    if (HasFeature(params.features, SIDFeatureFlags::HardSync)) {
-        ctrlVal |= SID_WAVE_SYNC;
-    }
-    if (HasFeature(params.features, SIDFeatureFlags::RingMod)) {
-        ctrlVal |= SID_WAVE_RING;
-    }
+    const auto ctrlVal = static_cast<std::uint8_t>(params.waveMask | SID_WAVE_GATE);
 
     if (HasFeature(params.features, SIDFeatureFlags::KickSlide)) {
         const std::uint16_t startFreq = NoteToSIDFreq(static_cast<double>(note + 12));
@@ -316,13 +419,7 @@ void SIDLiveSynthesizer::TriggerVoiceNoteOff(Hardware::SID& sid, int voiceIdx) {
     v.noteId = 0;
 
     const auto base = static_cast<std::uint8_t>(voiceIdx * 7);
-    auto ctrlVal = static_cast<std::uint8_t>(v.waveMask & ~SID_WAVE_GATE);
-    if (HasFeature(v.features, SIDFeatureFlags::HardSync)) {
-        ctrlVal |= SID_WAVE_SYNC;
-    }
-    if (HasFeature(v.features, SIDFeatureFlags::RingMod)) {
-        ctrlVal |= SID_WAVE_RING;
-    }
+    const auto ctrlVal = static_cast<std::uint8_t>(v.waveMask & ~SID_WAVE_GATE);
     WriteReg(sid, static_cast<std::uint8_t>(base + REG_CTRL), ctrlVal);
 }
 
@@ -347,8 +444,15 @@ void SIDLiveSynthesizer::StepModulationEffects(Hardware::SID& sid, double stepSe
             if (v.releaseTimerSec >= v.maxReleaseTimeSec) {
                 v.active = false;
                 v.released = false;
+                v.filterEnabled = false;
+                v.filterEnvType = ENV_NONE;
+                UpdateFilterRouting(sid);
                 continue;
             }
+        }
+
+        if (v.filterEnabled) {
+            v.filterEnvTimerSec += stepSec;
         }
 
         const auto base = static_cast<std::uint8_t>(v.index * 7);
@@ -370,7 +474,7 @@ void SIDLiveSynthesizer::StepModulationEffects(Hardware::SID& sid, double stepSe
             continue;
         }
 
-        if (HasFeature(v.features, SIDFeatureFlags::Vibrato)) {
+        if (HasFeature(v.features, SIDFeatureFlags::Vibrato) && v.lfoCounter >= 8) {
             if (v.role == MIDITrackRole::Melody || v.channel == mainChannel || mainChannel < 0) {
                 bool isHighest = true;
                 for (const auto& other : voices_) {
@@ -380,7 +484,8 @@ void SIDLiveSynthesizer::StepModulationEffects(Hardware::SID& sid, double stepSe
                     }
                 }
                 if (isHighest) {
-                    const double vibSemitones = std::sin(static_cast<double>(v.lfoCounter) * 0.5) * 0.15;
+                    const double vibSemitones =
+                        std::sin(static_cast<double>(v.lfoCounter / 4) * 0.5) * 0.15;
                     const std::uint16_t freq = NoteToSIDFreq(static_cast<double>(v.note) + vibSemitones);
                     WriteReg(sid, static_cast<std::uint8_t>(base + REG_FREQ_LO),
                              static_cast<std::uint8_t>(freq & 0xFFU));
@@ -406,6 +511,45 @@ void SIDLiveSynthesizer::StepModulationEffects(Hardware::SID& sid, double stepSe
                      static_cast<std::uint8_t>((v.pulseWidth >> 8U) & 0x0FU));
         }
     }
+
+    ActiveSIDVoice* filterOwner = nullptr;
+    for (auto& v : voices_) {
+        if (v.active && !v.released && v.filterEnabled) {
+            if (filterOwner == nullptr || v.priorityScore > filterOwner->priorityScore) {
+                filterOwner = &v;
+            }
+        }
+    }
+    if (filterOwner != nullptr && (filterOwner->lfoCounter % 4) == 0 &&
+        (filterOwner->filterEnvType != ENV_NONE ||
+         HasFeature(filterOwner->features, SIDFeatureFlags::FilterLFO))) {
+        double hz = filterOwner->cutoffBaseHz;
+        if (filterOwner->filterEnvType == ENV_PLUCK) {
+            const double t = std::min(1.0, filterOwner->filterEnvTimerSec /
+                                               std::max(0.01, filterOwner->filterEnvDurSec));
+            const double decay = (1.0 - t) * (1.0 - t);
+            hz = filterOwner->cutoffBaseHz + (filterOwner->filterSweepAmount * decay);
+            if (filterOwner->filterEnvTimerSec >= filterOwner->filterEnvDurSec) {
+                filterOwner->filterEnvType = ENV_NONE;
+            }
+        } else if (filterOwner->filterEnvType == ENV_SWELL) {
+            const double t = std::min(1.0, filterOwner->filterEnvTimerSec /
+                                               std::max(0.01, filterOwner->filterEnvDurSec));
+            hz = filterOwner->cutoffBaseHz + (filterOwner->filterSweepAmount * t);
+            if (filterOwner->filterEnvTimerSec >= filterOwner->filterEnvDurSec) {
+                filterOwner->filterEnvType = ENV_NONE;
+            }
+        }
+        if (filterOwner->filterEnvType == ENV_LFO ||
+            HasFeature(filterOwner->features, SIDFeatureFlags::FilterLFO)) {
+            const double lfoStep = static_cast<double>(filterOwner->lfoCounter / 4);
+            hz *= 1.0 + (0.25 * std::sin(lfoStep * 0.4));
+        }
+        hz = std::clamp(hz, 30.0, 12000.0);
+        const std::uint16_t dacVal = FreqHzToCutoffDAC(hz, sid.GetModel());
+        WriteReg(sid, REG_CUTOFF_LO, static_cast<std::uint8_t>(dacVal & 0x07U));
+        WriteReg(sid, REG_CUTOFF_HI, static_cast<std::uint8_t>((dacVal >> 3U) & 0xFFU));
+    }
 }
 
 void SIDLiveSynthesizer::AllNotesOff(Hardware::SID& sid) {
@@ -417,6 +561,8 @@ void SIDLiveSynthesizer::AllNotesOff(Hardware::SID& sid) {
         v.noteId = 0;
         v.isModulator = false;
         v.kickSlideStep = 0;
+        v.filterEnabled = false;
+        v.filterEnvType = ENV_NONE;
         const auto base = static_cast<std::uint8_t>(i * 7);
         WriteReg(sid, static_cast<std::uint8_t>(base + REG_CTRL),
                  static_cast<std::uint8_t>(v.waveMask & ~SID_WAVE_GATE), true);
