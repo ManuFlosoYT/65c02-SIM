@@ -25,6 +25,8 @@ TEST(MIDISoundBankTest, MelodicPresetsLookup) {
     const SIDPatchParams squareLead = MIDISoundBank::GetInstrumentParams(80, 0, 72, 100);
     EXPECT_EQ(squareLead.name, "Synth Lead (Square)");
     EXPECT_EQ(squareLead.waveMask, static_cast<std::uint8_t>(SID_WAVE_PULSE | SID_WAVE_TRI));
+    EXPECT_NE(squareLead.features & static_cast<std::uint16_t>(SIDFeatureFlags::LeadFilter), 0U);
+    EXPECT_NE(squareLead.features & static_cast<std::uint16_t>(SIDFeatureFlags::FilterLFO), 0U);
 
     const SIDPatchParams sawLead = MIDISoundBank::GetInstrumentParams(81, 0, 72, 100);
     EXPECT_EQ(sawLead.name, "Synth Lead (Sawtooth)");
@@ -97,14 +99,14 @@ TEST(MIDIFileTest, MainTrackSelectionAndSerializeRoundtrip) {
         .id = project.nextNoteId++,
         .pitch = 72,
         .velocity = 115,
-        .startBeat = 0.0,
+        .startBeat = 2.0,
         .durationBeats = 1.5,
     });
     project.tracks[1].notes.push_back(MIDINote{
         .id = project.nextNoteId++,
         .pitch = 36,
         .velocity = 100,
-        .startBeat = 0.5,
+        .startBeat = 2.5,
         .durationBeats = 1.0,
     });
 
@@ -137,6 +139,7 @@ TEST(MIDIFileTest, MainTrackSelectionAndSerializeRoundtrip) {
             foundBassTrack = true;
             ASSERT_EQ(t.notes.size(), 1U);
             EXPECT_EQ(t.notes[0].pitch, 36);
+            EXPECT_NEAR(t.notes[0].startBeat, 0.5, 0.01);
         }
     }
     EXPECT_TRUE(foundBassTrack);
