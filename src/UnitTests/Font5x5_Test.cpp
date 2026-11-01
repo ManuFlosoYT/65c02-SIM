@@ -90,8 +90,9 @@ TEST(Font5x5Test, Clipping) {
     clear_simulated_vram();
 
     font_draw_char(-2, 10, 'A', 0x3F);
-    EXPECT_EQ(s_simulatedVram[10][0], 0);
+    EXPECT_EQ(s_simulatedVram[10][0], 0x3F);
     EXPECT_EQ(s_simulatedVram[10][1], 0x3F);
+    EXPECT_EQ(s_simulatedVram[10][2], 0);
 
     font_draw_char(-10, 10, 'A', 0x3F);
     font_draw_char(10, -2, 'A', 0x3F);
