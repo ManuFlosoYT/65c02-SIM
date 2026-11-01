@@ -128,7 +128,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ] || [ "$4" == "--microDOS
 
     APP_LD="sdk/src/build/${NAME}_app.ld"
     APP_FLAGS=""
-    if grep -q "Libs/GPU.h" "$SRC" || grep -q "GPUDoubleBuffer.h" "$SRC" || grep -q "Mouse.h" "$SRC" || grep -q "Font5x5.h" "$SRC"; then
+    if grep -q "Libs/GPU.h" "$SRC" || grep -q "GPUDoubleBuffer.h" "$SRC" || grep -q "Mouse.h" "$SRC" || grep -q "Font5x5.h" "$SRC" || grep -q "Font3x5.h" "$SRC"; then
         APP_FLAGS="--gpu"
     fi
 
