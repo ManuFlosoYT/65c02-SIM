@@ -412,25 +412,30 @@ class BytecodeGenerator:
                 ctrl = ev['control']
                 val = ev['value']
                 if ctrl in (7, 11): # Volume / Expression
-                    if ctrl == 7:
-                        channel_vol[ch] = val
+                    patch = channel_patches.get(ch, 0)
+                    if 128 <= patch <= 130:
+                        if ctrl == 7:
+                            sustain = val >> 3
+                            sr = (sustain << 4) | 0x00
+                            for v in self.voices:
+                                if getattr(v, 'channel', -1) == ch and v.active:
+                                    base = get_voice_offset(v.index)
+                                    self._emit_reg(bytecode, base + SR_1, sr)
                     else:
-                        channel_expr[ch] = val
-                    scale = (channel_vol[ch] / 100.0) * (channel_expr[ch] / 127.0)
-                    for v in self.voices:
-                        if getattr(v, 'channel', -1) == ch and v.active:
-                            patch = channel_patches.get(ch, 0)
-                            base = get_voice_offset(v.index)
-                            if 128 <= patch <= 130:
-                                sustain = max(0, min(15, int(round(15.0 * scale))))
-                                sr = (sustain << 4) | 0x00
-                                self._emit_reg(bytecode, base + SR_1, sr)
-                            elif ch != 9 and not getattr(v, 'released', False) and self.sid_state[base + SR_1] != -1:
-                                cur_sr = self.sid_state[base + SR_1]
-                                base_sus = getattr(v, 'base_sustain', (cur_sr >> 4) & 0x0F)
-                                new_sus = max(2, min(15, int(round(base_sus * min(1.2, scale)))))
-                                if abs(new_sus - ((cur_sr >> 4) & 0x0F)) >= 2:
-                                    self._emit_reg(bytecode, base + SR_1, (new_sus << 4) | (cur_sr & 0x0F))
+                        if ctrl == 7:
+                            channel_vol[ch] = val
+                        else:
+                            channel_expr[ch] = val
+                        scale = (channel_vol[ch] / 100.0) * (channel_expr[ch] / 127.0)
+                        for v in self.voices:
+                            if getattr(v, 'channel', -1) == ch and v.active:
+                                base = get_voice_offset(v.index)
+                                if ch != 9 and not getattr(v, 'released', False) and self.sid_state[base + SR_1] != -1:
+                                    cur_sr = self.sid_state[base + SR_1]
+                                    base_sus = getattr(v, 'base_sustain', (cur_sr >> 4) & 0x0F)
+                                    new_sus = max(2, min(15, int(round(base_sus * min(1.2, scale)))))
+                                    if abs(new_sus - ((cur_sr >> 4) & 0x0F)) >= 2:
+                                        self._emit_reg(bytecode, base + SR_1, (new_sus << 4) | (cur_sr & 0x0F))
                 elif ctrl == 1: # Modulation
                     channel_mod[ch] = val
                 elif ctrl == 71: # Resonance
@@ -481,8 +486,11 @@ class BytecodeGenerator:
 
                 prog = channel_patches.get(ev['channel'], 0)
                 raw_vel = ev.get('velocity', 100)
-                ch_scale = (channel_vol.get(ev['channel'], 100) / 100.0) * (channel_expr.get(ev['channel'], 127) / 127.0)
-                vel = max(1, min(127, int(round(raw_vel * ch_scale))))
+                if prog in (128, 129, 130):
+                    vel = raw_vel
+                else:
+                    ch_scale = (channel_vol.get(ev['channel'], 100) / 100.0) * (channel_expr.get(ev['channel'], 127) / 127.0)
+                    vel = max(1, min(127, int(round(raw_vel * ch_scale))))
                 role = ev.get('role')
                 wave, ad, sr, pw, features = get_instrument_params(prog, ev['channel'], note_val, vel, self.chip)
                 if self.channel_custom_pw.get(ev['channel']) is not None and (wave & WAVE_PULSE):
