@@ -189,6 +189,125 @@ static uint16_t get_note_freq(uint8_t note) {
     return 0;
 }
 
+static char to_lower(char c) {
+    return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c;
+}
+
+static uint8_t is_sid_file(const char* fname) {
+    uint8_t len = 0;
+    while (fname[len]) {
+        len++;
+    }
+    if (len < 5 || fname[len - 4] != '.') {
+        return 0;
+    }
+    return (to_lower(fname[len - 3]) == 's' &&
+            to_lower(fname[len - 2]) == 'i' &&
+            to_lower(fname[len - 1]) == 'd');
+}
+
+static uint8_t match_sid_entry(const char* fname, const char* pat, uint8_t pat_len, uint8_t pat_has_tilde) {
+    uint8_t base_len = 0;
+    uint8_t tilde_pos = 0;
+    uint8_t i = 0;
+
+    if (!is_sid_file(fname)) {
+        return 0;
+    }
+
+    while (fname[base_len]) {
+        base_len++;
+    }
+    base_len -= 4;
+
+    while (tilde_pos < base_len && fname[tilde_pos] != '~') {
+        tilde_pos++;
+    }
+
+    if (pat_has_tilde) {
+        if (pat_len > base_len) {
+            return 0;
+        }
+        for (i = 0; i < pat_len; i++) {
+            if (to_lower(fname[i]) != to_lower(pat[i])) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+
+    if (tilde_pos < base_len) {
+        if (pat_len <= tilde_pos) {
+            for (i = 0; i < pat_len; i++) {
+                if (to_lower(fname[i]) != to_lower(pat[i])) {
+                    return 0;
+                }
+            }
+            return 1;
+        } else {
+            for (i = 0; i < tilde_pos; i++) {
+                if (to_lower(fname[i]) != to_lower(pat[i])) {
+                    return 0;
+                }
+            }
+            return 1;
+        }
+    } else {
+        if (pat_len > base_len) {
+            return 0;
+        }
+        for (i = 0; i < pat_len; i++) {
+            if (to_lower(fname[i]) != to_lower(pat[i])) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+}
+
+static uint8_t search_dir(const char* dir_path, const char* pat, uint8_t pat_len, uint8_t pat_has_tilde, char* matched_path) {
+    SD_DIR dp;
+    SD_INFO fno;
+    uint8_t count = 0;
+    char first_match[13];
+
+    if (!sd_opendir(&dp, dir_path)) {
+        return 0;
+    }
+
+    while (sd_readdir(&dp, &fno)) {
+        if (fno.fattrib & AM_DIR) {
+            continue;
+        }
+        if (match_sid_entry(fno.fname, pat, pat_len, pat_has_tilde)) {
+            count++;
+            if (count == 1) {
+                strcpy(first_match, fno.fname);
+                if (dir_path[0] == '.' && dir_path[1] == '\0') {
+                    strcpy(matched_path, fno.fname);
+                } else {
+                    strcpy(matched_path, dir_path);
+                    if (dir_path[0] != '\0' && dir_path[strlen(dir_path) - 1] != '/') {
+                        strcat(matched_path, "/");
+                    }
+                    strcat(matched_path, fno.fname);
+                }
+            } else if (count == 2) {
+                println("Multiple matches:");
+                print_str("  ");
+                println(first_match);
+                print_str("  ");
+                println(fno.fname);
+            } else {
+                print_str("  ");
+                println(fno.fname);
+            }
+        }
+    }
+    sd_closedir(&dp);
+    return count;
+}
+
 int main(void) {
     uint8_t cmd = 0;
     uint8_t i = 0;
@@ -196,10 +315,14 @@ int main(void) {
     uint8_t b = 0;
     uint8_t b2 = 0;
     uint8_t b3 = 0;
-    char path[32];
+    char path[48];
+    char dir_buf[32];
+    const char* pat = 0;
     char** args = _args_ptr;
-    uint8_t pathp = 0;
-    uint8_t argp = 0;
+    uint8_t pat_len = 0;
+    uint8_t pat_has_tilde = 0;
+    uint8_t match_count = 0;
+    int16_t last_slash = -1;
     uint16_t loops = 0;
     uint16_t sched_idx = 0;
     uint16_t pause_counter = 0;
@@ -237,26 +360,64 @@ int main(void) {
         return 1;
     }
 
-    if (sd_open(&file, args[1], SD_READ) == 0) {
-        strcpy(path, "/sid/");
-        pathp = 5;
-        argp = 0;
-
-        while (args[1][argp] && pathp < 28) {
-            path[pathp++] = args[1][argp++];
-        }
-        path[pathp] = '\0';
-
-        if (pathp > 4 &&
-            !(path[pathp - 4] == '.' && path[pathp - 3] == 's' && path[pathp - 2] == 'i' && path[pathp - 1] == 'd')) {
-            path[pathp++] = '.';
-            path[pathp++] = 's';
-            path[pathp++] = 'i';
-            path[pathp++] = 'd';
-            path[pathp] = '\0';
+    if (sd_open(&file, args[1], SD_READ)) {
+        strcpy(path, args[1]);
+    } else {
+        last_slash = -1;
+        for (i = 0; args[1][i]; i++) {
+            if (args[1][i] == '/') {
+                last_slash = i;
+            }
         }
 
-        if (sd_open(&file, path, SD_READ) == 0) {
+        if (last_slash >= 0) {
+            if (last_slash == 0) {
+                strcpy(dir_buf, "/");
+            } else {
+                for (i = 0; i < last_slash && i < 31; i++) {
+                    dir_buf[i] = args[1][i];
+                }
+                dir_buf[i] = '\0';
+            }
+            pat = args[1] + last_slash + 1;
+        } else {
+            pat = args[1];
+        }
+
+        pat_len = strlen(pat);
+        if (pat_len >= 4 && pat[pat_len - 4] == '.' &&
+            to_lower(pat[pat_len - 3]) == 's' &&
+            to_lower(pat[pat_len - 2]) == 'i' &&
+            to_lower(pat[pat_len - 1]) == 'd') {
+            pat_len -= 4;
+        }
+
+        pat_has_tilde = 0;
+        for (i = 0; i < pat_len; i++) {
+            if (pat[i] == '~') {
+                pat_has_tilde = 1;
+                break;
+            }
+        }
+
+        if (last_slash >= 0) {
+            match_count = search_dir(dir_buf, pat, pat_len, pat_has_tilde, path);
+        } else {
+            match_count = search_dir("/sid", pat, pat_len, pat_has_tilde, path);
+            if (match_count == 0) {
+                match_count = search_dir(".", pat, pat_len, pat_has_tilde, path);
+            }
+        }
+
+        if (match_count == 1) {
+            if (sd_open(&file, path, SD_READ) == 0) {
+                print_str("Error: File not found -> ");
+                println(path);
+                return 1;
+            }
+        } else if (match_count > 1) {
+            return 1;
+        } else {
             print_str("Error: File not found -> ");
             println(args[1]);
             return 1;
@@ -264,7 +425,7 @@ int main(void) {
     }
 
     print_str("Playing -> ");
-    println(args[1]);
+    println(path);
 
     head = 0;
     tail = 0;
