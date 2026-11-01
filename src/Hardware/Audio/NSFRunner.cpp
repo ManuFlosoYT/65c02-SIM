@@ -472,14 +472,13 @@ public:
             const auto& p = pulse[i];
             const uint8_t vol = p.EffectiveVolume();
             if (vol > 0U) {
-                bool retrig = p.wroteHighByte;
-                if (retrig && !isFirstFrame && prev[i].volume > 0U) {
-                    // Vibrato/slide crossing a 256-period boundary must write $4003/$4007 on 2A03
-                    const bool crossedHighPage = ((p.timer ^ prev[i].period) & 0x0700U) != 0U;
-                    const int diff = std::abs(static_cast<int>(p.timer) - static_cast<int>(prev[i].period));
-                    if (crossedHighPage && diff <= 12) {
-                        retrig = false;
-                    }
+                bool retrig = false;
+                if (isFirstFrame || prev[i].volume == 0U) {
+                    retrig = true;
+                } else if (!p.constantVolume) {
+                    retrig = p.wroteHighByte;
+                } else if (vol >= prev[i].volume + 3U || (p.wroteHighByte && p.timer == prev[i].period)) {
+                    retrig = true;
                 }
                 out[i] = NSFChannelFrameState{
                     .volume = vol,
@@ -492,14 +491,7 @@ public:
 
         const uint8_t triVol = triangle.EffectiveVolume();
         if (triVol > 0U) {
-            bool retrig = triangle.wroteHighByte;
-            if (retrig && !isFirstFrame && prev[2].volume > 0U) {
-                const bool crossedHighPage = ((triangle.timer ^ prev[2].period) & 0x0700U) != 0U;
-                const int diff = std::abs(static_cast<int>(triangle.timer) - static_cast<int>(prev[2].period));
-                if (crossedHighPage && diff <= 12) {
-                    retrig = false;
-                }
-            }
+            const bool retrig = isFirstFrame || prev[2].volume == 0U;
             out[2] = NSFChannelFrameState{
                 .volume = triVol,
                 .period = triangle.timer,
@@ -510,11 +502,19 @@ public:
 
         const uint8_t noiseVol = noise.EffectiveVolume();
         if (noiseVol > 0U) {
+            bool retrig = false;
+            if (isFirstFrame || prev[3].volume == 0U) {
+                retrig = true;
+            } else if (!noise.constantVolume) {
+                retrig = noise.wroteHighByte;
+            } else if (noiseVol >= prev[3].volume + 2U) {
+                retrig = true;
+            }
             out[3] = NSFChannelFrameState{
                 .volume = noiseVol,
                 .period = noise.periodIdx,
                 .duty = noise.mode,
-                .retrigger = noise.wroteHighByte,
+                .retrigger = retrig,
             };
         }
 
