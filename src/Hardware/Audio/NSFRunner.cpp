@@ -844,9 +844,7 @@ NSFRunResult NSFRunner::RunFromMemory(std::span<const uint8_t> nsfData, const NS
     cpu.Reset();
     cpu.SetCycleAccurate(false);
 
-    for (uint16_t reg = 0x4000U; reg <= 0x4013U; ++reg) {
-        nsfDevice->Write(reg, 0x00U);
-    }
+    nsfDevice->apu.Reset();
     nsfDevice->Write(0x4015U, 0x0FU);
 
     cpu.A = songZeroBased;
