@@ -8,17 +8,17 @@
 
 enum {
     APPS_PER_PAGE = 12,
-    MAX_APPS      = 48
+    MAX_APPS      = 255
 };
 
 static const uint8_t COL_X[4] = {6, 30, 54, 78};
 static const uint8_t ROW_Y[3] = {3, 21, 39};
 
 static char app_names[MAX_APPS][9];
-static uint8_t total_apps = 0;
+static uint16_t total_apps = 0;
 static uint8_t total_pages = 1;
 static uint8_t current_page = 0;
-static int8_t selected_idx = -1;
+static int16_t selected_idx = -1;
 static bool was_pressed = false;
 
 static void desktop_draw_wallpaper(void) {
@@ -70,8 +70,8 @@ static void desktop_scan_apps(void) {
 
     sd_closedir(&dir);
 
-    uint8_t count = 0;
-    for (uint8_t i = 0; i < total_apps; ++i) {
+    uint16_t count = 0;
+    for (uint16_t i = 0; i < total_apps; ++i) {
         char path[32];
         strcpy(path, "/bin/");
         strcat(path, app_names[i]);
@@ -112,7 +112,7 @@ static void desktop_draw_box_border(uint8_t slot_idx, uint8_t color) {
     gpu_draw_rect((int8_t)(bx + 16), by, 1, 16, color);
 }
 
-static void desktop_draw_bar(int8_t sel_idx) {
+static void desktop_draw_bar(int16_t sel_idx) {
     gpu_draw_rect(0, 56, 100, 8, 0x00);
     gpu_draw_rect(0, 55, 100, 1, 0x3F);
 
@@ -121,23 +121,23 @@ static void desktop_draw_bar(int8_t sel_idx) {
         font_draw_char(93, 57, '>', 0x3F);
     }
 
-    if (sel_idx >= 0 && sel_idx < (int8_t)total_apps) {
+    if (sel_idx >= 0 && sel_idx < (int16_t)total_apps) {
         font_draw_string(14, 57, app_names[sel_idx], 0x3F);
     }
 }
 
-static void desktop_draw_page(uint8_t page, int8_t sel_idx) {
-    uint8_t start_idx = page * APPS_PER_PAGE;
+static void desktop_draw_page(uint8_t page, int16_t sel_idx) {
+    uint16_t start_idx = (uint16_t)page * APPS_PER_PAGE;
     uint8_t count = 0;
     if (start_idx < total_apps) {
-        count = total_apps - start_idx;
+        count = (uint8_t)(total_apps - start_idx);
         if (count > APPS_PER_PAGE) {
             count = APPS_PER_PAGE;
         }
     }
 
     for (uint8_t i = 0; i < count; ++i) {
-        uint8_t app_idx = start_idx + i;
+        uint16_t app_idx = start_idx + i;
         uint8_t col = i % 4;
         uint8_t row = i / 4;
         int8_t bx = (int8_t)COL_X[col];
@@ -171,7 +171,7 @@ static void desktop_draw_page(uint8_t page, int8_t sel_idx) {
             }
         }
 
-        desktop_draw_box_border(i, (sel_idx == (int8_t)app_idx) ? 0x3F : 0x00);
+        desktop_draw_box_border(i, (sel_idx == (int16_t)app_idx) ? 0x3F : 0x00);
     }
 }
 
@@ -214,10 +214,10 @@ bool desktop_tick(char* out_app_name) {
         }
 
         if (!handled) {
-            uint8_t start_idx = current_page * APPS_PER_PAGE;
+            uint16_t start_idx = (uint16_t)current_page * APPS_PER_PAGE;
             uint8_t count = 0;
             if (start_idx < total_apps) {
-                count = total_apps - start_idx;
+                count = (uint8_t)(total_apps - start_idx);
                 if (count > APPS_PER_PAGE) {
                     count = APPS_PER_PAGE;
                 }
@@ -230,14 +230,14 @@ bool desktop_tick(char* out_app_name) {
                 uint8_t by = ROW_Y[row];
 
                 if (mouse_in_rect(bx, by, 16, 16)) {
-                    int8_t global_idx = (int8_t)(start_idx + i);
+                    int16_t global_idx = (int16_t)(start_idx + i);
                     if (selected_idx == global_idx) {
                         if (out_app_name != NULL) {
                             strcpy(out_app_name, app_names[global_idx]);
                         }
                         launched = true;
                     } else {
-                        if (selected_idx >= (int8_t)start_idx && selected_idx < (int8_t)(start_idx + count)) {
+                        if (selected_idx >= (int16_t)start_idx && selected_idx < (int16_t)(start_idx + count)) {
                             desktop_draw_box_border((uint8_t)(selected_idx - start_idx), 0x00);
                         }
                         selected_idx = global_idx;
@@ -251,15 +251,15 @@ bool desktop_tick(char* out_app_name) {
         }
 
         if (!handled) {
-            uint8_t start_idx = current_page * APPS_PER_PAGE;
+            uint16_t start_idx = (uint16_t)current_page * APPS_PER_PAGE;
             uint8_t count = 0;
             if (start_idx < total_apps) {
-                count = total_apps - start_idx;
+                count = (uint8_t)(total_apps - start_idx);
                 if (count > APPS_PER_PAGE) {
                     count = APPS_PER_PAGE;
                 }
             }
-            if (selected_idx >= (int8_t)start_idx && selected_idx < (int8_t)(start_idx + count)) {
+            if (selected_idx >= (int16_t)start_idx && selected_idx < (int16_t)(start_idx + count)) {
                 desktop_draw_box_border((uint8_t)(selected_idx - start_idx), 0x00);
             }
             selected_idx = -1;
