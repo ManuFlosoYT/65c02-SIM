@@ -406,9 +406,15 @@ static void DrawStartRecordingButton(AppState& state) {
     ImGui::Separator();
     if (ImGui::Button("Start Recording", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
         if (state.emulation.recordingSettings.type == RecordingType::Audio) {
-            const char* ext = (state.emulation.recordingSettings.audioFormat == Control::AudioFormat::OPUS) ? ".ogg" : ".flac";
-            CustomFileDialog::OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ext, ".", "", 1, nullptr,
-                                         ImGuiFileDialogFlags_ConfirmOverwrite);
+            if (state.emulation.recordingSettings.audioFormat == AudioFormat::WAV) {
+                const char* ext = ".wav";
+                CustomFileDialog::OpenDialog("RecordSIDDlgKey", "Save Audio Recording", ext, ".", "", 1, nullptr,
+                                             ImGuiFileDialogFlags_ConfirmOverwrite);
+            } else {
+                const char* ext = (state.emulation.recordingSettings.audioFormat == AudioFormat::FLAC) ? ".flac" : ".opus";
+                CustomFileDialog::OpenDialog("RecordVideoDlgKey", "Save Audio Recording", ext, ".", "", 1, nullptr,
+                                             ImGuiFileDialogFlags_ConfirmOverwrite);
+            }
         } else {
             std::string ext = (state.emulation.recordingSettings.format == VideoFormat::MP4) ? ".mp4" : ".mkv";
             CustomFileDialog::OpenDialog("RecordVideoDlgKey", "Save Video Recording", ext.c_str(), ".", "", 1, nullptr,
@@ -450,13 +456,29 @@ static void DrawRecordingConfigPopup(AppState& state) {
 
         ImGui::Separator();
         ImGui::TextUnformatted("Audio Format");
-        int aFormat = static_cast<int>(state.emulation.recordingSettings.audioFormat);
-        if (ImGui::RadioButton("FLAC", aFormat == 0)) {
-            state.emulation.recordingSettings.audioFormat = Control::AudioFormat::FLAC;
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("OPUS", aFormat == 1)) {
-            state.emulation.recordingSettings.audioFormat = Control::AudioFormat::OPUS;
+        if (state.emulation.recordingSettings.type == RecordingType::Audio) {
+            if (ImGui::RadioButton("WAV", state.emulation.recordingSettings.audioFormat == AudioFormat::WAV)) {
+                state.emulation.recordingSettings.audioFormat = AudioFormat::WAV;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("FLAC", state.emulation.recordingSettings.audioFormat == AudioFormat::FLAC)) {
+                state.emulation.recordingSettings.audioFormat = AudioFormat::FLAC;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("OPUS", state.emulation.recordingSettings.audioFormat == AudioFormat::OPUS)) {
+                state.emulation.recordingSettings.audioFormat = AudioFormat::OPUS;
+            }
+        } else {
+            if (state.emulation.recordingSettings.audioFormat == AudioFormat::WAV) {
+                state.emulation.recordingSettings.audioFormat = AudioFormat::FLAC;
+            }
+            if (ImGui::RadioButton("FLAC", state.emulation.recordingSettings.audioFormat == AudioFormat::FLAC)) {
+                state.emulation.recordingSettings.audioFormat = AudioFormat::FLAC;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("OPUS", state.emulation.recordingSettings.audioFormat == AudioFormat::OPUS)) {
+                state.emulation.recordingSettings.audioFormat = AudioFormat::OPUS;
+            }
         }
 
         if (state.emulation.recordingSettings.type == RecordingType::Video) {
