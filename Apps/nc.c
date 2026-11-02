@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
+MICRODOS_NO_DESKTOP();
+
 int main(void) {
     char **args = _args_ptr;
 
