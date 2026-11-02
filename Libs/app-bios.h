@@ -32,12 +32,17 @@ enum {
 
 enum {
     APP_FLAG_EXEC     = 0x01,
-    APP_FLAG_HAS_ICON = 0x02
+    APP_FLAG_HAS_ICON = 0x02,
+    APP_FLAG_NO_DESKTOP = 0x04
 };
 
 #define MICRODOS_APP_ICON(...) \
     __attribute__((section(".header.1_icon"), used)) \
     const uint8_t app_icon[256] = __VA_ARGS__
+
+#define MICRODOS_NO_DESKTOP() \
+    __attribute__((section(".header.2_nodesktop"), used)) \
+    const uint8_t _app_nodesktop_flag = 1
 
 /* ========================================================================= */
 /*                           APP ARGUMENTS                                   */
