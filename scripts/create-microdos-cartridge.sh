@@ -70,6 +70,9 @@ if [ "$MULTITHREAD" = true ]; then
     fi
 fi
 
+echo "  Building DESKTOP.SYS..."
+"$SCRIPT_DIR/compile-bin.sh" desktop_sys
+
 # Create FAT16 SD Image (32MB)
 echo "  Creating 32MB SD Card Image..."
 mkdir -p output/img
@@ -105,9 +108,16 @@ mmd -i "$SD_PATH" ::/sid
 mmd -i "$SD_PATH" ::/vram
 mmd -i "$SD_PATH" ::/SYSTEM
 mmd -i "$SD_PATH" ::/SYSTEM/SWAP
+mmd -i "$SD_PATH" ::/SYSTEM/DESKTOP
 
 python3 tools/microDOS/build_udos_sys.py assets/microDOS/strings.txt assets/microDOS/uDOS.sys
 mcopy -o -i "$SD_PATH" assets/microDOS/uDOS.sys ::/SYSTEM/
+if [ -f "output/vram/bliss.bin" ]; then
+    mcopy -o -i "$SD_PATH" output/vram/bliss.bin ::/SYSTEM/DESKTOP/bliss.bin
+fi
+if [ -f "output/system/DESKTOP.SYS" ]; then
+    mcopy -o -i "$SD_PATH" output/system/DESKTOP.SYS ::/SYSTEM/DESKTOP/DESKTOP.SYS
+fi
 
 for app in output/apps/*.app; do
     if [ -f "$app" ]; then
