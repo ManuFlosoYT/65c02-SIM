@@ -156,12 +156,17 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ] || [ "$4" == "--microDOS
 
     python3 tools/linker/generate_app_link_ld.py $APP_FLAGS > "$APP_LD"
 
+    APP_CFLAGS=()
+    if grep -q "MICRODOS_APP_ICON" "$SRC" || grep -q "app_icon" "$SRC"; then
+        APP_CFLAGS+=("-DHAS_APP_ICON=1")
+    fi
+
     APP_RAW="sdk/src/build/${NAME}.raw"
     compile_with_opt_fallback "$APP_RAW" "$APP_LD" \
-        -std=c23 -D MICRODOS=1 \
+        -std=c23 -D MICRODOS=1 "${APP_CFLAGS[@]}" \
         -I "sdk/src" -I "sdk/microdos" \
         -linit-stack -lcopy-data -lzero-bss \
-        sdk/linker/App-Runtime.s "$SRC"
+        -x assembler-with-cpp sdk/linker/App-Runtime.s -x none "$SRC"
 
     mkdir -p output/apps
     APP_OUT="output/apps/${NAME}.app"
@@ -435,6 +440,18 @@ elif [ -f "sdk/src/$NAME.c" ]; then
     elif [ -f "sdk/src/build/$NAME.elf" ]; then
         cp "sdk/src/build/$NAME.elf" "output/rom/$NAME.elf"
     fi
+
+elif [ "$NAME" == "desktop_sys" ] || [ "$NAME" == "DESKTOP.SYS" ]; then
+    echo "--- Compiling DESKTOP.SYS with LLVM-MOS ---"
+    python3 tools/linker/generate_app_link_ld.py --gpu > sdk/src/build/desktop_sys.ld
+    mkdir -p output/system
+    compile_with_opt_fallback "output/system/DESKTOP.SYS" "sdk/src/build/desktop_sys.ld" \
+        -std=c23 -D MICRODOS=1 \
+        -I "sdk/src" -I "sdk/microdos" \
+        -linit-stack -lcopy-data -lzero-bss \
+        sdk/microdos/System/desktop_vectors.s sdk/microdos/System/desktop_sys.c
+    echo "DESKTOP.SYS saved to output/system/DESKTOP.SYS"
+    exit 0
 
 else
     echo "Error: sdk/src/$NAME.c or sdk/src/$NAME.s does not exist"
