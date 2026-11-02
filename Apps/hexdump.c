@@ -1,5 +1,7 @@
 #include "../Libs/app-bios.h"
 
+MICRODOS_NO_DESKTOP();
+
 static void print_hexdump_line(uint32_t offset, const uint8_t* buffer, uint16_t len) {
     /* Print offset using two print_hex_byte calls */
     print_str("0x");
