@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
+MICRODOS_NO_DESKTOP();
+
 static int str_eq(const char *a, const char *b) {
     while (*a && *b) {
         if (*a != *b) {
