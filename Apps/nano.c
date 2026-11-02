@@ -6,6 +6,8 @@
 #include <string.h>
 #include "Libs/app-bios.h"
 
+MICRODOS_NO_DESKTOP();
+
 /* Args forwarded from the shell via ZP */
 
 
