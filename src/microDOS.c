@@ -3,6 +3,7 @@
 #include "Libs/BIOS.h"
 #include "Libs/SD.h"
 #include "Libs/System.h"
+#include "Libs/LCD.h"
 #include "microDOS/shell.h"
 #include "microDOS/commands.h"
 #include "microDOS/msg.h"
@@ -30,9 +31,12 @@ int main(void) {
     }
 
     os_clear_swap_blocks();
+    lcd_init();
 
     while (true) {
         if (!sys_desktop_load() || !DESKTOP_SHELL(line)) {
+            DDRB = 0xFFu;
+            lcd_clear();
             print_str(M_PROMPT);
             os_read_line(line, MAX_LINE);
         }
@@ -40,6 +44,8 @@ int main(void) {
         if (arg_count > 0) {
             exec_command(args[0]);
         }
+        DDRB = 0xFFu;
+        lcd_clear();
     }
 
     return 0;
