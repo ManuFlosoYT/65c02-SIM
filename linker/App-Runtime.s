@@ -5,11 +5,18 @@
 app_header:
     .ascii "uDOS"
     .byte 3
-#ifdef HAS_APP_ICON
-    .byte 3
+#define FLAG_BASE 1
+#if defined(HAS_APP_ICON) && HAS_APP_ICON
+#define FLAG_ICON 2
 #else
-    .byte 1
+#define FLAG_ICON 0
 #endif
+#if defined(NO_DESKTOP) && NO_DESKTOP
+#define FLAG_NODESKTOP 4
+#else
+#define FLAG_NODESKTOP 0
+#endif
+    .byte (FLAG_BASE | FLAG_ICON | FLAG_NODESKTOP)
     .short _app_startup
     .short __CORE_SIZE__
     .short 0x2000
