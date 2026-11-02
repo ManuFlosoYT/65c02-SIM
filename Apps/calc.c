@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
+MICRODOS_NO_DESKTOP();
+
 static uint16_t parse_val(const char *str) {
     uint16_t val = 0;
     if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
