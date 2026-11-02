@@ -11,20 +11,20 @@
 <h4> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/wiki"> Documentation </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/ManuFlosoYT/65c02-SIM/issues"> Request Feature </a> </h4>
 
 [![Build and Release](https://img.shields.io/github/actions/workflow/status/manuflosoyt/65c02-SIM/release.yml?style=for-the-badge&logo=github&label=Build%20and%20Release)](https://github.com/manuflosoyt/65c02-SIM/actions)
-[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg?style=for-the-badge&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg?style=for-the-badge&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/23)
 [![CMake](https://img.shields.io/badge/CMake-3.20+-064F8C?style=for-the-badge&logo=cmake&logoColor=white)](https://cmake.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-Emscripten-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)](https://webassembly.org/)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20Web-lightgrey?style=for-the-badge)](https://github.com/TU_USUARIO/TU_REPO)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20Web-lightgrey?style=for-the-badge)](https://github.com/ManuFlosoYT/65c02-SIM/)
 
 </div>
 
 ## Key Features
 
-- **Accurate Hardware Simulation:** Emulates the 65C02 CPU and a suite of peripherals (VIA, ACIA, SID, GPU, SD Card, ESP8266) with optional cycle-accurate timings.
+- **Accurate Hardware Simulation:** Emulates the 65C02 CPU and a suite of peripherals (VIA, ACIA, SID, GPU, SD Card, ESP8266) with cycle-accurate timings.
 - **Integrated IDE & Debugger:** Includes a built-in code editor, assembler, memory profiler, and an advanced breakpoint system (Time-Travel Debugging included).
 - **Cartridge System (.65c):** Package your ROMs, VRAM images, SD cards, and hardware configurations into a single distributable zip-based file.
-- **Scripting Engine:** Automate tests, create TAS (Tool-Assisted Speedruns), and manipulate hardware states via the integrated scripting engine (replaces legacy PocketPy).
+- **Scripting Engine:** Automate tests, create TAS (Tool-Assisted Speedruns), and manipulate hardware states via the integrated scripting engine.
 - **Headless Mode:** Run the emulator from the CLI for CI/CD pipelines without any GUI overhead.
 
 ## :toolbox: Getting Started
@@ -44,22 +44,6 @@ Each release includes an `SDK.zip` file containing everything needed to develop 
 - `compile-bin.sh`: Script to compile programs.
 - `image-to-bin.sh`: Script to convert images.
 - `midi-to-bin.sh`: Script to convert MIDI files.
-
-#### Windows Users (WSL2)
-
-Since all the provided automation scripts (`.sh`) are written for **Bash**, Windows users need to set up **WSL2 (Windows Subsystem for Linux)** to use the SDK or to compile the project from source.
-
-To install Fedora on Windows 10/11:
-
-1. Open **PowerShell** or **Command Prompt** as Administrator.
-2. Run the following command:
-   ```powershell
-    wsl --install FedoraLinux-44
-   ```
-3. Open the newly installed **Fedora** application and configure your user account.
-4. Install the requiered dependencies from the prerequisites section bellow.
-
-Once set up, you can run all the commands described below (and in the [Build from Source](#hammer_and_wrench-build-from-source) section) directly from the Fedora terminal.
 
 Compile and run assembly or C programs from `./sdk/` into the `output/rom` folder:
 
@@ -124,16 +108,10 @@ git worktree add assets Assets && \
 git worktree add wiki Wiki
 ```
 
-**Windows (PowerShell):**
-```powershell
-git clone https://github.com/ManuFlosoYT/65c02-SIM.git ; if ($?) { cd 65c02-SIM ; git worktree add sdk SDK ; git worktree add sdk/msbasic MSBasic ; git worktree add sdk/microdos MicroDOS ; git worktree add tools Tools ; git worktree add assets Assets ; git worktree add wiki Wiki }
-```
-
 Compile using the unified build script. By default, it targets Linux:
 
 ```bash
 ./build.sh
-# (optional arguments) ./build.sh --whatever
 ```
 
 You can also specify the target OS explicitly:
