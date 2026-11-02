@@ -2,6 +2,8 @@
 #include "../Libs/app-bios.h"
 #include <stdint.h>
 
+MICRODOS_NO_DESKTOP();
+
 #define SPI_PORT VIA_ORA
 #define SPI_DDR  VIA_DDRA
 
