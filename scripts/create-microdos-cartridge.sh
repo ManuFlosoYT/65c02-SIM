@@ -22,7 +22,7 @@ for arg in "$@"; do
     fi
 done
 
-echo "--- Building microDOS Cartridge v6.0 ---"
+echo "--- Building microDOS Cartridge v7.0 ---"
 
 SCRIPT_DIR="$(dirname "$0")"
 
@@ -40,7 +40,16 @@ logs=()
 for app_src in sdk/microdos/Apps/*.c; do
     if [ -f "$app_src" ]; then
         app_name=$(basename "${app_src%.c}")
-        echo "    Building $app_name.app (-Os)..."
+        icon_info=""
+        for ext in png jpg jpeg bmp webp PNG JPG JPEG BMP WEBP; do
+            if [ -f "sdk/microdos/Apps/${app_name}.${ext}" ]; then
+                icon_info=" [icon: ${app_name}.${ext}]"
+                mkdir -p sdk/src/build
+                python3 tools/microDOS/image_to_icon.py "sdk/microdos/Apps/${app_name}.${ext}" "sdk/src/build/${app_name}_icon.s" || true
+                break
+            fi
+        done
+        echo "    Building $app_name.app$icon_info (-Os)..."
         log=$(mktemp)
         logs+=("$log")
         if [ "$MULTITHREAD" = true ]; then
