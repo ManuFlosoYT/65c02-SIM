@@ -157,8 +157,30 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ] || [ "$4" == "--microDOS
     python3 tools/linker/generate_app_link_ld.py $APP_FLAGS > "$APP_LD"
 
     APP_CFLAGS=()
-    if grep -q "MICRODOS_APP_ICON" "$SRC" || grep -q "app_icon" "$SRC"; then
-        APP_CFLAGS+=("-DHAS_APP_ICON=1")
+    APP_ICON_SRC=()
+    SRC_DIR="$(dirname "$SRC")"
+    ICON_FILE=""
+    for ext in png jpg jpeg bmp webp PNG JPG JPEG BMP WEBP; do
+        if [ -f "$SRC_DIR/$NAME.$ext" ]; then
+            ICON_FILE="$SRC_DIR/$NAME.$ext"
+            break
+        fi
+    done
+
+    if [ -n "$ICON_FILE" ]; then
+        ICON_ASM="sdk/src/build/${NAME}_icon.s"
+        rm -f "$ICON_ASM"
+        if python3 tools/microDOS/image_to_icon.py "$ICON_FILE" "$ICON_ASM" && [ -f "$ICON_ASM" ]; then
+            [[ " ${APP_CFLAGS[*]} " =~ " -DHAS_APP_ICON=1 " ]] || APP_CFLAGS+=("-DHAS_APP_ICON=1")
+            APP_CFLAGS+=("-DMICRODOS_APP_ICON(...)=")
+            APP_ICON_SRC=("$ICON_ASM")
+        fi
+    fi
+
+    if [ ${#APP_ICON_SRC[@]} -eq 0 ]; then
+        if grep -q "MICRODOS_APP_ICON" "$SRC" || grep -q "app_icon" "$SRC"; then
+            APP_CFLAGS+=("-DHAS_APP_ICON=1")
+        fi
     fi
     if grep -q "MICRODOS_NO_DESKTOP" "$SRC" || grep -q "APP_FLAG_NO_DESKTOP" "$SRC"; then
         APP_CFLAGS+=("-DNO_DESKTOP=1")
@@ -169,7 +191,7 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ] || [ "$4" == "--microDOS
         -std=c23 -D MICRODOS=1 "${APP_CFLAGS[@]}" \
         -I "sdk/src" -I "sdk/microdos" \
         -linit-stack -lcopy-data -lzero-bss \
-        -x assembler-with-cpp sdk/linker/App-Runtime.s -x none "$SRC"
+        -x assembler-with-cpp sdk/linker/App-Runtime.s "${APP_ICON_SRC[@]}" -x none "$SRC"
 
     mkdir -p output/apps
     APP_OUT="output/apps/${NAME}.app"
