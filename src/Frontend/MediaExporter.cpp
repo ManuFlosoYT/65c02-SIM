@@ -25,7 +25,11 @@ bool MediaExporter::Initialize(const std::string& filename,
         return false;
     }
 
-    grabber.Initialize(rawW, rawH, processedW, processedH, recordRaw, recordProcessed);
+    if (type == Control::RecordingType::Audio) {
+        grabber.Initialize(rawW, rawH, processedW, processedH, false, false);
+    } else {
+        grabber.Initialize(rawW, rawH, processedW, processedH, recordRaw, recordProcessed);
+    }
 
     nextVideoPts = 0;
     isRunning = true;
