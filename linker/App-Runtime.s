@@ -1,11 +1,15 @@
 // App-Runtime.s — microDOS app header and runtime for LLVM-MOS
 
-.section .header, "a"
+.section .header.0_base, "a"
 .globl app_header
 app_header:
     .ascii "uDOS"
     .byte 3
+#ifdef HAS_APP_ICON
+    .byte 3
+#else
     .byte 1
+#endif
     .short _app_startup
     .short __CORE_SIZE__
     .short 0x2000
