@@ -38,10 +38,22 @@ bool FFmpegEncoder::Initialize(const std::string& filename,
     this->shouldRecordProcessed = recordProcessed;
     this->nextAudioPts = 0;
 
-    const char* formatName = (format == Control::VideoFormat::MP4) ? "mp4" : "matroska";
+    const char* formatName = nullptr;
+    if (type == Control::RecordingType::Audio) {
+        if (audioFormat == Control::AudioFormat::FLAC) {
+            formatName = "flac";
+        } else if (audioFormat == Control::AudioFormat::OPUS) {
+            formatName = "opus";
+        }
+    } else {
+        formatName = (format == Control::VideoFormat::MP4) ? "mp4" : "matroska";
+    }
     avformat_alloc_output_context2(&fmtCtx, nullptr, formatName, filename.c_str());
+    if (fmtCtx == nullptr && type == Control::RecordingType::Audio && audioFormat == Control::AudioFormat::OPUS) {
+        avformat_alloc_output_context2(&fmtCtx, nullptr, "ogg", filename.c_str());
+    }
     if (fmtCtx == nullptr) {
-        std::cerr << "MediaExporter: Failed to allocate format context for " << formatName << "\n";
+        std::cerr << "MediaExporter: Failed to allocate format context for " << (formatName != nullptr ? formatName : "unknown") << "\n";
         return false;
     }
 
@@ -76,25 +88,27 @@ bool FFmpegEncoder::Initialize(const std::string& filename,
     }
     headerWritten = true;
 
-    if (shouldRecordRaw) {
-        SetupSwsContext(&swsCtxRaw, rawWidth, rawHeight, videoCodecCtxRaw);
-        frameRaw = av_frame_alloc();
-        if (frameRaw != nullptr) {
-            frameRaw->format = videoCodecCtxRaw->pix_fmt;
-            frameRaw->width = videoCodecCtxRaw->width;
-            frameRaw->height = videoCodecCtxRaw->height;
-            av_frame_get_buffer(frameRaw, 32);
+    if (type != Control::RecordingType::Audio) {
+        if (shouldRecordRaw) {
+            SetupSwsContext(&swsCtxRaw, rawWidth, rawHeight, videoCodecCtxRaw);
+            frameRaw = av_frame_alloc();
+            if (frameRaw != nullptr) {
+                frameRaw->format = videoCodecCtxRaw->pix_fmt;
+                frameRaw->width = videoCodecCtxRaw->width;
+                frameRaw->height = videoCodecCtxRaw->height;
+                av_frame_get_buffer(frameRaw, 32);
+            }
         }
-    }
 
-    if (shouldRecordProcessed) {
-        SetupSwsContext(&swsCtxProcessed, processedWidth, processedHeight, videoCodecCtxProcessed);
-        frameProcessed = av_frame_alloc();
-        if (frameProcessed != nullptr) {
-            frameProcessed->format = videoCodecCtxProcessed->pix_fmt;
-            frameProcessed->width = videoCodecCtxProcessed->width;
-            frameProcessed->height = videoCodecCtxProcessed->height;
-            av_frame_get_buffer(frameProcessed, 32);
+        if (shouldRecordProcessed) {
+            SetupSwsContext(&swsCtxProcessed, processedWidth, processedHeight, videoCodecCtxProcessed);
+            frameProcessed = av_frame_alloc();
+            if (frameProcessed != nullptr) {
+                frameProcessed->format = videoCodecCtxProcessed->pix_fmt;
+                frameProcessed->width = videoCodecCtxProcessed->width;
+                frameProcessed->height = videoCodecCtxProcessed->height;
+                av_frame_get_buffer(frameProcessed, 32);
+            }
         }
     }
 
