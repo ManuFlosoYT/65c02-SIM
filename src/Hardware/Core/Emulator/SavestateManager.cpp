@@ -1,7 +1,7 @@
 #include "Hardware/Core/Emulator/SavestateManager.h"
 #include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Core/ISerializable.h"
-#include <picosha2.h>
+#include "Hardware/Core/SHA256.h"
 
 #include <array>
 #include <cstring>
@@ -36,14 +36,14 @@ bool SavestateManager::SaveState(const std::string& filename) {
     emulator.SaveInternalState(stateStream);
 
     std::string payload = stateStream.str();
-    std::string payloadHash = picosha2::hash256_hex_string(payload);
+    std::string payloadHash = Hardware::SHA256::HashHex(payload);
 
     std::string version = PROJECT_VERSION;
     auto versionLen = static_cast<uint32_t>(version.length());
     std::array<char, 12> magic{"SIM65C02SST"};
 
     std::string metadata = std::string(magic.data()) + version;
-    std::string metadataHash = picosha2::hash256_hex_string(metadata);
+    std::string metadataHash = Hardware::SHA256::HashHex(metadata);
 
     std::ofstream out(filename, std::ios::binary);
     if (!out.is_open()) {
@@ -98,7 +98,7 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
     inFile.read(lastLoadVersion.data(), static_cast<std::streamsize>(versionLen));
 
     std::string metadata = std::string(magic.data()) + lastLoadVersion;
-    std::string computedMetadataHash = picosha2::hash256_hex_string(metadata);
+    std::string computedMetadataHash = Hardware::SHA256::HashHex(metadata);
 
     const size_t headerFooterSize = magicLen + sizeof(versionLen) + versionLen + (hashLen * 2);
     if (static_cast<size_t>(size) < headerFooterSize) {
@@ -126,7 +126,7 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
 
     emulator.SetupHardware();
 
-    std::string computedPayloadHash = picosha2::hash256_hex_string(payload);
+    std::string computedPayloadHash = Hardware::SHA256::HashHex(payload);
     if (strncmp(filePayloadHash.data(), computedPayloadHash.c_str(), hashLen) != 0) {
         lastLoadResult = SavestateLoadResult::HashMismatch;
         std::cerr << "Warning: Savestate payload hash mismatch!\n";
