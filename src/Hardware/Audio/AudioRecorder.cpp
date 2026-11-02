@@ -6,6 +6,29 @@
 
 namespace Hardware {
 
+namespace {
+
+#pragma pack(push, 1)
+struct WavHeader {
+    char riff[4]{'R', 'I', 'F', 'F'};
+    uint32_t chunkSize{36};
+    char wave[4]{'W', 'A', 'V', 'E'};
+    char fmt[4]{'f', 'm', 't', ' '};
+    uint32_t subchunk1Size{16};
+    uint16_t audioFormat{1};
+    uint16_t numChannels{1};
+    uint32_t sampleRate{44100};
+    uint32_t byteRate{88200};
+    uint16_t blockAlign{2};
+    uint16_t bitsPerSample{16};
+    char data[4]{'d', 'a', 't', 'a'};
+    uint32_t subchunk2Size{0};
+};
+#pragma pack(pop)
+static_assert(sizeof(WavHeader) == 44);
+
+}  // namespace
+
 AudioRecorder::AudioRecorder() = default;
 
 AudioRecorder::~AudioRecorder() {
@@ -17,23 +40,32 @@ bool AudioRecorder::Start(const std::string& filename, int sampleRate) {
         Stop();
     }
 
-    // Ensure SF_INFO is clean for writing
-    sfInfo = {}; 
-    if (filename.ends_with(".ogg")) {
-        sfInfo.format = SF_FORMAT_OGG | SF_FORMAT_OPUS;
-    } else {
-        sfInfo.format = SF_FORMAT_FLAC | SF_FORMAT_PCM_16;
+    if (outFile.is_open()) {
+        outFile.close();
     }
-    sfInfo.channels = 1;
-    sfInfo.samplerate = sampleRate;
 
-    if (sf_format_check(&sfInfo) == 0) {
+    outFile.open(filename, std::ios::binary);
+    if (!outFile.is_open()) {
+        std::cerr << "AudioRecorder: Failed to open file " << filename << '\n';
         return false;
     }
 
-    handle = sf_open(filename.c_str(), SFM_WRITE, &sfInfo);
-    if (handle == nullptr) {
-        std::cerr << "AudioRecorder: Failed to open file " << filename << ": " << sf_strerror(nullptr) << '\n';
+    totalDataBytes = 0;
+    const uint32_t rate = static_cast<uint32_t>(sampleRate);
+    const uint16_t channels = 1;
+    const uint16_t bits = 16;
+    const uint16_t align = channels * (bits / 8);
+    const uint32_t byteRate = rate * align;
+
+    WavHeader header;
+    header.sampleRate = rate;
+    header.byteRate = byteRate;
+    header.blockAlign = align;
+    header.bitsPerSample = bits;
+
+    outFile.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    if (!outFile) {
+        outFile.close();
         return false;
     }
 
@@ -55,9 +87,13 @@ void AudioRecorder::Stop() {
         worker.join();
     }
 
-    if (handle != nullptr) {
-        sf_close(handle);
-        handle = nullptr;
+    if (outFile.is_open()) {
+        const uint32_t fileSize = totalDataBytes + 36;
+        outFile.seekp(4);
+        outFile.write(reinterpret_cast<const char*>(&fileSize), sizeof(fileSize));
+        outFile.seekp(40);
+        outFile.write(reinterpret_cast<const char*>(&totalDataBytes), sizeof(totalDataBytes));
+        outFile.close();
     }
 
     std::vector<int16_t> chunk;
@@ -82,8 +118,10 @@ void AudioRecorder::WorkerThread() {
     while (running || !audioQueue.empty()) {
         std::vector<int16_t> chunk;
         if (audioQueue.pop(chunk)) {
-            if (!chunk.empty() && handle != nullptr) {
-                sf_writef_short(handle, chunk.data(), static_cast<sf_count_t>(chunk.size()));
+            if (!chunk.empty() && outFile.is_open()) {
+                const auto bytes = static_cast<std::streamsize>(chunk.size() * sizeof(int16_t));
+                outFile.write(reinterpret_cast<const char*>(chunk.data()), bytes);
+                totalDataBytes += static_cast<uint32_t>(bytes);
             }
         } else {
             if (!running) {

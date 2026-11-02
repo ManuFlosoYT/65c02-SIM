@@ -1,9 +1,8 @@
 #pragma once
 
-#include <sndfile.h>
-
 #include <atomic>
 #include <cstdint>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -32,8 +31,8 @@ class AudioRecorder {
    private:
     void WorkerThread();
 
-    SNDFILE* handle = nullptr;
-    SF_INFO sfInfo{};
+    std::ofstream outFile;
+    uint32_t totalDataBytes{0};
 
     SPSCQueue<std::vector<int16_t>, 128> audioQueue;
     std::atomic<uint32_t> wakeUpCount{0};
