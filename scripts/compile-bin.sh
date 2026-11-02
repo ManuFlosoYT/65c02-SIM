@@ -160,6 +160,9 @@ if [ "$2" == "--microDOS" ] || [ "$3" == "--microDOS" ] || [ "$4" == "--microDOS
     if grep -q "MICRODOS_APP_ICON" "$SRC" || grep -q "app_icon" "$SRC"; then
         APP_CFLAGS+=("-DHAS_APP_ICON=1")
     fi
+    if grep -q "MICRODOS_NO_DESKTOP" "$SRC" || grep -q "APP_FLAG_NO_DESKTOP" "$SRC"; then
+        APP_CFLAGS+=("-DNO_DESKTOP=1")
+    fi
 
     APP_RAW="sdk/src/build/${NAME}.raw"
     compile_with_opt_fallback "$APP_RAW" "$APP_LD" \
