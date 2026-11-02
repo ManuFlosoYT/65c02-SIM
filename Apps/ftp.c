@@ -6,6 +6,8 @@
 
 #include "Libs/app-bios.h"
 
+MICRODOS_NO_DESKTOP();
+
 uint8_t ftp_abort = 0;
 
 static char get_net_char(void) {
