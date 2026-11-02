@@ -3,11 +3,19 @@
 #include <stdint.h>
 
 #ifndef PORTB
+#if defined(MICRODOS) && MICRODOS
+#define PORTB (*(volatile uint8_t*)0x7FD0)
+#else
 #define PORTB (*(volatile uint8_t*)0x6000)
+#endif
 #endif
 
 #ifndef DDRB
+#if defined(MICRODOS) && MICRODOS
+#define DDRB (*(volatile uint8_t*)0x7FD2)
+#else
 #define DDRB (*(volatile uint8_t*)0x6002)
+#endif
 #endif
 
 #define E 0x40u
