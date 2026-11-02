@@ -51,11 +51,7 @@ static bool load_and_run(const char* path) {
         app_hdr[0] != 'u' || app_hdr[1] != 'D' || app_hdr[2] != 'O' || app_hdr[3] != 'S' ||
         app_hdr[4] != 3) {
         sd_close(&active_app_file);
-        print_str(M_ERR); print_str(os_get_msg(20));
-        for (uint8_t i = 0; i < 4; ++i) {
-            bios_putchar((char)app_hdr[i]);
-        }
-        print_str(os_get_msg(21)); print_num(app_hdr[4]); println("");
+        print_str(M_ERR); println("App format");
         return true;
     }
 
@@ -65,7 +61,7 @@ static bool load_and_run(const char* path) {
     sd_seek(&active_app_file, 0);
     if (sd_read(&active_app_file, (void*)APP_LOAD_ADDR, core_size) != core_size) {
         sd_close(&active_app_file);
-        print_str(M_ERR); println(os_get_msg(22));
+        print_str(M_ERR); println("App read");
         return true;
     }
 
@@ -90,14 +86,8 @@ static bool load_and_run(const char* path) {
 }
 
 void cmd_run(void) {
-    if (arg_count < 2) {
-        print_str(M_USE); println("run <app>");
-        return;
-    }
-
-    build_bin_path(args[1]);
-    if (!load_and_run(app_path)) {
-        print_str(M_ERR); print_str(os_get_msg(23)); println(app_path);
+    if (arg_count > 1) {
+        try_run_app(args[1]);
     }
 }
 

@@ -5,12 +5,6 @@
 #include <stddef.h>
 #include <string.h>
 
-static const command_t command_table[] = {
-    {"run",   cmd_run},
-    {"help",  cmd_help},
-    {nullptr, nullptr}
-};
-
 void exec_command(const char* name) {
     if (strcmp(name, "run") == 0) {
         cmd_run();
@@ -29,17 +23,5 @@ void exec_command(const char* name) {
 }
 
 void cmd_help(void) {
-    SD_DIR dir;
-    SD_INFO fno;
-    print_str(os_get_msg(24));
-    if (sd_opendir(&dir, "/bin")) {
-        while (sd_readdir(&dir, &fno)) {
-            if (!(fno.fattrib & AM_DIR)) {
-                print_str("  "); println(fno.fname);
-            }
-        }
-        sd_closedir(&dir);
-    } else {
-        println(" (Directory /bin not found)");
-    }
+    println("Apps in /bin");
 }

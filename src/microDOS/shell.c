@@ -34,23 +34,10 @@ void tokenize(char* buf) {
 
 void os_read_line(char* buf, uint8_t max_len) {
     uint8_t len = 0;
-    while (true) {
+    while (len < max_len - 1) {
         char c = bios_getchar();
-        if (c == '\r' || c == '\n') {
-            buf[len] = '\0';
-            bios_putchar('\r');
-            bios_putchar('\n');
-            break;
-        }
-        if (c == '\b' || c == 8 || c == 127) {
-            if (len > 0) {
-                len--;
-                bios_putchar('\b');
-                bios_putchar(' ');
-                bios_putchar('\b');
-            }
-        } else if (len < max_len - 1) {
-            buf[len++] = c;
-        }
+        if (c == '\r' || c == '\n') break;
+        buf[len++] = c;
     }
+    buf[len] = '\0';
 }

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
 enum {
     MAX_LINE = 64,
     MAX_ARGS = 4

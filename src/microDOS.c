@@ -7,47 +7,39 @@
 #include "microDOS/commands.h"
 #include "microDOS/msg.h"
 
+#define DESKTOP_SHELL ((bool(*)(char*))0x0200)
+
+static bool sys_desktop_load(void) {
+    SD_FILE f;
+    if (!sd_open(&f, "/SYSTEM/DESKTOP/DESKTOP.SYS", SD_READ)) {
+        return false;
+    }
+    const bool ok = (sd_read(&f, (void*)0x0200, 0x4000) > 0);
+    sd_close(&f);
+    return ok;
+}
+
 int main(void) {
-    char cwd[64];
-    
     INIT_BUFFER();
 
     println("microDOS");
-    print_str("Mounting Disk...");
-    
-    if (!sd_is_present()) {
-        print_str(M_ERR); println("Disk not found");
+
+    if (sd_mount() != 0) {
+        print_str(M_ERR); println("Disk error");
         return 1;
     }
 
-    const int res = sd_mount();
-    if (res != 0) {
-        print_str(M_ERR); print_str("Mounting failed: ");
-        println(sd_error_string(res));
-        return 1;
-    }
-
-    println(M_RDY);
-
-    println("Initializing system...");
     os_clear_swap_blocks();
 
     while (true) {
-        if (!sd_getcwd(cwd, sizeof(cwd))) {
-            strcpy(cwd, "?");
+        if (!sys_desktop_load() || !DESKTOP_SHELL(line)) {
+            print_str(M_PROMPT);
+            os_read_line(line, MAX_LINE);
         }
-        print_str(M_PROMPT);
-        print_str(cwd);
-        print_str(" > ");
-
-        os_read_line(line, MAX_LINE);
         tokenize(line);
-
-        if (arg_count == 0) {
-            continue;
+        if (arg_count > 0) {
+            exec_command(args[0]);
         }
-
-        exec_command(args[0]);
     }
 
     return 0;
