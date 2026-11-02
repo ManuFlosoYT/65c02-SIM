@@ -28,12 +28,12 @@ enum class RecordingType : std::uint8_t {
 };
 
 enum class VideoFormat : std::uint8_t { MKV, MP4 };
-enum class AudioFormat : std::uint8_t { FLAC, OPUS };
+enum class AudioFormat : std::uint8_t { WAV, FLAC, OPUS };
 
 struct RecordingSettings {
     RecordingType type = RecordingType::Audio;
     VideoFormat format = VideoFormat::MKV;
-    AudioFormat audioFormat = AudioFormat::FLAC;
+    AudioFormat audioFormat = AudioFormat::WAV;
     bool recordRaw = true;
     bool recordProcessed = true;
 };
