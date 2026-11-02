@@ -3,6 +3,8 @@
 #include "Libs/app-bios.h"
 #include "Libs/GPU.h"
 
+MICRODOS_NO_DESKTOP();
+
 static char to_lower(char c) {
     return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c;
 }
