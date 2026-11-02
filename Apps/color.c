@@ -6,7 +6,7 @@
 
 int main(void) {
     char** args = _args_ptr;
-    if (arg_count > 1 && strcmp(args[1], "test") == 0) {
+    if ((arg_count > 1 && strcmp(args[1], "test") == 0) || arg_count <= 1) {
         println("--- 256 Color Palette Test ---");
         for (uint16_t i = 0; i < 256; ++i) {
             tui_set_color_256(0, (uint8_t)i);
