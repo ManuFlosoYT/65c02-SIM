@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
+MICRODOS_NO_DESKTOP();
+
 int main(void) {
     SD_FILE fp_src;
     SD_FILE fp_dst;
