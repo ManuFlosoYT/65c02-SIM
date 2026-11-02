@@ -54,6 +54,22 @@ static void desktop_scan_apps(void) {
                 (fno.fname[len - 3] == 'a' || fno.fname[len - 3] == 'A') &&
                 (fno.fname[len - 2] == 'p' || fno.fname[len - 2] == 'P') &&
                 (fno.fname[len - 1] == 'p' || fno.fname[len - 1] == 'P')) {
+                char path[32];
+                strcpy(path, "/bin/");
+                strcat(path, fno.fname);
+
+                SD_FILE file;
+                if (sd_open(&file, path, SD_READ)) {
+                    uint8_t hdr[16];
+                    if (sd_read(&file, hdr, 16) == 16) {
+                        if (hdr[5] & 0x04) {
+                            sd_close(&file);
+                            continue;
+                        }
+                    }
+                    sd_close(&file);
+                }
+
                 size_t base_len = len - 4;
                 if (base_len > 8) {
                     base_len = 8;
