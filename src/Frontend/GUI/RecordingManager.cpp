@@ -85,7 +85,7 @@ void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& media
         mediaExporter.reset();
     }
 
-    if (mediaExporter) {
+    if (mediaExporter && state.emulation.recordingSettings.type != RecordingType::Audio) {
         uint32_t processedTex = state.render.lastDisplayTex != 0 ? state.render.lastDisplayTex : state.render.vramTexture;
         uint32_t rawTex = state.render.vramTexture;
 
