@@ -8,7 +8,7 @@
 
 enum {
     APPS_PER_PAGE = 12,
-    MAX_APPS      = 36
+    MAX_APPS      = 48
 };
 
 static const uint8_t COL_X[4] = {6, 30, 54, 78};
@@ -54,22 +54,6 @@ static void desktop_scan_apps(void) {
                 (fno.fname[len - 3] == 'a' || fno.fname[len - 3] == 'A') &&
                 (fno.fname[len - 2] == 'p' || fno.fname[len - 2] == 'P') &&
                 (fno.fname[len - 1] == 'p' || fno.fname[len - 1] == 'P')) {
-                char path[32];
-                strcpy(path, "/bin/");
-                strcat(path, fno.fname);
-
-                SD_FILE file;
-                if (sd_open(&file, path, SD_READ)) {
-                    uint8_t hdr[16];
-                    if (sd_read(&file, hdr, 16) == 16) {
-                        if (hdr[5] & 0x04) {
-                            sd_close(&file);
-                            continue;
-                        }
-                    }
-                    sd_close(&file);
-                }
-
                 size_t base_len = len - 4;
                 if (base_len > 8) {
                     base_len = 8;
@@ -85,6 +69,35 @@ static void desktop_scan_apps(void) {
     }
 
     sd_closedir(&dir);
+
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < total_apps; ++i) {
+        char path[32];
+        strcpy(path, "/bin/");
+        strcat(path, app_names[i]);
+        strcat(path, ".app");
+
+        SD_FILE file;
+        bool keep = true;
+        if (sd_open(&file, path, SD_READ)) {
+            uint8_t hdr[16];
+            if (sd_read(&file, hdr, 16) == 16) {
+                if (hdr[5] & 0x04) {
+                    keep = false;
+                }
+            }
+            sd_close(&file);
+        }
+
+        if (keep) {
+            if (count != i) {
+                memcpy(app_names[count], app_names[i], 9);
+            }
+            count++;
+        }
+    }
+
+    total_apps = count;
     total_pages = (total_apps == 0) ? 1 : (uint8_t)((total_apps + APPS_PER_PAGE - 1) / APPS_PER_PAGE);
 }
 
@@ -219,11 +232,6 @@ bool desktop_tick(char* out_app_name) {
                 if (mouse_in_rect(bx, by, 16, 16)) {
                     int8_t global_idx = (int8_t)(start_idx + i);
                     if (selected_idx == global_idx) {
-                        SD_FILE f;
-                        if (sd_open(&f, "/SYSTEM/DESKTOP/launch.dat", SD_WRITE | SD_CREATE_ALWAYS)) {
-                            sd_puts(&f, app_names[global_idx]);
-                            sd_close(&f);
-                        }
                         if (out_app_name != NULL) {
                             strcpy(out_app_name, app_names[global_idx]);
                         }
