@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
+MICRODOS_NO_DESKTOP();
+
 static int str_match(const char *text, const char *pattern) {
     if (*pattern == '\0') {
         return 1;
