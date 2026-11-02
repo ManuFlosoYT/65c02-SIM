@@ -34,9 +34,6 @@ set(IMGUI_COLOR_TEXT_EDIT_TAG "master")
 # JSON
 set(JSON_URL "https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz")
 
-# PicoSHA2
-set(PICOSHA2_URL "https://raw.githubusercontent.com/okdshin/PicoSHA2/master/picosha2.h")
-
 # Glad
 set(GLAD_REPO "https://github.com/Dav1dde/glad.git")
 set(GLAD_TAG "v2.0.8")
@@ -44,10 +41,6 @@ set(GLAD_TAG "v2.0.8")
 # Miniz
 set(MINIZ_REPO "https://github.com/richgel999/miniz.git")
 set(MINIZ_TAG "3.1.1")
-
-# SndFile
-set(SNDFILE_REPO "https://github.com/libsndfile/libsndfile.git")
-set(SNDFILE_TAG "1.2.2")
 
 # FFmpeg (Windows)
 set(FFMPEG_WIN_URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip")
@@ -135,14 +128,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-# PicoSHA2
-FetchContent_Declare(
-    picosha2
-    URL ${PICOSHA2_URL}
-    DOWNLOAD_NO_EXTRACT TRUE
-)
-FetchContent_MakeAvailable(picosha2)
-
 # Glad
 FetchContent_Declare(
     glad
@@ -172,47 +157,20 @@ else()
     find_package(OpenGL REQUIRED)
 endif()
 
-# SndFile
-FetchContent_Declare(
-    sndfile
-    GIT_REPOSITORY ${SNDFILE_REPO}
-    GIT_TAG ${SNDFILE_TAG}
-    PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sndfile.cmake
-)
-
-set(BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
-set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-set(ENABLE_EXTERNAL_LIBS ON CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-
-
-set(CMAKE_WARN_DEPRECATED OFF)
-FetchContent_MakeAvailable(sndfile)
-set(CMAKE_WARN_DEPRECATED ON)
-
-if(TARGET sndfile AND NOT TARGET SndFile::sndfile)
-    add_library(SndFile::sndfile ALIAS sndfile)
-endif()
-
-# Win32 Specifics (OpenSSL/ZLIB)
+# Win32 Specifics (OpenSSL)
 if(WIN32)
     set(OPENSSL_USE_STATIC_LIBS ON)
-    set(ZLIB_USE_STATIC_LIBS ON)
     if(NOT MINGW_ROOT)
         set(MINGW_ROOT "/usr/x86_64-w64-mingw32ucrt/sys-root/mingw")
     endif()
     set(OPENSSL_ROOT_DIR "${MINGW_ROOT}")
-    set(ZLIB_ROOT "${MINGW_ROOT}")
 endif()
 
 if(NOT EMSCRIPTEN)
     if(WIN32 AND NOT MSVC)
         find_package(OpenSSL REQUIRED)
-        find_package(ZLIB REQUIRED)
     else()
         find_package(OpenSSL REQUIRED)
-        find_package(ZLIB REQUIRED)
         find_package(PkgConfig REQUIRED)
     endif()
 endif()

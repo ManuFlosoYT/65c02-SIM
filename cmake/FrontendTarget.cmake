@@ -50,7 +50,6 @@ if(WIN32)
         httplib::httplib
         OpenSSL::SSL 
         OpenSSL::Crypto
-        ZLIB::ZLIB
         ws2_32  
         crypt32 
         pathcch
@@ -99,7 +98,6 @@ else()
         target_link_libraries(SIM_65C02 PRIVATE 
             OpenSSL::SSL 
             OpenSSL::Crypto
-            ZLIB::ZLIB
         )
     endif()
 endif()

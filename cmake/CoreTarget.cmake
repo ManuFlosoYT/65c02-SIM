@@ -19,14 +19,12 @@ endif()
 target_include_directories(65c02_core PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR} 
     ${CMAKE_CURRENT_SOURCE_DIR}/src 
-    ${picosha2_SOURCE_DIR} 
     ${asio_SOURCE_DIR}/asio/include 
     ${miniz_SOURCE_DIR}
 )
 target_link_libraries(65c02_core PUBLIC 
     SDL3::SDL3 
     httplib::httplib 
-    SndFile::sndfile 
     miniz 
     nlohmann_json::nlohmann_json
 )
