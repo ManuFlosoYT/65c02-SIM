@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include "Libs/app-bios.h"
 
+MICRODOS_NO_DESKTOP();
+
 enum {
     BUF_SIZE = 512,
     NUM_SAMPLES = 16
