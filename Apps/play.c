@@ -7,6 +7,8 @@
 
 #include "Libs/app-bios.h"
 
+MICRODOS_NO_DESKTOP();
+
 enum {
     CHUNK_SIZE = 512,
     LZ_WINDOW_SIZE = 2048,
