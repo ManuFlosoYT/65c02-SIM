@@ -24,7 +24,7 @@
 - **Accurate Hardware Simulation:** Emulates the 65C02 CPU and a suite of peripherals (VIA, ACIA, SID, GPU, SD Card, ESP8266) with optional cycle-accurate timings.
 - **Integrated IDE & Debugger:** Includes a built-in code editor, assembler, memory profiler, and an advanced breakpoint system (Time-Travel Debugging included).
 - **Cartridge System (.65c):** Package your ROMs, VRAM images, SD cards, and hardware configurations into a single distributable zip-based file.
-- **Python Scripting Engine:** Automate tests, create TAS (Tool-Assisted Speedruns), and manipulate hardware states via the integrated PocketPy engine.
+- **Scripting Engine:** Automate tests, create TAS (Tool-Assisted Speedruns), and manipulate hardware states via the integrated scripting engine (replaces legacy PocketPy).
 - **Headless Mode:** Run the emulator from the CLI for CI/CD pipelines without any GUI overhead.
 
 ## :toolbox: Getting Started
@@ -91,7 +91,7 @@ To compile the simulator from source or use the SDK, you need the following depe
 
 ```bash
 sudo dnf update
-sudo dnf install gcc-c++ ninja-build mesa-libGL-devel mesa-libGLU-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel mingw64-gcc mingw32-gcc alsa-lib-devel pulseaudio-libs-devel cmake cc65 openssl-devel mingw64-openssl mingw64-openssl-static mingw64-zlib-static wget curl git tar gcc git-core make fribidi-devel pipewire-devel libXext-devel libXfixes-devel libXScrnSaver-devel libXtst-devel dbus-devel ibus-devel systemd-devel mesa-libGLES-devel mesa-libEGL-devel vulkan-devel wayland-protocols-devel libdrm-devel mesa-libgbm-devel libusb1-devel libdecor-devel pipewire-jack-audio-connection-kit-devel libthai-devel liburing-devel zlib-ng-compat-static python3-jinja2 ccache mold ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils ucrt64-openssl-static ucrt64-zlib-static ucrt64-openssl ucrt64-zlib libsndfile-devel ffmpeg-devel ImageMagick dosfstools mtools
+sudo dnf install gcc-c++ gcc ninja-build cmake ccache mold mesa-libGL-devel mesa-libGLES-devel mesa-libEGL-devel vulkan-devel libdrm-devel mesa-libgbm-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel libXext-devel libXfixes-devel libXScrnSaver-devel libXtst-devel wayland-devel wayland-protocols-devel libxkbcommon-devel libdecor-devel alsa-lib-devel pulseaudio-libs-devel pipewire-devel dbus-devel ibus-devel systemd-devel libusb1-devel openssl-devel ffmpeg-devel ImageMagick dosfstools mtools python3-pillow wget curl git tar make mingw64-gcc mingw64-openssl mingw64-openssl-static ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils ucrt64-openssl ucrt64-openssl-static
 ```
 
 #### Compile and Run Locally
