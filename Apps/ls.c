@@ -5,31 +5,34 @@
 
 MICRODOS_NO_DESKTOP();
 
-
+static void format_u32_right(char* buf, uint32_t val, uint8_t width) {
+    buf[width] = '\0';
+    for (int i = (int)width - 1; i >= 0; i--) {
+        buf[i] = (val > 0 || i == (int)width - 1) ? (char)((val % 10) + '0') : ' ';
+        val /= 10;
+    }
+}
 
 int main(void) {
     SD_DIR dir;
     SD_INFO fno;
     char** args = _args_ptr;
     char* path = (arg_count > 1) ? args[1] : ".";
-    char size_str[11];
-    unsigned long sz = 0;
-    int i = 0;
+    char b_buf[11];
+    char kb_buf[8];
 
     if (sd_opendir(&dir, path)) {
-        while (sd_readdir(&dir, &fno)) {
+        while (sd_readdir(&dir, &fno) && fno.fname[0] != '\0') {
             if (fno.fattrib & AM_DIR) {
-                print_str("[D] ");
+                print_str("[DIR ]         - B        - KB  ");
             } else {
-                sz = fno.fsize;
-                i = 9;
-                size_str[10] = '\0';
-                for (; i >= 0; i--) {
-                    size_str[i] = (sz > 0 || i == 9) ? (char)((sz % 10) + '0') : ' ';
-                    sz /= 10;
-                }
-                print_str(size_str);
-                print_str(" ");
+                format_u32_right(b_buf, fno.fsize, 9);
+                format_u32_right(kb_buf, (fno.fsize == 0) ? 0 : ((fno.fsize - 1) / 1024 + 1), 6);
+                print_str("[FILE] ");
+                print_str(b_buf);
+                print_str(" B ");
+                print_str(kb_buf);
+                print_str(" KB  ");
             }
             println(fno.fname);
         }
