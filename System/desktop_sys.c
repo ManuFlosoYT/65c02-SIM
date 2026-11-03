@@ -20,6 +20,10 @@ static uint8_t total_pages = 1;
 static uint8_t current_page = 0;
 static int16_t selected_idx = -1;
 static bool was_pressed = false;
+static uint8_t cursor_bg[8][8];
+static int16_t prev_cursor_x = -1;
+static int16_t prev_cursor_y = -1;
+static bool cursor_visible = false;
 
 static void desktop_draw_wallpaper(void) {
     SD_FILE file;
@@ -175,7 +179,38 @@ static void desktop_draw_page(uint8_t page, int16_t sel_idx) {
     }
 }
 
+static void desktop_erase_cursor(void) {
+    if (!cursor_visible) {
+        return;
+    }
+    for (uint8_t r = 0; r < 8; ++r) {
+        int16_t py = prev_cursor_y + r;
+        for (uint8_t c = 0; c < 8; ++c) {
+            int16_t px = prev_cursor_x + c;
+            if (px >= 0 && px < GPU_WIDTH && py >= 0 && py < GPU_HEIGHT) {
+                ((uint8_t*)GPU_VRAM_START)[((uint16_t)py << 7) + (uint16_t)px] = cursor_bg[r][c];
+            }
+        }
+    }
+    cursor_visible = false;
+}
+
+static void desktop_save_cursor_bg(int16_t x, int16_t y) {
+    for (uint8_t r = 0; r < 8; ++r) {
+        int16_t py = y + r;
+        for (uint8_t c = 0; c < 8; ++c) {
+            int16_t px = x + c;
+            if (px >= 0 && px < GPU_WIDTH && py >= 0 && py < GPU_HEIGHT) {
+                cursor_bg[r][c] = ((uint8_t*)GPU_VRAM_START)[((uint16_t)py << 7) + (uint16_t)px];
+            } else {
+                cursor_bg[r][c] = 0x00;
+            }
+        }
+    }
+}
+
 void desktop_redraw(void) {
+    desktop_erase_cursor();
     desktop_draw_wallpaper();
     desktop_draw_page(current_page, selected_idx);
     desktop_draw_bar(selected_idx);
@@ -185,6 +220,9 @@ void desktop_init(void) {
     current_page = 0;
     selected_idx = -1;
     was_pressed = false;
+    cursor_visible = false;
+    prev_cursor_x = -1;
+    prev_cursor_y = -1;
 
     desktop_draw_wallpaper();
     desktop_scan_apps();
@@ -193,8 +231,16 @@ void desktop_init(void) {
 }
 
 bool desktop_tick(char* out_app_name) {
+    int16_t mx = (int16_t)mouse_get_x();
+    int16_t my = (int16_t)mouse_get_y();
     bool is_pressed = mouse_btn_left();
     bool launched = false;
+    bool moved = (mx != prev_cursor_x || my != prev_cursor_y);
+    bool click = (is_pressed && !was_pressed);
+
+    if (moved || click) {
+        desktop_erase_cursor();
+    }
 
     if (is_pressed && !was_pressed) {
         bool handled = false;
@@ -268,7 +314,19 @@ bool desktop_tick(char* out_app_name) {
     }
 
     was_pressed = is_pressed;
-    return launched;
+    if (launched) {
+        return true;
+    }
+
+    if (!cursor_visible || moved) {
+        desktop_save_cursor_bg(mx, my);
+        mouse_draw_cursor(mx, my);
+        prev_cursor_x = mx;
+        prev_cursor_y = my;
+        cursor_visible = true;
+    }
+
+    return false;
 }
 
 bool desktop_shell(char* out_cmd) {
@@ -290,6 +348,7 @@ bool desktop_shell(char* out_cmd) {
                 out_cmd[len] = '\0';
                 bios_putchar('\r');
                 bios_putchar('\n');
+                desktop_erase_cursor();
                 return true;
             }
             if (c == '\b' || c == 8 || c == 127) {
