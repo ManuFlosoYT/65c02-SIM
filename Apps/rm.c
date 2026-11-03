@@ -17,6 +17,12 @@ static uint8_t is_dot_or_dotdot(const char* name) {
     return (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')));
 }
 
+static uint8_t is_root_dir(const char* s) {
+    if (*s != '/') return 0;
+    while (*s == '/') s++;
+    return (*s == '\0');
+}
+
 static uint8_t has_wildcard(const char* s) {
     while (*s) {
         if (*s == '*' || *s == '?') return 1;
@@ -114,21 +120,35 @@ static uint8_t rm_tree(char* current_path) {
     }
     sd_closedir(&dir);
 
-    if (!sd_remove(current_path)) {
-        if (!flag_f) {
-            print_error(current_path, "Permission denied or removal failed");
+    if (strcmp(current_path, "/") != 0) {
+        if (!sd_remove(current_path)) {
+            if (!flag_f) {
+                print_error(current_path, "Permission denied or removal failed");
+            }
+            return 0;
         }
-        return 0;
     }
     return success;
 }
 
 static uint8_t rm_target(const char* target) {
-    if (is_dot_or_dotdot(target) || (target[0] == '/' && target[1] == '\0')) {
+    if (is_dot_or_dotdot(target)) {
         if (!flag_f) {
-            print_error(target, "Cannot remove '.' or '..' or '/'");
+            print_error(target, "Cannot remove '.' or '..'");
         }
         return 0;
+    }
+
+    if (is_root_dir(target)) {
+        if (!flag_r) {
+            if (!flag_f) {
+                print_error(target, "Is a directory");
+            }
+            return 0;
+        }
+        path_buf[0] = '/';
+        path_buf[1] = '\0';
+        return rm_tree(path_buf);
     }
 
     SD_DIR d;
