@@ -46,6 +46,14 @@ struct CRTSettings {
     GUI::CRTMonitorType monitorType = GUI::CRTMonitorType::RGB;
     float gamma = 2.75F;
     float time = 0.0F;
+
+    [[nodiscard]] constexpr bool HasActiveFilters() const noexcept {
+        return scanlines || interlacing || curvature || chromatic || blur ||
+               shadowMask || vignette || cornerRounding || glassGlare ||
+               colorBleeding || noise || vsyncJitter || phosphorDecay ||
+               bloom || ghosting || halation || moire || humBar ||
+               monitorType != GUI::CRTMonitorType::RGB;
+    }
 };
 
 struct AppState {

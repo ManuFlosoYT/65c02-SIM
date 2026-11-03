@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdio>
 #include <ctime>
 #include <vector>
@@ -171,6 +172,8 @@ void ForceRefreshVRAM(AppState& state) {
         pixels{};
     VRAMImageIO::ConvertVRAMToRGB(gpu, pixels.data());
     glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GPU::VRAM_WIDTH, GPU::VRAM_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -296,21 +299,16 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
 
         const auto imgW = static_cast<float>(GPU::VRAM_WIDTH * scale);
         const auto imgH = static_cast<float>(GPU::VRAM_HEIGHT * scale);
-        float offsetX = (avail.x - imgW) * 0.5F;
-        float offsetY = (avail.y - imgH) * 0.5F;
-        if (offsetX > 0) {
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+        float offsetX = std::floor((avail.x - imgW) * 0.5F);
+        float offsetY = std::floor((avail.y - imgH) * 0.5F);
+        if (offsetX > 0.0F) {
+            ImGui::SetCursorPosX(std::floor(ImGui::GetCursorPosX() + offsetX));
         }
-        if (offsetY > 0) {
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
+        if (offsetY > 0.0F) {
+            ImGui::SetCursorPosY(std::floor(ImGui::GetCursorPosY() + offsetY));
         }
 
-        bool anyCRT = state.crt.scanlines || state.crt.interlacing || state.crt.curvature || state.crt.chromatic ||
-                      state.crt.blur || state.crt.shadowMask || state.crt.vignette || state.crt.cornerRounding ||
-                      state.crt.glassGlare || state.crt.colorBleeding || state.crt.noise || state.crt.vsyncJitter ||
-                      state.crt.phosphorDecay || state.crt.bloom || state.crt.ghosting || state.crt.halation || 
-                      state.crt.moire || state.crt.sharpPixels || state.crt.humBar ||
-                      state.crt.monitorType != GUI::CRTMonitorType::RGB || state.crt.gamma != 2.2F;
+        bool anyCRT = state.crt.HasActiveFilters();
 
         GLuint displayTex = state.render.vramTexture;
         if (anyCRT) {
@@ -350,13 +348,34 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
                 displayTex = state.render.lastDisplayTex;
             }
         } else {
+            glBindTexture(GL_TEXTURE_2D, state.render.vramTexture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
             // Keep track of raw VRAM texture
             state.render.lastDisplayTex = state.render.vramTexture;
             state.render.lastDisplayW = GPU::VRAM_WIDTH;
             state.render.lastDisplayH = GPU::VRAM_HEIGHT;
         }
 
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        auto setNearest = ImGui::GetPlatformIO().DrawCallback_SetSamplerNearest;
+        auto resetState = ImGui::GetPlatformIO().DrawCallback_ResetRenderState;
+        auto setLinear = ImGui::GetPlatformIO().DrawCallback_SetSamplerLinear;
+        if (!anyCRT && setNearest != nullptr) {
+            drawList->AddCallback(setNearest, nullptr);
+        }
+
         ImGui::Image((ImTextureID)(intptr_t)displayTex, ImVec2(imgW, imgH));
+
+        if (!anyCRT) {
+            if (resetState != nullptr) {
+                drawList->AddCallback(resetState, nullptr);
+            } else if (setLinear != nullptr) {
+                drawList->AddCallback(setLinear, nullptr);
+            }
+        }
         ImVec2 imgMin = ImGui::GetItemRectMin();
 
         if (ImGui::IsItemHovered()) {
