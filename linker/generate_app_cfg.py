@@ -99,6 +99,8 @@ def generate_cfg(flags=None, has_gpu=False):
     cfg.append(f"    _os_free:         type = weak, value = ${JUMPTABLE + 0x5A:04X};")
     cfg.append(f"    _bios_getchar_nb: type = weak, value = ${JUMPTABLE + 0x5D:04X};")
     cfg.append(f"    _sd_seek:         type = weak, value = ${JUMPTABLE + 0x60:04X};")
+    cfg.append(f"    _os_redirect_out: type = weak, value = ${JUMPTABLE + 0x63:04X};")
+    cfg.append(f"    _os_redirect_in:  type = weak, value = ${JUMPTABLE + 0x66:04X};")
     cfg.append("}")
     cfg.append("")
     return "\n".join(cfg)
