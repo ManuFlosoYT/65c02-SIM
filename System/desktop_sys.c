@@ -428,12 +428,184 @@ static void desktop_check_pipe_cleanup(void) {
     sd_remove("/_pipe.cln");
 }
 
+enum {
+    HIST_MAX = 16,
+    HIST_LEN = 128
+};
+
+static char hist_entries[HIST_MAX][HIST_LEN];
+static uint8_t hist_count = 0;
+static int8_t hist_idx = -1;
+static char hist_draft[HIST_LEN];
+
+static void desktop_hist_load(void) {
+    hist_count = 0;
+    hist_idx = -1;
+    SD_FILE f;
+    if (!sd_open(&f, "/SYSTEM/HIST.SYS", SD_READ)) {
+        return;
+    }
+    char buf[HIST_LEN];
+    uint8_t len = 0;
+    while (true) {
+        int16_t c = sd_getc(&f);
+        if (c < 0 || c == '\n') {
+            if (len > 0) {
+                buf[len] = '\0';
+                if (hist_count < HIST_MAX) {
+                    strcpy(hist_entries[hist_count++], buf);
+                } else {
+                    for (uint8_t i = 0; i < HIST_MAX - 1; ++i) {
+                        strcpy(hist_entries[i], hist_entries[i + 1]);
+                    }
+                    strcpy(hist_entries[HIST_MAX - 1], buf);
+                }
+                len = 0;
+            }
+            if (c < 0) {
+                break;
+            }
+            continue;
+        }
+        if (c != '\r' && len < HIST_LEN - 1) {
+            buf[len++] = (char)c;
+        }
+    }
+    sd_close(&f);
+}
+
+static void desktop_hist_save(void) {
+    SD_FILE f;
+    if (!sd_open(&f, "/SYSTEM/HIST.SYS", SD_WRITE | SD_CREATE_ALWAYS)) {
+        return;
+    }
+    for (uint8_t i = 0; i < hist_count; ++i) {
+        sd_puts(&f, hist_entries[i]);
+        sd_puts(&f, "\n");
+    }
+    sd_close(&f);
+}
+
+static void desktop_hist_add(const char* cmd) {
+    if (!cmd) {
+        return;
+    }
+    const char* p = cmd;
+    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') {
+        p++;
+    }
+    if (*p == '\0') {
+        return;
+    }
+    if (hist_count > 0 && strcmp(hist_entries[hist_count - 1], cmd) == 0) {
+        return;
+    }
+    if (hist_count < HIST_MAX) {
+        strncpy(hist_entries[hist_count], cmd, HIST_LEN - 1);
+        hist_entries[hist_count][HIST_LEN - 1] = '\0';
+        hist_count++;
+    } else {
+        for (uint8_t i = 0; i < HIST_MAX - 1; ++i) {
+            strcpy(hist_entries[i], hist_entries[i + 1]);
+        }
+        strncpy(hist_entries[HIST_MAX - 1], cmd, HIST_LEN - 1);
+        hist_entries[HIST_MAX - 1][HIST_LEN - 1] = '\0';
+    }
+    desktop_hist_save();
+}
+
+static bool prefix_match_nocase(const char* str, const char* prefix, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        char c1 = str[i];
+        char c2 = prefix[i];
+        if (c1 >= 'a' && c1 <= 'z') {
+            c1 -= 32;
+        }
+        if (c2 >= 'a' && c2 <= 'z') {
+            c2 -= 32;
+        }
+        if (c1 != c2 || c1 == '\0') {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void desktop_autocomplete(char* out_cmd, uint8_t* p_len) {
+    uint8_t len = *p_len;
+    uint8_t start = len;
+    while (start > 0 && out_cmd[start - 1] != ' ') {
+        start--;
+    }
+    uint8_t token_len = len - start;
+    char token[128];
+    memcpy(token, &out_cmd[start], token_len);
+    token[token_len] = '\0';
+
+    char dir_path[128];
+    const char* prefix = token;
+    char* last_slash = strrchr(token, '/');
+    if (!last_slash) {
+        strcpy(dir_path, ".");
+        prefix = token;
+    } else if (last_slash == token) {
+        strcpy(dir_path, "/");
+        prefix = token + 1;
+    } else {
+        size_t dlen = (size_t)(last_slash - token + 1);
+        memcpy(dir_path, token, dlen);
+        dir_path[dlen] = '\0';
+        prefix = last_slash + 1;
+    }
+
+    SD_DIR dir;
+    if (!sd_opendir(&dir, dir_path)) {
+        return;
+    }
+
+    size_t prefix_len = strlen(prefix);
+    SD_INFO fno;
+    bool found = false;
+
+    while (sd_readdir(&dir, &fno)) {
+        if (fno.fname[0] == '\0') {
+            break;
+        }
+        if (fno.fname[0] == '.' && prefix[0] != '.') {
+            continue;
+        }
+        if (prefix_match_nocase(fno.fname, prefix, prefix_len)) {
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        const char* s = fno.fname + prefix_len;
+        while (*s && len < 126) {
+            out_cmd[len++] = *s;
+            bios_putchar(*s);
+            s++;
+        }
+        char end_char = (fno.fattrib & AM_DIR) ? '/' : ' ';
+        if (len < 127) {
+            out_cmd[len++] = end_char;
+            bios_putchar(end_char);
+        }
+        out_cmd[len] = '\0';
+        *p_len = len;
+    }
+
+    sd_closedir(&dir);
+}
+
 bool desktop_shell(char* out_cmd) {
     if (desktop_check_pending_pipe(out_cmd)) {
         return true;
     }
     desktop_check_pipe_cleanup();
 
+    desktop_hist_load();
     desktop_init();
 
     char cwd[32];
@@ -445,9 +617,79 @@ bool desktop_shell(char* out_cmd) {
     print_str("> ");
 
     uint8_t len = 0;
+    uint8_t esc_state = 0;
     while (true) {
         char c = bios_getchar_nb();
         if (c != 0) {
+            if (esc_state == 1) {
+                esc_state = (c == '[') ? 2 : 0;
+                continue;
+            }
+            if (esc_state == 2) {
+                if (c == 'A') {
+                    if (hist_count > 0) {
+                        if (hist_idx == -1) {
+                            out_cmd[len] = '\0';
+                            strcpy(hist_draft, out_cmd);
+                            hist_idx = (int8_t)(hist_count - 1);
+                        } else if (hist_idx > 0) {
+                            hist_idx--;
+                        }
+                        while (len > 0) {
+                            bios_putchar('\b');
+                            bios_putchar(' ');
+                            bios_putchar('\b');
+                            len--;
+                        }
+                        strcpy(out_cmd, hist_entries[hist_idx]);
+                        len = (uint8_t)strlen(out_cmd);
+                        print_str(out_cmd);
+                    }
+                    esc_state = 0;
+                    continue;
+                }
+                if (c == 'B') {
+                    if (hist_idx != -1) {
+                        hist_idx++;
+                        while (len > 0) {
+                            bios_putchar('\b');
+                            bios_putchar(' ');
+                            bios_putchar('\b');
+                            len--;
+                        }
+                        if (hist_idx < (int8_t)hist_count) {
+                            strcpy(out_cmd, hist_entries[hist_idx]);
+                        } else {
+                            hist_idx = -1;
+                            strcpy(out_cmd, hist_draft);
+                        }
+                        len = (uint8_t)strlen(out_cmd);
+                        print_str(out_cmd);
+                    }
+                    esc_state = 0;
+                    continue;
+                }
+                if (c >= '0' && c <= '9') {
+                    esc_state = 3;
+                    continue;
+                }
+                esc_state = 0;
+                continue;
+            }
+            if (esc_state == 3) {
+                if (c == '~' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+                    esc_state = 0;
+                }
+                continue;
+            }
+            if (c == '\x1b') {
+                esc_state = 1;
+                continue;
+            }
+            if (c == '\t' || c == 9) {
+                desktop_autocomplete(out_cmd, &len);
+                continue;
+            }
             if (c == '\r' || c == '\n') {
                 out_cmd[len] = '\0';
                 if (len > 0) {
@@ -461,12 +703,15 @@ bool desktop_shell(char* out_cmd) {
                         print_str(cwd);
                         print_str("> ");
                         len = 0;
+                        hist_idx = -1;
                         continue;
                     }
                 }
                 bios_putchar('\r');
                 bios_putchar('\n');
                 desktop_erase_cursor();
+                hist_idx = -1;
+                desktop_hist_add(out_cmd);
                 char input_copy[128];
                 strcpy(input_copy, out_cmd);
                 return desktop_dispatch_pipeline(input_copy, out_cmd, NULL);
