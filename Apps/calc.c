@@ -51,16 +51,80 @@ static void print_bin(uint16_t v) {
 
 int main(void) {
     char **args = _args_ptr;
+    char line[64];
+    const char *s_v1 = nullptr;
+    char op = 0;
+    const char *s_v2 = nullptr;
 
-    if (arg_count < 4) {
+    if (arg_count < 2) {
         println("Usage: calc <val1> <op> <val2>");
         println("Ops: + - * / & | ^");
         return 1;
     }
 
-    uint16_t v1 = parse_val(args[1]);
-    char op = args[2][0];
-    uint16_t v2 = parse_val(args[3]);
+    if (arg_count == 2 && strcmp(args[1], "-") == 0) {
+        uint8_t len = 0;
+        while (len < sizeof(line) - 1) {
+            int c = bios_getchar();
+            if (c == 0 || c == 4 || c == 26 || c == -1 || c == '\n' || c == '\r' || c == 3 || c == 27) {
+                break;
+            }
+            line[len++] = (char)c;
+        }
+        line[len] = '\0';
+
+        char *p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == '\0') {
+            println("Usage: calc <val1> <op> <val2>");
+            println("Ops: + - * / & | ^");
+            return 1;
+        }
+
+        s_v1 = p;
+        while (*p && *p != ' ' && *p != '\t' && *p != '+' && *p != '-' && *p != '*' && *p != '/' && *p != '&' && *p != '|' && *p != '^') {
+            p++;
+        }
+
+        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '&' || *p == '|' || *p == '^') {
+            op = *p;
+            *p = '\0';
+            p++;
+        } else {
+            if (*p != '\0') {
+                *p = '\0';
+                p++;
+            }
+            while (*p == ' ' || *p == '\t') p++;
+            op = *p;
+            if (op != '\0') p++;
+        }
+
+        while (*p == ' ' || *p == '\t') p++;
+        s_v2 = p;
+        char *end2 = p;
+        while (*end2 && *end2 != ' ' && *end2 != '\t' && *end2 != '\r' && *end2 != '\n') {
+            end2++;
+        }
+        *end2 = '\0';
+
+        if (op == 0 || *s_v1 == '\0' || *s_v2 == '\0') {
+            println("Usage: calc <val1> <op> <val2>");
+            println("Ops: + - * / & | ^");
+            return 1;
+        }
+    } else if (arg_count >= 4) {
+        s_v1 = args[1];
+        op = args[2][0];
+        s_v2 = args[3];
+    } else {
+        println("Usage: calc <val1> <op> <val2>");
+        println("Ops: + - * / & | ^");
+        return 1;
+    }
+
+    uint16_t v1 = parse_val(s_v1);
+    uint16_t v2 = parse_val(s_v2);
     uint16_t res = 0;
 
     if (op == '+') {
