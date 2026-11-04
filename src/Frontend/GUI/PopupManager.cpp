@@ -235,6 +235,10 @@ void ExecuteReset(Control::AppState& state) {
     Console::Clear();
     state.emulator.GetGPU().Reset();
     state.emulator.ClearProfiler();
+    if (state.crtFilter.IsInitialized()) {
+        state.crtFilter.Reset();
+    }
+    state.render.lastDisplayTex = 0;
 
     if (state.emulator.GetCartridge().loaded) {
         std::string path = state.emulator.GetCartridge().sourceZipPath;
