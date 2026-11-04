@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#define OS_STARTUP_DONE (*(volatile uint8_t*)0x5504)
+
 enum {
     APPS_PER_PAGE = 12,
     MAX_APPS      = 255
@@ -437,6 +439,157 @@ static void desktop_check_pipe_cleanup(void) {
     sd_remove("/_pipe.cln");
 }
 
+static uint32_t sd_size(SD_FILE* fp) {
+    uint32_t sz;
+    memcpy(&sz, (const uint8_t*)fp + 10, sizeof(uint32_t));
+    return sz;
+}
+
+static bool desktop_queue_batch(const char* path) {
+    SD_FILE f_in;
+    if (!sd_open(&f_in, path, SD_READ)) {
+        print_str("Error opening: ");
+        println(path);
+        return false;
+    }
+    SD_FILE f_out;
+    bool exists = sd_exists("/_batch.cmd");
+    uint8_t mode = exists ? (SD_WRITE | SD_OPEN_ALWAYS) : (SD_WRITE | SD_CREATE_ALWAYS);
+    if (!sd_open(&f_out, "/_batch.cmd", mode)) {
+        sd_close(&f_in);
+        return false;
+    }
+    if (exists) {
+        sd_seek(&f_out, sd_size(&f_out));
+    }
+    char line[128];
+    uint8_t len = 0;
+    while (true) {
+        int16_t c = sd_getc(&f_in);
+        if (c < 0 || c == '\n') {
+            if (len > 0) {
+                line[len] = '\0';
+                while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n')) {
+                    line[--len] = '\0';
+                }
+                char* p = line;
+                while (*p == ' ' || *p == '\t') {
+                    p++;
+                }
+                bool is_rem = (p[0] == 'R' || p[0] == 'r') &&
+                              (p[1] == 'E' || p[1] == 'e') &&
+                              (p[2] == 'M' || p[2] == 'm') &&
+                              (p[3] == ' ' || p[3] == '\0');
+                if (*p != '\0' && *p != '#' && *p != ';' && !is_rem) {
+                    sd_puts(&f_out, p);
+                    sd_puts(&f_out, "\n");
+                }
+                len = 0;
+            }
+            if (c < 0) {
+                break;
+            }
+            continue;
+        }
+        if (c != '\r' && len < sizeof(line) - 1) {
+            line[len++] = (char)c;
+        }
+    }
+    sd_close(&f_in);
+    sd_close(&f_out);
+    return true;
+}
+
+static char batch_buf[2048];
+
+static bool desktop_check_pending_batch(char* out_cmd) {
+    if (!sd_exists("/_batch.cmd")) {
+        return false;
+    }
+    SD_FILE f;
+    if (!sd_open(&f, "/_batch.cmd", SD_READ)) {
+        return false;
+    }
+    int16_t n = sd_read(&f, batch_buf, sizeof(batch_buf) - 1);
+    sd_close(&f);
+    if (n <= 0) {
+        sd_remove("/_batch.cmd");
+        return false;
+    }
+    batch_buf[n] = '\0';
+
+    char* p = batch_buf;
+    uint8_t out_len = 0;
+    while (*p && *p != '\n' && *p != '\r') {
+        if (out_len < 127) {
+            out_cmd[out_len++] = *p;
+        }
+        p++;
+    }
+    out_cmd[out_len] = '\0';
+
+    char* next_line = strchr(batch_buf, '\n');
+    char* remaining = next_line ? (next_line + 1) : NULL;
+    uint16_t remaining_len = remaining ? (uint16_t)strlen(remaining) : 0;
+    if (remaining_len > 0) {
+        if (sd_open(&f, "/_batch.cmd", SD_WRITE | SD_CREATE_ALWAYS)) {
+            sd_write(&f, remaining, remaining_len);
+            sd_close(&f);
+        }
+    } else {
+        sd_remove("/_batch.cmd");
+    }
+
+    print_str("> ");
+    println(out_cmd);
+    desktop_dispatch_pipeline(out_cmd, out_cmd, NULL);
+    return true;
+}
+
+static bool desktop_scan_startup(char* out_cmd) {
+    if (OS_STARTUP_DONE == 0) {
+        OS_STARTUP_DONE = 1;
+        SD_DIR dir;
+        if (sd_opendir(&dir, "/SYSTEM/STARTUP")) {
+            SD_INFO fno;
+            while (sd_readdir(&dir, &fno) && fno.fname[0] != '\0') {
+                if (fno.fname[0] == '.') {
+                    continue;
+                }
+                if (!(fno.fattrib & AM_DIR)) {
+                    char spath[64];
+                    strcpy(spath, "/SYSTEM/STARTUP/");
+                    strcat(spath, fno.fname);
+                    desktop_queue_batch(spath);
+                }
+            }
+            sd_closedir(&dir);
+            if (sd_exists("/_batch.cmd")) {
+                return desktop_check_pending_batch(out_cmd);
+            }
+        }
+    }
+    return false;
+}
+
+static bool is_batch_file(const char* name) {
+    size_t len = strlen(name);
+    if (len < 4) {
+        return false;
+    }
+    const char* ext = name + len - 4;
+    if (ext[0] != '.') {
+        return false;
+    }
+    bool is_bat = (ext[1] == 'b' || ext[1] == 'B') &&
+                  (ext[2] == 'a' || ext[2] == 'A') &&
+                  (ext[3] == 't' || ext[3] == 'T');
+    bool is_cmd = (ext[1] == 'c' || ext[1] == 'C') &&
+                  (ext[2] == 'm' || ext[2] == 'M') &&
+                  (ext[3] == 'd' || ext[3] == 'D');
+    return is_bat || is_cmd;
+}
+
 enum {
     HIST_MAX = 16,
     HIST_LEN = 128
@@ -612,6 +765,12 @@ bool desktop_shell(char* out_cmd) {
     if (desktop_check_pending_pipe(out_cmd)) {
         return true;
     }
+    if (desktop_check_pending_batch(out_cmd)) {
+        return true;
+    }
+    if (desktop_scan_startup(out_cmd)) {
+        return true;
+    }
     desktop_check_pipe_cleanup();
 
     desktop_hist_load();
@@ -721,6 +880,19 @@ bool desktop_shell(char* out_cmd) {
                 desktop_erase_cursor();
                 hist_idx = -1;
                 desktop_hist_add(out_cmd);
+                if (strncmp(out_cmd, "batch ", 6) == 0) {
+                    const char* spath = out_cmd + 6;
+                    while (*spath == ' ') {
+                        spath++;
+                    }
+                    if (desktop_queue_batch(spath)) {
+                        return desktop_check_pending_batch(out_cmd);
+                    }
+                } else if (is_batch_file(out_cmd)) {
+                    if (desktop_queue_batch(out_cmd)) {
+                        return desktop_check_pending_batch(out_cmd);
+                    }
+                }
                 char input_copy[128];
                 strcpy(input_copy, out_cmd);
                 return desktop_dispatch_pipeline(input_copy, out_cmd, NULL);
