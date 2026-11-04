@@ -55,6 +55,7 @@ class CRTFilter {
    public:
     void Init(int width, int height);
     void Destroy();
+    void Reset();
     [[nodiscard]] bool IsInitialized() const { return m_pass.IsInitialized(); }
 
     // Renders inputTex through the CRT shader and returns the output texture.
