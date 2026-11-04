@@ -64,6 +64,8 @@ void print_hex_byte(unsigned char v);
 char bios_getchar(void);
 char bios_getchar_nb(void);
 void bios_putchar(char c);
+void os_redirect_out(const char* path, uint8_t append);
+void os_redirect_in(const char* path);
 
 
 /* ========================================================================= */
