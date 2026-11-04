@@ -52,8 +52,10 @@ INPUT_BUFFER: .fill 0x100
 
 .section .bss, "aw", @nobits
 .globl os_putchar_hook, os_getchar_hook
+.globl os_startup_done
 os_putchar_hook: .word 0
 os_getchar_hook: .word 0
+os_startup_done: .byte 0
 
 .section .text, "ax"
 
