@@ -10,10 +10,11 @@ int main(void) {
     int c = 0;
     char** args = _args_ptr;
 
-    if (arg_count < 2) {
-        print_str("Usage: ");
-        println("cat <filename>");
-        return 1;
+    if (arg_count < 2 || strcmp(args[1], "-") == 0) {
+        while ((c = bios_getchar()) != 0 && c != 4 && c != 26 && c != -1) {
+            bios_putchar((char)c);
+        }
+        return 0;
     }
     
     if (sd_open(&fp, args[1], SD_READ)) {
