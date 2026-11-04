@@ -1,4 +1,5 @@
 #include "../Libs/app-bios.h"
+#include <string.h>
 
 MICRODOS_NO_DESKTOP();
 
@@ -70,11 +71,35 @@ static int parse_hex16(const char* str, uint16_t* out_val, const char** end_ptr)
 
 int main(void) {
     if (arg_count < 2) {
-        println("Usage: hexdump <file | 0xADDR[-0xADDR]>");
+        println("Usage: hexdump <file | 0xADDR[-0xADDR] | ->");
         return 1;
     }
 
     char* arg = _args_ptr[1];
+
+    if (strcmp(arg, "-") == 0) {
+        uint8_t buffer[16];
+        uint32_t offset = 0;
+        uint16_t count = 0;
+
+        while (1) {
+            int c = bios_getchar();
+            if (c == 0 || c == 4 || c == 26 || c == -1 || c == 3 || c == 27) {
+                break;
+            }
+            buffer[count++] = (uint8_t)c;
+            if (count == 16) {
+                print_hexdump_line(offset, buffer, count);
+                offset += count;
+                count = 0;
+            }
+        }
+        if (count > 0) {
+            print_hexdump_line(offset, buffer, count);
+            offset += count;
+        }
+        return 0;
+    }
     uint8_t buffer[16];
     int16_t bytes_read = 0;
     uint32_t offset = 0;
