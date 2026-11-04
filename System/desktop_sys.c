@@ -329,7 +329,111 @@ bool desktop_tick(char* out_app_name) {
     return false;
 }
 
+static bool desktop_dispatch_pipeline(char* cmd, char* out_cmd, const char* prev_temp) {
+    char* redir_file = NULL;
+    uint8_t append = 0;
+    char* p_gt = strchr(cmd, '>');
+    if (p_gt) {
+        *p_gt = '\0';
+        p_gt++;
+        if (*p_gt == '>') {
+            append = 1;
+            p_gt++;
+        }
+        while (*p_gt == ' ') p_gt++;
+        redir_file = p_gt;
+        char* end = redir_file;
+        while (*end && *end != ' ' && *end != '\r' && *end != '\n') end++;
+        *end = '\0';
+        if (*redir_file == '\0') redir_file = NULL;
+    }
+
+    char* p_pipe = strchr(cmd, '|');
+    if (p_pipe) {
+        *p_pipe = '\0';
+        char* next_stage = p_pipe + 1;
+        while (*next_stage == ' ') next_stage++;
+
+        const char* next_temp = (prev_temp && strcmp(prev_temp, "/_p1.tmp") == 0) ? "/_p2.tmp" : "/_p1.tmp";
+
+        SD_FILE pf;
+        if (sd_open(&pf, "/_pipe.cmd", SD_WRITE | SD_CREATE_ALWAYS)) {
+            sd_puts(&pf, next_temp);
+            sd_puts(&pf, "\n");
+            sd_puts(&pf, next_stage);
+            if (redir_file) {
+                sd_puts(&pf, append ? " >> " : " > ");
+                sd_puts(&pf, redir_file);
+            }
+            sd_close(&pf);
+        }
+
+        os_redirect_out(next_temp, 0);
+    } else {
+        if (redir_file) {
+            os_redirect_out(redir_file, append);
+        } else {
+            os_redirect_out(NULL, 0);
+        }
+    }
+
+    while (*cmd == ' ') cmd++;
+    char* end = cmd + strlen(cmd);
+    while (end > cmd && (*(end - 1) == ' ' || *(end - 1) == '\r' || *(end - 1) == '\n')) {
+        *(--end) = '\0';
+    }
+
+    strcpy(out_cmd, cmd);
+    return true;
+}
+
+static bool desktop_check_pending_pipe(char* out_cmd) {
+    if (!sd_exists("/_pipe.cmd")) {
+        return false;
+    }
+    SD_FILE pf;
+    if (!sd_open(&pf, "/_pipe.cmd", SD_READ)) {
+        return false;
+    }
+    char pbuf[128];
+    int16_t n = sd_read(&pf, pbuf, sizeof(pbuf) - 1);
+    sd_close(&pf);
+    sd_remove("/_pipe.cmd");
+    if (n <= 0) {
+        return false;
+    }
+    pbuf[n] = '\0';
+
+    char* in_file = pbuf;
+    char* next_cmd = strchr(pbuf, '\n');
+    if (!next_cmd) {
+        return false;
+    }
+    *next_cmd++ = '\0';
+
+    os_redirect_out(NULL, 0);
+
+    if (*in_file != '\0') {
+        os_redirect_in(in_file);
+    }
+
+    return desktop_dispatch_pipeline(next_cmd, out_cmd, in_file);
+}
+
+static void desktop_check_pipe_cleanup(void) {
+    os_redirect_out(NULL, 0);
+    os_redirect_in(NULL);
+    sd_remove("/_p1.tmp");
+    sd_remove("/_p2.tmp");
+    sd_remove("/_pipe.cln");
+}
+
 bool desktop_shell(char* out_cmd) {
+    if (desktop_check_pending_pipe(out_cmd)) {
+        return true;
+    }
+    desktop_check_pipe_cleanup();
+
     desktop_init();
 
     char cwd[32];
@@ -346,10 +450,26 @@ bool desktop_shell(char* out_cmd) {
         if (c != 0) {
             if (c == '\r' || c == '\n') {
                 out_cmd[len] = '\0';
+                if (len > 0) {
+                    int16_t last = (int16_t)len - 1;
+                    while (last >= 0 && (out_cmd[last] == ' ' || out_cmd[last] == '\t')) {
+                        last--;
+                    }
+                    if (last >= 0 && (out_cmd[last] == '|' || out_cmd[last] == '>')) {
+                        print_str("\r\nSyntax error\r\n");
+                        print_str("uDOS:");
+                        print_str(cwd);
+                        print_str("> ");
+                        len = 0;
+                        continue;
+                    }
+                }
                 bios_putchar('\r');
                 bios_putchar('\n');
                 desktop_erase_cursor();
-                return true;
+                char input_copy[128];
+                strcpy(input_copy, out_cmd);
+                return desktop_dispatch_pipeline(input_copy, out_cmd, NULL);
             }
             if (c == '\b' || c == 8 || c == 127) {
                 if (len > 0) {
@@ -358,7 +478,7 @@ bool desktop_shell(char* out_cmd) {
                     bios_putchar(' ');
                     bios_putchar('\b');
                 }
-            } else if (len < 63) {
+            } else if (len < 127) {
                 out_cmd[len++] = c;
                 bios_putchar(c);
             }
@@ -367,13 +487,15 @@ bool desktop_shell(char* out_cmd) {
         if (desktop_tick(out_cmd)) {
             print_str(out_cmd);
             print_str("\r\n");
-            return true;
+            char tick_copy[128];
+            strcpy(tick_copy, out_cmd);
+            return desktop_dispatch_pipeline(tick_copy, out_cmd, NULL);
         }
     }
 }
 
 int main(void) {
-    char buf[64];
+    char buf[128];
     return desktop_shell(buf) ? 0 : 1;
 }
 
