@@ -23,6 +23,34 @@ void SerialIOBridge::InjectKey(char key) {
     hasInput.store(true, std::memory_order_relaxed);
 }
 
+void SerialIOBridge::InjectText(std::string_view text) {
+    if (text.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(bufferMutex);
+    for (size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if (c == '\0') {
+            continue;
+        }
+        if (c == '\r') {
+            if (i + 1 < text.size() && text[i + 1] == '\n') {
+                ++i;
+            }
+            inputBuffer.push_back('\r');
+        } else if (c == '\n') {
+            inputBuffer.push_back('\r');
+        } else {
+            inputBuffer.push_back(c);
+        }
+    }
+
+    if (!inputBuffer.empty()) {
+        hasInput.store(true, std::memory_order_relaxed);
+    }
+}
+
 void SerialIOBridge::ProcessSerialInput(Hardware::ACIA& acia, int targetIps, std::atomic<bool>& pendingInterruptAny) {
     if (!hasInput.load(std::memory_order_relaxed)) {
         return;

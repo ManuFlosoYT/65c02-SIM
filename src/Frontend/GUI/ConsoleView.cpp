@@ -70,6 +70,9 @@ static void HandleCtrlKeys(Control::AppState& state, const ImGuiIO& imgui_io) {
     if (imgui_io.KeyCtrl) {
         std::string seq;
         for (int key = ImGuiKey_A; key <= ImGuiKey_Z; key++) {
+            if (key == ImGuiKey_V) {
+                continue;
+            }
             auto imguiKey = static_cast<ImGuiKey>(key);
             if (ImGui::IsKeyPressed(imguiKey)) {
                 if (TerminalInputMapper::MapCtrlKey(imguiKey, seq)) {
@@ -78,6 +81,20 @@ static void HandleCtrlKeys(Control::AppState& state, const ImGuiIO& imgui_io) {
             }
         }
     }
+}
+
+static bool HandlePasteInput(Control::AppState& state, const ImGuiIO& imgui_io) {
+    bool isPaste = (imgui_io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_V)) ||
+                   (imgui_io.KeySuper && ImGui::IsKeyPressed(ImGuiKey_V)) ||
+                   (imgui_io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Insert));
+    if (isPaste) {
+        const char* clip = ImGui::GetClipboardText();
+        if (clip != nullptr && clip[0] != '\0') {
+            state.emulator.InjectText(clip);
+        }
+        return true;
+    }
+    return false;
 }
 
 void HandleConsoleInput(Control::AppState& state) {
@@ -93,6 +110,10 @@ void HandleConsoleInput(Control::AppState& state) {
         SDL_Window* sdl_window = SDL_GetKeyboardFocus();
         if (sdl_window != nullptr) {
             SDL_StartTextInput(sdl_window);
+        }
+
+        if (HandlePasteInput(state, imgui_io)) {
+            return;
         }
 
         HandleQueueCharacters(state, imgui_io);

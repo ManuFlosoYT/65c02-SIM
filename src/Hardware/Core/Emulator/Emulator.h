@@ -9,6 +9,7 @@
 #include <functional>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <thread>
 
 #include "Hardware/Audio/SID.h"
@@ -73,6 +74,7 @@ class Emulator {
     void TriggerNMI();
 
     void InjectKey(char key);
+    void InjectText(std::string_view text);
 
     void SetOutputCallback(std::function<void(char)> callback);
     const LCD& GetLCD() const;

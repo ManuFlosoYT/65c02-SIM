@@ -154,6 +154,19 @@ static void DrawConsoleButtonBar(AppState& state) {
         ImGui::EndTooltip();
     }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Paste")) {
+        const char* clip = ImGui::GetClipboardText();
+        if (clip != nullptr && clip[0] != '\0') {
+            state.emulator.InjectText(clip);
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted("Paste text from clipboard (Ctrl+V)");
+        ImGui::EndTooltip();
+    }
+
 #ifndef TARGET_WASM
     ImGui::SameLine();
     DrawIDEButton(state, cartLoaded);

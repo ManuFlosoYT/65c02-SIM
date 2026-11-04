@@ -303,9 +303,9 @@ TEST(HistoryManagerTest, DownArrowNavigationRestoresNewerAndDraft) {
     history.add("cmd_b");
     history.add("cmd_c");
 
-    history.navigate_up("current_draft");
-    history.navigate_up("current_draft");
-    history.navigate_up("current_draft");
+    static_cast<void>(history.navigate_up("current_draft"));
+    static_cast<void>(history.navigate_up("current_draft"));
+    static_cast<void>(history.navigate_up("current_draft"));
 
     const auto down1 = history.navigate_down();
     ASSERT_TRUE(down1.has_value());

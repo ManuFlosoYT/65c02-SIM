@@ -5,6 +5,7 @@
 #include <deque>
 #include <mutex>
 #include <string>
+#include <string_view>
 
 namespace Hardware {
 class ACIA;
@@ -25,6 +26,7 @@ public:
 
     void Clear();
     void InjectKey(char key);
+    void InjectText(std::string_view text);
 
     [[nodiscard]] inline bool HasInput() const noexcept {
         return hasInput.load(std::memory_order_relaxed);
@@ -33,9 +35,9 @@ public:
     [[nodiscard]] inline int GetBaudDelay() const noexcept { return baudDelay; }
     inline void SetBaudDelay(int delay) noexcept { baudDelay = delay; }
 
-    inline void DecrementBaudDelay() noexcept {
+    inline void DecrementBaudDelay(int count = 1) noexcept {
         if (baudDelay > 0) [[unlikely]] {
-            baudDelay--;
+            baudDelay = (baudDelay > count) ? (baudDelay - count) : 0;
         }
     }
 

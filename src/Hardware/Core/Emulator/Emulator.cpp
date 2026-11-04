@@ -192,6 +192,7 @@ void Emulator::SyncHardwareCycles(bool cpuStepped, bool isNewInstruction, int ip
         if (extraCycles > 0) {
             const auto extra = static_cast<uint32_t>(extraCycles);
             lastStepCpuCycles += extra;
+            serialBridge.DecrementBaudDelay(extraCycles);
             via.Clock(extra);
             if (!acia.IsIdle()) [[unlikely]] {
                 for (int i = 0; i < extraCycles; ++i) {
@@ -273,16 +274,16 @@ int Emulator::StepInternal(int ips) {
         RunCPUTick<Debug, false>(res, cpuStepped);
     }
     SyncHardwareCycles(cpuStepped, isNewInstruction, ips);
+    if (serialBridge.HasInput()) [[unlikely]] {
+        HandleSerialInput<Debug>();
+    }
+
     if (cpuStepped && pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
         HandleInterrupts<Debug>();
     }
 
     if (cpu.waiting && cpu.remainingCycles == 0) [[unlikely]] {
         return 0;
-    }
-
-    if (serialBridge.HasInput()) [[unlikely]] {
-        HandleSerialInput<Debug>();
     }
 
     if constexpr (Debug) {
@@ -324,6 +325,10 @@ template void Emulator::HandleSerialInput<false>();
 
 void Emulator::InjectKey(char key) {
     serialBridge.InjectKey(key);
+}
+
+void Emulator::InjectText(std::string_view text) {
+    serialBridge.InjectText(text);
 }
 
 void Emulator::SetOutputCallback(std::function<void(char)> callback) {
@@ -489,14 +494,14 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
                 if (sidEnabled) {
                     sid.Clock();
                 }
+                if (serialBridge.HasInput()) [[unlikely]] {
+                    HandleSerialInput<false>();
+                }
                 if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {
                     pendingInterruptAny.store(true, std::memory_order_relaxed);
                 }
                 if (cpuStepped && pendingInterruptAny.load(std::memory_order_relaxed)) [[unlikely]] {
                     HandleInterrupts<false>();
-                }
-                if (serialBridge.HasInput()) [[unlikely]] {
-                    HandleSerialInput<false>();
                 }
 
                 ++i;

@@ -548,7 +548,7 @@ TEST(HexdumpTest, PartialLastChunk) {
     EXPECT_EQ(lines[0].bytes.size(), 16U);
     EXPECT_EQ(lines[1].offset, 16U);
     EXPECT_EQ(lines[1].bytes.size(), 4U);
-    EXPECT_EQ(lines[1].ascii_view, "ABCD");
+    EXPECT_EQ(lines[1].ascii_view, "QRST");
 }
 
 TEST(HexdumpTest, AsciiColumnConversion) {

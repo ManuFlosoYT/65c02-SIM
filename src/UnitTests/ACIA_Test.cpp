@@ -6,6 +6,8 @@
 #include <string>
 
 #include "Hardware/Core/Bus.h"
+#include "Hardware/Core/Emulator/Emulator.h"
+#include "Hardware/Core/Emulator/SerialIOBridge.h"
 
 using namespace Hardware;
 
@@ -164,4 +166,68 @@ TEST(ACIA_Test, Serialization) {
     EXPECT_EQ(acia2.GetBaudRate(), acia1.GetBaudRate());
     EXPECT_EQ(acia2.GetFrameBits(), acia1.GetFrameBits());
     EXPECT_EQ(acia2.HasIRQ(), acia1.HasIRQ());
+}
+
+TEST(ACIA_Test, SerialIOBridgeInjectTextBlockAndInterrupts) {
+    Core::SerialIOBridge bridge;
+    Hardware::ACIA acia;
+    acia.Write(ACIA_CMD, ACIA_CMD_DTR);
+    std::atomic<bool> pendingInterrupt{false};
+    bridge.InjectText("A\r\nB\nC\rD");
+
+    const Byte expectedChars[] = {'A', '\r', 'B', '\r', 'C', '\r', 'D'};
+    for (Byte expected : expectedChars) {
+        pendingInterrupt.store(false);
+        bridge.ProcessSerialInput(acia, 1000000, pendingInterrupt);
+        EXPECT_TRUE(acia.HasIRQ());
+        EXPECT_TRUE(pendingInterrupt.load());
+        EXPECT_EQ(acia.Read(ACIA_DATA), expected);
+        EXPECT_FALSE(acia.HasIRQ());
+        bridge.DecrementBaudDelay(bridge.GetBaudDelay());
+    }
+    EXPECT_FALSE(bridge.HasInput());
+}
+
+TEST(ACIA_Test, EmulatorWAIWokenByInjectedText) {
+    Core::Emulator emulator;
+    std::string error;
+    emulator.InitFromMemory({}, "", error);
+
+    emulator.GetROM().WriteDirect(0x7FFC, 0x00);
+    emulator.GetROM().WriteDirect(0x7FFD, 0x10);
+    emulator.GetROM().WriteDirect(0x7FFE, 0x00);
+    emulator.GetROM().WriteDirect(0x7FFF, 0x20);
+
+    emulator.GetMem().Write(0x1000, 0x58);
+    emulator.GetMem().Write(0x1001, 0xCB);
+    emulator.GetMem().Write(0x1002, 0xE8);
+    emulator.GetMem().Write(0x1003, 0x4C);
+    emulator.GetMem().Write(0x1004, 0x03);
+    emulator.GetMem().Write(0x1005, 0x10);
+
+    emulator.GetMem().Write(0x2000, 0xAD);
+    emulator.GetMem().Write(0x2001, 0x00);
+    emulator.GetMem().Write(0x2002, 0x50);
+    emulator.GetMem().Write(0x2003, 0x40);
+
+    emulator.Reset();
+    emulator.GetACIA().Write(ACIA_CMD, ACIA_CMD_DTR);
+    emulator.GetCPU().SetCycleAccurate(false);
+    emulator.GetCPU().X = 0;
+
+    emulator.Step<false>();
+    emulator.Step<false>();
+    EXPECT_TRUE(emulator.GetCPU().waiting);
+
+    emulator.InjectText("Z");
+    emulator.Step<false>();
+    EXPECT_FALSE(emulator.GetCPU().waiting);
+    EXPECT_EQ(emulator.GetCPU().PC, 0x2000);
+
+    emulator.Step<false>();
+    emulator.Step<false>();
+    EXPECT_EQ(emulator.GetCPU().PC, 0x1002);
+
+    emulator.Step<false>();
+    EXPECT_EQ(emulator.GetCPU().X, 1);
 }
