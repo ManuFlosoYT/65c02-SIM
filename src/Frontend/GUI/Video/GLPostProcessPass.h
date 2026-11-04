@@ -20,6 +20,7 @@ public:
     bool Init(int width, int height, const char* vertSrc, const char* fragSrc);
     void Destroy();
     void Resize(int width, int height);
+    void Clear();
     void SwapPingPong();
 
     [[nodiscard]] GLuint GetCurrentFBO() const;
