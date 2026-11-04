@@ -2,19 +2,19 @@
 
 .globl MONRDKEY, MONCOUT, LOAD, SAVE, INIT_BUFFER, IRQ_HANDLER, MONPEEK, MONGETCHAR_NB
 .globl _MONRDKEY, _MONCOUT, _LOAD, _SAVE, _INIT_BUFFER, _MONGETCHAR_NB, _IRQ_HANDLER
-.globl bios_putchar, bios_getchar, bios_getchar_nb, BIOS_JUMPTABLE
+.globl bios_putchar, bios_getchar, bios_getchar_nb, BIOS_JUMPTABLE, BIOS_PUTCHAR, BIOS_GETCHAR
 
-MONRDKEY = MONRDKEY_IMPL
-_MONRDKEY = MONRDKEY_IMPL
-bios_getchar = MONRDKEY_IMPL
+MONRDKEY = BIOS_GETCHAR
+_MONRDKEY = BIOS_GETCHAR
+bios_getchar = BIOS_GETCHAR
 
 MONGETCHAR_NB = MONGETCHAR_NB_IMPL
 _MONGETCHAR_NB = MONGETCHAR_NB_IMPL
 bios_getchar_nb = MONGETCHAR_NB_IMPL
 
-MONCOUT = MONCOUT_IMPL
-_MONCOUT = MONCOUT_IMPL
-bios_putchar = MONCOUT_IMPL
+MONCOUT = BIOS_PUTCHAR
+_MONCOUT = BIOS_PUTCHAR
+bios_putchar = BIOS_PUTCHAR
 
 LOAD = LOAD_IMPL
 _LOAD = LOAD_IMPL
@@ -50,7 +50,34 @@ DDRA        = 0x7FD3
 .globl INPUT_BUFFER
 INPUT_BUFFER: .fill 0x100
 
+.section .bss, "aw", @nobits
+.globl os_putchar_hook, os_getchar_hook
+os_putchar_hook: .word 0
+os_getchar_hook: .word 0
+
 .section .text, "ax"
+
+BIOS_PUTCHAR:
+    pha
+    lda os_putchar_hook+1
+    ora os_putchar_hook
+    beq .Lno_out_hook
+    pla
+    jmp (os_putchar_hook)
+.Lno_out_hook:
+    pla
+    jmp MONCOUT_IMPL
+
+BIOS_GETCHAR:
+    pha
+    lda os_getchar_hook+1
+    ora os_getchar_hook
+    beq .Lno_in_hook
+    pla
+    jmp (os_getchar_hook)
+.Lno_in_hook:
+    pla
+    jmp MONRDKEY_IMPL
 
 LOAD_IMPL:
     rts
@@ -195,8 +222,8 @@ BIOS_JUMPTABLE:
     jmp println         // $FF93
     jmp print_num       // $FF96
     jmp print_hex_byte  // $FF99
-    jmp MONRDKEY        // $FF9C
-    jmp MONCOUT         // $FF9F
+    jmp BIOS_GETCHAR    // $FF9C
+    jmp BIOS_PUTCHAR    // $FF9F
     jmp sd_open         // $FFA2
     jmp sd_read         // $FFA5
     jmp sd_write        // $FFA8
@@ -224,3 +251,5 @@ BIOS_JUMPTABLE:
     jmp os_free         // $FFEA
     jmp MONGETCHAR_NB   // $FFED
     jmp sd_seek         // $FFF0
+    jmp os_redirect_out // $FFF3
+    jmp os_redirect_in  // $FFF6
