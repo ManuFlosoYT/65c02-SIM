@@ -118,6 +118,7 @@ mmd -i "$SD_PATH" ::/vram
 mmd -i "$SD_PATH" ::/SYSTEM
 mmd -i "$SD_PATH" ::/SYSTEM/SWAP
 mmd -i "$SD_PATH" ::/SYSTEM/DESKTOP
+mmd -i "$SD_PATH" ::/SYSTEM/STARTUP
 
 python3 tools/microDOS/build_udos_sys.py assets/microDOS/strings.txt assets/microDOS/uDOS.sys
 mcopy -o -i "$SD_PATH" assets/microDOS/uDOS.sys ::/SYSTEM/
