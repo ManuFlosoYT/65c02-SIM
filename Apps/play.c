@@ -351,6 +351,9 @@ int main(void) {
 
     buffer_pool = (uint8_t*)APP_EXTRA_RAM_START;
     num_bufs = (uint8_t)(APP_EXTRA_RAM_SIZE / CHUNK_SIZE);
+    if (num_bufs > 15) {
+        num_bufs = 15;
+    }
 
     if (num_bufs == 0) {
         println("Error: Not enough RAM for buffers");
@@ -452,7 +455,7 @@ int main(void) {
 
     next_byte();
     min_bufs = next_byte();
-    if (num_bufs < min_bufs) {
+    if (num_bufs < min_bufs && (min_bufs - num_bufs) > 1) {
         print_str("Warning: Low RAM (");
         print_num(num_bufs);
         print_str("/");
