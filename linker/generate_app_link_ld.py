@@ -126,7 +126,9 @@ def generate_app_link_ld(has_gpu=False, num_overlays=0):
         ("os_alloc", 0x57),
         ("os_free", 0x5A),
         ("bios_getchar_nb", 0x5D),
-        ("sd_seek", 0x60)
+        ("sd_seek", 0x60),
+        ("os_redirect_out", 0x63),
+        ("os_redirect_in", 0x66)
     ]
 
     for sym, offset in symbols:
