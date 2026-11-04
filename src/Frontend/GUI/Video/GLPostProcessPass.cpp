@@ -210,6 +210,33 @@ void GLPostProcessPass::Resize(int width, int height) {
     CreateFBO(width, height);
 }
 
+void GLPostProcessPass::Clear() {
+    if (m_fbo[0] == 0 || m_fbo[1] == 0) {
+        return;
+    }
+
+    GLint prevFBO = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+
+    GLboolean scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+    if (scissorEnabled == GL_TRUE) {
+        glDisable(GL_SCISSOR_TEST);
+    }
+
+    for (GLuint fbo : m_fbo) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+
+    if (scissorEnabled == GL_TRUE) {
+        glEnable(GL_SCISSOR_TEST);
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+    m_pingPong = 0;
+}
+
 void GLPostProcessPass::SwapPingPong() {
     m_pingPong = 1 - m_pingPong;
 }
