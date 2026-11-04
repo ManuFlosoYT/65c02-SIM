@@ -87,8 +87,8 @@ void DrawSubroutinesTab(AppState& state, const SubroutineProfiler::Snapshot& sna
     };
 
     std::unordered_map<uint32_t, SubroutineMetric> subMap;
-    auto collect = [&](auto& self, const std::shared_ptr<FlameGraphNode>& node) -> void {
-        if (!node) {
+    auto collect = [&](auto& self, const std::shared_ptr<FlameGraphNode>& node, size_t depth = 0) -> void {
+        if (!node || depth > 128) {
             return;
         }
         if (node->address != 0 || node->name != "Root") {
@@ -105,7 +105,7 @@ void DrawSubroutinesTab(AppState& state, const SubroutineProfiler::Snapshot& sna
             m.isInterrupt = node->isInterrupt;
         }
         for (const auto& child : node->children) {
-            self(self, child);
+            self(self, child, depth + 1);
         }
     };
     collect(collect, snapshot.root);

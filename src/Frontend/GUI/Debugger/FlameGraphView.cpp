@@ -153,7 +153,7 @@ void FlameGraphView::Draw(Control::AppState& state, const Hardware::SubroutinePr
     auto traverse = [&](auto& self, const std::shared_ptr<FlameGraphNode>& node, int depth,
                         double startFrac, double widthFrac,
                         std::vector<std::pair<uint16_t, bool>>& currentPath) -> void {
-        if (!node || widthFrac <= 0.0) {
+        if (!node || widthFrac <= 0.0 || depth > 128) {
             return;
         }
         boxes.push_back({node, depth, startFrac, widthFrac, currentPath});

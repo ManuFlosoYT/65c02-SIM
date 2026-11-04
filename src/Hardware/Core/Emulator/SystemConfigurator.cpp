@@ -136,6 +136,7 @@ void SystemConfigurator::SetupHardware(Emulator& emu) {
     emu.bus.Init();
     emu.watchpointWriteHookInstalled = false;
     emu.cpu.SetProfiler(&emu.subroutineProfiler);
+    emu.subroutineProfiler.Reset();
     emu.cpu.Reset();
     emu.pendingIRQ.store(false, std::memory_order_relaxed);
     emu.pendingNMI.store(false, std::memory_order_relaxed);

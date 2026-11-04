@@ -356,3 +356,25 @@ TEST(SubroutineProfilerTest, RetroactiveSymbolResolution) {
     std::error_code ec;
     std::filesystem::remove(dbgPath, ec);
 }
+
+TEST(SubroutineProfilerTest, InfiniteRecursionDoesNotCrashOrExceedMaxDepth) {
+    Hardware::SubroutineProfiler profiler;
+    profiler.SetEnabled(true);
+
+    for (int i = 0; i < 10000; i++) {
+        profiler.OnJSR(0x1000 + (i % 8), 0x2000, 100 + i * 10);
+    }
+
+    auto snapshot = profiler.GetSnapshot();
+    ASSERT_NE(snapshot.root, nullptr);
+    EXPECT_FALSE(snapshot.root->children.empty());
+
+    for (int i = 0; i < 10000; i++) {
+        profiler.OnRTS(200000 + i * 10);
+    }
+
+    auto finalSnapshot = profiler.GetSnapshot();
+    ASSERT_NE(finalSnapshot.root, nullptr);
+    EXPECT_FALSE(finalSnapshot.root->children.empty());
+    EXPECT_GT(finalSnapshot.totalCycles, 0u);
+}

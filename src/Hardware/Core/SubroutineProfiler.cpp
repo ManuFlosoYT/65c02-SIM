@@ -45,6 +45,7 @@ void SubroutineProfiler::Clear() {
     root = std::make_shared<FlameGraphNode>();
     root->name = "Root";
     callStack.clear();
+    overflowDepth = 0;
     pageCrossTracker.ClearAlerts();
     lastCycle = 0;
 }
@@ -60,8 +61,8 @@ void SubroutineProfiler::SetSymbolTable(const Control::SymbolTable* symTable) {
     std::lock_guard<std::mutex> lock(profilerMutex);
     symbolTable = symTable;
     if (symbolTable != nullptr && root != nullptr) {
-        auto updateNames = [&](auto& self, const std::shared_ptr<FlameGraphNode>& node) -> void {
-            if (!node) {
+        auto updateNames = [&](auto& self, const std::shared_ptr<FlameGraphNode>& node, size_t depth = 0) -> void {
+            if (!node || depth > MAX_CALL_STACK_DEPTH) {
                 return;
             }
             if (node->address != 0 && (node->name.empty() || node->name[0] == '$')) {
@@ -71,7 +72,7 @@ void SubroutineProfiler::SetSymbolTable(const Control::SymbolTable* symTable) {
                 }
             }
             for (const auto& child : node->children) {
-                self(self, child);
+                self(self, child, depth + 1);
             }
         };
         updateNames(updateNames, root);
@@ -96,6 +97,11 @@ void SubroutineProfiler::OnJSR(uint16_t targetAddr, uint16_t returnAddr, uint64_
     }
     lastCycle = std::max(lastCycle, currentCycle);
 
+    if (callStack.size() >= MAX_CALL_STACK_DEPTH) {
+        overflowDepth++;
+        return;
+    }
+
     std::string name = ResolveName(targetAddr);
     auto parent = callStack.empty() ? root : callStack.back().node;
     auto node = parent->FindOrAddChild(targetAddr, name, false);
@@ -112,6 +118,10 @@ void SubroutineProfiler::OnRTS(uint64_t currentCycle) {
         return;
     }
     lastCycle = std::max(lastCycle, currentCycle);
+    if (overflowDepth > 0) {
+        overflowDepth--;
+        return;
+    }
     PopFrame(currentCycle);
 }
 
@@ -124,6 +134,11 @@ void SubroutineProfiler::OnBRK(uint16_t vectorAddr, uint16_t pc, uint64_t curren
         return;
     }
     lastCycle = std::max(lastCycle, currentCycle);
+
+    if (callStack.size() >= MAX_CALL_STACK_DEPTH) {
+        overflowDepth++;
+        return;
+    }
 
     std::string name = ResolveName(vectorAddr);
     auto parent = callStack.empty() ? root : callStack.back().node;
@@ -141,6 +156,10 @@ void SubroutineProfiler::OnRTI(uint64_t currentCycle) {
         return;
     }
     lastCycle = std::max(lastCycle, currentCycle);
+    if (overflowDepth > 0) {
+        overflowDepth--;
+        return;
+    }
     PopFrame(currentCycle);
 }
 
@@ -153,6 +172,11 @@ void SubroutineProfiler::OnInterrupt(uint16_t vectorAddr, uint64_t currentCycle,
         return;
     }
     lastCycle = std::max(lastCycle, currentCycle);
+
+    if (callStack.size() >= MAX_CALL_STACK_DEPTH) {
+        overflowDepth++;
+        return;
+    }
 
     std::string handlerName = name.empty() ? ResolveName(vectorAddr) : name;
     auto parent = callStack.empty() ? root : callStack.back().node;
@@ -212,8 +236,8 @@ SubroutineProfiler::Snapshot SubroutineProfiler::GetSnapshot() const {
     }
 
     std::unordered_map<const FlameGraphNode*, std::shared_ptr<FlameGraphNode>> nodeMap;
-    auto cloneTree = [&](auto& self, const std::shared_ptr<FlameGraphNode>& src) -> std::shared_ptr<FlameGraphNode> {
-        if (!src) {
+    auto cloneTree = [&](auto& self, const std::shared_ptr<FlameGraphNode>& src, size_t depth = 0) -> std::shared_ptr<FlameGraphNode> {
+        if (!src || depth > MAX_CALL_STACK_DEPTH) {
             return nullptr;
         }
         auto dst = std::make_shared<FlameGraphNode>();
@@ -234,7 +258,7 @@ SubroutineProfiler::Snapshot SubroutineProfiler::GetSnapshot() const {
 
         dst->children.reserve(src->children.size());
         for (const auto& child : src->children) {
-            auto childClone = self(self, child);
+            auto childClone = self(self, child, depth + 1);
             if (childClone) {
                 dst->children.push_back(std::move(childClone));
             }

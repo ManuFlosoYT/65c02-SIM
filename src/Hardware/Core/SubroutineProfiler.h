@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -30,6 +31,8 @@ struct FlameGraphNode {
 
 class SubroutineProfiler {
    public:
+    static constexpr size_t MAX_CALL_STACK_DEPTH = 128;
+
     struct Snapshot {
         std::shared_ptr<FlameGraphNode> root;
         uint64_t totalCycles = 0;
@@ -65,6 +68,7 @@ class SubroutineProfiler {
 
     [[nodiscard]] const PageCrossTracker& GetPageCrossTracker() const { return pageCrossTracker; }
     [[nodiscard]] PageCrossTracker& GetPageCrossTracker() { return pageCrossTracker; }
+    [[nodiscard]] size_t GetOverflowDepth() const { return overflowDepth; }
 
    private:
     struct CallFrame {
@@ -84,6 +88,7 @@ class SubroutineProfiler {
 
     std::shared_ptr<FlameGraphNode> root;
     std::vector<CallFrame> callStack;
+    size_t overflowDepth = 0;
     PageCrossTracker pageCrossTracker;
     uint64_t lastCycle = 0;
 };
