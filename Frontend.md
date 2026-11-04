@@ -1,205 +1,344 @@
-# Frontend — Graphical User Interface
+# Frontend — Architecture & Graphical User Interface
 
-**Directory:** `Frontend/`  
-**Technologies:** ImGui (docking branch) · SDL3 · OpenGL 3.3 · ImGuiFileDialog
+**Source Directory:** [`src/Frontend/`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/)  
+**Technologies:** Dear ImGui (Docking branch) · SDL3 · OpenGL 3.3 Core (GLAD) · ImGuiFileDialog
 
-## Overview
+---
 
-The frontend provides a **multi-window graphical interface** based on Dear ImGui. It lets you control the emulation, inspect hardware state in real time, and load binary programs. Each hardware component has its own dedicated visualisation window.
+## 1. Overview
 
-## Structure
+The **65c02-SIM** frontend delivers a responsive, multi-window graphical interface designed for real-time hardware inspection, code development, and peripheral monitoring. Built upon **Dear ImGui** and accelerated via **OpenGL 3.3**, the frontend is strictly decoupled from the emulation core to guarantee fluid 60 FPS user interaction and tear-free rendering regardless of the CPU emulation workload.
 
 ```
-Frontend/
-├── main.cpp                  ← Application entry point
-├── UpdateChecker.h/cpp       ← Update checker (HTTPS)
-├── Control/
-│   ├── AppState.h            ← Global application state
-│   └── Console.h/cpp         ← Console text buffer
-└── GUI/
-    ├── ControlWindow         ← Main controls
-    ├── ConsoleWindow         ← Text console
-    ├── RegistersWindow       ← CPU register viewer
-    ├── LCDWindow             ← LCD display
-    ├── VRAMViewerWindow      ← VRAM viewer
-    ├── SIDViewerWindow       ← SID chip viewer
-    ├── IDEWindow             ← Integrated IDE & Debugger
-    ├── ScriptConsoleWindow   ← Python script console
-    ├── SDUtils               ← SD Card utilities
-    ├── UpdatePopup           ← App update popup
-    └── SDKUpdatePopup        ← SDK update popup
++-----------------------------------------------------------------------------------+
+|                                  Main Thread (SDL3)                               |
+|                                                                                   |
+|  [SDL3 Event Loop] ---> [Dear ImGui Frame] ---> [OpenGL 3.3 Render Pipeline]      |
+|                                  |                        |                       |
+|                                  v                        v                       |
+|                          [Control::AppState]    [GLPostProcessPass (CRT FBOs)]    |
++-----------------------------------------------------------------------------------+
+                                   |                             |
+                       Atomic Sync / SPSC Queues        PBO Frame Grabber
+                                   |                             |
++----------------------------------v-----------------------------v------------------+
+|                    Emulation Thread (1-10+ MHz)            Media Exporter Thread  |
+|                                                                                   |
+|              [Core::EmulationEngine (10ms slices)]         [FFmpegEncoder (H.264)]|
+|              [CPU / Bus / VIA / SID / GPU / ACIA]          [SPSC Audio/Video FIFO]|
++-----------------------------------------------------------------------------------+
 ```
 
-## GUI windows
+---
 
-### ControlWindow — Emulation controls
+## 2. Decoupled Threading Architecture
 
-Allows the user to control the emulation through these elements (in order):
+To support emulation speeds exceeding **10,000,000 instructions per second (10 MHz)** without stuttering the graphical interface or suffering audio crackle, the frontend and emulator core execute on separate threads.
 
-- **Settings** — Access advanced configuration.
-- **Debugger** — Open the integrated debugger.
-- **Reset** — Restart the machine and reload the ROM.
-- **Run / Pause** — Toggle emulation execution.
-- **Step** — Execute a single instruction.
-- **GPU** (Checkbox) — Toggle graphics processing.
-- **SID** (Checkbox) — Toggle sound synthesis.
+### 2.1 Main Thread vs. Emulation Thread
 
-Other features in this window:
+1. **Main UI Thread (`main.cpp`)**:
+   - Manages the SDL3 window, OS event pump, and ImGui input handling.
+   - Executes the 60 Hz display refresh synchronized with host V-Sync (`SDL_GL_SetSwapInterval(1)`).
+   - Issues OpenGL draw commands for Dear ImGui draw lists and CRT post-processing passes.
+   - Throttles rendering during idle emulator states (`SDL_WaitEventTimeout`) to eliminate unnecessary host GPU/CPU load.
 
-- Configure the **Target speed** (Hz / IPS).
-- Display the **Actual speed** (Hz / IPS).
+2. **Emulation Thread ([`EmulationEngine`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Hardware/Core/Emulator/EmulationEngine.h)):**
+   - Runs continuously in a dedicated `std::thread` executing precise 10ms execution slices (`EmulateSlice`).
+   - Computes target instruction quanta per slice:  
+     $$\text{Instructions per slice} = \frac{\text{Target IPS}}{1000 / 10}$$
+   - Synchronizes time against high-resolution monotonic clocks (`std::chrono::high_resolution_clock`), sleeping when execution leads wall-clock time and yielding when lagging.
+   - Interacts safely with UI state using lock-free atomic barriers and synchronization primitives.
 
-### Settings Menu
+### 2.2 Concurrency & Safe State Synchronization
 
-Located inside the **ControlWindow**, the Settings menu provides advanced configuration for the emulation and visual experience.
+State mutation across thread boundaries is handled without heavyweight global mutexes:
 
-#### Emulation & General
+- **Lock-Free SPSC Queues ([`Hardware::SPSCQueue<T, N>`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Hardware/Core/SPSCQueue.h))**: Single-producer single-consumer circular ring buffers with `std::atomic<size_t>` head/tail tracking and acquire-release memory orderings. Used for asynchronous video frame streaming (240 frames deep) and audio PCM streaming.
+- **Atomic Execution Flags**: Emulation status (`running`, `paused`, `halted`, `targetIPS`) are stored in `std::atomic` variables.
+- **Safe State Barrier (`WaitUntilSafeToMutate()`)**: When the UI requires broad structural alterations (such as resetting hardware, flashing a new ROM binary, or resizing memory spaces), the UI invokes `emulator.WaitUntilSafeToMutate()`. The emulation loop pauses cleanly at an instruction boundary, allowing deterministic mutation.
 
-| Setting                    | Description                                                                                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Cycle-Accurate**         | Toggles between instruction-accurate and cycle-accurate emulation. When enabled, CPU cycles are tracked precisely, affecting timings for VIA, SID, and Video. |
-| **Ignore Save State Hash** | Allows loading savestates even if the SHA256 integrity check fails. Useful for debugging or loading states from different versions.                           |
-| **Auto-Reload Bin**        | Automatically reloads the current binary from disk whenever it is modified. Essential for fast development cycles.                                            |
-| **Save State**             | Manually save the current emulation state to a `.savestate` file.                                                                                             |
-| **Load State**             | Manually load an emulation state from a `.savestate` file.                                                                                                    |
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Main UI Thread (60 FPS)
+    participant AppState as Control::AppState
+    participant Emu as EmulationEngine (Background)
+    participant Core as 65C02 Core & Bus
 
-#### CRT Filters (GPU)
+    UI->>AppState: Poll User Input (Key/Mouse/Controls)
+    alt User Triggered Pause/Reset/Load
+        UI->>Emu: WaitUntilSafeToMutate()
+        Emu->>Emu: Pause at instruction boundary
+        Emu-->>UI: isActuallyPaused = true
+        UI->>Core: Mutate Memory / Registers / Bus
+        UI->>Emu: Resume()
+    else Normal Execution
+        Emu->>Core: Run 10ms Slice (ProcessBatch)
+        Core-->>Emu: SliceResult (Cycles, Instructions)
+        Emu->>AppState: Atomic Telemetry Update
+        UI->>AppState: Read Telemetry (IPS, Registers, RAM)
+        UI->>UI: Render ImGui + CRT GLSL Shaders
+    end
+```
 
-These filters simulate the look and feel of a classic CRT monitor. They are processed on the GPU via GLSL shaders.
+---
 
-**Quick Actions:**
+## 3. Central State Architecture: `Control::AppState`
 
-- **All On**: Enables all CRT effect layers.
-- **All Off**: Disables all CRT effect layers (clean digital output).
-
-| Category          | Filter                   | Description                                                        |
-| ----------------- | ------------------------ | ------------------------------------------------------------------ |
-| **Essentials**    | **Scanlines**            | Adds horizontal black lines typical of CRT displays.               |
-|                   | **Interlacing**          | Simulates interlaced video scanning behavior.                      |
-|                   | **Screen Curvature**     | Applies a spherical distortion to simulate a curved glass tube.    |
-|                   | **Chromatic Aberration** | Simulates color fringing caused by electron beam misalignment.     |
-|                   | **Phosphor Blur**        | Adds a slight horizontal blur to simulate phosphor persistence.    |
-| **Physicality**   | **Shadow Mask**          | Adds a fine grid (Aperture Grille/Dot Mask) pattern to the pixels. |
-|                   | **Vignette**             | Dims the corners of the screen.                                    |
-|                   | **Corner Rounding**      | Rounds the sharp corners of the digital display.                   |
-|                   | **Glass Glare**          | Adds a subtle reflection overlay to the screen.                    |
-| **Signal/Analog** | **Color Bleeding**       | Simulates NTSC/PAL luma/chroma crosstalk and signal smearing.      |
-|                   | **RF Noise**             | Adds animated static/grain to the image.                           |
-|                   | **VSync Jitter**         | Adds subtle vertical instability to the image.                     |
-|                   | **Phosphor Decay**       | Simulates the "ghosting" effect as phosphors lose brightness.      |
-| **Lighting**      | **Bloom**                | Adds a glow effect to bright areas of the screen.                  |
-
-### ConsoleWindow — Text console
-
-Displays text sent by the ACIA (serial port of the 65c02). Also lets you **type** text that is injected as input to the emulator (`InjectKey`).
-
-Features:
-
-- Circular text buffer
-- Auto-scroll to bottom
-- **Copy to clipboard** — Open a popup to copy the current console text history.
-
-### RegistersWindow — Register viewer
-
-Shows the CPU state in real time:
-
-| Field             | Description             |
-| ----------------- | ----------------------- |
-| `PC`              | Program Counter (hex)   |
-| `SP`              | Stack Pointer (hex)     |
-| `A`               | Accumulator             |
-| `X`               | X register              |
-| `Y`               | Y register              |
-| `N V - B D I Z C` | Individual status flags |
-| Remaining cycles  | In cycle-accurate mode  |
-
-### LCDWindow — LCD display
-
-Renders the current contents of the 2×16 LCD with a monospace font, simulating a physical LCD screen.
-
-### VRAMViewerWindow — VRAM viewer
-
-Renders the VRAM contents (100×75 pixels) as a scaled OpenGL texture. Updated every renderer frame.
-
-### SIDViewerWindow — SID viewer
-
-Shows the state of all 3 SID chip oscillators:
-
-- Programmed frequency for each voice
-- Pulse width
-- ADSR envelope state (level bar)
-- Active waveforms (Triangle / Sawtooth / Pulse / Noise)
-
-### UpdatePopup — Update notification
-
-At startup, `UpdateChecker` queries the latest version on GitHub via HTTPS. If a newer version is available, a popup is shown with a link to the releases page.
+All shared configuration, window visibility toggles, telemetry caches, and subsystem pointers are aggregated into [`Control::AppState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/AppState.h):
 
 ```cpp
-UpdateChecker checker;
-checker.CheckAsync([](const std::string& latestVersion) {
-    // Show popup if latestVersion > currentVersion
-});
+struct AppState {
+    Emulator emulator;               // Emulation core instance
+    ROMState rom;                    // Loaded binary, paths, and debug symbols
+    ScriptState script;              // Active script file and console status
+    EmulationState emulation;        // Speed, cycle-accuracy, and peripheral toggles
+    DebuggerState debugger;          // Active debugger mode (0-9) and heatmap toggles
+    UpdateState update;              // GitHub HTTPS update status
+    CRTSettings crt;                 // Real-time CRT filter shader parameters
+    RenderState render;              // GL textures, UI scale factor, FBOs
+    PopupState popups;               // Modal dialogues and cartridge SD save alerts
+    SDKState sdk;                    // Built-in SDK demo ROMs and assets
+    IDEState ide;                    // Integrated IDE buffers and toolchain state
+    NetworkSnifferState sniffer;     // ESP8266 traffic sniffer state and packet logs
+    ScannerState scanner;            // Memory cheat engine search criteria & candidate list
+    bool requestExit = false;        // Application termination request
+    GUI::CRTFilter crtFilter;        // Post-processing OpenGL pipeline
+};
 ```
 
-> **Note:** The version displayed in the Frontend and used by the `UpdateChecker` is injected at compile time via Git (`PROJECT_VERSION`) and does not require manual changes in the code.
+### Key Sub-States
 
-### SDKUpdatePopup — SDK Updater
+| Sub-State Struct | Source Header | Responsibilities |
+| :--- | :--- | :--- |
+| [`ROMState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/EmulationState.h) | `EmulationState.h` | Holds binary ROM path, loaded status, symbol table (`SymbolTable`), and raw file payload. |
+| [`EmulationState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/EmulationState.h) | `EmulationState.h` | Target IPS (default 1,000,000), peripheral enable flags (`gpuEnabled`, `espEnabled`, `sdEnabled`), cycle accuracy mode, auto-reload file watcher, and media recording configuration. |
+| [`IDEState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/IDEState.h) | `IDEState.h` | Open status, source code buffer, compiler diagnostic output, current file path, and active mode (`IDEMode::C`, `ASM`, `MicroDOS`, `MIDI`). |
+| [`DebuggerState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/UIModalState.h) | `UIModalState.h` | Debugger window open toggle and active view mode ([`DebuggerMode`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/UIModalState.h) enum with 10 modules). |
+| [`CRTSettings`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/AppState.h) | `AppState.h` | Boolean toggles for 20 shader effects, monitor phosphor type (`RGB`, `GreenP1`, `AmberP3`, `WhiteP4`), gamma curve, and time uniforms. |
 
-Similar to `UpdatePopup`, but specifically tracks and alerts users when a new SDK package (`SDK.zip`) is available to be downloaded from GitHub.
+---
 
-### IDEWindow — Code Editor and Debugger
+## 4. UI Modules Breakdown
 
-An integrated development environment.
-- Allows real-time editing of 6502 assembly code.
-- Interactive breakpoints, symbol tables, and assembling on the fly.
-- (See [Debugger](Debugger) page for full details).
-
-### ScriptConsoleWindow — Python Console
-
-A dedicated console window for Python scripts (PocketPy). It seamlessly captures `print()` outputs from the background script thread without blocking the emulator.
-
-### SDUtils — SD Card utilities
-
-Dialog windows and utilities for mounting, unmounting, formatting and interacting with virtual SD card images (`.img`).
-
-## AppState — Global state
-
-`Control/AppState.h` defines the shared state structure between the GUI and the control layer. It holds references to the emulator, status flags (paused, running, etc.), and the path of the loaded binary.
-
-## Render loop
-
-The main loop (`main.cpp`) follows the standard ImGui + SDL3 + OpenGL pattern:
+Window rendering is organized into modular drawing routines dispatched from [`Frontend::DrawGUIWindows()`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GUI/UIModules.cpp):
 
 ```
-while (running):
-    1. Process SDL3 events (keyboard, mouse, window close)
-    2. ImGui::NewFrame()
-    3. Render all windows (ControlWindow, ConsoleWindow, ...)
-    4. ImGui::Render()
-    5. glClear + ImGui_ImplOpenGL3_RenderDrawData()
-    6. SDL_GL_SwapWindow()
+Frontend/GUI/
+├── ControlWindow.cpp        ← Master emulation controls, speed sliders & Registers Section
+├── ConsoleWindow.cpp        ← Interactive VT100 terminal & ACIA bridge
+├── RegistersWindow.cpp      ← CPU register inspector & status flag bitfield (embedded in Control)
+├── LCDWindow.cpp            ← HD44780 2x16 character display
+├── SIDViewerWindow.cpp      ← 3-voice SID synthesizer oscilloscope & ADSR
+├── ScriptConsoleWindow.cpp  ← Custom scripting language console output
+├── IDEWindow.cpp            ← Integrated C/ASM source code IDE
+├── MIDI/
+│   └── MIDIWorkspaceWindow  ← Multi-track piano roll & tracker (active in IDEMode::MIDI)
+├── Video/
+│   ├── VRAMViewerWindow.cpp ← 100x75 GPU frame buffer viewer & palette inspector
+│   ├── CRTFilter.cpp        ← Multi-pass GLSL post-processing controller
+│   └── GLPostProcessPass.cpp← FBO ping-pong texture manager
+└── Debugger/                ← Integrated Hardware Debugger Suite (10 modules)
 ```
 
-## ImGui & File Dialog Configuration
+### 4.1 ControlWindow — Master Emulation Controls
+Provides primary execution controls:
+- **Run / Pause**: Toggles background execution slice scheduling.
+- **Step**: Executes exactly one 65C02 instruction step, completing internal cycle ticks.
+- **Reset**: Fires a hardware reset vector (`$FFFC-$FFFD`) and restores memory mapped registers.
+- **Speed Limit (IPS)**: Real-time slider adjusting target speed from 10 Hz up to uncapped 50+ MHz.
+- **Performance Readout**: Displays actual real-world IPS achieved, CPU load %, and slice late penalties.
+- **Peripheral Toggles**: Immediate hot-plug toggles for GPU, SID, ESP8266 WiFi, and SD Card.
+- **Registers Dashboard ([`RegistersWindow.cpp`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GUI/RegistersWindow.cpp))**: Embedded section displaying 16-bit `PC` and `SP`, 8-bit `A`, `X`, `Y`, colored flags (`NV-BDIZC`), and remaining cycle countdown.
 
-- **File Bookmarks**: The file explorer has favorites/bookmarks management enabled thanks to the `-DUSE_BOOKMARK` flag of ImGuiFileDialog.
-- **Math Operators**: CMake enables `-DIMGUI_DEFINE_MATH_OPERATORS` by default, allowing developers to perform direct mathematical operations with vectors in the UI.
+### 4.2 LCDWindow — 2×16 Monospace Display
+Simulates a physical 2-line by 16-character liquid crystal display attached via VIA Port B. Renders ASCII characters and custom character generator RAM (CGRAM) glyphs using retro green/blue backlighting styles.
 
-## External dependencies
+### 4.3 VRAMViewerWindow — Graphics Surface
+Displays the raw 100×75 VRAM surface generated by the GPU (`$2000-$3FFF`).
+- **Memory Stride**: Renders using a 128-byte stride format matching physical hardware.
+- **Pixel Inspector**: Hover over any coordinate to view the exact memory address, offset, and RGB color components.
+- **Palette Controls**: Switch between direct color and indexed palettes.
 
-| Library         | Version        | Use                                  |
-| --------------- | -------------- | ------------------------------------ |
-| SDL3            | 3.4.x          | Window, events, audio                |
-| ImGui           | docking branch | GUI framework                        |
-| ImGuiFileDialog | 0.6.4          | File open dialog                     |
-| GLAD            | 2.0.8          | OpenGL loader                        |
-| nlohmann/json   | 3.12.0         | JSON parsing (GitHub API response)   |
-| cpp-httplib     | 0.15.3         | HTTP/HTTPS client for update checker |
-| OpenSSL         | —              | TLS for HTTPS requests               |
-| asio            | latest         | Networking/ESP8266                   |
-| picosha2        | latest         | Savestate Hashes                     |
-| ZLIB            | latest         | Compression                          |
-| pocketpy        | latest         | Scripting                            |
-| GoogleTest      | latest         | Unit testing                         |
+### 4.4 SIDViewerWindow & MIDIWorkspaceWindow
+- **SIDViewerWindow ([`SIDViewerWindow.cpp`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GUI/SIDViewerWindow.cpp))**: Displays real-time hardware status of the MOS 6581 / 8580 SID sound generator (voice frequencies, pulse width duty cycles, ADSR envelopes, filter cutoff/resonance).
+- **MIDIWorkspaceWindow ([`MIDIWorkspaceWindow.cpp`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GUI/MIDI/MIDIWorkspaceWindow.h))**: Specialized workspace rendered when `state.ide.mode == Control::IDEMode::MIDI`, enabling piano roll editing and interactive audio synthesis alongside the SID viewer.
 
-> **Note:** OpenSSL is strictly mandatory.
+---
+
+## 5. Terminal Console & ANSI VT100 Parser
+
+The text console ([`ConsoleWindow.cpp`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GUI/ConsoleWindow.cpp)) serves as the interactive serial terminal connected to the W65C51N ACIA device (`$5000-$5003`).
+
+### 5.1 Architecture
+
+```
+[65C02 Program via ACIA Tx]
+            │
+            ▼
+ [AnsiVt100Parser::ProcessChar] ◄── Cursor query responses injected via InjectKey()
+            │
+            ▼
+   [TerminalBuffer]
+    ├── Primary Screen (2D vector<vector<Cell>>)
+    ├── Alternate Screen (altScreen)
+    ├── Scrollback History
+    └── SGR Text Attributes (Color, Bold, Underline)
+            │
+            ▼
+[ConsoleView ImGui Renderer]
+```
+
+### 5.2 TerminalBuffer Details
+[`Console::TerminalBuffer`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Hardware/Core/TerminalBuffer.h) maintains:
+- **Dual Screen Buffers**: Standard primary buffer and alternate screen buffer (`altScreen`) for full-screen CLI apps (e.g. `vi`, text editors, or `microDOS` shells).
+- **Cursor Tracking**: Coordinates (`cursorX`, `cursorY`), saved positions, and cursor blink timers.
+- **SGR Formatting**: 256-color and 24-bit TrueColor ANSI styling, bold, dim, italic, and underline text.
+
+### 5.3 VT100 Parser State Machine
+[`Console::AnsiVt100Parser`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Hardware/Core/AnsiVt100Parser.h) implements a standard DEC VT100/VT220 state machine:
+- **States**: `Ground`, `Escape`, `Csi` (Control Sequence Introducer), `CharsetG0`, `CharsetG1`, `Osc` (Operating System Command).
+- **DEC Special Character Sets**: Translates VT100 line-drawing characters (box characters, corners, crosses) into UTF-8 codepoints.
+- **Bidirectional Control**: Responds to cursor position queries (`ESC [ 6 n`) by injecting coordinates back into the CPU keyboard queue (`InjectKey`).
+
+---
+
+## 6. OpenGL Post-Processing & CRT Shaders
+
+To faithfully recreate the visual experience of vintage composite and RGB CRT monitors, the frontend implements a modular GPU post-processing pipeline.
+
+### 6.1 Ping-Pong FBO Architecture
+[`GUI::GLPostProcessPass`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GUI/Video/GLPostProcessPass.h) manages two double-buffered Framebuffer Objects (`m_fbo[2]`, `m_outputTex[2]`):
+1. **Pass 1**: The raw VRAM texture (100×75) is upscaled into FBO 0 at 8× subpixel scaling (800×600).
+2. **Pass 2**: CRT shader kernels process the intermediate texture into FBO 1, sampling previous frames to compute analog persistence.
+3. **Pass 3**: Final composited image is rendered to the ImGui viewport quad.
+
+### 6.2 GLSL Shaders (`crt.vert` and `crt.frag`)
+The CRT filter suite applies comprehensive optical and analog simulations configured via uniforms:
+
+```glsl
+// Uniform configuration in crt.frag
+uniform sampler2D u_texture;     // Current frame FBO
+uniform sampler2D u_prevFrame;   // Previous frame for decay/persistence
+uniform vec2      u_nativeSize;  // Native VRAM dimensions (100x75)
+uniform vec2      u_outputSize;  // Target scaled viewport resolution
+uniform float     u_time;        // Animation time base
+uniform int       u_monitorType; // 0=RGB, 1=Green P1, 2=Amber P3, 3=White P4
+```
+
+#### Supported CRT Filter Categories
+
+| Category | Filter Uniform | Physical / Analog Simulation |
+| :--- | :--- | :--- |
+| **Essentials** | `u_scanlines` | Simulates horizontal cathode ray blanking lines across scanlines. |
+| | `u_interlacing` | Alternates odd/even scanlines on alternating frames. |
+| | `u_curvature` | Barrel distortion simulating the curved glass surface of a CRT tube. |
+| | `u_chromatic` | Misaligned red, green, and blue electron guns causing color fringing. |
+| | `u_blur` | Horizontal phosphor bleeding across adjacent beam sweeps. |
+| **Physicality** | `u_shadowMask` | Fine aperture grille or shadow dot mask phosphor pattern. |
+| | `u_vignette` | Natural edge falloff and corner darkening from tube geometry. |
+| | `u_cornerRounding`| Soft rounded bezel corners masking the tube edges. |
+| | `u_glassGlare` | Specular ambient light reflection on the outer tube face. |
+| **Analog Imperfections** | `u_colorBleeding` | NTSC/PAL luma/chroma crosstalk and composite video signal smear. |
+| | `u_noise` | High-frequency RF static noise and analog signal grain. |
+| | `u_vsyncJitter` | Subtle vertical sync timing drift and field jitter. |
+| | `u_phosphorDecay` | Phosphor persistence and decay trail ("ghosting"). |
+| | `u_humBar` | 50/60 Hz AC power ground loop horizontal hum bar rolling vertically. |
+| **Lighting** | `u_bloom` | Glow bleeding outward from high-intensity beam strikes. |
+| | `u_halation` | Internal reflection within the CRT front glass. |
+| | `u_moire` | Interference pattern between screen pixel grid and phosphor mask. |
+| | `u_gamma` | Accurate non-linear CRT gamma curve transfer (default 2.75). |
+| | `u_sharpPixels` | Preserves sharp pixel edges on 100x75 display before post-processing. |
+| | `u_ghosting` | Secondary shadow deflection reflections. |
+
+#### Phosphor Monitor Types
+The `uMonitorType` uniform shifts the spectral output to replicate historic monitors:
+- **RGB**: Full-color shadow mask / Trinitron display.
+- **Green P1**: Monochromatic green display (525 nm peak wavelength, e.g., Apple Monitor III).
+- **Amber P3**: Amber phosphor display (590 nm peak wavelength, high contrast).
+- **White P4**: Monochrome black-and-white phosphor (early terminals, portable CRT sets).
+
+---
+
+## 7. Media Recording Pipeline
+
+The frontend includes a high-throughput, multi-track multimedia exporter ([`MediaExporter.h`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/MediaExporter.h) & [`FFmpegEncoder.h`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/FFmpegEncoder.h)) powered by **FFmpeg** (`libavcodec`, `libavformat`, `libswscale`, `libavutil`).
+
+### 7.1 Pipeline Architecture
+
+```
+[OpenGL Render Target]                      [SID Audio Generator]
+         │                                            │
+         ▼                                            ▼
+[GLPboFrameGrabber (Asynchronous PBO)]       [Audio Stream Callback]
+         │                                            │
+         ▼                                            ▼
+  Video SPSCQueue <240 frames>                 Audio SPSCQueue <240 blocks>
+         │                                            │
+         └───────────────────────┬────────────────────┘
+                                 │
+                                 ▼
+                    [MediaExporter Worker Thread]
+                                 │
+                                 ▼
+                     [FFmpegEncoder Processing]
+                      ├── Video Track 0: Processed CRT (H.264)
+                      ├── Video Track 1: Raw Digital VRAM (H.264)
+                      └── Audio Track: Stereo SID Audio (FLAC/WAV/OPUS)
+                                 │
+                                 ▼
+                      [Multiplexed Container]
+                         (.mkv / .mp4 file)
+```
+
+### 7.2 Technical Implementation
+- **Zero-Stall Asynchronous PBO Grabber ([`GLPboFrameGrabber`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GLPboFrameGrabber.h))**: Double-buffered OpenGL Pixel Buffer Objects (`glReadPixels` via DMA) prevent the CPU from blocking while reading back GPU framebuffers.
+- **Simultaneous Dual-Video Tracks**: The recorder captures both the high-resolution processed CRT view and the raw native 100×75 VRAM pixels simultaneously into independent video tracks inside a single MKV container.
+- **Audio FIFO Buffer (`AVAudioFifo`)**: Synchronizes varying sample packet sizes from the SID synthesis callback to fixed audio codec frame sizes.
+- **Standalone Audio Recorder ([`Hardware::AudioRecorder`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Hardware/Audio/AudioRecorder.h))**: When recording audio only (`RecordingType::Audio`), the emulator routes PCM samples directly through a lightweight background worker thread writing standard 16-bit PCM WAV streams, avoiding FFmpeg library overhead.
+- **Encoders Supported**:
+  - Video: H.264 / AVC (`libx264`).
+  - Audio: FLAC (Lossless 24-bit), WAV (PCM 16-bit), OPUS (Streaming 48 kHz).
+
+---
+
+## 8. Headless Execution Mode
+
+For continuous integration (CI/CD) test runners, automated regression testing, and headless benchmarks, **65c02-SIM** can be launched entirely without graphical dependencies via [`Frontend::HeadlessRunner`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/HeadlessRunner.h).
+
+### 8.1 Command-Line Syntax
+
+```bash
+./SIM_65C02 --headless [OPTIONS] [ROM_FILE]
+```
+
+### 8.2 CLI Arguments Table
+
+| Option | Argument | Description |
+| :--- | :--- | :--- |
+| `--headless` | None | Runs without SDL3 window creation or OpenGL context initialization. |
+| `--rom` | `<path>` | Path to binary ROM image or `.65c` cartridge archive. Fallback: `output/rom/room.bin`. |
+| `--script` | `<path>` | Executes an embedded custom script file and mirrors output to `stdout`. |
+| `--run-cycles` | `<N>` | Advances the 65C02 CPU exactly $N$ cycles after reset and then terminates. |
+| `--dump-mem` | `<file>` | Dumps the full 64 KB bus memory space to a raw binary file upon termination. |
+| `--sid` / `--no-sid` | None | Enables or disables the MOS SID sound hardware. |
+| `--sid-sound` | None | Enables real-time host audio output in headless mode. |
+| `--profile-sid`| None | Outputs fine-grained execution nanosecond benchmarks for all SID stages. |
+| `--nsf-trace` | `<path>` | Generates an NSF audio execution JSON trace report. |
+| `--nsf-duration`| `<sec>` | Maximum execution duration for NSF traces. |
+| `--nsf-song` | `<index>`| Song track index for NSF playback. |
+
+### 8.3 Example: Headless Automated Regression
+
+```bash
+# Execute ROM for 2,000,000 cycles with a test script, then dump RAM
+./SIM_65C02 --headless \
+            --rom build/firmware.bin \
+            --script tests/verify_state.sim \
+            --run-cycles 2000000 \
+            --dump-mem /tmp/mem_dump.bin
+
+# Verify test assertion exit code
+echo "Headless test run completed successfully."
+```

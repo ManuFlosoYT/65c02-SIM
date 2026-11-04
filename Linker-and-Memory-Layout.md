@@ -1,125 +1,210 @@
-# Linker and Memory Layout
+# Linker & Memory Layout Reference
 
-**Directory:** `sdk/linker/`
+This document provides a comprehensive technical reference for the system memory layout and the **LLVM-MOS** GNU linker scripts used in 65c02-SIM.
 
-## Overview
+The project uses modern LLVM-MOS (`mos-clang` and GNU `ld.lld`), completely replacing legacy cc65/ld65 configuration files with standard GNU linker scripts (`link.ld`), Link-Time Optimization (LTO), and dynamic memory map generation.
 
-The `sdk/linker/` directory contains the linker configuration files (`ld65` from the **cc65** suite), the system BIOS, and the Microsoft BASIC interpreter. These files define how code and data are laid out within the 65c02's 64 KB address space.
+---
 
-## Full memory map
+## 1. System Memory Architecture
+
+The 65C02 processor addresses a flat 64 KB (65,536 bytes) physical address space (`$0000–$FFFF`). The simulator supports two primary memory architectures:
+
+1. **Standard Mode:** Used for standalone SDK ROM programs, demos, and firmware.
+2. **microDOS Mode:** Used when executing the microDOS operating system and its `.app` binaries.
 
 ```
-0x0000 – 0x00FF   Zero Page — fast-access variables
-0x0100 – 0x01FF   Stack
-0x0200 – 0x02FF   (free)
-0x0300 – 0x03FF   INPUT_BUFFER — BIOS circular input buffer
-0x0400 – 0x47FF   RAM_1 — C variables and main heap
-0x4800 – 0x481F   SID — 32 sound chip registers
-0x4820 – 0x5FFF   RAM_2 — additional RAM
-0x5000 – 0x5003   ACIA — serial communication registers (within RAM_2)
-0x6000 – 0x600F   VIA — 16 I/O registers
-0x6010 – 0x7FFF   RAM_3 — additional RAM
-0x8000 – 0xFFF9   ROM — program code + BASIC + BIOS
-0xFFFA – 0xFFFB   NMI vector
-0xFFFC – 0xFFFD   RESET vector
-0xFFFE – 0xFFFF   IRQ/BRK vector
+Standard Mode                          microDOS Mode
++---------------------------------+    +---------------------------------+
+| $0000-$00FF: Zero Page          |    | $0000-$005F: App Zero Page      |
+| $0100-$01FF: CPU Hardware Stack |    | $0060-$0062: Process Arguments  |
+| $0200-$02FF: (Free / Temp)      |    | $0078-$00FB: Kernel Zero Page   |
+| $0300-$03FF: BIOS Input Buffer  |    | $0100-$01FF: CPU Hardware Stack |
+| $0400-$1FFF: RAM (General C)    |    | $0200-$53FF: App Safe RAM       |
+| $2000-$3FFF: GPU VRAM (Optional)|    |   ($2800-$47FF: Overlay Window) |
+| $4000-$47FF: RAM                |    | $5400-$5FBF: Kernel RAM & Stack |
+| $4800-$481F: SID Registers      |    | $5FC0-$7FBF: microDOS-GPU VRAM  |
+| $4820-$4FFF: RAM                |    |   ($7FB0-$7FB2: Mouse Registers)|
+| $5000-$5003: ACIA UART          |    | $7FC0-$7FFF: Peripheral MMIO    |
+| $5004-$5007: ESP8266 WiFi       |    |   $7FC0-$7FC3: ACIA UART        |
+| $5008-$500B: SD Card SPI        |    |   $7FC4-$7FC7: ESP8266 WiFi     |
+| $6000-$600F: VIA 6522           |    |   $7FC8-$7FCB: SD Card SPI      |
+| $6010-$790F: VRAM Back Buffer   |    |   $7FD0-$7FDF: VIA 6522         |
+| $7910-$7FFF: RAM (Top of Stack) |    |   $7FE0-$7FFF: MOS 6581/8580 SID|
++---------------------------------+    +---------------------------------+
+| $8000-$FFFF: 32 KB ROM Area     |    | $8000-$FFFF: microDOS Kernel ROM|
+|   $FFFA-$FFFF: Hardware Vectors |    |   $FF90-$FFF9: ABI Jump Table   |
++---------------------------------+    |   $FFFA-$FFFF: Hardware Vectors |
+                                       +---------------------------------+
 ```
 
-> With the GPU enabled, `0x2000`–`0x3FFF` (within RAM_1) is used as VRAM.
+---
 
-## Linker configuration files
+## 2. Memory Maps Compared
 
-### `C-Runtime-dynamic.cfg` — Dynamic Linker Configuration
+### Standard Mode Memory Map
 
-Previously, the project used multiple static `.cfg` files (`C-Runtime.cfg`, `C-Runtime-GPU.cfg`, `C-Runtime-GPUDoubleBuffer.cfg`) to manage different memory layouts based on the hardware requirements of each program. This became difficult to maintain as the number of hardware components grew.
+| Address Range | Size | Component | Function / Description |
+|---|---|---|---|
+| `$0000–$00FF` | 256 B | Zero Page | Fast-access memory. `__rc0`–`__rc31` reserved for LLVM-MOS virtual registers; remaining for C pointers/globals. |
+| `$0100–$01FF` | 256 B | CPU Stack | 65C02 hardware call stack (`JSR`, `RTS`, `PHA`, `PLA`, interrupts). |
+| `$0200–$02FF` | 256 B | Free RAM | General workspace. |
+| `$0300–$03FF` | 256 B | BIOS Input Buffer | Circular FIFO buffer for incoming serial characters. |
+| `$0400–$7FFF` | ~31 KB | System RAM | Main memory for C heap, global/static variables, and software stack. Split into contiguous blocks around MMIO. |
+| `$2000–$3FFF` | 8 KB | GPU VRAM | 100x75 pixel display buffer (when GPU is enabled). |
+| `$4800–$481F` | 32 B | SID 6581/8580 | 3-voice sound chip registers (when SID is enabled). |
+| `$5000–$5003` | 4 B | ACIA 6850 | Serial console UART registers. |
+| `$5004–$5007` | 4 B | ESP8266 WiFi | WiFi network co-processor MMIO. |
+| `$5008–$500B` | 4 B | SD Card SPI | Hardware SPI controller registers. |
+| `$6000–$600F` | 16 B | VIA 6522 | Versatile Interface Adapter (timers, LCD data port, handshakes). |
+| `$6010–$790F` | ~6.4 KB| GPU Back Buffer | Secondary VRAM buffer (when double buffering is enabled). |
+| `$8000–$FFFF` | 32 KB | ROM Area | Program executable code (`.text`), constants (`.rodata`), and vectors. |
+| `$FFFA–$FFFF` | 6 B | CPU Vectors | Hardware NMI (`$FFFA`), RESET (`$FFFC`), and IRQ/BRK (`$FFFE`). |
 
-Now, the memory layout is generated **dynamically** at compile time using a Python script (`tools/linker/generate_cfg.py`).
+---
 
-**How it works:**
-1. During compilation, `scripts/compile-bin.sh` inspects the C code (`.c` file) for specific library `#include` directives.
-2. If it detects libraries that require specific memory mapping (like `GPU.h`, `GPUDoubleBuffer.h`, or `NET.h`), it adds the corresponding flags (`--gpu`, `--double-buffer`, `--net`) to the generation step.
-3. `generate_cfg.py` calculates the memory map, reserving space for the requested hardware and dynamically allocating the remaining RAM (from `0x0400` to `0x8000`) into contiguous blocks (`RAM_1`, `RAM_2`, etc.).
-4. The generated configuration is saved to `sdk/src/build/C-Runtime-dynamic.cfg` and used by `ld65`.
+### microDOS Mode Memory Map
 
-By default, the script reserves memory for standard components to avoid collisions with C variables:
-- **SID:** `0x4800`–`0x481F`
-- **ACIA:** `0x5000`–`0x5003`
-- **VIA:** `0x6000`–`0x600F`
+| Address Range | Size | Component | Function / Description |
+|---|---|---|---|
+| `$0000–$005F` | 96 B | App Zero Page | Dedicated to user `.app` binaries (`__rc0`–`__rc31` + app globals). |
+| `$0060–$0062` | 3 B | Process Arguments| `$60` = `arg_count`, `$61–$62` = 16-bit pointer to `args[]` string array. |
+| `$0078–$00FB` | 132 B | Kernel Zero Page | Internal microDOS kernel pointers, FatFs structures, and state. |
+| `$00FC–$00FD` | 2 B | UART Pointers | BIOS circular buffer `READ_PTR` and `WRITE_PTR`. |
+| `$0100–$01FF` | 256 B | CPU Stack | Hardware return stack. |
+| `$0200–$53FF` | 20.5 KB| App Safe RAM | Primary executable space for `.app` programs. Program loaded at `$0200`. App software stack top is `$53FF`. |
+| `$2800–$47FF` | 8 KB | Overlay Window | Virtual memory window. Paged `.app` overlay banks are loaded here on demand. |
+| `$5400–$5FBF` | 3008 B | Kernel RAM | Operating system workspaces, disk buffers, and kernel stack (`__stack = 0x5FBF`). |
+| `$5FC0–$7FBF` | 8 KB | microDOS-GPU VRAM| 100x75 VRAM @ 1 byte/pixel (RGB 222). When GPU is off, acts as 8KB extended app heap (`APP_EXTRA_RAM`). |
+| `$7FB0–$7FB2` | 3 B | Host Mouse | Hardware mouse registers: Buttons (`$7FB0`), X (`$7FB1`), Y (`$7FB2`). Within `MicroDosGPU`, these reside at internal offsets `$1FF0`, `$1FF1`, `$1FF2`. |
+| `$7FC0–$7FFF` | 64 B | MMIO Area | Re-mapped peripheral space: ACIA (`$7FC0`), ESP8266 (`$7FC4`), SD (`$7FC8`), VIA (`$7FD0`), SID (`$7FE0`). |
+| `$8000–$FFFF` | 32 KB | microDOS ROM | Monolithic kernel, FatFs drivers, and filesystem routines. |
+| `$FF90–$FFF9` | 106 B | ABI Jump Table | 35 fixed 3-byte indirect jumps (`JMP <func>`) to kernel routines. |
+| `$FFFA–$FFFF` | 6 B | CPU Vectors | Hardware NMI, RESET, IRQ vectors. |
 
-### `raw.cfg` — Pure assembly
+---
 
-Minimal configuration for assembly programs without a C runtime. Code starts directly at `$8000` and the interrupt vectors are at `$FFFA`–`$FFFF`.
+## 3. LLVM-MOS Linker Script Architecture
 
-## BIOS (`bios.s`)
+The toolchain uses GNU linker scripts compliant with LLVM-MOS. The base script is [`sdk/linker/link.ld`](file:///home/manu/Documents/GitHub/65c02-SIM/sdk/linker/link.ld):
 
-The BIOS provides basic I/O routines used by both Microsoft BASIC and C programs through the cc65 runtime.
+```ld
+/* Linker script base for 65c02-SIM with LLVM-MOS */
 
-### Exported routines
+__rc0 = 0x00;
+INCLUDE imag-regs.ld
+ASSERT(__rc0 == 0x00, "Error in Zero Page mapping.")
+ASSERT(__rc31 == 0x1F, "Error in Zero Page mapping.")
 
-| Symbol | Description |
-|--------|-------------|
-| `MONRDKEY` / `CHRIN` | Read a character from the input buffer (blocking) |
-| `MONGETCHAR_NB` | Read a character from the buffer without blocking |
-| `MONPEEK` | Peek at the next character without removing it |
-| `MONCOUT` / `CHROUT` | Send a character via the ACIA (console) |
-| `INIT_BUFFER` | Initialize the circular input buffer |
-| `IRQ_HANDLER` | Interrupt handler (receives bytes via ACIA) |
-| `LOAD` / `SAVE` | Empty stubs (for BASIC compatibility) |
+MEMORY {
+    zp           (rw) : ORIGIN = __rc31 + 1, LENGTH = 0x100 - (__rc31 + 1)
+    input_buffer (rw) : ORIGIN = 0x0300,     LENGTH = 0x0100
+    ram          (rw) : ORIGIN = 0x0400,     LENGTH = 0x7C00
+    rom          (rx) : ORIGIN = 0x8000,     LENGTH = 0x8000
+}
 
-### Circular input buffer
+REGION_ALIAS("c_readonly", rom)
+REGION_ALIAS("c_writeable", ram)
 
-The BIOS implements a **256-byte circular buffer** at `$0300`–`$03FF`:
-- `WRITE_PTR` (`$00`): write index (ISR → buffer)
-- `READ_PTR` (`$01`): read index (program → buffer)
-- The ISR (`IRQ_HANDLER`) writes each byte received via ACIA into the buffer
-- `MONRDKEY` reads from the buffer in a blocking loop
-- When the buffer is nearly full (`>= 0xB0`), hardware flow control is asserted (bit 0 of PORTA)
+SECTIONS {
+    .input_buffer 0x0300 (NOLOAD) : {
+        KEEP(*(SORT_BY_NAME(.input_buffer*)))
+        *(.input_buffer)
+    } > input_buffer
 
-### Output routine `MONCOUT`
+    INCLUDE c.ld
 
-```asm
-MONCOUT:
-    pha
-    sta ACIA_DATA       ; Send character over serial
-    lda #$FF
-@txdelay:
-    dec                 ; Delay to simulate baud rate
-    bne @txdelay
-    pla
-    rts
+    .vectors 0xFFFA : {
+        SHORT(DEFINED(_nmi) ? _nmi : 0x0F00)
+        SHORT(DEFINED(_start) ? _start : (DEFINED(_reset) ? _reset : 0x8000))
+        SHORT(DEFINED(IRQ_HANDLER) ? IRQ_HANDLER : (DEFINED(_irq) ? _irq : 0))
+    } > rom
+}
+
+__stack = 0x7FFF;
+
+OUTPUT_FORMAT {
+    FULL(rom)
+}
 ```
 
-## C-Runtime (`C-Runtime.s`)
+### Standard Linker Sections
+- `.text`: Machine instructions and executable code (placed in `rom` or `app_ram`).
+- `.rodata`: Read-only constants, string literals, and lookup tables (placed in `rom`).
+- `.data`: Initialized global and static variables. Copied from ROM to RAM at startup by `__do_copy_data`.
+- `.bss`: Uninitialized global and static variables. Zeroed at startup by `__do_zero_bss`.
+- `.zeropage` / `.zp`: Fast-access variables placed directly in Zero Page.
+- `.input_buffer`: Fixed at `$0300` for BIOS serial reception (`NOLOAD`).
+- `.vectors`: Fixed at `$FFFA` for 6502 hardware interrupts.
 
-C runtime initialization code for cc65. Runs before `main()` and is responsible for:
-1. Copying the `DATA` segment from ROM to RAM
-2. Zeroing the `BSS` segment
-3. Initializing the BIOS input buffer
-4. Calling global C++ constructors
-5. Calling `main()`
+### Zeropage Imaginary Registers (`imag-regs.ld`)
+The 6502 architecture provides only three 8-bit registers (`A`, `X`, `Y`). To compile high-level C efficiently, LLVM-MOS maps 32 virtual registers—known as **imaginary registers** (`__rc0` through `__rc31`)—into the Zero Page:
+- `__rc0`–`__rc3`: Used for 16-bit/32-bit function return values and expression evaluation.
+- `__rc4`–`__rc15`: General-purpose compiler scratch registers and pointer arithmetic.
+- `__rc16`–`__rc31`: Register variables and callee-saved registers.
 
-## WozMon (`wozmon.s`)
+The linker script asserts that these registers reside between `$00` and `$1F`:
+```ld
+ASSERT(__rc0 == 0x00, "Error in Zero Page mapping.")
+ASSERT(__rc31 == 0x1F, "Error in Zero Page mapping.")
+```
+User zero-page variables begin immediately following `__rc31` (`ORIGIN = __rc31 + 1`).
 
-Apple 1 system monitor originally written by **Steve Wozniak** (© 1976 Apple Computer, Inc.). Allows inspecting and modifying memory directly from a serial console.
+### Stack Architecture
+- **Hardware Call Stack:** 256 bytes at `$0100–$01FF` managed by the 6502 `S` register. Used solely for subroutine call returns (`JSR`/`RTS`) and interrupt frames.
+- **Software Data Stack:** Managed by LLVM-MOS virtual frame pointers (`__stack`). It grows downwards from the highest address in available RAM:
+  - Standard programs: `__stack = 0x7FFF;`
+  - microDOS apps: `__stack = 0x53FF;`
+  - microDOS kernel: `__stack = 0x5FBF;`
+- Initialized automatically via `-linit-stack` in the compiler flags.
 
-## Microsoft BASIC (`msbasic/`)
+---
 
-Directory containing the **Microsoft BASIC for 6502** port (© 1977 Microsoft), based on restorations by [mist64](https://github.com/mist64/msbasic) and [Ben Eater](https://github.com/beneater/msbasic).
+## 4. Dynamic Linker Script Generation
 
-- Build with `./sdk/msbasic/make.sh`
-- The resulting binary is loaded into ROM as a sample program
-- Allows writing BASIC programs directly in the emulator console
+To prevent memory collisions between user data and hardware MMIO regions, the SDK dynamically generates customized linker scripts at compile time.
 
-## Compilation tool
-
-The cc65 suite is used to compile and link programs:
-
+### 1. `generate_link_ld.py` (Standard Programs & Kernel)
+Located at [`tools/linker/generate_link_ld.py`](file:///home/manu/Documents/GitHub/65c02-SIM/tools/linker/generate_link_ld.py).
+During compilation, `compile-bin.sh` inspects the program’s `#include` directives:
 ```bash
-# Assemble
-ca65 program.s -o program.o
-
-# Link with the C runtime
-ld65 -C sdk/linker/C-Runtime.s program.o sdk/linker/C-Runtime.o -o output/rom/program.bin
+python3 tools/linker/generate_link_ld.py [--gpu] [--double-buffer] [--net] [--sid] [--microDOS]
 ```
 
-The `scripts/compile-bin.sh` script automates the entire process. See the [SDK](SDK) page for more details.
+**How it partitions memory:**
+1. Collects all reserved peripheral address ranges (e.g. `$2000–$3FFF` for GPU, `$4800–$481F` for SID, `$5000–$5003` for ACIA).
+2. Merges overlapping or adjacent regions.
+3. Automatically carves the remaining RAM (`$0400–$7FFF`) into a sequence of safe, non-overlapping memory blocks (`ram_1`, `ram_2`, etc.).
+4. Assigns `c_writeable` to `ram_1` and sets `__stack` to the top of the highest available RAM block.
+
+---
+
+### 2. `generate_app_link_ld.py` (microDOS Applications)
+Located at [`tools/linker/generate_app_link_ld.py`](file:///home/manu/Documents/GitHub/65c02-SIM/tools/linker/generate_app_link_ld.py).
+Generates linker scripts specifically for microDOS `.app` binaries:
+```bash
+python3 tools/linker/generate_app_link_ld.py [--gpu] [--overlays <N>]
+```
+
+**Key Features:**
+1. **App Memory Boundaries:** Restricts application RAM to `$0200–$53FF`.
+2. **Zero Page Boundaries:** Caps application zero-page symbols at `$005F` so they never collide with microDOS kernel zero-page variables (`$0078–$00FB`).
+3. **ABI Jump Table Symbol Resolution:**
+   Every system function is exported as an absolute linker symbol pointing to its fixed `$FF90 + offset` address:
+   ```ld
+   PROVIDE(print_str = 0xFF90);
+   PROVIDE(println   = 0xFF93);
+   PROVIDE(sd_open   = 0xFFA2);
+   PROVIDE(sd_read   = 0xFFA5);
+   ...
+   ```
+   When user code calls `println("Hi")`, LLVM-MOS emits a direct `jsr $FF93`, completely eliminating runtime dynamic linking overhead.
+
+4. **Overlay Bank Generation:**
+   When `--overlays <N>` is specified, the script defines overlay memory regions with virtual 24-bit bank origins:
+   ```ld
+   core_ram    (rw) : ORIGIN = 0x0200,   LENGTH = 0x2600
+   overlay_1   (rx) : ORIGIN = 0x012800, LENGTH = 0x2000
+   overlay_2   (rx) : ORIGIN = 0x022800, LENGTH = 0x2000
+   ```
+   Each overlay page is mapped to load at `$2800` (size `$2000` = 8 KB). Resident trampolines (`OVERLAY_TRAMPOLINE`) in [`sdk/linker/App-Runtime.s`](file:///home/manu/Documents/GitHub/65c02-SIM/sdk/linker/App-Runtime.s) automatically page the required bank into the `$2800` window via `os_load_app_page` before executing overlay code.

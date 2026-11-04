@@ -1,64 +1,357 @@
 # WebAssembly Build (Emscripten)
 
-The 65C02-SIM can be compiled to WebAssembly using the Emscripten toolchain, allowing it to run directly in modern web browsers with high performance and multi-threading support.
+The **65c02-SIM** emulator compiles natively to WebAssembly (Wasm) using the **Emscripten** toolchain. This allows the complete emulator—including its WDC 65C02 CPU core, Dear ImGui frontend, SID audio synthesizer, and microDOS environment—to run inside modern web browsers with desktop-class performance and multi-threading.
 
-## Prerequisites
+---
 
-The build script automatically detects or downloads the **Emscripten SDK (emsdk)** into a local folder (`emsdk_local/`). You do not need to install it manually, but you do need:
+## Table of Contents
 
-- **CMake** (3.24+)
-- **Python 3**
+- [Overview & Capabilities](#overview--capabilities)
+- [Prerequisites & Automated SDK Setup](#prerequisites--automated-sdk-setup)
+- [Building for the Web](#building-for-the-web)
+  - [Compilation Commands](#compilation-commands)
+  - [Build Artifacts](#build-artifacts)
+  - [Automatic ROM Catalog Generation](#automatic-rom-catalog-generation)
+- [Emscripten Toolchain Configuration](#emscripten-toolchain-configuration)
+  - [Compiler & Linker Flags](#compiler--linker-flags)
+  - [Memory Architecture](#memory-architecture)
+  - [Exported Functions & Runtime Methods](#exported-functions--runtime-methods)
+- [Multi-Threading Architecture](#multi-threading-architecture)
+  - [SharedArrayBuffer & Web Workers](#sharedarraybuffer--web-workers)
+  - [Atomic Synchronization](#atomic-synchronization)
+- [Cross-Origin Isolation & Service Worker Fallback](#cross-origin-isolation--service-worker-fallback)
+  - [COOP and COEP Requirements](#coop-and-coep-requirements)
+  - [Client-Side Fallback (`coi-serviceworker.js`)](#client-side-fallback-coi-serviceworkerjs)
+- [Web Frontend Architecture](#web-frontend-architecture)
+  - [HTML5 Canvas & WebGL 2.0 Rendering](#html5-canvas--webgl-20-rendering)
+  - [Web Audio Subsystem](#web-audio-subsystem)
+  - [File System Bridge (`BrowserFileBridge`)](#file-system-bridge-browserfilebridge)
+  - [URL Payload Loader (`SharedUrlLoader`)](#url-payload-loader-sharedurlloader)
+- [Local Testing & Execution](#local-testing--execution)
+- [GitHub Pages Deployment Workflow](#github-pages-deployment-workflow)
+- [Web Limitations vs. Native Desktop](#web-limitations-vs-native-desktop)
+
+---
+
+## Overview & Capabilities
+
+When targeted for the web (`TARGET_WASM`), the build pipeline produces an interactive single-page application capable of running at full 60 FPS with zero installation required:
+- Full 65C02 emulation core running in a dedicated background worker thread.
+- Hardware-accelerated OpenGL rendering via WebGL 2.0.
+- Low-latency sound synthesis matching host audio sample rates.
+- Browser-native file pickers, file downloads, and URL payload sharing.
+- Responsive canvas scaling with custom CRT shader support.
+
+---
+
+## Prerequisites & Automated SDK Setup
+
+To compile the WebAssembly port, you need:
+- **CMake 3.24+**
+- **Python 3.9+**
 - **Git**
-- **Node.js** (Optional, for `npx serve` during local testing)
+- **Node.js** (Optional, provides `npx serve` for local testing)
 
-## Building the Web Port
+You **do not need** to install or configure Emscripten manually. If `emcmake` is not detected in your system `PATH`, `./build.sh` automatically:
+1. Clones the official Emscripten SDK into `emsdk_local/`:
+   ```bash
+   git clone --depth 1 https://github.com/emscripten-core/emsdk.git emsdk_local
+   ```
+2. Installs and activates the latest stable toolchain:
+   ```bash
+   ./emsdk install latest
+   ./emsdk activate latest
+   ```
+3. Sources `emsdk_env.sh` dynamically within the build session.
 
-Run the provided script:
+---
 
-```bash
-./scripts/build-web.sh
-```
+## Building for the Web
 
-This will:
-1. Setup the Emscripten environment.
-2. Configure CMake for the `TARGET_WASM` platform.
-3. Compile the simulator into `output/web/`.
+### Compilation Commands
 
-### Output Files
-- `index.html`: The main entry point.
-- `SIM_65C02.js`: The Emscripten glue code.
-- `SIM_65C02.wasm`: The compiled binary.
-- `SIM_65C02.worker.js`: Worker script for pthreads.
-- `coi-serviceworker.js`: Enables Cross-Origin Isolation (required for multi-threading).
-
-## Running Locally
-
-Due to security restrictions (Cross-Origin Isolation for `SharedArrayBuffer`), you cannot simply open the `index.html` file from your disk. You must serve it through a web server with specific headers.
-
-You can use the built-in run command:
+Use the unified `./build.sh` script with the `web` target:
 
 ```bash
-./scripts/build-web.sh --run
+# Standard Web build
+./build.sh --target web
+
+# Clean Web build
+./build.sh --target web --clean
+
+# Force CMake reconfiguration
+./build.sh --target web --reconfigure
+
+# Build, start a local test server, and launch the browser
+./build.sh --target web --run
 ```
 
-This script will start a local server (prioritizing `npx serve` or falling back to `python3 -m http.server`) and automatically open your browser at the correct URL.
+### Build Artifacts
 
-## Browser Features & Limitations
+The compilation outputs are packaged into the `output/web/` directory:
 
-### Native File Access
-The web port uses a custom JavaScript bridge (`WebFileUtils.h`) to bypass the server's filesystem. 
-- **Loading ROMs/Scripts**: Opens a native browser file picker.
-- **Saving States/SD Images**: Triggers a browser download of the file.
-- **SD Card Persistence**: Since browsers cannot write directly back to your local files, modifications are kept in a virtual filesystem. Use **"Unmount & Save"** or **"Save Changes"** in the Control Window to download the updated image.
+```
+output/web/
+├── index.html                 ← Main HTML page (generated from shell.html)
+├── SIM_65C02.js               ← Emscripten JavaScript runtime glue
+├── SIM_65C02.wasm             ← Compiled WebAssembly binary
+├── SIM_65C02.worker.js        ← Web Worker runtime for pthreads
+├── coi-serviceworker.js       ← Cross-Origin Isolation handler
+├── favicon.svg                ← Vector favicon
+└── roms/                      ← Packaged ROM and cartridge library
+    ├── *.65c                  ← Cartridge files
+    ├── *.bin                  ← Raw ROM files
+    ├── midi/                  ← MIDI song cartridges
+    ├── vram/                  ← Converted graphical VRAM images
+    └── roms.json              ← Catalog manifest generated by build.sh
+```
 
-### Multi-threading
-The simulator uses **pthreads** for the emulation core, SID audio, and UI updates. This requires a browser that supports `SharedArrayBuffer` and **Cross-Origin Isolation**. The included `coi-serviceworker.js` handles this automatically by re-loading the page with the necessary headers.
+### Automatic ROM Catalog Generation
 
-### Limitations
-- **FFmpeg/Recording**: Video and audio recording to disk is currently disabled in the web port due to the heavy dependencies of FFmpeg. Buttons are visible but disabled with an explanatory tooltip.
-- **ESP8266 (WiFi)**: The ESP8266 chip is disabled for the web port as it requires host-side socket access that the browser cannot provide. Its row in the **Memory Layout** table is rendered non-interactive with an explanatory tooltip.
-- **Networking**: High-level networking features (OpenSSL/httplib) are disabled to reduce binary size and avoid library incompatibilities.
+At the conclusion of the web build, `./build.sh` inspects the `output/cartridge/`, `output/rom/`, `output/midi/`, and `output/vram/` directories. If `jq` is installed on your system, it automatically constructs a catalog index `output/web/roms/roms.json`:
 
-## GitHub Pages Deployment
+```json
+{
+  "roms": ["microdos.65c", "basic.65c", "demo.65c"],
+  "midis": ["song1.65c", "song2.65c"],
+  "vrams": ["splash.65c", "wallpaper.65c"]
+}
+```
 
-The project is configured to deploy automatically via GitHub Actions. Every time a new version tag is pushed, the `.github/workflows/release.yml` workflow builds the Wasm version and pushes it to the `gh-pages` branch.
+The web frontend uses this manifest to populate the in-browser ROM selector modal dialog.
+
+---
+
+## Emscripten Toolchain Configuration
+
+The WebAssembly build configuration is defined across `cmake/CompilerOptions.cmake` and `cmake/FrontendTarget.cmake`.
+
+### Compiler & Linker Flags
+
+```cmake
+# Global flags (CompilerOptions.cmake)
+add_compile_definitions(TARGET_WASM)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+add_link_options("-pthread")
+add_link_options("-sPTHREAD_POOL_SIZE=8")
+add_link_options("-sALLOW_MEMORY_GROWTH=1")
+add_link_options("-sGROWABLE_ARRAYBUFFERS=2")
+add_link_options("-sINITIAL_MEMORY=134217728")   # 128 MB
+add_link_options("-sMAXIMUM_MEMORY=4294967296")  # 4 GB
+add_link_options("-sSTACK_SIZE=8388608")         # 8 MB
+add_link_options("-sMAX_WEBGL_VERSION=2")
+add_link_options("-O3")
+add_link_options("-flto=full")
+add_link_options("-sDISABLE_EXCEPTION_CATCHING=1")
+
+# Executable flags (FrontendTarget.cmake)
+target_link_options(SIM_65C02 PRIVATE 
+    "-sUSE_SDL=3"
+    "-sALLOW_MEMORY_GROWTH=1"
+    "-sINITIAL_MEMORY=134217728"
+    "-sMAXIMUM_MEMORY=4294967296"
+    "-sSTACK_SIZE=8388608"
+    "-sMAX_WEBGL_VERSION=2"
+    "-pthread"
+    "-sPTHREAD_POOL_SIZE=8"
+    "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main','_Wasm_OnFilePicked','_Wasm_CheckURLHash','_Wasm_LoadSharedData']"
+    "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString','stringToUTF8','lengthBytesUTF8','HEAPU8','ccall','cwrap']"
+    "--shell-file" "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/web/shell.html"
+)
+```
+
+### Memory Architecture
+
+1. **Initial Heap (128 MB):** `-sINITIAL_MEMORY=134217728` preallocates sufficient linear memory for the 6502 RAM/ROM buffers, Dear ImGui vertex/index buffers, font atlases, and audio resampler scratchpads without triggering frequent reallocations.
+2. **Dynamic Expansion:** `-sALLOW_MEMORY_GROWTH=1` enables the WebAssembly instance to expand its linear memory space up to 4 GB (`-sMAXIMUM_MEMORY=4294967296`).
+3. **Growable Shared Buffers:** `-sGROWABLE_ARRAYBUFFERS=2` enables modern WebAssembly support for dynamic memory resizing while running multi-threaded pthreads backed by `SharedArrayBuffer`.
+4. **Stack Size (8 MB):** `-sSTACK_SIZE=8388608` prevents stack overflow during deep recursive evaluation of complex expressions or debugging tables.
+
+### Exported Functions & Runtime Methods
+
+The WebAssembly build exports key C symbols to allow seamless communication between the JavaScript host page and the C++ engine:
+
+| Exported C Function | Purpose |
+|---|---|
+| `_main` | Application initialization and entry point. |
+| `_malloc`, `_free` | Dynamic heap allocation used by JavaScript to transfer binary file data into WebAssembly memory. |
+| `_Wasm_OnFilePicked` | Callback invoked when a user selects a file through the browser file picker or drag-and-drop. |
+| `_Wasm_CheckURLHash` | Inspects the current browser URL fragment (`#`) or query string (`?`) for embedded cartridges. |
+| `_Wasm_LoadSharedData` | Decodes and mounts a binary payload loaded from a shared URL. |
+
+---
+
+## Multi-Threading Architecture
+
+### SharedArrayBuffer & Web Workers
+
+The 65c02-SIM emulator uses multi-threading to decouple CPU execution and audio generation from the browser rendering loop:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Web Browser Main Thread                │
+│   DOM Event Loop · User Input · WebGL 2.0 Render Pass       │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                SharedArrayBuffer (Shared Memory)
+                               │
+       ┌───────────────────────┴───────────────────────┐
+       ▼                                               ▼
+┌─────────────────────────────┐         ┌─────────────────────────────┐
+│  Worker Thread 1 (Core)     │         │  Worker Thread 2 (Audio)    │
+│  65C02 Instruction Loop     │         │  SID Sound Synthesis        │
+│  Bus Timing & MMIO Latches  │         │  Sample Rate Resampling     │
+└─────────────────────────────┘         └─────────────────────────────┘
+```
+
+- **Thread Pool (`-sPTHREAD_POOL_SIZE=8`):** Emscripten pre-spawns a pool of 8 Web Workers at startup to avoid runtime thread creation latency.
+- **Dedicated Emulation Core Thread:** The 65C02 clock and bus run inside a separate POSIX thread (`std::jthread`), ensuring cycle-accurate execution unaffected by UI layout passes or browser frame drops.
+- **Dedicated Audio Thread:** SDL3's audio callback generates synthesis buffers in parallel, streaming samples directly to the Web Audio sink.
+
+### Atomic Synchronization
+
+Cross-thread synchronization is implemented using C++20/C++23 atomic primitives (`std::atomic<bool>`, `std::atomic<uint32_t>`), compiled by Emscripten into native WebAssembly atomic instructions (`atomic.load`, `atomic.store`, `atomic.wait`, `atomic.notify`) backed by futex operations in the browser.
+
+---
+
+## Cross-Origin Isolation & Service Worker Fallback
+
+### COOP and COEP Requirements
+
+Due to Spectre and Meltdown mitigation policies in all modern web browsers (Chrome, Firefox, Safari, Edge), `SharedArrayBuffer` is disabled unless the hosting web page is running in a **Cross-Origin Isolated** environment.
+
+To achieve Cross-Origin Isolation, the HTTP server must respond with two specific headers:
+1. `Cross-Origin-Opener-Policy: same-origin` (COOP)
+2. `Cross-Origin-Embedder-Policy: require-corp` (COEP)
+
+### Client-Side Fallback (`coi-serviceworker.js`)
+
+Most static hosting providers (such as **GitHub Pages**) do not permit custom HTTP response headers. To solve this problem without needing a specialized backend, 65c02-SIM bundles **`coi-serviceworker.js`**:
+
+```html
+<!-- src/Frontend/web/shell.html -->
+<script src="coi-serviceworker.js"></script>
+```
+
+#### How it works:
+1. Upon first page load, `coi-serviceworker.js` intercepts all incoming network requests.
+2. The service worker dynamically appends `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` to all HTTP responses before delivering them to the browser rendering engine.
+3. The script automatically forces a one-time seamless reload. Once reloaded, `window.crossOriginIsolated` becomes `true`, enabling `SharedArrayBuffer` and unlocking full multi-threaded pthreads on any static server.
+
+---
+
+## Web Frontend Architecture
+
+### HTML5 Canvas & WebGL 2.0 Rendering
+
+- The simulator UI renders directly to an HTML5 `<canvas id="canvas">`.
+- Emscripten binds SDL3's OpenGL context to the browser's **WebGL 2.0** API (`-sMAX_WEBGL_VERSION=2`).
+- Dear ImGui utilizes the `imgui_impl_opengl3` backend targeting `#version 300 es`, supporting dockable windows, high-DPI font scaling, and custom CRT GLSL post-processing shaders.
+
+### Web Audio Subsystem
+
+- Audio is initialized via SDL3 (`SDL_OpenAudioDeviceStream`).
+- SDL3 automatically negotiates an audio playback stream with the browser's Web Audio `AudioContext`.
+- Audio streams automatically un-mute upon the first user interaction (click or keypress) to comply with browser autoplay policies.
+
+### File System Bridge (`BrowserFileBridge`)
+
+WebAssembly runs inside a sandboxed environment without direct access to the local hard drive. 65c02-SIM bridges this gap through `src/Frontend/web/BrowserFileBridge.cpp`:
+
+1. **Opening Files (`OpenFilePicker`):**
+   - Dynamically injects an `<input type="file" accept="...">` into the DOM.
+   - Reads the user-selected file into a JavaScript `Uint8Array` via `FileReader`.
+   - Allocates memory on the WebAssembly heap (`Module._malloc`) and copies the buffer via `HEAPU8.set`.
+   - Passes the pointer and file size to `_Wasm_OnFilePicked` using `Module.ccall`.
+   - Frees temporary heap allocations.
+2. **Downloading Files (`DownloadFile`):**
+   - Extracts data from `Module.HEAPU8`.
+   - Creates a browser `Blob` with MIME type `application/octet-stream`.
+   - Creates a temporary hidden `<a>` element with a `blob:` URL, sets the `download` attribute to the desired filename, programmatically triggers `.click()`, and revokes the URL.
+3. **Toast Notifications (`ShowToast`):**
+   - Dispatches stylish UI toast notifications to an overlay element `<div id="toast">`, alerting users when cartridges or save states are loaded or exported.
+
+### URL Payload Loader (`SharedUrlLoader`)
+
+`src/Frontend/web/SharedUrlLoader.cpp` and `src/Frontend/web/BrowserFileBridge.cpp` enable instant sharing, deep-linking, and execution of cartridges and save states via browser URLs:
+
+```
+# Query parameter format
+https://manuflosoyt.github.io/65c02-SIM/?cart=<base64_payload>
+https://manuflosoyt.github.io/65c02-SIM/?state=<base64_payload>
+https://manuflosoyt.github.io/65c02-SIM/?code=<base64_payload>
+https://manuflosoyt.github.io/65c02-SIM/?demo=<base64_payload>
+
+# Hash fragment format
+https://manuflosoyt.github.io/65c02-SIM/#cart=<base64_payload>
+https://manuflosoyt.github.io/65c02-SIM/#<raw_base64_payload>
+```
+
+#### Payload Processing Pipeline:
+1. **URL Parameter Extraction:** `BrowserFileBridge::CheckUrlHash()` inspects `window.location.hash` and `window.location.search`. It checks for named keys (`code`, `cart`, `state`, `demo`). If the URL hash contains no `=` and exceeds 10 characters, the entire hash string is treated as a direct Base64 payload.
+2. **Dynamic Navigation:** `shell.html` registers a `hashchange` event listener (`window.addEventListener('hashchange', ...)`), allowing users to switch cartridges dynamically by altering the URL hash without reloading the page.
+3. **URL-Safe Base64 Normalization:** Converts URL-safe characters (`-` to `+`, `_` to `/`), aligns 4-byte boundaries with `=` padding, and decodes the stream into raw bytes via `atob`.
+4. **Header Compression Decompression:** Inspects the first 4 bytes for an uncompressed length header. If present and $\le 8\text{ MB}$, inflates the payload in-memory using Miniz (`mz_uncompress`).
+5. **Magic Signature Inspection:**
+   - **Cartridge Container (`PK\x03\x04`):** Unpacks ZIP container with `CartridgeLoader::LoadFromMemory`, applies cartridge memory and hardware profiles, resets and boots the emulator.
+   - **Save-State Snapshot (`SIM65C02SST`):** Saves payload to `/tmp/shared_demo.savestate`, pauses the engine, loads state via `emulator.LoadState`, syncs UI panels, and resumes execution.
+   - **Raw ROM (`.bin`):** Loads raw binary data directly into high memory at the reset vector (`$FFFC/$FFFD`) and triggers a hardware reset.
+
+---
+
+## Local Testing & Execution
+
+Because modern browsers enforce Cross-Origin Isolation policies, opening `output/web/index.html` directly from disk (`file:///...`) will fail. You must serve the directory over HTTP.
+
+### Automated Run
+
+The fastest method is using `./build.sh --target web --run`:
+
+```bash
+./build.sh --target web --run
+```
+
+This command:
+1. Compiles the WebAssembly target.
+2. Checks for available local web servers (prioritizing `npx -y serve` or falling back to `python3 -m http.server`).
+3. Launches the server on port `8080`.
+4. Automatically opens `http://localhost:8080` in your default browser using `xdg-open` (Linux) or `open` (macOS).
+
+### Manual HTTP Server
+
+If serving manually:
+
+```bash
+# Using Node.js serve
+npx serve output/web -l 8080
+
+# Using Python 3
+python3 -m http.server 8080 --directory output/web
+```
+
+---
+
+## GitHub Pages Deployment Workflow
+
+The project deploys automatically to **GitHub Pages** via GitHub Actions (`.github/workflows/`):
+
+1. **Trigger:** Every time a new version tag (e.g., `v1.2.0`) is pushed to the repository.
+2. **Build Environment:** The runner sets up the Emscripten SDK, builds the `web` target, and copies all artifacts into `output/web/`.
+3. **Branch Publishing:** The contents of `output/web/` are committed and pushed to the `gh-pages` branch.
+4. **Live Site:** The interactive simulator is immediately accessible at `https://manuflosoyt.github.io/65c02-SIM/`.
+
+---
+
+## Web Limitations vs. Native Desktop
+
+While the WebAssembly port provides nearly identical emulation fidelity to native builds, certain platform-specific features are adapted or disabled:
+
+| Feature | Native (Linux / Windows) | WebAssembly Port | Rationale |
+|---|---|---|---|
+| **Multi-Threading** | OS pthreads (`std::jthread`) | Web Workers (`SharedArrayBuffer`) | Fully functional via browser pthreads. |
+| **Video/Audio Recording** | FFmpeg hardware/software encoding | Disabled | Disabled to avoid multi-megabyte binary bloat and library incompatibilities. |
+| **ESP8266 Wi-Fi Module** | Host TCP/UDP sockets (ASIO) | Non-interactive (Disabled) | Browser security sandbox prohibits arbitrary raw TCP/UDP socket connections. |
+| **SD Card Persistence** | Direct disk block writes | In-memory VFS with "Download" button | Sandboxed browsers cannot write arbitrary local files; users download modified SD images via `BrowserFileBridge`. |
+| **OpenSSL / Networking** | System OpenSSL + cpp-httplib | Disabled | High-level TLS sockets disabled to optimize binary size. |
+| **File Access** | Native OS file explorer | Browser file picker modal | Standard HTML5 file input bridge. |

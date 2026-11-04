@@ -1,193 +1,317 @@
-# Scripting System & Headless Mode
+# Embedded Scripting Language & Test Automation
 
-The emulator includes a built-in **Python scripting engine** powered by [PocketPy](https://github.com/pocketpy/pocketpy) — a lightweight, embeddable Python 3 interpreter. Scripts can control the emulator programmatically, making them useful for:
-
-- **Tool-Assisted Speedruns (TAS)** — inject inputs and steer execution at the cycle level.
-- **Test-Driven Development** — write automated tests that validate memory state after running a program.
-- **Overlays / Debugging** — read live values from RAM and react to them in real time.
+**Source Directory:** [`src/Scripting/`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/)  
+**Technologies:** Custom AST-Interpreter Pipeline · Modern C++23 · Zero External Language Dependencies
 
 ---
 
-## Running a Script from the GUI
+## 1. Overview
 
-1. Open the emulator and go to the **Settings** panel (gear icon or dropdown).
-2. Scroll to the **Scripting** section.
-3. Click **Load & Run Script (.py)** and select your `.py` file.
+**65c02-SIM** embeds a proprietary, lightweight scripting language engineered specifically for cycle-accurate CPU test automation, regression testing, and tool-assisted execution.
 
-When a script is loaded, the emulator is automatically **paused** and then the script thread starts. A **Script Console** window will appear, streaming every `print()` call from your script in real time — just like a terminal.
+> [!IMPORTANT]
+> All scripting in 65c02-SIM is powered by a **native C++23 lexer, recursive-descent parser, and AST tree-walking interpreter**. It has zero external dependencies, executes cooperatively alongside the CPU emulation thread, and can be run both within the graphical interface and headlessly in CI/CD pipelines.
 
-You can stop the script at any time with the **Stop Script** button that appears while a script is running.
-
-> **Tip:** Always call `emu.pause()` at the end of your script if you don't want the CPU to keep running after the script finishes.
+```
+[Script Source Code (.sim / .script)]
+                 │
+                 ▼
+     [Lang::Lexer (Token Stream)]
+                 │
+                 ▼
+    [Lang::Parser (AST Construction)]
+                 │
+                 ▼
+  [Lang::Interpreter (Tree-Walk Engine)]
+                 │
+  ┌──────────────┴──────────────┐
+  │                             │
+  ▼                             ▼
+[Environment (Scope & Vars)]   [EmulatorScriptBindings ("emu.*")]
+                                ├── Core Emulation (Step, Pause, Reset)
+                                ├── Bus Memory Access (Read, Write, Direct)
+                                ├── CPU Register Mutators (A, X, Y, PC, SP)
+                                └── Hardware Peripherals (GPU, SD, Breakpoints)
+```
 
 ---
 
-## Headless Mode (CLI / CI)
+## 2. Language Grammar & Architecture
 
-Headless mode lets you run the emulator **without any graphical interface**, directly from the command line. This is ideal for CI/CD pipelines, automated tests, and batch processing.
+The scripting language features a procedural, C-like syntax supporting lexical scoping, statement blocks (`{ ... }`), control flow (`if`/`else`, `while`, `break`, `continue`), direct CPU register and memory bindings, and native invocation of registered C++ built-in functions (`emu.*`).
 
-### Usage
+> [!NOTE]
+> The grammar does not implement user-defined function declarations (`fn`/`def`/`function`); scripts execute procedurally from top to bottom, manipulating variables and dispatching commands via the built-in `emu.*` library.
+
+### 2.1 Lexical Elements & Tokens
+
+[`System::Hardware::Scripting::Lang::TokenType`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/Token.h) defines the language grammar:
+
+- **Keywords**: `let`, `if`, `else`, `while`, `break`, `continue`, `true`, `false`, `print`, `changed`.
+- **Numeric Literals**:
+  - **Hexadecimal (Dollar prefix)**: `$8000`, `$FF`, `$0200`
+  - **Hexadecimal (C prefix)**: `0x8000`, `0xFF`, `0x0200`
+  - **Decimal**: `0`, `42`, `1000000`, `-5`
+- **String Literals**: `"Double quoted UTF-8 text"`
+- **Boolean Literals**: `true`, `false`
+- **Operators**:
+  - Arithmetic: `+`, `-`, `*`, `/`, unary `-`
+  - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+  - Logical: `&&`, `||`, `!`
+  - Assignment: `=`
+  - Member access: `.`
+  - Array / Memory indexing: `[` `]`
+- **Comments**: Single-line comments begin with `//` and extend to end of line.
+
+### 2.2 AST Node Hierarchy
+
+The parser builds an Abstract Syntax Tree composed of [`Stmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L45) and [`Expr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L35) nodes:
+
+#### Statements
+- [`VarStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L146): Variable declaration (`let name = expr;`).
+- [`BlockStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L154): Scoped block statement (`{ stmt1; stmt2; }`).
+- [`IfStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L161): Conditional branch (`if (cond) { ... } else { ... }`).
+- [`WhileStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L170): Loop statement (`while (cond) { ... }`).
+- [`BreakStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L178) & [`ContinueStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L182): Loop control flow.
+- [`PrintStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L139): Formatted text output (`print expr;`).
+- [`ExpressionStmt`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L132): Expression evaluated for side-effects (`emu.step();`).
+
+#### Expressions
+- [`BinaryExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L57): Binary operations (`a + b`, `x == $20`, `a && b`).
+- [`UnaryExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L66): Logical NOT (`!flag`) and negation (`-val`).
+- [`LiteralExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L74): Evaluates immediate constants.
+- [`VariableExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L82): Variable identifier lookups.
+- [`AssignExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L88): Reassignment (`x = x + 1;`).
+- [`CallExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L96): Function calls (`emu.wait_cycles(100);`).
+- [`IndexExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L113): Direct memory indexing (`mem[$0200]`).
+- [`ChangedExpr`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/Lang/AST.h#L122): Delta-change tracking operator (`expr changed`).
+
+---
+
+## 3. Language Features & Syntax Examples
+
+### 3.1 Variables and Scoping
+Variables are defined using the `let` keyword. They are dynamically typed and lexically scoped:
+
+```javascript
+let address = $8000;
+let counter = 0;
+let name = "Sprite Test";
+
+{
+    let localVal = address + counter;
+    print localVal;
+}
+// localVal is now out of scope
+```
+
+### 3.2 Control Flow
+Standard `if`/`else` and `while` constructs govern script logic:
+
+```javascript
+let i = 0;
+while (i < 10) {
+    if (i == 5) {
+        print "Halfway mark reached!";
+    } else {
+        print "Iterating:";
+        print i;
+    }
+    i = i + 1;
+}
+```
+
+### 3.3 Direct Hardware Variables
+The runtime environment directly maps CPU registers and bus memory into the global scope:
+
+| Variable | Description |
+| :--- | :--- |
+| `PC`, `pc` | Program Counter (16-bit address) |
+| `A`, `a` | Accumulator Register (8-bit) |
+| `X`, `x` | X Index Register (8-bit) |
+| `Y`, `y` | Y Index Register (8-bit) |
+| `SP`, `sp` | Stack Pointer (8-bit, `$00-$FF`) |
+| `C`, `Z`, `I`, `D`, `B`, `V`, `N` | CPU Status Flags (0 or 1) |
+| `mem[addr]` / `MEM[addr]` | Direct read access to memory bus |
+
+```javascript
+// Check CPU registers directly
+if (A == $FF && Z == 0) {
+    print "Accumulator saturated!";
+}
+
+// Read from memory directly
+if (mem[$0200] == 42) {
+    print "Zero page variable verified.";
+}
+```
+
+---
+
+## 4. Emulator API Reference (`emu.*`)
+
+All interaction with the simulated system is exposed via the built-in [`EmulatorScriptBindings`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/EmulatorScriptBindings.h) library:
+
+### 4.1 Execution Control
+
+| Function Signature | Description |
+| :--- | :--- |
+| `emu.pause()` | Halts background CPU execution immediately. |
+| `emu.resume()` | Resumes continuous background CPU execution. |
+| `emu.reset()` | Triggers a hardware reset vector (`$FFFC-$FFFD`) and updates CPU state. |
+| `emu.step()` | Executes exactly one complete 65C02 instruction (all clock cycles). |
+| `emu.wait_cycles(count)` | Advances emulation until `count` clock cycles have executed. |
+| `emu.wait_instructions(count)` | Advances emulation until `count` instructions have completed. |
+
+### 4.2 Memory Bus Operations
+
+| Function Signature | Description |
+| :--- | :--- |
+| `emu.read_mem(address)` | Reads an 8-bit byte from the memory bus (triggers device read hooks). |
+| `emu.write_mem(address, value)` | Writes an 8-bit byte to the memory bus (triggers device write hooks). |
+| `emu.write_mem_direct(address, value)` | Safely writes byte to RAM without firing MMIO hooks. |
+| `emu.read_mem_block(address, size)` | Reads a sequential block of `size` bytes, returning a string. |
+| `emu.write_mem_block(address, string)`| Writes sequential characters from `string` to memory via bus. |
+| `emu.write_mem_block_direct(addr, str)`| Directly writes character block into RAM without MMIO hooks. |
+| `emu.load_bin(path, address)` | Loads raw binary file from disk into memory starting at `address`. |
+
+### 4.3 CPU Register Access
+
+| Function Signature | Description |
+| :--- | :--- |
+| `emu.get_pc()`, `emu.set_pc(val)` | Get or set the 16-bit Program Counter. |
+| `emu.get_a()`, `emu.set_a(val)` | Get or set the 8-bit Accumulator. |
+| `emu.get_x()`, `emu.set_x(val)` | Get or set the 8-bit X Register. |
+| `emu.get_y()`, `emu.set_y(val)` | Get or set the 8-bit Y Register. |
+| `emu.get_sp()`, `emu.set_sp(val)` | Get or set the 16-bit / 8-bit Stack Pointer. |
+| `emu.get_status()`, `emu.set_status(val)` | Get or set the 8-bit Status Register flags (`NV-BDIZC`). |
+| `emu.trigger_irq()` | Asserts an active-low Maskable Interrupt (`/IRQ`). |
+| `emu.trigger_nmi()` | Asserts a Non-Maskable Interrupt edge (`/NMI`). |
+
+### 4.4 Hardware Configuration
+
+| Function Signature | Description |
+| :--- | :--- |
+| `emu.set_gpu_enabled(bool)` | Enables or disables hardware graphics rendering. |
+| `emu.set_sd_enabled(bool)` | Enables or disables SPI SD Card peripheral. |
+| `emu.set_cycle_accurate(bool)` | Toggles between instruction-step and cycle-accurate mode. |
+| `emu.clear_breakpoints()` | Removes all active breakpoints from the Breakpoint Manager. |
+| `emu.add_breakpoint()` | Registers a new breakpoint trap. |
+
+### 4.5 Canonical API Mapping & Test Automation Equivalents
+
+Developers writing test automation scripts or transitioning from other emulator environments can use the following mapping:
+
+| Canonical Operation | Native Scripting Implementation | Usage Example |
+| :--- | :--- | :--- |
+| `step()` | `emu.step()` | Advances one full CPU instruction. |
+| `reset()` | `emu.reset()` | Resets CPU registers and vectors. |
+| `read(addr)` | `emu.read_mem(addr)` or `mem[addr]` | `let val = mem[$0200];` |
+| `write(addr, val)` | `emu.write_mem(addr, val)` or `emu.write_mem_direct(addr, val)` | `emu.write_mem($8000, $EA);` |
+| `get_reg(name)` | Direct variable or `emu.get_<reg>()` | `if (A == $50)` or `emu.get_pc()` |
+| `set_reg(name, val)`| `emu.set_<reg>(val)` | `emu.set_a($00);` `emu.set_pc($8000);` |
+| `load_rom(path, addr)` | `emu.load_bin(path, addr)` | `emu.load_bin("rom.bin", $8000);` |
+| `print(value)` | Statement: `print <expr>;` | `print "Passed!";` `print A;` |
+| `assert(condition)` | Conditional check with halt | `if (!(A == $42)) { print "FAIL"; emu.pause(); }` |
+| `save_state()` / `load_state()` | Host CLI / UI level | Automated via `--rom` and `--dump-mem` in CI/CD. |
+
+### 4.6 ScriptEngine & Cooperative Abortion
+
+The scripting backend ([`Hardware::ScriptEngine`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Scripting/ScriptEngine.h)) executes scripts safely without blocking the UI or CPU thread:
+- **`LoadAndRun(path)`**: Reads the source file, triggers lexing and parsing, queues statements into `pendingStmts`, and resumes execution.
+- **`Stop()`**: Signals `abortRequested = true`. Long-running operations (`emu.step()`, `emu.wait_cycles()`, and `while` loops) check this flag cooperatively on every step and throw `RuntimeError("Script aborted")`.
+- **`mirrorToStdout`**: When running headlessly via `--script`, all text passed to `print` statements is forwarded directly to host `std::cout`.
+- **Thread Synchronization**: State mutations from the script thread execute cleanly through `emu.WaitUntilSafeToMutate()` to ensure memory integrity.
+
+---
+
+## 5. Running Scripts
+
+### 5.1 Graphical UI Script Console
+1. Open the **Settings** menu inside the emulator Control Window.
+2. Under **Scripting**, click **Load & Run Script (.sim / .script)**.
+3. The **Script Console** window ([`ScriptConsoleWindow.cpp`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/GUI/ScriptConsoleWindow.cpp)) will open automatically, displaying text printed by the script in real time.
+4. Click **Stop Script** at any time to abort long-running scripts safely.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Script Console                               [Clear] [Close]│
+├─────────────────────────────────────────────────────────────┤
+│ [Script] Initializing Memory Verification Test...           │
+│ [Script] Flashing ROM image to $8000                        │
+│ [Script] Stepping 10,000 cycles...                          │
+│ [Script] SUCCESS: Memory at $0200 verified (Expected: $42)   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Headless Execution (CI/CD Automated Tests)
+Run scripts without graphical dependencies directly from bash:
 
 ```bash
-./SIM_65C02 [OPTIONS]
-```
-
-### Options
-
-| Option | Description |
-|---|---|
-| `--headless` | Skip GUI initialization and run in CLI mode. |
-| `--rom <path>` | Load a binary ROM file (also works as positional arg). If omitted in headless mode, it falls back to `output/rom/room.bin` when available. |
-| `--script <path>` | Load and execute a Python script. |
-| `--run-cycles <N>` | Advance the CPU exactly N cycles after startup. |
-| `--dump-mem <file>` | After execution, dump the full 64KB RAM to a binary file. |
-
-### Example: TDD with CI
-
-```bash
-# Run a program for 10000 cycles, and dump memory
-./SIM_65C02 --headless --rom build/program.bin --run-cycles 10000 --dump-mem result.bin
-
-# Validate expected value at address 0x0200 using Python
-python3 -c "
-data = open('result.bin','rb').read()
-assert data[0x0200] == 42, f'Expected 42, got {data[0x0200]}'
-print('Test passed!')
-"
+./SIM_65C02 --headless \
+            --rom build/program.bin \
+            --script scripts/test_suite.sim \
+            --dump-mem /tmp/output.bin
 ```
 
 ---
 
-## Python API Reference (`emu` module)
+## 6. Practical Script Examples
 
-All scripting is done via the `emu` built-in module, which is automatically available in every script.
+### 6.1 Automated Memory Verification Test
 
-### 1. Basic Control
-- **`emu.pause()`**: Pauses CPU execution.
-- **`emu.resume()`**: Resumes CPU execution.
-- **`emu.reset()`**: Performs a hardware reset (vectors at `$FFFC-$FFFD`).
+```javascript
+// 1. Reset CPU and pause background execution
+emu.pause();
+emu.reset();
+emu.clear_breakpoints();
 
-### 2. Memory Bus
-- **`emu.read_mem(address: int) -> int`**: Reads a single byte (0-255).
-- **`emu.write_mem(address: int, value: int)`**: Writes a single byte.
+print "Injecting test instructions...";
+// Assemble LDA #$42, STA $0200, BRK
+emu.write_mem($8000, $A9); // LDA #$42
+emu.write_mem($8001, $42);
+emu.write_mem($8002, $8D); // STA $0200
+emu.write_mem($8003, $00);
+emu.write_mem($8004, $02);
+emu.write_mem($8005, $00); // BRK
 
-### 3. CPU Registers
-Full programmatic access to all CPU registers:
-- `emu.get_a()` / `emu.set_a(val)`
-- `emu.get_x()` / `emu.set_x(val)`
-- `emu.get_y()` / `emu.set_y(val)`
-- `emu.get_pc()` / `emu.set_pc(val)`
-- `emu.get_sp()` / `emu.set_sp(val)`
-- `emu.get_status()` / `emu.set_status(val)`
+// Point PC to start
+emu.set_pc($8000);
 
-### 4. Execution Timing
-- **`emu.wait_cycles(n: int)`**: Blocks script thread until CPU has executed `n` cycles.
-- **`emu.wait_instructions(n: int)`**: Blocks until `n` instructions are executed.
-- **`emu.step_instruction()`**: Advances the CPU by exactly one instruction.
-- **`emu.step()`**: Advances the CPU by one phase (internal cycle).
+print "Executing instruction steps...";
+emu.step(); // LDA
+emu.step(); // STA
 
-### 5. Hardware Configuration
-Toggle peripherals programmatically to optimize performance or test failure cases:
-- `emu.set_gpu_enabled(bool)`
-- `emu.set_sd_enabled(bool)`
-- `emu.set_esp_enabled(bool)`
-- `emu.set_cycle_accurate(bool)`: Toggles cycle-accurate mode (high latency vs. high performance).
-
-### 6. Metrics & Performance
-- **`emu.get_cycles() -> int`**: Returns the count of cycles since power-on.
-- **`emu.get_ips() -> int`**: Returns the current instructions per second.
-- **`emu.set_target_ips(ips: int)`**: Dynamically changes the emulation speed limit.
-
-### 7. Multimedia & Input
-- **`emu.inject_key(key: str)`**: Injects a key character into the emulator's keyboard buffer.
-- **`emu.start_audio_recording(filename: str)`**: Starts recording SID audio to a WAV file.
-- **`emu.stop_audio_recording()`**: Stops and finalizes the audio recording.
-- **`emu.load_cartridge(path: str)`**: Loads and mounts a `.cart` or `.bin` file into the emulator at runtime.
-
-### 8. Advanced Breakpoints
-The scripting API allows creating complex, multi-condition breakpoints that are identical to those available in the UI.
-
-- **`emu.add_breakpoint(config: dict) -> int`**: Creates a new breakpoint and returns its unique ID.
-- **`emu.remove_breakpoint(id: int)`**: Deletes a breakpoint.
-- **`emu.list_breakpoints() -> list`**: Returns a list of dictionaries with all currently active breakpoints.
-- **`emu.clear_breakpoints()`**: Removes all breakpoints.
-
-#### Breakpoint Config Dictionary Structure
-```python
-id = emu.add_breakpoint({
-    "label": "My Complex Breakpoint",
-    "enabled": True,
-    "compoundOp": emu.LOGIC_AND,
-    "conditions": [
-        {
-            "type": emu.BP_TYPE_REG,
-            "reg": emu.REG_A,
-            "op": emu.OP_EQUAL,
-            "value": 0xFF
-        },
-        {
-            "type": emu.BP_TYPE_PC,
-            "address": 0x8050
-        }
-    ]
-})
+// Verify target memory
+let result = emu.read_mem($0200);
+if (result == $42) {
+    print "TEST PASSED: Memory at $0200 equals $42";
+} else {
+    print "TEST FAILED: Unexpected memory value at $0200:";
+    print result;
+}
 ```
 
-#### Breakpoint Constants
-| Constant Category | Values |
-|---|---|
-| **`BP_TYPE`** | `PC`, `REG`, `FLAG`, `MEM`, `WATCH` |
-| **`REG`** | `A`, `X`, `Y`, `SP`, `PC` |
-| **`OP`** | `EQUAL`, `NOT_EQUAL`, `LESS`, `LESS_EQUAL`, `GREATER`, `GREATER_EQUAL` |
-| **`LOGIC`** | `AND`, `OR` |
+### 6.2 Polling for Asynchronous Hardware Events
 
----
+```javascript
+// Wait for a peripheral or interrupt flag to clear
+let timeout = 1000;
+let done = false;
 
-## Full Example: Automated Testing
-This script sets up a breakpoint, injects code, and verifies that the CPU stops at the right time.
+while (!done && timeout > 0) {
+    emu.step();
+    timeout = timeout - 1;
+    
+    // Check VIA Port B handshake
+    if (emu.read_mem($6000) == $01) {
+        done = true;
+    }
+}
 
-```python
-import emu
-
-# 1. Setup Environment
-emu.pause()
-emu.clear_breakpoints()
-emu.reset()
-
-# 2. Inject Code: LDA #$99, STA $0200, BRK
-program = [0xA9, 0x99, 0x8D, 0x00, 0x02, 0x00]
-for i, byte in enumerate(program):
-    emu.write_mem(0x0000 + i, byte)
-
-# 3. Add conditional breakpoint for STA instruction
-emu.add_breakpoint({
-    "label": "Stop on STA",
-    "conditions": [
-        {
-            "type": emu.BP_TYPE_PC,
-            "address": 0x0002
-        }
-    ]
-})
-
-# 4. Execute and Wait
-emu.set_pc(0x0000)
-emu.resume()
-emu.wait_cycles(100) # Give it time to hit
-
-# 5. Verify
-if emu.get_a() == 0x99:
-    print("Success: Final Accumulator value is $99")
-else:
-    print(f"Error: Final Accumulator value is {hex(emu.get_a())}")
-
-emu.pause()
+if (done) {
+    print "Hardware signal acknowledged in time!";
+} else {
+    print "ERROR: Timed out waiting for VIA handshake.";
+}
 ```
-
----
-
-## Architecture Notes
-
-- Scripts run in a **dedicated background thread** so the GUI and emulator aren't blocked.
-- All `print()` output is captured by a custom PocketPy callback and pushed to a thread-safe queue.
-- The `ScriptEngine` class lives in `Hardware/Scripting/ScriptEngine.{h,cpp}`.
