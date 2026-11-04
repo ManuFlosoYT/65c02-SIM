@@ -48,6 +48,10 @@ void CRTFilter::Destroy() {
     m_pass.Destroy();
 }
 
+void CRTFilter::Reset() {
+    m_pass.Clear();
+}
+
 GLuint CRTFilter::Apply(GLuint inputTex, int width, int height, const CRTParams& params) {
     if (!m_pass.IsInitialized()) {
         return inputTex;
