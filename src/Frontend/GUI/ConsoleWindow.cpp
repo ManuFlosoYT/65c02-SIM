@@ -39,6 +39,10 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
                 state.rom.bin = "";
                 state.emulator.Reset();
                 state.emulator.Pause();
+                if (state.crtFilter.IsInitialized()) {
+                    state.crtFilter.Reset();
+                }
+                state.render.lastDisplayTex = 0;
             }
         } else {
 #ifdef TARGET_WASM
