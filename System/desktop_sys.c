@@ -383,6 +383,15 @@ static bool desktop_dispatch_pipeline(char* cmd, char* out_cmd, const char* prev
         *(--end) = '\0';
     }
 
+    if (prev_temp != NULL) {
+        size_t clen = strlen(cmd);
+        if (clen > 0 && clen < 124) {
+            if (!(clen == 1 && cmd[0] == '-') && !(clen >= 2 && cmd[clen - 1] == '-' && cmd[clen - 2] == ' ')) {
+                strcat(cmd, " -");
+            }
+        }
+    }
+
     strcpy(out_cmd, cmd);
     return true;
 }
