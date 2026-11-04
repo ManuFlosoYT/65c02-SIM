@@ -4,7 +4,7 @@ Simulates decompressor consumption and plans exact SD read events during pauses.
 """
 
 SD_DEFAULT_COST = 49731  # cycles per 512B read (NTSC 1MHz, recommended by sdbench)
-DEFAULT_TARGET_BUFS = 16 # Buffers in play.c ring buffer (8KB footprint)
+DEFAULT_TARGET_BUFS = 15 # Buffers in play.c ring buffer (safely below mouse MMIO at 0x7FB0)
 CHUNK_SIZE = 512
 
 
