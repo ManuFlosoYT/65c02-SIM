@@ -24,10 +24,10 @@ enum GpuDoubleBufferTiming {
     GPU_ITERATIONS_PER_MS = 19U,
 };
 
-typedef int16_t fixed_t;
+typedef int32_t fixed_t;
 
 static inline fixed_t to_fixed(int16_t x) {
-    return (fixed_t)(x << 8U);
+    return (fixed_t)((int32_t)x << 8U);
 }
 
 static inline int16_t from_fixed(fixed_t x) {
@@ -112,6 +112,12 @@ static inline void gpu_swap_coord(int8_t* a, int8_t* b) {
     *b = t;
 }
 
+static inline void gpu_swap_coord16(int16_t* a, int16_t* b) {
+    int16_t t = *a;
+    *a = *b;
+    *b = t;
+}
+
 static inline void gpu_draw_line(int8_t x0, int8_t y0, int8_t x1, int8_t y1, uint8_t color) {
     int8_t dx = (int8_t)gpu_abs(x1 - x0);
     int8_t dy = (int8_t)-gpu_abs(y1 - y0);
@@ -138,57 +144,52 @@ static inline void gpu_draw_line(int8_t x0, int8_t y0, int8_t x1, int8_t y1, uin
     }
 }
 
-static inline void gpu_draw_tri(int8_t x0, int8_t y0, int8_t x1, int8_t y1, int8_t x2, int8_t y2,
-                               uint8_t color, bool fill) {
+static inline void gpu_draw_tri16(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+                                 uint8_t color, bool fill) {
     if (!fill) {
-        gpu_draw_line(x0, y0, x1, y1, color);
-        gpu_draw_line(x1, y1, x2, y2, color);
-        gpu_draw_line(x2, y2, x0, y0, color);
+        gpu_draw_line((int8_t)x0, (int8_t)y0, (int8_t)x1, (int8_t)y1, color);
+        gpu_draw_line((int8_t)x1, (int8_t)y1, (int8_t)x2, (int8_t)y2, color);
+        gpu_draw_line((int8_t)x2, (int8_t)y2, (int8_t)x0, (int8_t)y0, color);
         return;
     }
 
     if (y0 > y1) {
-        gpu_swap_coord(&x0, &x1);
-        gpu_swap_coord(&y0, &y1);
+        gpu_swap_coord16(&x0, &x1);
+        gpu_swap_coord16(&y0, &y1);
     }
     if (y0 > y2) {
-        gpu_swap_coord(&x0, &x2);
-        gpu_swap_coord(&y0, &y2);
+        gpu_swap_coord16(&x0, &x2);
+        gpu_swap_coord16(&y0, &y2);
     }
     if (y1 > y2) {
-        gpu_swap_coord(&x1, &x2);
-        gpu_swap_coord(&y1, &y2);
+        gpu_swap_coord16(&x1, &x2);
+        gpu_swap_coord16(&y1, &y2);
     }
 
-    if (y2 < 0 || y0 >= GPU_HEIGHT) {
+    if (y2 < 0 || y0 >= GPU_HEIGHT || y0 == y2) {
         return;
     }
 
+    fixed_t dx_long = (fixed_t)(((int32_t)(x2 - x0) << 8U) / (y2 - y0));
     fixed_t x_long = to_fixed(x0);
-    fixed_t dx_long = 0;
 
-    if (y2 != y0) {
-        dx_long = (fixed_t)(to_fixed((int16_t)(x2 - x0)) / (y2 - y0));
+    if (y0 < 0) {
+        x_long += (fixed_t)(dx_long * -y0);
     }
 
-    if (y1 > y0) {
+    if (y1 > y0 && y1 > 0) {
+        fixed_t dx_short = (fixed_t)(((int32_t)(x1 - x0) << 8U) / (y1 - y0));
         fixed_t x_short = to_fixed(x0);
-        fixed_t dx_short = (fixed_t)(to_fixed((int16_t)(x1 - x0)) / (y1 - y0));
 
-        int8_t start_y = y0;
-        int8_t end_y = y1;
-
+        int16_t start_y = y0;
         if (start_y < 0) {
-            x_long += (fixed_t)(dx_long * -start_y);
             x_short += (fixed_t)(dx_short * -start_y);
             start_y = 0;
         }
 
-        if (end_y > GPU_HEIGHT) {
-            end_y = GPU_HEIGHT;
-        }
+        int16_t end_y = (y1 > GPU_HEIGHT) ? GPU_HEIGHT : y1;
 
-        for (int8_t y = start_y; y < end_y; ++y) {
+        for (int16_t y = start_y; y < end_y; ++y) {
             int16_t xl = from_fixed(x_long);
             int16_t xr = from_fixed(x_short);
             if (xl > xr) {
@@ -212,33 +213,21 @@ static inline void gpu_draw_tri(int8_t x0, int8_t y0, int8_t x1, int8_t y1, int8
             x_long += dx_long;
             x_short += dx_short;
         }
-    } else {
-        if (y0 < 0) {
-            x_long += (fixed_t)(dx_long * -y0);
-        }
     }
 
-    if (y2 > y1) {
+    if (y2 > y1 && y2 > 0) {
+        fixed_t dx_short = (fixed_t)(((int32_t)(x2 - x1) << 8U) / (y2 - y1));
         fixed_t x_short = to_fixed(x1);
-        fixed_t dx_short = (fixed_t)(to_fixed((int16_t)(x2 - x1)) / (y2 - y1));
 
-        int8_t start_y = y1;
-        int8_t end_y = y2;
-
+        int16_t start_y = y1;
         if (start_y < 0) {
-            x_long += (fixed_t)(dx_long * -start_y);
             x_short += (fixed_t)(dx_short * -start_y);
             start_y = 0;
         }
-        if (y0 == y1 && y0 < 0) {
-            x_long += (fixed_t)(dx_long * -y0);
-        }
 
-        if (end_y > GPU_HEIGHT) {
-            end_y = GPU_HEIGHT;
-        }
+        int16_t end_y = (y2 > GPU_HEIGHT) ? GPU_HEIGHT : y2;
 
-        for (int8_t y = start_y; y < end_y; ++y) {
+        for (int16_t y = start_y; y < end_y; ++y) {
             int16_t xl = from_fixed(x_long);
             int16_t xr = from_fixed(x_short);
             if (xl > xr) {
@@ -264,6 +253,31 @@ static inline void gpu_draw_tri(int8_t x0, int8_t y0, int8_t x1, int8_t y1, int8
         }
     }
 }
+
+static inline void gpu_draw_tri8(int8_t x0, int8_t y0, int8_t x1, int8_t y1, int8_t x2, int8_t y2,
+                                uint8_t color, bool fill) {
+    gpu_draw_tri16((int16_t)x0, (int16_t)y0, (int16_t)x1, (int16_t)y1, (int16_t)x2, (int16_t)y2, color, fill);
+}
+
+#ifdef __cplusplus
+static inline void gpu_swap_coord(int16_t* a, int16_t* b) {
+    gpu_swap_coord16(a, b);
+}
+static inline void gpu_draw_tri(int8_t x0, int8_t y0, int8_t x1, int8_t y1, int8_t x2, int8_t y2,
+                               uint8_t color, bool fill) {
+    gpu_draw_tri8(x0, y0, x1, y1, x2, y2, color, fill);
+}
+static inline void gpu_draw_tri(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+                               uint8_t color, bool fill) {
+    gpu_draw_tri16(x0, y0, x1, y1, x2, y2, color, fill);
+}
+#else
+#define gpu_draw_tri(x0, y0, x1, y1, x2, y2, color, fill) \
+    _Generic((x0), \
+        int16_t: gpu_draw_tri16, \
+        default: gpu_draw_tri8 \
+    )((x0), (y0), (x1), (y1), (x2), (y2), (color), (fill))
+#endif
 
 static inline void GPUdelay(uint16_t ms) {
     for (uint16_t i = 0; i < ms; ++i) {
