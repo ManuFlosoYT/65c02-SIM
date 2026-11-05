@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(DEC_Absolute_Test, DEC_Absolute) {
-    // Addr = 0x4480
-    // Mem[0x4480] = 0x05 -> 0x04
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_DEC_ABS);

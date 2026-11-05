@@ -20,11 +20,10 @@ protected:
 };
 
 TEST_F(TAX_Test, TAX) {
-    // 0xFFFC: TAX
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TAX);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.A = 0x42;
     cpu.X = 0x00;
@@ -37,11 +36,10 @@ TEST_F(TAX_Test, TAX) {
 }
 
 TEST_F(TAX_Test, TAX_ZeroFlag) {
-    // 0xFFFC: TAX
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TAX);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.A = 0x00;
     cpu.X = 0x42;
@@ -54,11 +52,10 @@ TEST_F(TAX_Test, TAX_ZeroFlag) {
 }
 
 TEST_F(TAX_Test, TAX_NegativeFlag) {
-    // 0xFFFC: TAX
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TAX);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.A = 0x80;
     cpu.X = 0x00;

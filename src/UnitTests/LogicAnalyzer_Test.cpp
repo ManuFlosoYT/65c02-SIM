@@ -52,7 +52,6 @@ TEST(LogicAnalyzerTest, BufferWrapAround) {
     EXPECT_EQ(analyzer.GetSample(0).cycle, TOTAL - 1);
     EXPECT_EQ(analyzer.GetSample(Hardware::LogicAnalyzer::BUFFER_SIZE - 1).cycle, TOTAL - Hardware::LogicAnalyzer::BUFFER_SIZE);
 
-    // Clamps to oldest available
     EXPECT_EQ(analyzer.GetSample(TOTAL + 100).cycle, TOTAL - Hardware::LogicAnalyzer::BUFFER_SIZE);
 }
 
@@ -113,9 +112,9 @@ TEST(LogicAnalyzerTest, PinGetters) {
     EXPECT_FALSE(sdcard.IsCSActive());
     EXPECT_EQ(sdcard.GetLastMISO(), 0xFF);
 
-    sdcard.SetCS(false);  // active low: false means CS asserted
+    sdcard.SetCS(false);  // Active-low chip select: false = asserted, true = deasserted
     EXPECT_TRUE(sdcard.IsCSActive());
-    sdcard.SetCS(true);   // true means CS deasserted
+    sdcard.SetCS(true);
     EXPECT_FALSE(sdcard.IsCSActive());
 }
 
@@ -140,8 +139,7 @@ TEST(LogicAnalyzerTest, EmulatorIntegration) {
     EXPECT_EQ(s.uartTx, 1);
     EXPECT_EQ(s.uartRx, 1);
 
-    // Setup a NOP at reset vector and step
-    emulator.GetMem().WriteDirect(0x8000, 0xEA);  // NOP
+    emulator.GetMem().WriteDirect(0x8000, 0xEA);
     emulator.GetMem().WriteDirect(0xFFFC, 0x00);
     emulator.GetMem().WriteDirect(0xFFFD, 0x80);
     emulator.Reset();

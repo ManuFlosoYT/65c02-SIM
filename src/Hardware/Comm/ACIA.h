@@ -7,7 +7,6 @@
 
 namespace Hardware {
 
-// ACIA STATUS BITMASKS
 constexpr Byte ACIA_STATUS_IRQ  = 0x80;
 constexpr Byte ACIA_STATUS_DSR  = 0x40;
 constexpr Byte ACIA_STATUS_DCD  = 0x20;
@@ -17,7 +16,6 @@ constexpr Byte ACIA_STATUS_OVRN = 0x04;
 constexpr Byte ACIA_STATUS_FE   = 0x02;
 constexpr Byte ACIA_STATUS_PE   = 0x01;
 
-// ACIA CMD BITMASKS
 constexpr Byte ACIA_CMD_ECHO    = 0x10;
 constexpr Byte ACIA_CMD_RX_IRQ_DISABLE = 0x02;
 constexpr Byte ACIA_CMD_DTR     = 0x01;
@@ -28,7 +26,6 @@ class ACIA : public IBusDevice {
     void Reset() override;
     void ReceiveData(Byte data);
 
-    // IBusDevice implementation
     inline Byte Read(Word address) override;
     inline Byte ReadDirect(Word address) override;
     void Write(Word address, Byte data) override;
@@ -89,7 +86,7 @@ inline void ACIA::SetOutputCallback(std::function<void(char)> callback) { output
 inline Byte ACIA::Read(Word address) {
     switch (address & 0x03) {
         case ACIA_DATA & 0x03:
-            STATUS &= ~ACIA_STATUS_RDRF;  // Clear interrupt/ready bit on read
+            STATUS &= ~ACIA_STATUS_RDRF;
             UpdateIRQ();
             return rxData;
         case ACIA_STATUS & 0x03: {

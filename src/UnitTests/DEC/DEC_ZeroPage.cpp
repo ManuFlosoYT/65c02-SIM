@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(DEC_ZeroPage_Test, DEC_ZeroPage) {
-    // Mem[0x42] = 0x05 -> 0x04
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_DEC_ZP);
@@ -36,7 +35,6 @@ TEST_F(DEC_ZeroPage_Test, DEC_ZeroPage) {
 }
 
 TEST_F(DEC_ZeroPage_Test, DEC_ZeroPage_ZeroFlag) {
-    // Mem[0x42] = 0x01 -> 0x00
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_DEC_ZP);
@@ -52,7 +50,6 @@ TEST_F(DEC_ZeroPage_Test, DEC_ZeroPage_ZeroFlag) {
 }
 
 TEST_F(DEC_ZeroPage_Test, DEC_ZeroPage_NegativeFlag) {
-    // Mem[0x42] = 0x00 -> 0xFF
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_DEC_ZP);

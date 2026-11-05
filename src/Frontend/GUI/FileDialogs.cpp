@@ -104,7 +104,6 @@ void HandleCreateSDDialog(AppState& state) {
     if (CustomFileDialog::Display("CreateSDDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePath = CustomFileDialog::GetFilePathName();
-            // Ensure .img extension
             if (filePath.size() < 4 || filePath.substr(filePath.size() - 4) != ".img") {
                 filePath += ".img";
             }
@@ -172,7 +171,7 @@ void HandleLoadScriptDialog(AppState& state) {
             state.script.path = filePath;
             state.script.loaded = true;
             state.script.showConsole = true;
-            state.emulator.Pause();  // Pause the frontend before running the script
+            state.emulator.Pause();
             state.emulator.GetScriptEngine().LoadAndRun(filePath);
             ImGui::CloseCurrentPopup();
         }

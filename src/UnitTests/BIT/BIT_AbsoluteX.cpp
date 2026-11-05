@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(BIT_AbsoluteX_Test, BIT_AbsoluteX) {
-    // Address = 0x4480 + 0x01 = 0x4481
-    // Val = 0x80 (Bit 7 set -> N=1, V=0)
     cpu.X = 0x01;
     cpu.A = 0xFF;
 

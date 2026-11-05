@@ -15,7 +15,6 @@ void DrawUpdatePopup(AppState& state) {
         ImGui::OpenPopup("Update Available");
     }
 
-    // Always center the modal
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
 
@@ -26,7 +25,7 @@ void DrawUpdatePopup(AppState& state) {
         ImGui::TextUnformatted(("Latest Version: " + state.update.latestVersionTag).c_str());
         ImGui::TextUnformatted(("Current Version: " + std::string(PROJECT_VERSION)).c_str());
         ImGui::NewLine();
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.8F, 0.0F, 1.0F)); // Warning color (yellow/gold)
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.8F, 0.0F, 1.0F));
         ImGui::PushTextWrapPos(0.0F);
         ImGui::TextUnformatted("WARNING: Please delete the SDK directory before updating to ensure a clean replacement.");
         ImGui::PopTextWrapPos();

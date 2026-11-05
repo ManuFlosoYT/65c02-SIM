@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(BIT_ZeroPageX_Test, BIT_ZeroPageX) {
-    // Address = 0x42 + 0x05 = 0x47
-    // Val at 0x47 = 0xC0 (N=1, V=1)
     cpu.X = 0x05;
     cpu.A = 0xFF;
 

@@ -49,14 +49,14 @@ double SIDResampler::BesselI0(double x) {
 }
 
 void SIDResampler::BuildPolyphaseTable() {
-    double cutoff = (outputRate * 0.45) / inputRate; // 90% of Nyquist to give room for transition
+    double cutoff = (outputRate * 0.45) / inputRate;  // 90% Nyquist for transition band
     
     const int tapCount = static_cast<int>(numInputTaps);
     int halfTaps = tapCount / 2;
     
     firTable.assign(numInputTaps * PHASES, 0.0);
     
-    double kaiserBeta = 7.0; // Good stopband attenuation (~70dB)
+    double kaiserBeta = 7.0;  // Kaiser beta=7.0 yields ~70dB stopband attenuation
     double i0Beta = BesselI0(kaiserBeta);
     
     for (int p = 0; p < PHASES; ++p) {
@@ -66,14 +66,12 @@ void SIDResampler::BuildPolyphaseTable() {
         for (int i = 0; i < tapCount; ++i) {
             double x = (i - halfTaps) - phaseOffset;
             
-            // Sinc
             double sinc = 1.0;
             if (x != 0.0) {
                 double piX = 3.14159265358979323846 * x * 2.0 * cutoff;
                 sinc = std::sin(piX) / piX;
             }
             
-            // Kaiser Window
             double window = 0.0;
             double arg = (2.0 * x) / tapCount;
             if (arg >= -1.0 && arg <= 1.0) {
@@ -85,7 +83,6 @@ void SIDResampler::BuildPolyphaseTable() {
             sum += coeff;
         }
         
-        // Normalize phase
         if (sum > 0.0) {
             for (int i = 0; i < tapCount; ++i) {
                 firTable[p * numInputTaps + i] /= sum;

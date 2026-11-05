@@ -19,11 +19,8 @@ protected:
     CPU cpu;
 };
 
-// LSR: Logical Shift Right
-// 0 -> [7...0] -> C
 
 TEST_F(LSR_Accumulator_Test, LSR_Accumulator_NoCarry) {
-    // 0000 0010 (2) -> 0000 0001 (1). C=0
     cpu.A = 0x02;
     cpu.C = 1;
 
@@ -41,7 +38,6 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_NoCarry) {
 }
 
 TEST_F(LSR_Accumulator_Test, LSR_Accumulator_CarryOut) {
-    // 0000 0001 (1) -> 0000 0000 (0). C=1
     cpu.A = 0x01;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -54,5 +50,5 @@ TEST_F(LSR_Accumulator_Test, LSR_Accumulator_CarryOut) {
     EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.C);
     EXPECT_TRUE(cpu.Z);
-    EXPECT_FALSE(cpu.N);  // LSR always resets N
+    EXPECT_FALSE(cpu.N);
 }

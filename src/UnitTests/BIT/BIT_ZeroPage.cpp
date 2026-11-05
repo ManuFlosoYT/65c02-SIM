@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsFlagsFromMemory) {
-    // Memory value has bit 7 set (N) and bit 6 set (V).
-    // A & Mem != 0 -> Z=0
     cpu.A = 0xFF;
     cpu.N = 0;
     cpu.V = 0;
@@ -31,7 +29,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsFlagsFromMemory) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BIT_ZP);
     bus.Write(0x4001, 0x42);
-    bus.Write(0x0042, 0xC0);  // 1100 0000 -> N=1, V=1
+    bus.Write(0x0042, 0xC0);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
@@ -43,7 +41,6 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsFlagsFromMemory) {
 }
 
 TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsZeroFlag) {
-    // A & Mem == 0 -> Z=1
     cpu.A = 0x01;
     cpu.Z = 0;
 
@@ -51,7 +48,7 @@ TEST_F(BIT_ZeroPage_Test, BIT_ZeroPage_SetsZeroFlag) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BIT_ZP);
     bus.Write(0x4001, 0x42);
-    bus.Write(0x0042, 0xFE);  // 1111 1110. A & Mem = 0.
+    bus.Write(0x0042, 0xFE);
     // Mem also has N=1 (bit 7) and V=1 (bit 6)
     bus.Write(0x4002, INS_STP);
 

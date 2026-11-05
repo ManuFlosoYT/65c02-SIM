@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(LSR_Absolute_Test, LSR_Absolute) {
-    // Mem[0x4480] = 0x02 -> 0x01
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LSR_ABS);

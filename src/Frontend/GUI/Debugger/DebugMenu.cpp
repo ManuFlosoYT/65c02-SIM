@@ -55,7 +55,6 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     ImGui::SetCursorPosY(ImGui::GetWindowHeight() - totalBottomSpace);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
 
-    // Run/Pause
     ImGui::BeginDisabled(!state.rom.loaded);
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button(state.emulator.IsPaused() ? "Run " : "Pause", ImVec2(adjustedWidth, 0))) {
@@ -78,7 +77,6 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         ImGui::EndTooltip();
     }
 
-    // Step
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button("Step", ImVec2(adjustedWidth, 0))) {
         state.emulator.DecayHeatmap(48);
@@ -97,7 +95,6 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         ImGui::EndTooltip();
     }
 
-    // Step Back
     bool canStepBack = state.emulator.CanRewind() && state.emulator.IsPaused();
     ImGui::BeginDisabled(!canStepBack);
     ImGui::SetCursorPosX(horizontalPadding);
@@ -119,7 +116,6 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     ImGui::EndDisabled();
     ImGui::EndDisabled();
 
-    // Reset
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button("Reset", ImVec2(adjustedWidth, 0))) {
         Control::PromptOrExecuteCartridgeAction(state, Control::PendingCartridgeAction::Reset);
@@ -132,7 +128,6 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
 
     ImGui::Spacing();
 
-    // Exit
     ImGui::SetCursorPosX(horizontalPadding);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
@@ -169,20 +164,17 @@ void DrawDebugMenu(Control::AppState& state) {
         return;
     }
 
-    // Left sidebar
     const float sidebarWidth = 165.0F * state.render.uiScale;
     DrawDebugSidebar(state, sidebarWidth);
     DrawDebugControlButtons(state, sidebarWidth);
 
     ImGui::SameLine();
 
-    // Vertical separator
     float lineX = ImGui::GetCursorScreenPos().x - ImGui::GetStyle().ItemSpacing.x;
     ImGui::GetWindowDrawList()->AddLine(ImVec2(lineX, ImGui::GetWindowPos().y),
                                         ImVec2(lineX, ImGui::GetWindowPos().y + ImGui::GetWindowHeight()),
                                         ImGui::GetColorU32(ImGuiCol_Separator), 1.0F);
 
-    // Content area
     ImGui::BeginChild("DebugContent", ImVec2(0, 0), ImGuiChildFlags_None);
 
     state.emulator.SetProfilingEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Profiler);
@@ -208,7 +200,7 @@ void DrawDebugMenu(Control::AppState& state) {
         DrawLogicAnalyzerWindow(state);
     } else if (state.debugger.mode == Control::DebuggerMode::MemoryScanner) {
         DrawMemoryScannerWindow(state);
-    } else {  // Network Sniffer
+    } else {
         DrawNetworkSnifferContent(state);
     }
     ImGui::EndChild();

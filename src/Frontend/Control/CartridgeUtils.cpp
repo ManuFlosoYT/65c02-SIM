@@ -30,12 +30,10 @@ void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart) {
     state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
     state.emulator.ClearProfiler();
 
-    // Automatic SD mounting for v3 cartridges
     if (!cart.sdCardPath.empty()) {
         state.emulator.GetSDCard().Mount(cart.sdCardPath);
     }
     
-    // Refresh VRAM texture if an image was loaded
     if (!cart.vramData.empty() && state.emulation.gpuEnabled) {
         ::GUI::ForceRefreshVRAM(state);
     }

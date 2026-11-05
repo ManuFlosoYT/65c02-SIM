@@ -79,7 +79,6 @@ void Lexer::scanToken() {
             break;
         case '/':
             if (match('/')) {
-                // A comment goes until the end of the line.
                 while (peek() != '\n' && !isAtEnd()) {
                     advance();
                 }
@@ -119,7 +118,7 @@ void Lexer::skipWhitespace() {
             case '\n':
                 line++;
                 advance();
-                columnCurrent = 1; // Reset column after newline
+                columnCurrent = 1;
                 break;
             default:
                 return;
@@ -171,10 +170,8 @@ void Lexer::stringToken() {
         return;
     }
 
-    // The closing ".
     advance();
 
-    // Trim the surrounding quotes.
     std::string value = source.substr(start + 1, current - start - 2);
     tokens.push_back(makeToken(TokenType::String, value));
 }
@@ -182,9 +179,8 @@ void Lexer::stringToken() {
 void Lexer::numberToken() {
     int base = 10;
     
-    // Check for hex
     if (source[start] == '0' && (peek() == 'x' || peek() == 'X')) {
-        advance(); // consume 'x'
+        advance();
         base = 16;
         while (isDigit(peek()) || (peek() >= 'a' && peek() <= 'f') || (peek() >= 'A' && peek() <= 'F')) {
             advance();

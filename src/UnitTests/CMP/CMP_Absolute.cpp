@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(CMP_Absolute_Test, CMP_Absolute) {
-    // A = 5, Mem = 5
     cpu.A = 0x05;
 
     bus.WriteDirect(0xFFFC, 0x00);

@@ -35,7 +35,6 @@ TEST(SIDMuteSoloTest, SetGetMuteAndSolo) {
     sid.SetVoiceSolo(1, false);
     EXPECT_FALSE(sid.IsVoiceSolo(1));
 
-    // Out of bounds safety
     sid.SetVoiceMute(-1, true);
     sid.SetVoiceMute(5, true);
     sid.SetVoiceSolo(-1, true);

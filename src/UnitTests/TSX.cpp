@@ -20,23 +20,16 @@ protected:
 };
 
 TEST_F(TSX_Test, TSX) {
-    // 0xFFFC: TSX
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TSX);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
-    // Set SP to non-zero, non-negative value
     cpu.SP = 0x0150;
     cpu.X = 0x00;
     cpu.Z = 1;
     cpu.N = 1;
 
-    // Note: TSX transfers the LOW 8 BITS of SP to X?
-    // 6502 SP is 8-bit (offset from 0x0100).
-    // In this emu, SP is Word (16-bit).
-    // "Transfer Stack Pointer to X". X is 8-bit.
-    // So it should transfer the low byte of SP (0x50).
 
     cpu.Execute(bus);
 
@@ -46,13 +39,12 @@ TEST_F(TSX_Test, TSX) {
 }
 
 TEST_F(TSX_Test, TSX_ZeroFlag) {
-    // 0xFFFC: TSX
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TSX);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
-    cpu.SP = 0x0100;  // Low byte is 0x00
+    cpu.SP = 0x0100;
     cpu.X = 0xFF;
     cpu.Z = 0;
 
@@ -64,13 +56,12 @@ TEST_F(TSX_Test, TSX_ZeroFlag) {
 }
 
 TEST_F(TSX_Test, TSX_NegativeFlag) {
-    // 0xFFFC: TSX
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TSX);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
-    cpu.SP = 0x0180;  // Low byte is 0x80 (Negative)
+    cpu.SP = 0x0180;
     cpu.X = 0x00;
     cpu.N = 0;
 

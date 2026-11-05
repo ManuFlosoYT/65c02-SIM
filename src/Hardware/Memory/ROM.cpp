@@ -12,7 +12,6 @@ Byte ROM::Read(Word address) {
 }
 
 void ROM::Write(Word address, Byte data) {
-    // ROM is Read-Only via Bus
 }
 
 void ROM::WriteDirect(Word address, Byte data) {

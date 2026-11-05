@@ -58,7 +58,7 @@ TEST(System_Cartridge_Test, ParseBus_InvalidRange) {
     Cartridge cart;
     nlohmann::json manifest = {
         {"bus", {
-            {{"name", "RAM"}, {"start", 0x7FFF}, {"end", 0x0000}}, // start > end
+            {{"name", "RAM"}, {"start", 0x7FFF}, {"end", 0x0000}},
             {{"name", "ROM"}, {"start", 0x8000}, {"end", 0xFFFF}}
         }}
     };

@@ -20,19 +20,17 @@ protected:
 };
 
 TEST_F(AND_ZeroPage_Test, AND_ZeroPage) {
-    // 0xFFFC: AND (ZP) 0x42
-    // 0x0042: 0x37
-    cpu.A = 0xFF;  // Start with A = 0xFF
+    cpu.A = 0xFF;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_ZP);
     bus.Write(0x4001, 0x42);
-    bus.Write(0x0042, 0x37);  // Value to AND with
+    bus.Write(0x0042, 0x37);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.A, 0x37);  // 0xFF & 0x37 = 0x37
+    EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }

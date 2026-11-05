@@ -19,19 +19,18 @@ protected:
     CPU cpu;
 };
 
-// SMB should SET the bit to 1. 0 -> 1, 1 -> 1.
 
 TEST_F(SMB_Test, SMB0_SetsBit0) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB0);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_STP);  // Stop
-    bus.Write(0x0010, 0x00);     // 0000 0000
+    bus.Write(0x4002, INS_STP);
+    bus.Write(0x0010, 0x00);
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x01);  // 0000 0001
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x01);
 }
 
 TEST_F(SMB_Test, SMB0_AlreadySet) {
@@ -39,13 +38,13 @@ TEST_F(SMB_Test, SMB0_AlreadySet) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_SMB0);
     bus.Write(0x4001, 0x10);
-    bus.Write(0x4002, INS_STP);  // Stop
-    bus.Write(0x0010, 0x01);     // 0000 0001
+    bus.Write(0x4002, INS_STP);
+    bus.Write(0x0010, 0x01);
 
     cpu.Execute(bus);
 
     EXPECT_EQ(bus.ReadDirect(0x0010),
-              0x01);  // Should stay 0000 0001. If XOR, it would become 0x00.
+              0x01);
 }
 
 TEST_F(SMB_Test, SMB1_SetsBit1) {
@@ -58,7 +57,7 @@ TEST_F(SMB_Test, SMB1_SetsBit1) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x02);  // 0000 0010
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x02);
 }
 
 TEST_F(SMB_Test, SMB2_SetsBit2) {
@@ -71,7 +70,7 @@ TEST_F(SMB_Test, SMB2_SetsBit2) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x04);  // 0000 0100
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x04);
 }
 
 TEST_F(SMB_Test, SMB3_SetsBit3) {
@@ -84,7 +83,7 @@ TEST_F(SMB_Test, SMB3_SetsBit3) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x08);  // 0000 1000
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x08);
 }
 
 TEST_F(SMB_Test, SMB4_SetsBit4) {
@@ -97,7 +96,7 @@ TEST_F(SMB_Test, SMB4_SetsBit4) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x10);  // 0001 0000
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x10);
 }
 
 TEST_F(SMB_Test, SMB5_SetsBit5) {
@@ -110,7 +109,7 @@ TEST_F(SMB_Test, SMB5_SetsBit5) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x20);  // 0010 0000
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x20);
 }
 
 TEST_F(SMB_Test, SMB6_SetsBit6) {
@@ -123,7 +122,7 @@ TEST_F(SMB_Test, SMB6_SetsBit6) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x40);  // 0100 0000
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x40);
 }
 
 TEST_F(SMB_Test, SMB7_SetsBit7) {
@@ -136,5 +135,5 @@ TEST_F(SMB_Test, SMB7_SetsBit7) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(bus.ReadDirect(0x0010), 0x80);  // 1000 0000
+    EXPECT_EQ(bus.ReadDirect(0x0010), 0x80);
 }

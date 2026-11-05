@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(LSR_AbsoluteX_Test, LSR_AbsoluteX) {
-    // Addr = 0x4480 + 1 = 0x4481
     cpu.X = 0x01;
 
     bus.WriteDirect(0xFFFC, 0x00);

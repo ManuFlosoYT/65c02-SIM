@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(BIT_Absolute_Test, BIT_Absolute) {
-    // Address = 0x4480
-    // Val = 0x40 (Bit 6 set -> V=1, N=0)
     cpu.A = 0xFF;
 
     bus.WriteDirect(0xFFFC, 0x00);

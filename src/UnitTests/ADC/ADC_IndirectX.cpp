@@ -20,9 +20,6 @@ protected:
 };
 
 TEST_F(ADC_IndirectX_Test, ADC_IndirectX) {
-    // ZP Addr = 0x02 + 0x04 = 0x06
-    // Mem[0x06] = 0x00, Mem[0x07] = 0x80 -> Addr = 0x8000
-    // Mem[0x8000] = 0x37
     cpu.X = 0x04;
     cpu.A = 0x00;
     cpu.C = 0;
@@ -33,7 +30,7 @@ TEST_F(ADC_IndirectX_Test, ADC_IndirectX) {
     bus.Write(0x4001, 0x02);
     bus.Write(0x0006, 0x00);
     bus.Write(0x0007, 0x80);
-    bus.WriteDirect(0x8000, 0x37);  // 55
+    bus.WriteDirect(0x8000, 0x37);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);

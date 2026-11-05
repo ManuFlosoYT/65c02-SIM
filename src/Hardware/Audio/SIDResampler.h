@@ -12,7 +12,6 @@ public:
 
     void SetRates(double inRate, double outRate);
     
-    // Add a sample at the input rate
     void PushSample(double sample) {
         if (decimFactor > 1) {
             decimAccum += sample;
@@ -38,12 +37,10 @@ public:
         }
     }
     
-    // Check if we have an output sample ready
     [[nodiscard]] bool HasOutput() const {
         return outputCount != 0;
     }
     
-    // Get the next output sample and consume it
     double GetOutput() {
         if (outputCount == 0) {
             return 0.0;
@@ -70,23 +67,19 @@ private:
     double decimInv = 1.0;
     double decimAccum = 0.0;
 
-    // FIR Filter state
     std::vector<double> firTable;
     std::vector<double> ringBuffer;
     std::size_t ringBufferSize = 0;
     std::size_t ringIndex = 0;
     std::size_t numInputTaps = 0;
     
-    // Timing state
     double fractionalTime = 0.0;
     
-    // Output ring buffer
     std::vector<double> outputBuffer;
     std::size_t outputReadIndex = 0;
     std::size_t outputWriteIndex = 0;
     std::size_t outputCount = 0;
     
-    // Polyphase configuration
     static constexpr int PHASES = 256;
     static constexpr int FILTER_HALF_TAPS = 16; 
     static constexpr int FILTER_TAPS = FILTER_HALF_TAPS * 2;

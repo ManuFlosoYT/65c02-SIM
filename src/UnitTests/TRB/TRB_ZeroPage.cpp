@@ -20,10 +20,6 @@ protected:
 };
 
 TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_SetsZeroFlag) {
-    // A = 0xAA (1010 1010)
-    // M = 0x55 (0101 0101)
-    // A & M = 0 -> Z = 1
-    // M = M & ~A = 0x55 & 0x55 = 0x55
     cpu.A = 0xAA;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -39,10 +35,6 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_SetsZeroFlag) {
 }
 
 TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_ClearsZeroFlag_And_ResetsBits) {
-    // A = 0xFF (1111 1111)
-    // M = 0xFF (1111 1111)
-    // A & M = 0xFF != 0 -> Z = 0
-    // M = M & ~A = 0xFF & 0x00 = 0x00
     cpu.A = 0xFF;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -58,10 +50,6 @@ TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_ClearsZeroFlag_And_ResetsBits) {
 }
 
 TEST_F(TRB_ZeroPage_Test, TRB_ZeroPage_PartialReset) {
-    // A = 0xF0 (1111 0000)
-    // M = 0xAA (1010 1010)
-    // A & M = 0xA0 (1010 0000) != 0 -> Z = 0
-    // M = M & ~A = 0xAA & 0x0F = 0x0A (0000 1010)
     cpu.A = 0xF0;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);

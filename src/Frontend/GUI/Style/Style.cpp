@@ -4,8 +4,7 @@
 #include "Frontend/GUI/Style/FontLoader.h"
 
 void SetupImGuiStyle() {
-    // Moonlight style by deathsu/madam-herta
-    // https://github.com/Madam-Herta/Moonlight/
+    // Moonlight theme (github.com/Madam-Herta/Moonlight)
     ImGuiStyle& style = ImGui::GetStyle();
 
     style.Alpha = 1.0F;

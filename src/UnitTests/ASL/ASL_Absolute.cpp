@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(ASL_Absolute_Test, ASL_Absolute) {
-    // Mem[0x4480] = 0x01 -> 0x02
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ASL_ABS);

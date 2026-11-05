@@ -67,7 +67,7 @@ TEST(ACIA_Test, TxTransmission) {
     EXPECT_EQ(acia.ReadDirect(ACIA_STATUS) & ACIA_STATUS_TDRE, 0);
     EXPECT_TRUE(output.empty());
 
-    // ips = 192000, baud = 19200, frameBits = 10 -> total ticks = 100
+    // 192kHz clock / 19200 baud * 10 bits = 100 ticks per frame
     for (int i = 0; i < 101; ++i) {
         acia.Clock(192000);
     }

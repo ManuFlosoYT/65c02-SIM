@@ -20,7 +20,6 @@ constexpr Word ACIA_STATUS = 0x5001;
 constexpr Word ACIA_CMD = 0x5002;
 constexpr Word ACIA_CTRL = 0x5003;
 
-// VIA Registers
 constexpr Word PORTB = 0x6000;
 constexpr Word PORTA = 0x6001;
 constexpr Word DDRB = 0x6002;
@@ -44,7 +43,7 @@ struct DeviceRegistration {
     IBusDevice* device = nullptr;
     bool enabled = false;
     bool ignoreCollision = false;
-    bool isVirtual = false;  // If true: UI-only, never mapped to deviceMap
+    bool isVirtual = false;
 
     bool operator==(const DeviceRegistration&) const = default;
 };
@@ -68,9 +67,7 @@ class Bus : public ISerializable {
     void RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device, bool enabled = true,
                         bool ignoreCollision = false);
 
-    // Registers a device as UI-only (no bus address, no collision). Useful for
-    // hardware driven by callbacks (LCD, SDCard) that still need to appear in
-    // the Memory Layout debug window and have their 'enabled' flag queried.
+    // UI-only device (LCD, SDCard) registered for debugger inspection without bus mapping
     void RegisterVirtualDevice(IBusDevice* device, bool enabled = true);
 
     template <bool Debug>

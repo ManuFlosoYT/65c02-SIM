@@ -20,11 +20,11 @@ protected:
 };
 
 TEST_F(EOR_Immediate_Test, EOR_Immediate) {
-    cpu.A = 0xFF;  // Start with 0xFF
+    cpu.A = 0xFF;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_EOR_IM);
-    bus.Write(0x4001, 0x0F);  // 0xFF ^ 0x0F = 0xF0
+    bus.Write(0x4001, 0x0F);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
@@ -40,7 +40,7 @@ TEST_F(EOR_Immediate_Test, EOR_Immediate_ZeroFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_EOR_IM);
-    bus.Write(0x4001, 0xFF);  // 0xFF ^ 0xFF = 0x00
+    bus.Write(0x4001, 0xFF);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
@@ -56,7 +56,7 @@ TEST_F(EOR_Immediate_Test, EOR_Immediate_NegativeFlag) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_EOR_IM);
-    bus.Write(0x4001, 0x80);  // 0x00 ^ 0x80 = 0x80
+    bus.Write(0x4001, 0x80);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);

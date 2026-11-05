@@ -20,13 +20,6 @@ protected:
 };
 
 TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX) {
-    // Programa en memoria:
-    // 0xFFFC: LDA (ZeroPageX) 0x42
-    // 0xFFFD: 0x42
-    // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
-    // X register: 0x05
-    // Dirección objetivo: 0x42 + 0x05 = 0x47
-    // 0x0047: 0x37 (Valor a cargar)
     cpu.X = 0x05;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -35,20 +28,6 @@ TEST_F(LDA_ZeroPageX_Test, LDA_ZeroPageX) {
     bus.Write(0x0047, 0x37);
     bus.Write(0x4002, INS_STP);
 
-    // Ciclo 1:
-    //    Lee LDA (ZPX) en 0xFFFC
-    //    PC avanza a 0xFFFD
-    //    Ejecuta LDA (ZPX)
-    // Ciclo 2:
-    //    Lee la dirección base ZP (0x42) en 0xFFFD
-    //    PC avanza a 0xFFFE
-    // Ciclo 3:
-    //    Lee dirección base 0x42
-    //    Calcula dirección efectiva 0x42 + X (0x05) = 0x47
-    // Ciclo 4:
-    //    Lee el valor (0x37) en 0x0047
-    //    Carga 0x37 en A
-    //    Opcode desconocido -> Retorna
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4003);

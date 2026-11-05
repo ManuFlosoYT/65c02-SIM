@@ -20,29 +20,15 @@ protected:
 };
 
 TEST_F(NOP_Test, NoHaceNada) {
-    // Programa en memoria:
-    // 0xFFFC: NOP (0xEA)
-    // 0xFFFD: Opcode desconocido (0xFF) para detener la ejecución
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_NOP);
     bus.Write(0x4001, INS_STP);
 
-    // Ciclo 1:
-    //     Lee NOP en 0xFFFC
-    //     PC avanza a 0xFFFD
-    //     Ejecuta NOP
-    // Ciclo 2:
-    //     Lee 0xFF en 0xFFFD
-    //     PC avanza a 0xFFFE
-    //     Opcode desconocido
-    //     Retorna
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4002);
 
-    // Verify Registers are unchanged (Default 0 in Setup, but let's change them
-    // before)
 }
 
 TEST_F(NOP_Test, NoModificaEstado) {

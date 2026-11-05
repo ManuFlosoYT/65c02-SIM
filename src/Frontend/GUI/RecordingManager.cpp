@@ -39,7 +39,7 @@ static bool InitializeExporter(AppState& state, std::unique_ptr<MediaExporter>& 
                                              procW, procH, audioParams,
                                              state.emulation.recordingSettings.type,
                                              state.emulation.recordingSettings.format,
-                                             state.emulation.recordingSettings.audioFormat, // Pass audioFormat
+                                             state.emulation.recordingSettings.audioFormat,
                                              state.emulation.recordingSettings.recordRaw,
                                              state.emulation.recordingSettings.recordProcessed);
     if (!initOk) {
@@ -60,7 +60,6 @@ static bool InitializeExporter(AppState& state, std::unique_ptr<MediaExporter>& 
 }
 
 static void HandleAutoStop(AppState& state) {
-    // Auto-stop recording if emulation has halted or stopped after having run
     if (!state.emulation.isRecordingVideo) {
         return;
     }

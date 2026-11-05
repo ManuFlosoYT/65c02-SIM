@@ -14,9 +14,6 @@ TEST(InterpreterTest, EvaluatesMath) {
     Interpreter interpreter;
     interpreter.interpret(stmts);
     
-    // Test logic requires us to get the environment value...
-    // But Interpreter doesn't expose environment directly. We could add a way to query globals for testing,
-    // or we can test an emu builtin callback.
 }
 
 TEST(InterpreterTest, BuiltinCall) {

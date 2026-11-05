@@ -91,10 +91,8 @@ public:
     bool LoadFromELF(const std::string& elfPath);
     bool LoadFromDebugInfo(const std::string& debugLineOutput, const std::string& nmOutput);
 
-    // Get exact symbol mapping at a specific address
     const DbgSym* GetSymbolAtAddress(uint16_t address) const;
     
-    // Get line information for a specific address
     const DbgLine* GetLineForAddress(uint16_t address) const;
 
     const DbgFile* GetFile(unsigned int fileId) const;
@@ -116,7 +114,6 @@ private:
     std::unordered_map<unsigned int, DbgSeg> segs;
     mutable SourceCodeCache sourceCache;
 
-    // Fast lookups
     std::unordered_map<uint16_t, unsigned int> addrToSymId; 
     std::unordered_map<uint16_t, unsigned int> addrToLineId;
     std::unordered_map<std::string, unsigned int> nameToSymId;

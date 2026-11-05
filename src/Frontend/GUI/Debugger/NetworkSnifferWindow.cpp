@@ -63,7 +63,6 @@ void DrawNetworkSnifferContent(Control::AppState& state) {
     auto& esp = state.emulator.GetESP8266();
     auto& snifferState = state.sniffer;
 
-    // Top Toolbar
     ImGui::BeginGroup();
     if (ImGui::Button("Clear")) {
         esp.ClearTrafficLog();
@@ -102,7 +101,6 @@ void DrawNetworkSnifferContent(Control::AppState& state) {
 
     auto packets = esp.GetTrafficLog();
 
-    // Filter packets
     std::string searchStr = snifferState.searchFilter;
     std::vector<size_t> filteredIndices;
     filteredIndices.reserve(packets.size());
@@ -130,12 +128,10 @@ void DrawNetworkSnifferContent(Control::AppState& state) {
         filteredIndices.push_back(i);
     }
 
-    // Split layout: Packet Table (top 60%), Packet Inspector (bottom 40%)
     float availH = ImGui::GetContentRegionAvail().y;
     float tableH = availH * 0.58F;
     float inspectH = availH - tableH - 8.0F;
 
-    // Packet Table
     if (ImGui::BeginChild("PacketTableRegion", ImVec2(0, tableH), ImGuiChildFlags_Borders)) {
         constexpr ImGuiTableFlags tableFlags =
             ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit;
@@ -193,7 +189,6 @@ void DrawNetworkSnifferContent(Control::AppState& state) {
     }
     ImGui::EndChild();
 
-    // Packet Inspector
     if (ImGui::BeginChild("PacketInspectorRegion", ImVec2(0, inspectH), ImGuiChildFlags_Borders)) {
         if (snifferState.selectedPacketIndex >= 0 &&
             snifferState.selectedPacketIndex < static_cast<int>(packets.size())) {

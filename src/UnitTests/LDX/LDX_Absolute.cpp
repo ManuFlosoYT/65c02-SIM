@@ -20,10 +20,6 @@ protected:
 };
 
 TEST_F(LDX_Absolute_Test, LDX_Absolute) {
-    // 0xFFFC: LDX 0x8000
-    // 0xFFFD: 0x00 (Low Byte)
-    // 0xFFFE: 0x80 (High Byte)
-    // 0x8000: 0x37
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDX_ABS);
@@ -31,15 +27,11 @@ TEST_F(LDX_Absolute_Test, LDX_Absolute) {
     bus.Write(0x4002, 0x80);
     bus.WriteDirect(0x8000, 0x37);
 
-    // We assume Instruction takes 3 bytes (1 opcode + 2 address)
-    // Next instruction at 0xFFFF (but we are at FFFC+3 = FFFF)
-    // The previous tests used 0xFFFE as the stop opcode, but if the instruction
-    // is 3 bytes long: FFFC (Op), FFFD (AL), FFFE (AH) Next Opcode at FFFF.
     bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.PC, 0x4004);  // FFFF + 1 = 0 (wrap) or just Stop.
+    EXPECT_EQ(cpu.PC, 0x4004);
     // Wait, let's check LDA_ZeroPage again. It was at FFFC, FFFD (arg), FFFE
     // (stop). ZeroPage is 2 bytes. Absolute is 3 bytes. So FFFC, FFFD, FFFE.
     // Next PC is FFFF. So bus.ReadDirect(0xFFFF) = 0xFF is correct. And expected PC is

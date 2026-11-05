@@ -353,7 +353,6 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            // Keep track of raw VRAM texture
             state.render.lastDisplayTex = state.render.vramTexture;
             state.render.lastDisplayW = GPU::VRAM_WIDTH;
             state.render.lastDisplayH = GPU::VRAM_HEIGHT;

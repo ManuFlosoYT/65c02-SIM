@@ -20,10 +20,9 @@ protected:
 };
 
 TEST_F(SBC_Decimal_Test, SBC_Decimal_Simple) {
-    // 0x10 - 0x05 = 0x05 (BCD)
     cpu.A = 0x10;
     cpu.D = 1;
-    cpu.C = 1;  // No borrow
+    cpu.C = 1;
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -34,14 +33,14 @@ TEST_F(SBC_Decimal_Test, SBC_Decimal_Simple) {
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x05);
-    EXPECT_TRUE(cpu.C);  // No borrow
+    EXPECT_TRUE(cpu.C);
 }
 
 TEST_F(SBC_Decimal_Test, SBC_Decimal_Borrow) {
-    // 0x05 - 0x06 = 0x99 (BCD 105 - 6 = 99), C=0 (Borrow)
+    // BCD decimal borrow: 5 - 6 = 99 with borrow (C=0)
     cpu.A = 0x05;
     cpu.D = 1;
-    cpu.C = 1;  // No borrow start
+    cpu.C = 1;
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -52,11 +51,10 @@ TEST_F(SBC_Decimal_Test, SBC_Decimal_Borrow) {
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x99);
-    EXPECT_FALSE(cpu.C);  // Borrow
+    EXPECT_FALSE(cpu.C);
 }
 
 TEST_F(SBC_Decimal_Test, SBC_Decimal_ZeroAndNegativeFlags) {
-    // 0x50 - 0x50 = 0x00 (BCD), C=1 (no borrow), Z=1, N=0
     cpu.A = 0x50;
     cpu.D = 1;
     cpu.C = 1;

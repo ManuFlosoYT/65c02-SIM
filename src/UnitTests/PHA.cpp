@@ -20,11 +20,10 @@ protected:
 };
 
 TEST_F(PHA_Test, PHA) {
-    // 0xFFFC: PHA
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PHA);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.A = 0x42;
 

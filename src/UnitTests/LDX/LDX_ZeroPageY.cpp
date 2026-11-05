@@ -21,10 +21,6 @@ protected:
 
 TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY) {
     cpu.Y = 0x04;
-    // 0xFFFC: LDX 0x42, Y
-    // 0xFFFD: 0x42
-    // Address: 0x42 + 0x04 = 0x46
-    // 0x0046: 0x37
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDX_ZPY);
@@ -42,10 +38,6 @@ TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY) {
 
 TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY_WrapAround) {
     cpu.Y = 0xFF;
-    // 0xFFFC: LDX 0x80, Y
-    // 0xFFFD: 0x80
-    // Address: (0x80 + 0xFF) & 0xFF = 0x7F
-    // 0x007F: 0x37
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDX_ZPY);
@@ -68,7 +60,7 @@ TEST_F(LDX_ZeroPageY_Test, LDX_ZeroPageY_ZeroFlag) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDX_ZPY);
     bus.Write(0x4001, 0x42);
-    bus.Write(0x004C, 0x00);  // 0x42 + 0x0A
+    bus.Write(0x004C, 0x00);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);

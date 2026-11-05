@@ -24,10 +24,10 @@ TEST_F(AND_Absolute_Test, AND_Absolute) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_ABS);
-    bus.Write(0x4001, 0x80);  // Little Endian
-    bus.Write(0x4002, 0x44);  // 0x4480
+    bus.Write(0x4001, 0x80);
+    bus.Write(0x4002, 0x44);
     bus.Write(0x4480, 0x37);
-    bus.Write(0x4003, INS_STP);  // Stop
+    bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);
 

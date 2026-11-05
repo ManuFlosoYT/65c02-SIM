@@ -21,16 +21,6 @@ protected:
 
 TEST_F(LDA_IndirectX_Test, LDA_IndirectX) {
     cpu.X = 0x04;
-    // Programa en memoria:
-    // 0xFFFC: LDA (IndirectX) 0x02
-    // 0xFFFD: 0x02 (Zero Page Address)
-    // 0xFFFE: Opcode desconocido
-    // X register: 0x04
-    // Dirección ZP efectiva: 0x02 + 0x04 = 0x06
-    // 0x0006: 0x00 (Low Byte Address)
-    // 0x0007: 0x80 (High Byte Address)
-    // Dirección final: 0x8000
-    // 0x8000: 0x37 (Valor a cargar)
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDA_INDX);
@@ -40,23 +30,6 @@ TEST_F(LDA_IndirectX_Test, LDA_IndirectX) {
     bus.WriteDirect(0x8000, 0x37);
     bus.Write(0x4002, INS_STP);
 
-    // Ciclo 1:
-    //    Lee LDA (INDX) en 0xFFFC -> PC=FFFD
-    //    Ejecuta LDA (INDX)
-    // Ciclo 2:
-    //    Lee ZP Address (0x02) en 0xFFFD -> PC=FFFE
-    // Ciclo 3:
-    //    Lee ZP Address (0x02)
-    //    Calcula ZP efectiva (0x02 + X)
-    // Ciclo 4:
-    //    Lee Low Byte Address en 0x0006 (0x00)
-    // Ciclo 5:
-    //    Lee High Byte Address en 0x0007 (0x80)
-    //    Dirección efectiva: 0x8000
-    // Ciclo 6:
-    //    Lee valor (0x37) en 0x8000
-    //    Carga 0x37 en A
-    //    Opcode desconocido -> Retorna
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4003);

@@ -22,15 +22,15 @@ namespace GUI {
 namespace {
 
 struct LogicAnalyzerUIState {
-    int viewMode = 2; // 0 = Waveforms, 1 = IC Pinout, 2 = Split View
-    int selectedChip = 0; // 0 = W65C02S, 1 = W65C22, 2 = W65C51N
+    int viewMode = 2;
+    int selectedChip = 0;
     int visibleCycles = 128;
     int scrollOffset = 0;
     bool showPortBits = false;
     bool enableCursors = false;
     int cursorA = 32;
     int cursorB = 96;
-    int draggingCursor = 0; // 0 = none, 1 = A, 2 = B
+    int draggingCursor = 0;
     int hoveredCycleOffset = -1;
 };
 
@@ -74,7 +74,6 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 5));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 6));
 
-    // --- Row 1: Controls ---
     bool isFrozen = analyzer.IsFrozen();
     if (isFrozen) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15F, 0.60F, 0.25F, 1.0F));
@@ -102,7 +101,6 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     ImGui::TextDisabled("|");
     ImGui::SameLine();
 
-    // View mode selector
     const char* viewModes[] = {"Waveforms", "IC Pinout", "Split View"};
     float maxViewW = 0.0F;
     for (const char* vm : viewModes) {
@@ -142,7 +140,6 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     ImGui::SameLine();
     ImGui::Checkbox("Bit-Level Ports", &uiState.showPortBits);
 
-    // --- Row 2: Status & Measurement Cursors ---
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0F);
     int targetIPS = state.emulator.GetTargetIPS();
     if (targetIPS <= 0) {
@@ -270,7 +267,6 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
     float pixelsPerCycle = canvasWidth / static_cast<float>(numVisible);
     float originX = screenOrigin.x + labelWidth;
 
-    // Cache visible samples
     std::vector<Hardware::LogicSample> visibleSamples;
     visibleSamples.reserve(static_cast<size_t>(numVisible));
     for (int i = 0; i < numVisible; ++i) {
@@ -278,7 +274,6 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
         visibleSamples.push_back(analyzer.GetSample(revOffset));
     }
 
-    // Ruler
     float rulerY = screenOrigin.y;
     drawList->AddRectFilled(ImVec2(originX, rulerY),
                             ImVec2(originX + canvasWidth, rulerY + rulerHeight),
@@ -287,7 +282,6 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
                       ImVec2(originX + canvasWidth, rulerY + rulerHeight),
                       IM_COL32(50, 58, 75, 255));
 
-    // Tick marks
     int cycleStep = 1;
     constexpr std::array<int, 11> niceSteps = {1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500};
     for (int s : niceSteps) {
@@ -312,10 +306,8 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
         }
     }
 
-    // Channels
     float currentY = rulerY + rulerHeight + 2.0F;
     for (const auto& ch : channels) {
-        // Label header
         drawList->AddRectFilled(ImVec2(screenOrigin.x, currentY),
                                 ImVec2(originX - 2.0F, currentY + trackHeight),
                                 IM_COL32(24, 28, 38, 255), 2.0F);
@@ -323,7 +315,6 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
         drawList->AddText(ImVec2(screenOrigin.x + 4.0F, currentY + (trackHeight - tSz.y) * 0.5F),
                           IM_COL32(210, 218, 230, 255), ch.name);
 
-        // Track background
         drawList->AddRectFilled(ImVec2(originX, currentY),
                                 ImVec2(originX + canvasWidth, currentY + trackHeight),
                                 IM_COL32(16, 20, 28, 140));
@@ -355,7 +346,6 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
                 }
             }
         } else {
-            // Hex Bus Bubble
             float yTop = currentY + 2.5F;
             float yBot = currentY + trackHeight - 3.5F;
             float yMid = (yTop + yBot) * 0.5F;
@@ -402,7 +392,6 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
         currentY += trackHeight + trackSpacing;
     }
 
-    // Mouse hover and cursor handling
     ImVec2 mousePos = ImGui::GetMousePos();
     bool mouseInCanvas = (mousePos.x >= originX && mousePos.x <= originX + canvasWidth &&
                           mousePos.y >= rulerY && mousePos.y <= currentY);
@@ -411,12 +400,10 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
         int hCycle = static_cast<int>((mousePos.x - originX) / pixelsPerCycle);
         uiState.hoveredCycleOffset = std::clamp(hCycle, 0, numVisible - 1);
 
-        // Vertical inspection line
         float hoverX = originX + static_cast<float>(uiState.hoveredCycleOffset) * pixelsPerCycle;
         drawList->AddLine(ImVec2(hoverX, rulerY), ImVec2(hoverX, currentY),
                           IM_COL32(255, 255, 255, 75), 1.0F);
 
-        // Tooltip inspection
         const auto& sHover = visibleSamples[static_cast<size_t>(uiState.hoveredCycleOffset)];
         if (ImGui::BeginTooltip()) {
             ImGui::TextColored(ImVec4(0.22F, 0.74F, 0.97F, 1.0F),
@@ -440,7 +427,6 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
             ImGui::EndTooltip();
         }
 
-        // Dragging cursors
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             float xA = originX + static_cast<float>(uiState.cursorA) * pixelsPerCycle;
             float xB = originX + static_cast<float>(uiState.cursorB) * pixelsPerCycle;
@@ -465,20 +451,17 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
         }
     }
 
-    // Render Cursors
     if (uiState.enableCursors) {
         int cA = std::clamp(uiState.cursorA, 0, numVisible - 1);
         int cB = std::clamp(uiState.cursorB, 0, numVisible - 1);
         float xA = originX + static_cast<float>(cA) * pixelsPerCycle + pixelsPerCycle * 0.5F;
         float xB = originX + static_cast<float>(cB) * pixelsPerCycle + pixelsPerCycle * 0.5F;
 
-        // Cursor A
         drawList->AddLine(ImVec2(xA, rulerY), ImVec2(xA, currentY), IM_COL32(250, 204, 21, 230), 1.5F);
         ImVec2 triA[3] = {ImVec2(xA - 6.0F, rulerY), ImVec2(xA + 6.0F, rulerY), ImVec2(xA, rulerY + 8.0F)};
         drawList->AddTriangleFilled(triA[0], triA[1], triA[2], IM_COL32(250, 204, 21, 255));
         drawList->AddText(ImVec2(xA - 3.0F, rulerY - 1.0F), IM_COL32(10, 10, 10, 255), "A");
 
-        // Cursor B
         drawList->AddLine(ImVec2(xB, rulerY), ImVec2(xB, currentY), IM_COL32(56, 189, 248, 230), 1.5F);
         ImVec2 triB[3] = {ImVec2(xB - 6.0F, rulerY), ImVec2(xB + 6.0F, rulerY), ImVec2(xB, rulerY + 8.0F)};
         drawList->AddTriangleFilled(triB[0], triB[1], triB[2], IM_COL32(56, 189, 248, 255));
@@ -499,7 +482,6 @@ void DrawLogicAnalyzerWindow(Control::AppState& state) {
     ImVec2 contentSize = ImGui::GetContentRegionAvail();
     size_t count = analyzer.GetCount();
 
-    // Determine sample to feed into IC Pinout
     Hardware::LogicSample inspectSample{};
     if (count > 0) {
         int numVis = std::min(uiState.visibleCycles, static_cast<int>(count));
@@ -513,15 +495,12 @@ void DrawLogicAnalyzerWindow(Control::AppState& state) {
     }
 
     if (uiState.viewMode == 0) {
-        // Waveforms only
         DrawWaveforms(analyzer, contentSize.x, contentSize.y);
     } else if (uiState.viewMode == 1) {
-        // IC Pinout only
         ImGui::BeginChild("PinoutOnlyScroll", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_None);
         ICPinoutViewer::Draw(uiState.selectedChip, inspectSample, contentSize.x, contentSize.y);
         ImGui::EndChild();
     } else {
-        // Split View
         float pinoutWidth = std::clamp(contentSize.x * 0.38F, 300.0F, 400.0F);
         ImGui::BeginChild("PinoutSplitPane", ImVec2(pinoutWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_None);
         ICPinoutViewer::Draw(uiState.selectedChip, inspectSample, pinoutWidth - 12.0F, contentSize.y);

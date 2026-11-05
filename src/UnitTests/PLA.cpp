@@ -20,11 +20,10 @@ protected:
 };
 
 TEST_F(PLA_Test, PLA) {
-    // 0xFFFC: PLA
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PLA);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.SP = 0x01FE;
     bus.Write(0x01FF, 0x42);
@@ -38,11 +37,10 @@ TEST_F(PLA_Test, PLA) {
 }
 
 TEST_F(PLA_Test, PLA_ZeroFlag) {
-    // 0xFFFC: PLA
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PLA);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.SP = 0x01FE;
     bus.Write(0x01FF, 0x00);
@@ -55,11 +53,10 @@ TEST_F(PLA_Test, PLA_ZeroFlag) {
 }
 
 TEST_F(PLA_Test, PLA_NegativeFlag) {
-    // 0xFFFC: PLA
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PLA);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.SP = 0x01FE;
     bus.Write(0x01FF, 0x80);

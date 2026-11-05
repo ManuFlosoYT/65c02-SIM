@@ -90,9 +90,7 @@ void Bus::RegisterDevice(Word startAddress, Word endAddress, IBusDevice* device,
 }
 
 void Bus::RegisterVirtualDevice(IBusDevice* device, bool enabled) {
-    // Virtual devices are UI-only: no bus address, no collision check, never mapped.
     registeredDevices.push_back({0, 0, device, enabled, false, true});
-    // No RebuildDeviceMap needed — deviceMap is unaffected.
 }
 
 void Bus::AddGlobalWriteHook(const BusWriteHook& hook) {

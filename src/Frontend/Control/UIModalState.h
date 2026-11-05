@@ -23,7 +23,7 @@ enum class DebuggerMode : std::uint8_t {
 struct NetworkSnifferState {
     bool autoScroll = true;
     bool paused = false;
-    int filterDirection = 0;  // 0=All, 1=TX, 2=RX, 3=NetTX, 4=NetRX
+    int filterDirection = 0;  // 0=All, 1=TX, 2=RX, 3=NetTX, 4=NetRX packet filter
     char searchFilter[64] = "";
     int selectedPacketIndex = -1;
     bool aciaBridgeEnabled = false;

@@ -114,7 +114,6 @@ class SID : public IBusDevice {
     
     SIDModel model = SIDModel::MOS8580;
     
-    // Cycle accuracy
     uint64_t clockCounter = 0;
     uint64_t dormantClockAnchor = 0;
     bool isDormant = true;
@@ -122,7 +121,6 @@ class SID : public IBusDevice {
     uint64_t sidCycleAccumulator = 0;
     uint64_t cpuClockRateInt = 1000000;
     
-    // Cache for read-only registers
     uint8_t voice3OscOutput = 0;
     uint8_t voice3EnvOutput = 0;
 

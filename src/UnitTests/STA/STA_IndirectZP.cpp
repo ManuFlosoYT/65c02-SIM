@@ -22,16 +22,14 @@ protected:
 TEST_F(STA_IndirectZP_Test, STA_ZeroPageIndirect) {
     cpu.A = 0x37;
 
-    // 0xFFFC: STA (ZeroPage Indirect) 0x20
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STA_IND_ZP);
     bus.Write(0x4001, 0x20);
-    bus.Write(0x4002, INS_STP);  // Stop
+    bus.Write(0x4002, INS_STP);
 
-    // Pointer Address (ZP) = 0x20
-    bus.Write(0x0020, 0x00);  // Low Byte
-    bus.Write(0x0021, 0x30);  // High Byte
+    bus.Write(0x0020, 0x00);
+    bus.Write(0x0021, 0x30);
     // Effective Address = 0x3000
 
     bus.Write(0x3000, 0x00);

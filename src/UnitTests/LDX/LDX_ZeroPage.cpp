@@ -20,9 +20,6 @@ protected:
 };
 
 TEST_F(LDX_ZeroPage_Test, LDX_ZeroPage) {
-    // 0xFFFC: LDX 0x42
-    // 0xFFFD: 0x42
-    // 0x0042: 0x37
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDX_ZP);

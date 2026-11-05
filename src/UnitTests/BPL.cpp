@@ -19,7 +19,6 @@ protected:
     CPU cpu;
 };
 
-// BPL: Branch if N = 0
 
 TEST_F(BPL_Test, BPL_NoBranch_NegativeSet) {
     cpu.N = 1;

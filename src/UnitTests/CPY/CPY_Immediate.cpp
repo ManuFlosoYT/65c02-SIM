@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(CPY_Immediate_Test, CPY_Immediate) {
-    // Y = 5, M = 5. Result = 0. Z=1, C=1.
     cpu.Y = 0x05;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -38,7 +37,6 @@ TEST_F(CPY_Immediate_Test, CPY_Immediate) {
 }
 
 TEST_F(CPY_Immediate_Test, CPY_Immediate_Less) {
-    // Y = 4, M = 5. Result = 0xFF. Z=0, C=0. N=1.
     cpu.Y = 0x04;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -56,7 +54,6 @@ TEST_F(CPY_Immediate_Test, CPY_Immediate_Less) {
 }
 
 TEST_F(CPY_Immediate_Test, CPY_Immediate_Greater) {
-    // Y = 6, M = 5. Result = 1. Z=0, C=1. N=0.
     cpu.Y = 0x06;
 
     bus.WriteDirect(0xFFFC, 0x00);

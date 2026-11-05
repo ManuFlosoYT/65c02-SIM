@@ -26,8 +26,8 @@ TEST_F(AND_AbsoluteX_Test, AND_AbsoluteX) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_ABSX);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, 0x44);  // 0x4480
-    bus.Write(0x4481, 0x37);  // 0x4480 + 0x01 = 0x4481
+    bus.Write(0x4002, 0x44);
+    bus.Write(0x4481, 0x37);
     bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);

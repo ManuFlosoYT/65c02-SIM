@@ -20,11 +20,6 @@ protected:
 };
 
 TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage) {
-    // Programa en memoria:
-    // 0xFFFC: LDA (ZeroPage) 0x42
-    // 0xFFFD: 0x42
-    // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
-    // 0x0042: 0x37 (Valor a cargar)
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDA_ZP);
@@ -32,17 +27,6 @@ TEST_F(LDA_ZeroPage_Test, LDA_ZeroPage) {
     bus.Write(0x0042, 0x37);
     bus.Write(0x4002, INS_STP);
 
-    // Ciclo 1:
-    //    Lee LDA (ZP) en 0xFFFC
-    //    PC avanza a 0xFFFD
-    //    Ejecuta LDA (ZP)
-    // Ciclo 2:
-    //    Lee la dirección ZP (0x42) en 0xFFFD
-    //    PC avanza a 0xFFFE
-    // Ciclo 3:
-    //    Lee el valor (0x37) en 0x0042
-    //    Carga 0x37 en A
-    //    Opcode desconocido -> Retorna
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4003);

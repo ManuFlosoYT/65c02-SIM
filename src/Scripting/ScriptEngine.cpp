@@ -85,7 +85,6 @@ bool ScriptEngine::LoadAndRun(const std::string& filepath) {
         pImpl->abortRequested = false;
         isRunning = true;
         
-        // Wake up thread if asleep
         emulatorRef.Resume();
         return true;
     } catch(const std::exception& e) {

@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(DEC_Accumulator_Test, DEC_Accumulator) {
-    // A = 0x05 -> A - 1 = 0x04
     cpu.A = 0x05;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -36,7 +35,6 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator) {
 }
 
 TEST_F(DEC_Accumulator_Test, DEC_Accumulator_ZeroFlag) {
-    // A = 0x01 -> A - 1 = 0x00
     cpu.A = 0x01;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -52,7 +50,6 @@ TEST_F(DEC_Accumulator_Test, DEC_Accumulator_ZeroFlag) {
 }
 
 TEST_F(DEC_Accumulator_Test, DEC_Accumulator_NegativeFlag) {
-    // A = 0x00 -> A - 1 = 0xFF
     cpu.A = 0x00;
 
     bus.WriteDirect(0xFFFC, 0x00);

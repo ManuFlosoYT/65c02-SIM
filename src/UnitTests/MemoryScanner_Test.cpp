@@ -53,7 +53,7 @@ TEST_F(ScannerFixture, U16LittleEndianCarryAndRangeEdge) {
     mem.at(0x41) = 0x00;
     ScanQuery query{.type = ScanType::U16, .value = 0x00FF};
     auto cands = FirstScan(query, 0x40, 0x41, false, Reader());
-    ASSERT_EQ(cands.size(), 1U);  // 0x41 does not fit a full word in range
+    ASSERT_EQ(cands.size(), 1U);
 
     mem.at(0x40) = 0x00;
     mem.at(0x41) = 0x01;
@@ -78,7 +78,7 @@ TEST_F(ScannerFixture, StringFindsAndRefilters) {
     ASSERT_EQ(cands.size(), 1U);
     EXPECT_EQ(cands[0].address, 0x50);
 
-    EXPECT_TRUE(FirstScan(query, 0, 0x50, false, Reader()).empty());  // text cut by range end
+    EXPECT_TRUE(FirstScan(query, 0, 0x50, false, Reader()).empty());
 }
 
 TEST_F(ScannerFixture, ClearScanResetsState) {

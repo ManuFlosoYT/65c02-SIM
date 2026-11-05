@@ -20,10 +20,6 @@ protected:
 };
 
 TEST_F(ADC_IndirectY_Test, ADC_IndirectY) {
-    // ZP Addr = 0x02
-    // Mem[0x02] = 0x00, Mem[0x03] = 0x80 -> Base Addr = 0x8000
-    // Addr = 0x8000 + 0x01 = 0x8001
-    // Mem[0x8001] = 0x37
     cpu.Y = 0x01;
     cpu.A = 0x00;
     cpu.C = 0;

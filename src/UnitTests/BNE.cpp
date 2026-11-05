@@ -19,7 +19,6 @@ protected:
     CPU cpu;
 };
 
-// BNE: Branch if Z = 0
 
 TEST_F(BNE_Test, BNE_NoBranch_ZeroSet) {
     cpu.Z = 1;

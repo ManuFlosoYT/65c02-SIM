@@ -20,13 +20,8 @@ protected:
 };
 
 TEST_F(STA_ZeroPage_Test, STA_ZeroPage) {
-    // Programa en memoria:
-    // 0xFFFC: STA (ZeroPage) 0x42
-    // 0xFFFD: 0x42
-    // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
-    // 0x0042: 0x00 (Valor inicial)
 
-    cpu.A = 0x37;  // Valor a guardar
+    cpu.A = 0x37;
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -35,21 +30,11 @@ TEST_F(STA_ZeroPage_Test, STA_ZeroPage) {
     bus.Write(0x0042, 0x00);
     bus.Write(0x4002, INS_STP);
 
-    // Ciclo 1:
-    //    Lee STA (ZP) en 0xFFFC
-    //    PC avanza a 0xFFFD
-    //    Ejecuta STA (ZP)
-    // Ciclo 2:
-    //    Lee la dirección ZP (0x42) en 0xFFFD
-    //    PC avanza a 0xFFFE
-    // Ciclo 3:
-    //    Escribe el valor de A (0x37) en 0x0042
-    //    Opcode desconocido -> Retorna
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4003);
     EXPECT_EQ(bus.ReadDirect(0x0042), 0x37);
-    EXPECT_EQ(cpu.A, 0x37);  // A no debe cambiar
+    EXPECT_EQ(cpu.A, 0x37);
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }

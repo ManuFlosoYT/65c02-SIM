@@ -77,7 +77,7 @@ EM_JS(void, impl_open_browser_file_picker, (const char* accept), {
             var filenamePtr = Module._malloc(filenameBytes);
             stringToUTF8(file.name, filenamePtr, filenameBytes);
             
-            // Using Module.ccall for safer argument passing and signature handling
+            // Module.ccall handles string marshaling across Emscripten boundary
             Module['ccall']('Wasm_OnFilePicked', 
                 null, 
                 ['number', 'number', 'number'], 

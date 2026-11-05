@@ -78,7 +78,7 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
     }
 
     if (data.empty()) {
-        // VRAM only cartridge or empty ROM. Set reset vector to standard ROM start.
+        // Default reset vector to 0x8000 for empty ROM
         rom.WriteDirect(0x7FFC, 0x00);
         rom.WriteDirect(0x7FFD, 0x80);
     }
@@ -97,7 +97,7 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
         }
 #endif
     } catch (const std::exception& e) {
-        // Ignore filesystem errors as they are not critical for ROM loading
+        // Non-critical filesystem scan failure
         (void)e;
     }
 

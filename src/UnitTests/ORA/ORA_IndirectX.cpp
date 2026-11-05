@@ -26,9 +26,9 @@ TEST_F(ORA_IndirectX_Test, ORA_IndirectX) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ORA_INDX);
     bus.Write(0x4001,
-              0x02);  // ZP Addr = 0x02. Actual Lookup: 0x02 + 0x04 = 0x06
-    bus.Write(0x0006, 0x00);     // Low Byte
-    bus.Write(0x0007, 0x80);     // High Byte -> Eff Address: 0x8000
+              0x02);
+    bus.Write(0x0006, 0x00);
+    bus.Write(0x0007, 0x80);
     bus.WriteDirect(0x8000, 0x0F);  // 0x00 | 0x0F = 0x0F
     bus.Write(0x4002, INS_STP);
 

@@ -19,12 +19,8 @@ protected:
     CPU cpu;
 };
 
-// SBC: A = A - M - (1 - C)
-// Note: 6502 subtraction requires C=1 for "no borrow".
 
 TEST_F(SBC_Immediate_Test, SBC_Immediate) {
-    // 5 - 3 = 2. C=1 (no borrow)
-    // A=5, M=3, C=1. Result = 5 - 3 - 0 = 2.
     cpu.A = 0x05;
     cpu.C = 1;
 
@@ -37,14 +33,12 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate) {
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x02);
-    EXPECT_TRUE(cpu.C);  // No borrow occurred, so C remains 1
+    EXPECT_TRUE(cpu.C);
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
 
 TEST_F(SBC_Immediate_Test, SBC_Immediate_Borrow) {
-    // 5 - 6 = -1 (0xFF). C=1 (no borrow start).
-    // A=5, M=6, C=1. Result = 5 - 6 - 0 = -1 (0xFF).
     cpu.A = 0x05;
     cpu.C = 1;
 
@@ -57,14 +51,12 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate_Borrow) {
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0xFF);
-    EXPECT_FALSE(cpu.C);  // Borrow occurred, C=0
+    EXPECT_FALSE(cpu.C);
     EXPECT_FALSE(cpu.Z);
     EXPECT_TRUE(cpu.N);
 }
 
 TEST_F(SBC_Immediate_Test, SBC_Immediate_BorrowIn) {
-    // 5 - 3 - 1 = 1. C=0 (borrow incoming)
-    // A=5, M=3, C=0. Result = 5 - 3 - 1 = 1.
     cpu.A = 0x05;
     cpu.C = 0;
 
@@ -77,5 +69,5 @@ TEST_F(SBC_Immediate_Test, SBC_Immediate_BorrowIn) {
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.A, 0x01);
-    EXPECT_TRUE(cpu.C);  // No borrow occurred for this operation, C=1
+    EXPECT_TRUE(cpu.C);
 }

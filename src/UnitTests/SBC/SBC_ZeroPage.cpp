@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(SBC_ZeroPage_Test, SBC_ZeroPage) {
-    // 10 - 5 = 5. C=1.
     cpu.A = 0x0A;
     cpu.C = 1;
 

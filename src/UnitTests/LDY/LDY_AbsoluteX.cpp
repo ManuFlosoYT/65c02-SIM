@@ -21,11 +21,6 @@ protected:
 
 TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX) {
     cpu.X = 0x01;
-    // 0xFFFC: LDY 0x8000, X
-    // 0xFFFD: 0x00
-    // 0xFFFE: 0x80
-    // Address: 0x8000 + 0x01 = 0x8001
-    // 0x8001: 0x37
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDY_ABSX);
@@ -44,11 +39,6 @@ TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX) {
 
 TEST_F(LDY_AbsoluteX_Test, LDY_AbsoluteX_PageCrossing) {
     cpu.X = 0xFF;
-    // 0xFFFC: LDY 0x8000, X
-    // 0xFFFD: 0x00
-    // 0xFFFE: 0x80
-    // Address: 0x8000 + 0xFF = 0x80FF
-    // 0x80FF: 0x37
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDY_ABSX);

@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage) {
-    // Mem[0x42] = 0x04 -> 0x02
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LSR_ZP);
@@ -37,7 +36,6 @@ TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage) {
 }
 
 TEST_F(LSR_ZeroPage_Test, LSR_ZeroPage_Carry) {
-    // Mem[0x42] = 0x01 -> 0x00. C=1
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LSR_ZP);

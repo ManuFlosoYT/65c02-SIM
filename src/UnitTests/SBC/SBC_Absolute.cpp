@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(SBC_Absolute_Test, SBC_Absolute) {
-    // Addr = 0x4480
-    // 10 - 5 = 5
     cpu.A = 0x0A;
     cpu.C = 1;
 

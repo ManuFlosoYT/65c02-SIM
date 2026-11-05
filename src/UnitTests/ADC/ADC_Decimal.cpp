@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(ADC_Decimal_Test, ADC_Decimal_Simple) {
-    // 0x05 + 0x05 = 0x10 (BCD)
     cpu.A = 0x05;
     cpu.D = 1;
     cpu.C = 0;
@@ -39,7 +38,7 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Simple) {
 }
 
 TEST_F(ADC_Decimal_Test, ADC_Decimal_Carry) {
-    // 0x50 + 0x51 = 0x01 (BCD), C=1 (Overflows 100)
+    // BCD decimal wrap: 50 + 51 = 101 -> 0x01 with carry
     cpu.A = 0x50;
     cpu.D = 1;
     cpu.C = 0;
@@ -58,7 +57,6 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_Carry) {
 }
 
 TEST_F(ADC_Decimal_Test, ADC_Decimal_CarryIn) {
-    // 0x09 + 0x01 + C(1) = 0x11
     cpu.A = 0x09;
     cpu.D = 1;
     cpu.C = 1;
@@ -71,12 +69,11 @@ TEST_F(ADC_Decimal_Test, ADC_Decimal_CarryIn) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.A, 0x11);  // 9 + 1 + 1 = 11 (BCD 11 is 0x11)
+    EXPECT_EQ(cpu.A, 0x11);
     EXPECT_FALSE(cpu.C);
 }
 
 TEST_F(ADC_Decimal_Test, ADC_Decimal_ZeroAndNegativeFlags) {
-    // 0x50 + 0x50 = 0x00 (BCD), C=1, Z=1, N=0
     cpu.A = 0x50;
     cpu.D = 1;
     cpu.C = 0;

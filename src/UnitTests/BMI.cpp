@@ -19,7 +19,6 @@ protected:
     CPU cpu;
 };
 
-// BMI: Branch if N = 1
 
 TEST_F(BMI_Test, BMI_NoBranch_NegativeClear) {
     cpu.N = 0;

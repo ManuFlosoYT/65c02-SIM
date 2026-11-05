@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(CPY_Absolute_Test, CPY_Absolute) {
-    // Y = 5, Mem = 5
     cpu.Y = 0x05;
 
     bus.WriteDirect(0xFFFC, 0x00);

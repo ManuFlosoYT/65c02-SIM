@@ -102,7 +102,6 @@ TEST_F(ESP8266_Test, ACIAESPBridge) {
     emu.SetACIAESPBridge(true);
     EXPECT_TRUE(emu.IsACIAESPBridge());
 
-    // When bridge is active, ACIA output callback forwards to ESP8266
     bool callbackFired = false;
     emu.SetOutputCallback([&](char c) {
         if (c == 'T') {
@@ -113,11 +112,9 @@ TEST_F(ESP8266_Test, ACIAESPBridge) {
     auto& espRef = emu.GetESP8266();
     espRef.ClearTrafficLog();
 
-    // Configure ACIA to enable transmitter at fast baud
     emu.GetMem().Write(0x5002, 0x01);
     emu.GetMem().Write(0x5003, 0x00);
 
-    // Write and clock ACIA
     for (char c : std::string("AT\r\n")) {
         emu.GetMem().Write(0x5000, static_cast<Byte>(c));
         for (int i = 0; i < 1000; ++i) {

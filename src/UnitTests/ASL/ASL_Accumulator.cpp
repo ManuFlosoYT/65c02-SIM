@@ -19,13 +19,10 @@ protected:
     CPU cpu;
 };
 
-// ASL: Shift Left One Bit (Memory or Accumulator)
-// C <- [7...0] <- 0
 
 TEST_F(ASL_Accumulator_Test, ASL_Accumulator_NoCarry) {
-    // 0000 0001 (1) -> 0000 0010 (2). C=0
     cpu.A = 0x01;
-    cpu.C = 1;  // Should be cleared
+    cpu.C = 1;
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -41,7 +38,6 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_NoCarry) {
 }
 
 TEST_F(ASL_Accumulator_Test, ASL_Accumulator_CarryOut) {
-    // 1000 0000 (0x80) -> 0000 0000 (0). C=1
     cpu.A = 0x80;
     cpu.C = 0;
 
@@ -59,7 +55,6 @@ TEST_F(ASL_Accumulator_Test, ASL_Accumulator_CarryOut) {
 }
 
 TEST_F(ASL_Accumulator_Test, ASL_Accumulator_Negative) {
-    // 0100 0000 (0x40) -> 1000 0000 (0x80). N=1
     cpu.A = 0x40;
 
     bus.WriteDirect(0xFFFC, 0x00);

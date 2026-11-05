@@ -52,7 +52,6 @@ struct Stmt {
     Stmt& operator=(Stmt&&) = delete;
 };
 
-// Expressions
 
 struct BinaryExpr : public Expr {
     std::unique_ptr<Expr> left;
@@ -72,7 +71,7 @@ struct UnaryExpr : public Expr {
 };
 
 struct LiteralExpr : public Expr {
-    std::variant<std::monostate, int64_t, std::string, bool> value; // monostate for null/nil
+    std::variant<std::monostate, int64_t, std::string, bool> value;
     
     explicit LiteralExpr(int64_t v) : Expr(ExprKind::Literal), value(v) {}
     explicit LiteralExpr(std::string v) : Expr(ExprKind::Literal), value(std::move(v)) {}
@@ -95,7 +94,7 @@ struct AssignExpr : public Expr {
 
 struct CallExpr : public Expr {
     std::unique_ptr<Expr> callee;
-    Token paren; // For error reporting
+    Token paren;
     std::vector<std::unique_ptr<Expr>> arguments;
 
     CallExpr(std::unique_ptr<Expr> callee, Token paren, std::vector<std::unique_ptr<Expr>> arguments)
@@ -127,7 +126,6 @@ struct ChangedExpr : public Expr {
         : Expr(ExprKind::Changed), expression(std::move(expression)), keyword(std::move(keyword)) {}
 };
 
-// Statements
 
 struct ExpressionStmt : public Stmt {
     std::unique_ptr<Expr> expression;
@@ -136,7 +134,7 @@ struct ExpressionStmt : public Stmt {
         : Stmt(StmtKind::Expression), expression(std::move(expression)) {}
 };
 
-struct PrintStmt : public Stmt { // Optional: useful for debugging
+struct PrintStmt : public Stmt {
     std::unique_ptr<Expr> expression;
 
     explicit PrintStmt(std::unique_ptr<Expr> expression)

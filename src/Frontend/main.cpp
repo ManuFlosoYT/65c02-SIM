@@ -54,13 +54,11 @@ static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
         return false;
     }
 
-    // GL 3.0 + GLSL 130
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
-    // Create window with graphics context
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -77,7 +75,6 @@ static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
         return false;
     }
 
-    // Set Window Icon
     SDL_Surface* icon = SDL_CreateSurfaceFrom(256, 256, SDL_PIXELFORMAT_RGBA32, (void*)icon_pixels_bin, 256 * 4);
     if (icon != nullptr) {
         SDL_SetWindowIcon(window, icon);
@@ -92,9 +89,8 @@ static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
         return false;
     }
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1);  // Enable vsync
+    SDL_GL_SetSwapInterval(1);
 
-    // Initialize OpenGL loader
     int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
     if (version == 0) {
         std::cerr << "Failed to initialize OpenGL loader (gladLoadGL)!\n";
@@ -167,7 +163,6 @@ static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
     }
 }
 
-// --- Media Recording Logic moved to Frontend/UI/RecordingManager.cpp ---
 
 static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
     state.emulator.Stop();
@@ -208,7 +203,6 @@ static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_contex
 #endif
 }
 
-// --- Emscripten Loop Support ---
 
 struct MainLoopArgs {
     SDL_Window* window;
@@ -234,12 +228,10 @@ static void MainLoop(void* arg) {
         state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
     }
 
-    // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
-    // Layout Configuration
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImVec2 work_pos = viewport->WorkPos;
     ImVec2 work_size = viewport->WorkSize;
@@ -278,7 +270,6 @@ static void MainLoop(void* arg) {
     Frontend::HandleDialogs(state);
     Frontend::DrawPopups(state);
 
-    // Draw all windows
     Frontend::DrawGUIWindows(state, work_pos, work_size, top_section_height, windowFlags);
 
     ImGui::Render();
@@ -341,7 +332,6 @@ int main(int argc, char* argv[]) {
 #endif
 
 #ifndef TARGET_WASM
-    // Check for updates
     UpdateChecker::CheckForUpdates(PROJECT_VERSION, [](bool available, const std::string& version) {
         if (available) {
             state.update.latestVersionTag = version;
@@ -351,7 +341,7 @@ int main(int argc, char* argv[]) {
 #endif
 
 #ifdef TARGET_WASM
-    const char* glsl_version = "#version 100"; // WebGL 1/2 compatible
+    const char* glsl_version = "#version 100";
 #else
     const char* glsl_version = "#version 130";
 #endif

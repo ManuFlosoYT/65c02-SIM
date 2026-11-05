@@ -20,15 +20,13 @@ protected:
 };
 
 TEST_F(ROL_Absolute_Test, ROL_Absolute) {
-    // Mem = 0x80 -> 0x00 (Shift Left, C=0 into bit 0).
-    // Carry Out = Old Bit 7 (1).
     cpu.C = 0;
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ROL_ABS);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, 0x20);  // 0x2080
+    bus.Write(0x4002, 0x20);
     bus.Write(0x2080, 0x80);
     bus.Write(0x4003, INS_STP);
 

@@ -19,7 +19,6 @@ protected:
     CPU cpu;
 };
 
-// BCS: Branch if C = 1
 
 TEST_F(BCS_Test, BCS_NoBranch_CarryClear) {
     cpu.C = 0;

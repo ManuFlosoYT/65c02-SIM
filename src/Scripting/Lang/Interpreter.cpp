@@ -64,7 +64,7 @@ void Interpreter::execute(Stmt* stmt) {
     }
 
     if (breakOut || continueLoop) {
-        return; // Skip if breaking or continuing
+        return;
     }
 
     if (!stmt) {
@@ -184,7 +184,7 @@ Value Interpreter::visitUnaryExpr(UnaryExpr* expr) {
 
     switch (expr->op.type) {
         case TokenType::Bang:
-        case TokenType::BangEqual: // ! usually
+        case TokenType::BangEqual:
             return !isTruthy(right);
         case TokenType::Minus:
             checkNumberOperand(expr->op, right);

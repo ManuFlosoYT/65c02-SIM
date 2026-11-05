@@ -14,7 +14,6 @@ class VIA : public IBusDevice {
     VIA();
     void Reset() override;
 
-    // IBusDevice implementation
     Byte Read(Word address) override;
     Byte ReadDirect(Word address) override;
     void Write(Word address, Byte data) override;
@@ -38,7 +37,6 @@ class VIA : public IBusDevice {
     [[nodiscard]] const VIAShiftRegister& GetShiftRegister() const { return shiftRegister; }
     [[nodiscard]] VIAShiftRegister& GetShiftRegister() { return shiftRegister; }
 
-    // External Input Setters (to simulate pins)
     void SetInputA(Byte val);
     void SetInputB(Byte val);
     void SetCA1(bool val);
@@ -57,27 +55,26 @@ class VIA : public IBusDevice {
     [[nodiscard]] bool IsIdle() const { return !anyActive; }
 
    private:
-    Byte orb = 0;    // 0x00 Output Register B
-    Byte ora = 0;    // 0x01 Output Register A
-    Byte ddrb = 0;   // 0x02 Data Direction Register B
-    Byte ddra = 0;   // 0x03 Data Direction Register A
-    Byte acr = 0;    // 0x0B Auxiliary Control Register
-    Byte pcr = 0;    // 0x0C Peripheral Control Register
-    Byte ifr = 0;    // 0x0D Interrupt Flag Register
-    Byte ier = 0;    // 0x0E Interrupt Enable Register
+    Byte orb = 0;
+    Byte ora = 0;
+    Byte ddrb = 0;
+    Byte ddra = 0;
+    Byte acr = 0;
+    Byte pcr = 0;
+    Byte ifr = 0;
+    Byte ier = 0;
 
     VIATimer1 timer1;
     VIATimer2 timer2;
     VIAShiftRegister shiftRegister;
 
-    Byte ira = 0x00;  // Input Register A (External Pins)
-    Byte irb = 0x00;  // Input Register B (External Pins)
+    Byte ira = 0x00;
+    Byte irb = 0x00;
     Byte ira_latched = 0;
     Byte irb_latched = 0;
     bool ira_latch_full = false;
     bool irb_latch_full = false;
 
-    // Pulse Counting & CB state
     bool ca1_in = true;
     bool ca2_in = true;
     bool cb1_in = true;
@@ -97,7 +94,6 @@ class VIA : public IBusDevice {
     bool HandleTimer2();
     void HandleShiftRegister(bool timer2_underflowed);
 
-    // Output Callbacks (triggered when Output Pins change)
     std::function<void(Byte)> port_b_callback;
     std::function<void(bool)> ca2_callback;
     std::function<void(bool)> cb1_callback;

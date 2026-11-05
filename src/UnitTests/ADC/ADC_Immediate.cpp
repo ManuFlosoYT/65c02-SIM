@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(ADC_Immediate_Test, ADC_Immediate) {
-    // 0 + 5 = 5
     cpu.A = 0x00;
     cpu.C = 0;
 
@@ -40,7 +39,6 @@ TEST_F(ADC_Immediate_Test, ADC_Immediate) {
 }
 
 TEST_F(ADC_Immediate_Test, ADC_Immediate_CarryIn) {
-    // 0 + 5 + C(1) = 6
     cpu.A = 0x00;
     cpu.C = 1;
 
@@ -57,7 +55,6 @@ TEST_F(ADC_Immediate_Test, ADC_Immediate_CarryIn) {
 }
 
 TEST_F(ADC_Immediate_Test, ADC_Immediate_CarryOut) {
-    // 0xFF + 0x01 = 0x00, C=1
     cpu.A = 0xFF;
     cpu.C = 0;
 
@@ -75,7 +72,7 @@ TEST_F(ADC_Immediate_Test, ADC_Immediate_CarryOut) {
 }
 
 TEST_F(ADC_Immediate_Test, ADC_Immediate_Overflow) {
-    // 0x7F (127) + 0x01 (1) = 0x80 (-128). Pos + Pos = Neg -> Overflow
+    // Signed overflow: 127 + 1 = -128 sets V flag
     cpu.A = 0x7F;
     cpu.C = 0;
 

@@ -19,15 +19,8 @@ protected:
     CPU cpu;
 };
 
-// ROR: Rotate Right through Carry
-// [6...0] <- [7...1]
-// [7] <- Old Carry
-// C <- Old Bit 0
 
 TEST_F(ROR_Accumulator_Test, ROR_Accumulator_Rotate) {
-    // 0000 0001 (0x01) -> 0000 0000 (0x00).
-    // Carry Out = Old Bit 0 (1).
-    // New Bit 7 = Old Carry (0).
     cpu.A = 0x01;
     cpu.C = 0;
 
@@ -45,9 +38,6 @@ TEST_F(ROR_Accumulator_Test, ROR_Accumulator_Rotate) {
 }
 
 TEST_F(ROR_Accumulator_Test, ROR_Accumulator_NoCarryOut) {
-    // 0000 0010 (0x02) -> 0000 0001 (0x01).
-    // New Bit 7 = Old Carry (1). Result: 1000 0001 (0x81).
-    // Carry Out = Old Bit 0 (0).
     cpu.A = 0x02;
     cpu.C = 1;
 

@@ -32,7 +32,6 @@ struct VIAShiftRegister {
     }
 
     inline void Clock() {
-        // Simple tick
     }
 
     struct ShiftResult {
@@ -55,33 +54,33 @@ struct VIAShiftRegister {
 
         bool shift = false;
         switch (sr_mode) {
-            case 1:  // Shift In (T2)
-            case 4:  // Shift Out (Free Run / T2)
-            case 5:  // Shift Out (T2)
+            case 1:
+            case 4:
+            case 5:
                 if (timer2_underflowed) {
                     res.cb1PulsePending = true;
                     shift = true;
                 }
                 break;
-            case 2:  // Shift In (PHI2)
-            case 6:  // Shift Out (PHI2)
+            case 2:
+            case 6:
                 res.cb1PulsePending = true;
                 shift = true;
                 break;
-            case 3:  // Shift In (External CB1)
-            case 7:  // Shift Out (External CB1)
+            case 3:
+            case 7:
                 break;
             default:
                 break;
         }
 
         if (shift) {
-            if ((sr_mode & 0x04) != 0) {  // Shift Out (Modes 4, 5, 6, 7)
+            if ((sr_mode & 0x04) != 0) {
                 sr_out_cb2 = (sr & 0x80) != 0;
                 res.cb2Updated = true;
                 res.cb2Out = sr_out_cb2;
                 sr = static_cast<Byte>((sr << 1) | (sr_out_cb2 ? 1 : 0));
-            } else {  // Shift In (Modes 1, 2, 3)
+            } else {
                 sr = static_cast<Byte>((sr << 1) | (cb2_in ? 1 : 0));
             }
 

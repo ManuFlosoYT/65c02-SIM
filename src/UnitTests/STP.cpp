@@ -20,22 +20,13 @@ protected:
 };
 
 TEST_F(STP_Test, STP_HaltsExecution) {
-    // 0xFFFC: STP
-    // 0xFFFD: NOP (Should not be executed)
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STP);
     bus.Write(0x4001, INS_NOP);
 
-    // Run execution
     cpu.Execute(bus);
 
-    // PC should point to the instruction AFTER STP (it fetches STP, increments,
-    // executes). Wait, STP stops the clock. In a simulator loop, it should just
-    // return. The PC usually points to the next byte but the fetch cycle for
-    // the next instruction is never completed. If usage is `return` after
-    // fetch: Fetch STP (PC increments to FFFD) Execute STP -> Return So PC
-    // should be 0xFFFD.
 
     EXPECT_EQ(cpu.PC, 0x4001);
 }

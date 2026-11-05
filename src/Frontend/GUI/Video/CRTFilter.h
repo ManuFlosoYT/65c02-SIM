@@ -7,47 +7,41 @@ namespace GUI {
 
 enum class CRTMonitorType : int {
     RGB = 0,
-    GreenP1 = 1,  // Green phosphor (525nm)
-    AmberP3 = 2,  // Amber phosphor (590nm)
-    WhiteP4 = 3   // White phosphor P4
+    GreenP1 = 1,  // Phosphor emission peaks: Green P1 (525nm), Amber P3 (590nm), White P4
+    AmberP3 = 2,
+    WhiteP4 = 3
 };
 
 struct CRTParams {
-    // Essentials
     bool scanlines = false;
     bool interlacing = false;
     bool curvature = false;
     bool chromatic = false;
     bool blur = false;
 
-    // Screen Physicality
     bool shadowMask = false;
     bool vignette = false;
     bool cornerRounding = false;
     bool glassGlare = false;
 
-    // Signal & Analog Imperfections
     bool colorBleeding = false;
     bool noise = false;
     bool vsyncJitter = false;
     bool phosphorDecay = false;
 
-    // Lighting
     bool bloom = false;
     bool ghosting = false;
     bool halation = false;
     bool moire = false;
     float gamma = 2.75F;
 
-    // Display Config
     bool sharpPixels = true;
     bool humBar = false;
     CRTMonitorType monitorType = CRTMonitorType::RGB;
     int nativeWidth = 100;
     int nativeHeight = 75;
-    int internalScale = 8; // 100x75 -> 800x600 FBO (8x8 subpixels/pixel on VRAM)
+    int internalScale = 8;  // 8x8 subpixel scaling: 100x75 VRAM to 800x600 FBO
 
-    // Animated effects time source
     float time = 0.0F;
 };
 
@@ -58,7 +52,6 @@ class CRTFilter {
     void Reset();
     [[nodiscard]] bool IsInitialized() const { return m_pass.IsInitialized(); }
 
-    // Renders inputTex through the CRT shader and returns the output texture.
     GLuint Apply(GLuint inputTex, int width, int height, const CRTParams& params);
 
    private:

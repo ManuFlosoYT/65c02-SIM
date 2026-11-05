@@ -101,7 +101,7 @@ vec3 yiq2rgb(vec3 c) {
 
 void main() {
     vec2 uv = v_uv;
-    vec2 nativeTexel = 1.0 / u_nativeSize; // (0.01, 0.01333) para 100x75
+    vec2 nativeTexel = 1.0 / u_nativeSize; // (0.01, 0.01333) for 100x75
     vec2 outputTexel = 1.0 / u_outputSize;
     float bezelMask = 1.0;
 

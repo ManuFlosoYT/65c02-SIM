@@ -20,23 +20,16 @@ protected:
 };
 
 TEST_F(TXS_Test, TXS) {
-    // 0xFFFC: TXS
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_TXS);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.X = 0x80;
-    cpu.SP = 0x01FF;  // Default
+    cpu.SP = 0x01FF;
 
-    // TXS copies X to SP (Low byte). High byte fixed at 0x01?
-    // "Transfer X to Stack Pointer".
-    // 6502 behavior: SP = X. High byte is implied 0x01.
-    // In this emu, SP is Word.
-    // If the implementation follows standard 6502, SP should become 0x0180.
 
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.SP, 0x0180);
-    // Flags not affected
 }

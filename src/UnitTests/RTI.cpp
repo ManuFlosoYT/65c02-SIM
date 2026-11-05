@@ -20,21 +20,18 @@ protected:
 };
 
 TEST_F(RTI_Test, RTI_Operations) {
-    // RTI: Return from Interrupt
-    // Pull Status (P), Pull PC.
 
-    // Fake Stack
-    cpu.SP = 0x01FC;  // Stack Pointer pointing to empty
+    cpu.SP = 0x01FC;
     // Pushed values (e.g. from BRK)
-    bus.Write(0x0100 + 0xFD, 0b11000000);  // Status (N=1, V=1, others 0)
-    bus.Write(0x0100 + 0xFE, 0x02);        // PC Low
-    bus.Write(0x0100 + 0xFF, 0x10);        // PC High
+    bus.Write(0x0100 + 0xFD, 0b11000000);
+    bus.Write(0x0100 + 0xFE, 0x02);
+    bus.Write(0x0100 + 0xFF, 0x10);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_RTI);
     bus.Write(0x4001, INS_STP);
-    bus.Write(0x1002, INS_STP);  // Return Address
+    bus.Write(0x1002, INS_STP);
 
     cpu.Execute(bus);
 

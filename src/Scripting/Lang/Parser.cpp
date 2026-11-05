@@ -143,8 +143,6 @@ std::unique_ptr<Expr> Parser::assignment() {
             Token name = varExpr->name;
             return std::make_unique<AssignExpr>(name, std::move(value));
         }
-        // Could handle GetExpr here if we support objects/properties
-        // if (GetExpr* getExpr = dynamic_cast<GetExpr*>(expr.get())) { ... }
 
         throw error(equals, "Invalid assignment target.");
     }
@@ -345,7 +343,6 @@ Token Parser::consume(TokenType type, const std::string& message) {
 }
 
 ParseError Parser::error(const Token& token, const std::string& message) {
-    // Ideally log the error somewhere
     return {token, message};
 }
 

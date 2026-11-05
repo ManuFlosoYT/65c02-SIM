@@ -22,11 +22,6 @@ inline int Dispatch(CPU& cpu, Bus& bus);
 
 class CPU : public CPURegisters, public ISerializable {
    public:
-    // RETURNS:
-    // 0: OK
-    // 1: STOP/JAM
-    // -1: Opcode no válido
-
     const Byte* current_page_ptr = nullptr;
 
     bool isInit = false;

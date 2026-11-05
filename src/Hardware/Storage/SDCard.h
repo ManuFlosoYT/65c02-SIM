@@ -23,7 +23,6 @@ class SDCard : public IBusDevice {
     SDCard(SDCard&&) = delete;
     SDCard& operator=(SDCard&&) = delete;
 
-    // Sets the path and opens the ISO. Returns false if fails.
     bool Mount(const std::string& imagePath);
     void Unmount();
     [[nodiscard]] bool IsMounted() const { return mounted; }
@@ -36,7 +35,6 @@ class SDCard : public IBusDevice {
     bool SyncToHost();
     [[nodiscard]] const std::vector<uint8_t>& GetVirtualDisk() const { return virtual_disk; }
 
-    // IBusDevice overrides
     Byte Read(Word address) override;
     [[nodiscard]] Byte ReadDirect(Word address) override {
         switch (address & 0x03U) {
@@ -50,11 +48,8 @@ class SDCard : public IBusDevice {
     [[nodiscard]] bool IsReadOnly() const override { return is_read_only; }
     Byte* GetRawMemory() override { return nullptr; }
 
-    // SPI interface
-    // CS must be low to communicate
     void SetCS(bool csVal);
 
-    // Transfers one byte (receives MOSI, returns MISO)
     uint8_t TransferByte(uint8_t mosi);
 
     void SetReadLatencyEnabled(bool enabled) { read_latency_enabled = enabled; }
@@ -66,7 +61,6 @@ class SDCard : public IBusDevice {
     [[nodiscard]] inline Byte GetLastMISO() const { return last_miso; }
     [[nodiscard]] inline Byte GetLastMOSI() const { return last_mosi; }
 
-    // State management
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inStream) override;
 
@@ -81,9 +75,8 @@ class SDCard : public IBusDevice {
 
     bool is_modified = false;
     bool is_read_only = false;
-    bool cs_active = false;  // Active low
+    bool cs_active = false;
 
-    // SPI State Machine
     enum class State : std::uint8_t {
         IDLE,
         COMMAND_RECEIVE,
@@ -105,21 +98,17 @@ class SDCard : public IBusDevice {
     uint8_t last_miso = 0xFFU;
     uint8_t last_mosi = 0xFFU;
 
-    // Command parsing
     std::array<std::uint8_t, 6> cmd_buffer{};
     int cmd_bytes_received = 0;
 
-    // Response sending
     std::vector<uint8_t> response_buffer;
     int response_index = 0;
 
-    // Data reading/writing
     std::array<std::uint8_t, 512> data_buffer{};
     int data_index = 0;
-    uint32_t current_lba = 0;  // Current Logical Block Address
+    uint32_t current_lba = 0;
     uint32_t total_blocks = 0;
 
-    // Internal flags
     bool is_acmd = false;
     bool is_initialized = false;
     bool is_sdhc = false;
@@ -139,7 +128,6 @@ class SDCard : public IBusDevice {
     uint16_t current_crc = 0;
     uint16_t received_crc = 0;
 
-    // Helpers
     uint8_t CalculateCrc7(const std::array<std::uint8_t, 6>& buffer) const;
     uint16_t CalculateCrc16(const std::array<std::uint8_t, 512>& buffer) const;
     bool CheckForStopCommand(uint8_t mosi);
@@ -168,7 +156,6 @@ class SDCard : public IBusDevice {
     void ReadBlockFromImage();
     void WriteBlockToImage();
 
-    // SPI State Handlers
     void HandleIdleState(uint8_t mosi);
     void HandleCommandReceiveState(uint8_t mosi);
     void HandleWaitResponseState(uint8_t& miso);

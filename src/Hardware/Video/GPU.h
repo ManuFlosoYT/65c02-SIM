@@ -12,16 +12,13 @@ namespace Hardware {
 
 class GPU : public IBusDevice {
    public:
-    // VRAM dimensions (visible area)
     static constexpr Byte VRAM_WIDTH = 100;
     static constexpr Byte VRAM_HEIGHT = 75;
 
-    // Total display dimensions (including blanking)
     static constexpr Byte DISPLAY_WIDTH = 132;
     static constexpr Byte DISPLAY_HEIGHT = 78;
 
-    // The CPU can only write to the first 64 rows of VRAM so we use this to
-    // calculate if the GPU is in blanking interval
+    // Scanline threshold for GPU blanking interval
     static constexpr Byte VRAM_HEIGHT_DRAWABLE_BY_CPU = 64;
 
     GPU();
@@ -31,10 +28,8 @@ class GPU : public IBusDevice {
     bool SaveState(std::ostream& out) const override;
     bool LoadState(std::istream& inputStream) override;
 
-    // Clock the GPU to advance pixel counters
     virtual inline void Clock() { rasterTiming.Clock(); }
 
-    // Bus control status
     [[nodiscard]] inline Word GetPixelX() const { return static_cast<Word>(rasterTiming.pixelX); }
     [[nodiscard]] inline Word GetPixelY() const { return static_cast<Word>(rasterTiming.pixelY); }
     [[nodiscard]] inline bool IsInBlankingInterval() const { return rasterTiming.IsInBlankingInterval(); }

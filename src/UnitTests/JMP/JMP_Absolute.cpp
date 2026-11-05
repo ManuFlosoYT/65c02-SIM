@@ -20,10 +20,6 @@ protected:
 };
 
 TEST_F(JMP_Absolute_Test, JMP_Absolute) {
-    // 0xFFFC: JMP 0x8000
-    // 0xFFFD: 0x00 (Low Byte)
-    // 0xFFFE: 0x80 (High Byte)
-    // 0x8000: 0xFF (Stop)
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);

@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(ADC_ZeroPage_Test, ADC_ZeroPage) {
-    // 0 + Mem[0x42](5) = 5
     cpu.A = 0x00;
     cpu.C = 0;
 

@@ -602,14 +602,12 @@ std::vector<std::uint8_t> MIDIFile::SerializeToBytes(const MIDIProject& project)
     std::vector<std::uint8_t> out;
     out.reserve(1024);
 
-    // MThd chunk
     out.insert(out.end(), {'M', 'T', 'h', 'd'});
     WriteBE32(out, 6);
     WriteBE16(out, 1);
     WriteBE16(out, numTracks);
     WriteBE16(out, tpqn);
 
-    // Track 0: Conductor track (Time Signature + Tempo)
     {
         std::vector<std::uint8_t> trackBuf;
         std::uint8_t denPow = 2;

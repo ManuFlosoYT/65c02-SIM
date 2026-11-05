@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(DEY_Test, DEY) {
-    // Y = 0x05 -> 0x04
     cpu.Y = 0x05;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -36,7 +35,6 @@ TEST_F(DEY_Test, DEY) {
 }
 
 TEST_F(DEY_Test, DEY_ZeroFlag) {
-    // Y = 0x01 -> 0x00
     cpu.Y = 0x01;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -52,7 +50,6 @@ TEST_F(DEY_Test, DEY_ZeroFlag) {
 }
 
 TEST_F(DEY_Test, DEY_NegativeFlag) {
-    // Y = 0x00 -> 0xFF
     cpu.Y = 0x00;
 
     bus.WriteDirect(0xFFFC, 0x00);

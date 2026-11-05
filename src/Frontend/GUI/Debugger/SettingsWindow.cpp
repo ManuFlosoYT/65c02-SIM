@@ -28,7 +28,6 @@ using namespace Hardware;
 
 namespace GUI {
 
-// Implemented in SDUtils.cpp
 
 static void DrawEmulationSettings(AppState& state) {
     ImGui::SeparatorText("Emulation");
@@ -359,7 +358,7 @@ static char nameBuf[64] = "My Cartridge";
 static char authorBuf[64] = "Unknown";
 static char descBuf[128] = "";
 static char verBuf[16] = "1.1";
-static int exportSidModel = 1; // 0=6581, 1=8580
+static int exportSidModel = 1;  // SID model: 0=6581, 1=8580
 
 static std::string pendingManifestStr;
 

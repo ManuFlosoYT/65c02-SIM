@@ -131,7 +131,6 @@ void SID::EnableSound(bool enable) {
     std::lock_guard<std::mutex> lock(sidMutex);
     
     if (!soundEnabled && enable) {
-        // Clear old state before enabling
         resampler.Clear();
         filter.dcBlockerState = 0.0;
         filter.dcBlockerPrevIn = 0.0;
@@ -155,7 +154,7 @@ void SID::SetEmulationPaused(bool paused) {
     }
     
     if (emulationPaused && !paused) {
-        // Resuming from pause: clear stale data to prevent audio pop
+        // Prevent audio pop on unpause
         resampler.Clear();
         filter.dcBlockerState = 0.0;
         filter.dcBlockerPrevIn = 0.0;
@@ -175,7 +174,7 @@ void SID::UpdateAudioState() {
 
 Byte SID::Read(Word addr) {
     uint8_t reg = addr & 0x1F;
-    if (reg == 0x19 || reg == 0x1A) return 0xFF; // Paddle X/Y
+    if (reg == 0x19 || reg == 0x1A) return 0xFF;
     if (reg == 0x1B) return voice3OscOutput;
     if (reg == 0x1C) return voice3EnvOutput;
     return registers.at(reg);

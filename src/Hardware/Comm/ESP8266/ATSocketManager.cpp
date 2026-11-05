@@ -466,7 +466,6 @@ std::string ATSocketManager::GetLocalIP() {
         socket.connect(asio::ip::udp::endpoint(asio::ip::make_address("8.8.8.8"), 53));
         localIp = socket.local_endpoint().address().to_string();
     } catch (...) {
-        // Fallback to 127.0.0.1 if routing fails
     }
     return localIp;
 }

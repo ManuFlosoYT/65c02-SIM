@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(CMP_ZeroPageX_Test, CMP_ZeroPageX) {
-    // A = 5, Mem = 5
     cpu.A = 0x05;
     cpu.X = 0x01;
 

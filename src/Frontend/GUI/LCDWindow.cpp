@@ -60,7 +60,7 @@ void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top
                     float textX = charX + ((cell_w - textSize.x) * 0.5F);
                     float textY = charY + ((cell_h - textSize.y) * 0.5F);
 
-                    // Simulating bold text by drawing twice with offset
+                    // Simulate pseudo-bold by double-rendering with 1px offset
                     draw_list->AddText(font, fontSize, ImVec2(textX + 1.0F, textY), textColor, str.data());
                     draw_list->AddText(font, fontSize, ImVec2(textX, textY), textColor, str.data());
                 }

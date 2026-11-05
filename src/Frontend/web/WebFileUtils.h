@@ -24,7 +24,6 @@ extern "C" {
 
 namespace WebFileUtils {
 
-// Global callbacks to be called from JS
 inline std::function<void(const char*, const uint8_t*, int)> onFilePickedCallback;
 
 void init_url_loader(Control::AppState* state);

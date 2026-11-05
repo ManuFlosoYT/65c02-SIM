@@ -50,7 +50,7 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
                 std::vector<uint8_t> dataVec(data, data + size);
                 std::string_view nameView(filename);
                 if (nameView.ends_with(".65c") || nameView.ends_with(".c65")) {
-                    // ImGui calls are invalid here (JS callback, outside a frame): defer to the draw loop
+                    // Defer JS file drop handling to main loop (outside ImGui frame)
                     state.popups.showCartridgeLoaded = Control::LoadCartridge(state, filename, dataVec);
                 } else {
                     if (!Control::LoadBinaryRom(state, filename, dataVec)) {

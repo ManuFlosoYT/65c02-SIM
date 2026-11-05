@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(INC_AbsoluteX_Test, INC_AbsoluteX) {
-    // Addr = 0x4480 + 0x01 = 0x4481
-    // Mem[0x4481] = 0x05 -> 0x06
     cpu.X = 0x01;
 
     bus.WriteDirect(0xFFFC, 0x00);

@@ -5,7 +5,6 @@
 #ifdef TARGET_WASM
 #include <emscripten.h>
 
-// Global C-linkage functions for JS interface
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE

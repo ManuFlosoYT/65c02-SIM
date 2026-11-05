@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(INC_ZeroPageX_Test, INC_ZeroPageX) {
-    // Addr = 0x42 + 0x05 = 0x47
-    // Mem[0x47] = 0x05 -> 0x06
     cpu.X = 0x05;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -39,8 +37,6 @@ TEST_F(INC_ZeroPageX_Test, INC_ZeroPageX) {
 }
 
 TEST_F(INC_ZeroPageX_Test, INC_ZeroPageX_WrapAround) {
-    // Addr = 0x80 + 0xFF = 0x17F -> 0x7F
-    // Mem[0x7F] = 0x05 -> 0x06
     cpu.X = 0xFF;
 
     bus.WriteDirect(0xFFFC, 0x00);

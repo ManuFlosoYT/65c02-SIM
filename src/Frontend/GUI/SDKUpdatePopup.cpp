@@ -12,7 +12,6 @@ void DrawSDKUpdatePopup(AppState& state) {
         state.sdk.showUpdatePopup = false;
     }
 
-    // Always center the modal
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
 
@@ -26,7 +25,7 @@ void DrawSDKUpdatePopup(AppState& state) {
         ImGui::TextUnformatted(("Current Version:   " + std::string(PROJECT_VERSION)).c_str());
         ImGui::NewLine();
 
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.8F, 0.0F, 1.0F)); // Warning color
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.8F, 0.0F, 1.0F));
         ImGui::PushTextWrapPos(400.0F);
         ImGui::TextUnformatted("WARNING: Updating will completely DELETE the 'SDK/' directory and its contents before re-extracting. Any custom files stored there will be lost.");
         ImGui::PopTextWrapPos();
@@ -47,7 +46,7 @@ void DrawSDKUpdatePopup(AppState& state) {
         }
         ImGui::SameLine();
         if (ImGui::Button("Ignore", ImVec2(btnWidth, 0))) {
-            SDKManager::ScanExtractedSDK(state); // Clean fallback: use what we have
+            SDKManager::ScanExtractedSDK(state);
             state.sdk.showUpdatePopup = false;
             ImGui::CloseCurrentPopup();
         }

@@ -19,23 +19,18 @@ protected:
     CPU cpu;
 };
 
-// BBSx: Branch if bit x of Zero Page memory is Set (1).
-// 3-byte instruction: Opcode, ZeroPage, Offset.
-// Address Mode: Relative
 
 TEST_F(BBS_Test, BBS0_BranchTaken) {
     cpu.PC = 0xFFFC;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BBS0);
-    bus.Write(0x4001, 0x10);     // ZP Address
-    bus.Write(0x4002, 0x04);     // Offset +4
-    bus.Write(0x4003, INS_STP);  // Stop if not taken
+    bus.Write(0x4001, 0x10);
+    bus.Write(0x4002, 0x04);
+    bus.Write(0x4003, INS_STP);
 
-    // Memory Value: Bit 0 is 1
-    bus.WriteDirect(0x0010, 0x01);  // 0000 0001
+    bus.WriteDirect(0x0010, 0x01);
 
-    // Target: PC = 0x4003. 0x4003 + 4 = 0x4007
     bus.Write(0x4007, INS_STP);
 
     cpu.Execute(bus);
@@ -48,12 +43,11 @@ TEST_F(BBS_Test, BBS0_BranchNotTaken) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BBS0);
-    bus.Write(0x4001, 0x10);     // ZP Address
+    bus.Write(0x4001, 0x10);
     bus.Write(0x4002, 0x04);
-    bus.Write(0x4003, INS_STP);  // Stop
+    bus.Write(0x4003, INS_STP);
 
-    // Memory Value: Bit 0 is 0
-    bus.WriteDirect(0x0010, 0xFE);  // 1111 1110
+    bus.WriteDirect(0x0010, 0xFE);
 
     cpu.Execute(bus);
 
@@ -65,14 +59,12 @@ TEST_F(BBS_Test, BBS7_BranchTaken) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_BBS7);
-    bus.Write(0x4001, 0x20);     // ZP Address
-    bus.Write(0x4002, 0x05);     // Offset +5
-    bus.Write(0x4003, INS_STP);  // Stop if not taken
+    bus.Write(0x4001, 0x20);
+    bus.Write(0x4002, 0x05);
+    bus.Write(0x4003, INS_STP);
 
-    // Memory Value: Bit 7 is 1
-    bus.WriteDirect(0x0020, 0x80);  // 1000 0000
+    bus.WriteDirect(0x0020, 0x80);
 
-    // Target: PC = 0x4003. 0x4003 + 5 = 0x4008
     bus.Write(0x4008, INS_STP);
 
     cpu.Execute(bus);
@@ -87,10 +79,9 @@ TEST_F(BBS_Test, BBS7_BranchNotTaken) {
     bus.Write(0x4000, INS_BBS7);
     bus.Write(0x4001, 0x20);
     bus.Write(0x4002, 0x05);
-    bus.Write(0x4003, INS_STP);  // Stop
+    bus.Write(0x4003, INS_STP);
 
-    // Memory Value: Bit 7 is 0
-    bus.WriteDirect(0x0020, 0x7F);  // 0111 1111
+    bus.WriteDirect(0x0020, 0x7F);
 
     cpu.Execute(bus);
 
@@ -105,12 +96,12 @@ TEST_F(BBS_Test, BBS0_Cycles_NotTaken) {
     bus.Write(0x4000, INS_BBS0);
     bus.Write(0x4001, 0x10);
     bus.Write(0x4002, 0x05);
-    bus.Write(0x0010, 0xFE);  // bit0 clear -> not taken
+    bus.Write(0x0010, 0xFE);
 
     cpu.Step<false>(bus);
 
     EXPECT_EQ(cpu.PC, 0x4003);
-    EXPECT_EQ(cpu.GetRemainingCycles(), 4);  // base 5 -> one cycle already consumed
+    EXPECT_EQ(cpu.GetRemainingCycles(), 4);
 }
 
 TEST_F(BBS_Test, BBS0_Cycles_Taken_NoPageCross) {
@@ -121,12 +112,12 @@ TEST_F(BBS_Test, BBS0_Cycles_Taken_NoPageCross) {
     bus.Write(0x4000, INS_BBS0);
     bus.Write(0x4001, 0x10);
     bus.Write(0x4002, 0x05);
-    bus.Write(0x0010, 0x01);  // bit0 set -> taken
+    bus.Write(0x0010, 0x01);
 
     cpu.Step<false>(bus);
 
     EXPECT_EQ(cpu.PC, 0x4008);
-    EXPECT_EQ(cpu.GetRemainingCycles(), 5);  // base 5 + taken 1
+    EXPECT_EQ(cpu.GetRemainingCycles(), 5);
 }
 
 TEST_F(BBS_Test, BBS0_Cycles_Taken_PageCross) {
@@ -136,11 +127,11 @@ TEST_F(BBS_Test, BBS0_Cycles_Taken_PageCross) {
 
     bus.Write(0x40FD, INS_BBS0);
     bus.Write(0x40FE, 0x10);
-    bus.Write(0x40FF, 0xFE);  // -2, target 0x40FE from base 0x4100
-    bus.Write(0x0010, 0x01);  // bit0 set -> taken
+    bus.Write(0x40FF, 0xFE);
+    bus.Write(0x0010, 0x01);
 
     cpu.Step<false>(bus);
 
     EXPECT_EQ(cpu.PC, 0x40FE);
-    EXPECT_EQ(cpu.GetRemainingCycles(), 6);  // base 5 + taken 1 + page-cross 1
+    EXPECT_EQ(cpu.GetRemainingCycles(), 6);
 }

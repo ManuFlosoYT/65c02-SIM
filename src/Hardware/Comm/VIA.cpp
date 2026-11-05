@@ -44,9 +44,9 @@ Byte VIA::Read(Word address) {
         case PORTB & 0x0F: {
             Byte cb2_mode = (pcr >> 5) & 0x07;
             if (cb2_mode == 1 || cb2_mode == 3) {
-                ifr &= ~0x10;  // Clear CB1 only
+                ifr &= ~0x10;
             } else {
-                ifr &= ~0x18;  // Clear CB1 and CB2 flags
+                ifr &= ~0x18;
             }
             UpdateIRQ();
             
@@ -60,9 +60,9 @@ Byte VIA::Read(Word address) {
         case PORTA & 0x0F: {
             Byte ca2_mode = (pcr >> 1) & 0x07;
             if (ca2_mode == 1 || ca2_mode == 3) {
-                ifr &= ~0x02;  // Clear CA1 only
+                ifr &= ~0x02;
             } else {
-                ifr &= ~0x03;  // Clear CA1 and CA2 flags
+                ifr &= ~0x03;
             }
             UpdateIRQ();
             
@@ -86,7 +86,7 @@ Byte VIA::Read(Word address) {
         case DDRA & 0x0F:
             return ddra;
         case T1C_L & 0x0F:
-            ifr &= ~0x40;  // Clear T1 interrupt flag on read
+            ifr &= ~0x40;
             UpdateIRQ();
             return timer1.ReadLow();
         case T1C_H & 0x0F:
@@ -96,13 +96,13 @@ Byte VIA::Read(Word address) {
         case T1L_H & 0x0F:
             return timer1.ReadLatchHigh();
         case T2C_L & 0x0F:
-            ifr &= ~0x20;  // Clear T2 interrupt flag on read
+            ifr &= ~0x20;
             UpdateIRQ();
             return timer2.ReadLow();
         case T2C_H & 0x0F:
             return timer2.ReadHigh();
         case VIA_SR & 0x0F:
-            ifr &= ~0x04;  // Clear SR interrupt bit on read
+            ifr &= ~0x04;
             {
                 Byte val = shiftRegister.Read();
                 UpdateAnyActive();
@@ -189,9 +189,9 @@ void VIA::Write(Word address, Byte data) {
             }
             Byte cb2_mode = (pcr >> 5) & 0x07;
             if (cb2_mode == 1 || cb2_mode == 3) {
-                ifr &= ~0x10;  // Clear CB1 only
+                ifr &= ~0x10;
             } else {
-                ifr &= ~0x18;  // Clear CB1 and CB2 flags
+                ifr &= ~0x18;
             }
             UpdateIRQ();
             
@@ -209,9 +209,9 @@ void VIA::Write(Word address, Byte data) {
             ira_latch_full = false;
             Byte ca2_mode = (pcr >> 1) & 0x07;
             if (ca2_mode == 1 || ca2_mode == 3) {
-                ifr &= ~0x02;  // Clear CA1 only
+                ifr &= ~0x02;
             } else {
-                ifr &= ~0x03;  // Clear CA1 and CA2 flags
+                ifr &= ~0x03;
             }
             UpdateIRQ();
 
@@ -354,9 +354,9 @@ void VIA::ClockSlow() {
 
 void VIA::UpdateIRQ() {
     if (((ifr & ier) & 0x7F) != 0) {
-        ifr |= 0x80;  // Set IRQ bit if any enabled interrupt is active
+        ifr |= 0x80;
     } else {
-        ifr &= 0x7F;  // Clear IRQ bit
+        ifr &= 0x7F;
     }
 }
 
@@ -369,11 +369,11 @@ void VIA::SetCA1(bool val) {
     bool old_ca1 = ca1_in;
     ca1_in = val;
     bool active_edge = false;
-    if ((pcr & 0x01) == 0) {  // Negative edge
+    if ((pcr & 0x01) == 0) {
         if (old_ca1 && !val) {
             active_edge = true;
         }
-    } else {  // Positive edge
+    } else {
         if (!old_ca1 && val) {
             active_edge = true;
         }
@@ -395,19 +395,17 @@ void VIA::SetCA1(bool val) {
 void VIA::SetCA2(bool val) {
     bool old_ca2 = ca2_in;
     ca2_in = val;
-    // CA2 control is bits 1-3 of PCR
     Byte ca2_mode = (pcr >> 1) & 0x07;
     bool active_edge = false;
-    if (ca2_mode == 0 || ca2_mode == 1) {  // Input, negative edge or Independent input, neg edge
+    if (ca2_mode == 0 || ca2_mode == 1) {
         if (old_ca2 && !val) {
             active_edge = true;
         }
-    } else if (ca2_mode == 2 || ca2_mode == 3) {  // Input, positive edge or Independent input, pos edge
+    } else if (ca2_mode == 2 || ca2_mode == 3) {
         if (!old_ca2 && val) {
             active_edge = true;
         }
     }
-    // (Modes 4-7 are output modes)
 
     if (active_edge) {
         ifr |= 0x01;
@@ -416,12 +414,11 @@ void VIA::SetCA2(bool val) {
 }
 
 void VIA::SetInputB(Byte val) {
-    // Pulse Counting for T2 (PB6)
     if (((acr & 0x20) != 0)) {
         bool old_pb6 = (irb & 0x40) != 0;
         bool new_pb6 = (val & 0x40) != 0;
 
-        if (old_pb6 && !new_pb6) {  // Falling edge
+        if (old_pb6 && !new_pb6) {
             auto res = timer2.PulsePB6(acr);
             if (res.underflow) {
                 if (res.interruptTriggered) {
@@ -441,11 +438,11 @@ void VIA::SetCB1(bool val) {
     bool old_cb1 = cb1_in;
     cb1_in = val;
     bool active_edge = false;
-    if ((pcr & 0x10) == 0) {  // Negative edge
+    if ((pcr & 0x10) == 0) {
         if (old_cb1 && !val) {
             active_edge = true;
         }
-    } else {  // Positive edge
+    } else {
         if (!old_cb1 && val) {
             active_edge = true;
         }
@@ -457,7 +454,7 @@ void VIA::SetCB1(bool val) {
         }
         Byte cb2_mode = (pcr >> 5) & 0x07;
         if (cb2_mode == 4) {
-            UpdateCB2Output(true); // Handshake restored by CB1 active edge
+            UpdateCB2Output(true);  // CB1 edge restores handshake
         }
         ifr |= 0x10;
         

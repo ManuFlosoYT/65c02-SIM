@@ -150,14 +150,12 @@ void DrawDisassemblerContent(Control::AppState& state) {
         ImGui::TableHeadersRow();
 
         uint16_t progCounter = state.emulator.GetCPU().PC;
-        // Search back a few bytes to find a potential start point
-        // This is heuristic, but for short ranges it usually works
+        // Heuristic reverse scan to find instruction boundary
         uint16_t currentAddr = (progCounter > 32) ? progCounter - 32 : 0;
 
         int lastLineNumber = -1;
         unsigned int lastFileId = 0;
 
-        // Dissassemble a block around PC
         for (int i = 0; i < 50; i++) {
             Hardware::DisassembledInstruction instr =
                 Hardware::Disassembler::Disassemble(state.emulator.GetMem(), currentAddr);
@@ -233,7 +231,7 @@ void DrawDisassemblerContent(Control::AppState& state) {
             uint16_t prevAddr = currentAddr;
             currentAddr += instr.size;
             if (currentAddr < instr.size) {
-                break;  // Overflow
+                break;
             }
             if (prevAddr < progCounter && currentAddr > progCounter) {
                 currentAddr = progCounter;

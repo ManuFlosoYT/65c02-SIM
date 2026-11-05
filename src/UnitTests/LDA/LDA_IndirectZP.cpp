@@ -20,11 +20,6 @@ protected:
 };
 
 TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP) {
-    // 0xFFFC: LDA (ZP)
-    // 0xFFFD: 0x20 (Pointer address in ZP)
-    // 0x0020: 0x00 (Low byte of target)
-    // 0x0021: 0x80 (High byte of target) -> Target Address: 0x8000
-    // 0x8000: 0x37 (Value to load)
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
@@ -51,7 +46,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_ZeroFlag) {
     bus.Write(0x4001, 0x20);
     bus.Write(0x0020, 0x00);
     bus.Write(0x0021, 0x80);
-    bus.WriteDirect(0x8000, 0x00);  // Load 0x00
+    bus.WriteDirect(0x8000, 0x00);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
@@ -70,7 +65,7 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_NegativeFlag) {
     bus.Write(0x4001, 0x20);
     bus.Write(0x0020, 0x00);
     bus.Write(0x0021, 0x80);
-    bus.WriteDirect(0x8000, 0x80);  // Load 0x80 (Negative)
+    bus.WriteDirect(0x8000, 0x80);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
@@ -81,18 +76,14 @@ TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_NegativeFlag) {
 }
 
 TEST_F(LDA_IndirectZP_Test, LDA_IndirectZP_WrapAround) {
-    // Test the ZP wrap-around behavior explicitly handled in LDA implementation
-    // Pointer at 0xFF.
-    // Low byte at 0xFF.
-    // High byte at 0x00 (Wrap around).
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDA_IND_ZP);
     bus.Write(0x4001, 0xFF);
-    bus.Write(0x00FF, 0x00);  // Low byte of target address
-    bus.Write(0x0000, 0x90);  // High byte of target address -> Target: 0x9000
-    bus.WriteDirect(0x9000, 0x42);  // Value to load
+    bus.Write(0x00FF, 0x00);
+    bus.Write(0x0000, 0x90);
+    bus.WriteDirect(0x9000, 0x42);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);

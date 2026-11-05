@@ -13,7 +13,6 @@ class LCD : public IBusDevice {
     LCD();
     void Reset() override;
 
-    // IBusDevice implementation
     Byte Read(Word address) override;
     void Write(Word address, Byte data) override;
     [[nodiscard]] std::string GetName() const override;
@@ -37,7 +36,6 @@ class LCD : public IBusDevice {
    private:
     HD44780BusLatch busLatch;
 
-    // Display State
     std::array<std::array<char, 16>, 2> screen;
     int cursorX = 0;
     int cursorY = 0;

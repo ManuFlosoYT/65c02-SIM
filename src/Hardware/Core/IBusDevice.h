@@ -31,7 +31,6 @@ class IBusDevice : public ISerializable, public IMemoryBlockDevice {
     bool SaveState(std::ostream& out) const override = 0;
     bool LoadState(std::istream& inStream) override = 0;
 
-    // Optional direct memory access for cache optimization (returns nullptr if not supported)
     [[nodiscard]] Byte* GetRawMemory() override { return nullptr; }
     [[nodiscard]] size_t GetRawMemorySize() const override { return 0; }
     [[nodiscard]] bool IsReadOnly() const override { return false; }

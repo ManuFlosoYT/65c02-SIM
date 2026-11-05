@@ -22,12 +22,11 @@ protected:
 TEST_F(STX_ZeroPage_Test, STX_ZeroPage) {
     cpu.X = 0x37;
 
-    // 0xFFFC: STX (ZeroPage) 0x42
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STX_ZP);
     bus.Write(0x4001, 0x42);
-    bus.Write(0x4002, INS_STP);  // Stop
+    bus.Write(0x4002, INS_STP);
 
     bus.Write(0x0042, 0x00);
 

@@ -20,22 +20,16 @@ protected:
 };
 
 TEST_F(AND_Immediate_Test, AND_Immediate) {
-    // Programa en memoria:
-    // 0xFFFC: AND #0x0F
-    // 0xFFFD: 0x67
-    // 0xFFFE: Opcode desconocido (0xFF)
-    cpu.A = 0xFF;  // Start with A = 0xFF
+    cpu.A = 0xFF;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_IM);
     bus.Write(0x4001, 0x0F);
     bus.Write(0x4002, INS_STP);
 
-    // Ciclo 1: Lee AND #0x0F
-    // Ciclo 2: Lee 0x0F, ejecuta AND
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.A, 0x0F);  // 0xFF & 0x0F = 0x0F
+    EXPECT_EQ(cpu.A, 0x0F);
     EXPECT_FALSE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
@@ -52,7 +46,7 @@ TEST_F(AND_Immediate_Test, AND_Immediate_ZeroFlag) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.A, 0x00);  // 0xF0 & 0x0F = 0x00
+    EXPECT_EQ(cpu.A, 0x00);
     EXPECT_TRUE(cpu.Z);
     EXPECT_FALSE(cpu.N);
 }
@@ -69,7 +63,7 @@ TEST_F(AND_Immediate_Test, AND_Immediate_NegativeFlag) {
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.A, 0x80);  // 0xFF & 0x80 = 0x80
+    EXPECT_EQ(cpu.A, 0x80);
     EXPECT_FALSE(cpu.Z);
     EXPECT_TRUE(cpu.N);
 }

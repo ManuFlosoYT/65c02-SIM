@@ -19,14 +19,8 @@ protected:
     CPU cpu;
 };
 
-// ROL: Rotate Left through Carry
-// [7...1] <- [6...0]
-// [0] <- Old Carry
-// C <- Old Bit 7
 
 TEST_F(ROL_Accumulator_Test, ROL_Accumulator_Rotate) {
-    // 1000 0000 (0x80) -> 0000 0000 (0x00). Old Carry=0 inserted at bit 0.
-    // Carry Out = Old Bit 7 (1).
     cpu.A = 0x80;
     cpu.C = 0;
 

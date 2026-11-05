@@ -20,11 +20,10 @@ protected:
 };
 
 TEST_F(PHX_Test, PHX) {
-    // 0xFFFC: PHX
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_PHX);
-    bus.Write(0x4001, INS_STP);  // Stop
+    bus.Write(0x4001, INS_STP);
 
     cpu.X = 0x42;
     cpu.SP = 0x01FF;

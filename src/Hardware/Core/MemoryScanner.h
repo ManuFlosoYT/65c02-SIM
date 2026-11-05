@@ -16,7 +16,7 @@ enum class ScanFilter : std::uint8_t { Exact, Increased, Decreased, Unchanged };
 
 struct ScanCandidate {
     std::uint16_t address;
-    std::uint16_t previous;  // unused for String
+    std::uint16_t previous;  // Unused for String scans
 };
 
 struct ScanQuery {

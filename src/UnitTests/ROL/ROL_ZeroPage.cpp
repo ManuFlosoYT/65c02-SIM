@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(ROL_ZeroPage_Test, ROL_ZeroPage) {
-    // Mem = 0x80 -> 0x00 (Shift Left, C=0 into bit 0).
-    // Carry Out = Old Bit 7 (1).
     cpu.C = 0;
 
     bus.WriteDirect(0xFFFC, 0x00);

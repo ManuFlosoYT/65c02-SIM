@@ -25,8 +25,8 @@ TEST_F(EOR_Absolute_Test, EOR_Absolute) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_EOR_ABS);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, 0x44);  // 0x4480
-    bus.Write(0x4480, 0x0F);  // 0xFF ^ 0x0F = 0xF0
+    bus.Write(0x4002, 0x44);
+    bus.Write(0x4480, 0x0F);
     bus.Write(0x4003, INS_STP);
 
     cpu.Execute(bus);

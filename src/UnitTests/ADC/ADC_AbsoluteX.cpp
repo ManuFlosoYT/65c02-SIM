@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(ADC_AbsoluteX_Test, ADC_AbsoluteX) {
-    // Addr = 0x4480 + 1 = 0x4481
-    // 0 + Mem[0x4481](5) = 5
     cpu.A = 0x00;
     cpu.X = 0x01;
     cpu.C = 0;

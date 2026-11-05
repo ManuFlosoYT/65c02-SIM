@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(SBC_ZeroPageX_Test, SBC_ZeroPageX) {
-    // Addr = 0x42 + 0x01 = 0x43
-    // 10 - 5 = 5.
     cpu.A = 0x0A;
     cpu.X = 0x01;
     cpu.C = 1;

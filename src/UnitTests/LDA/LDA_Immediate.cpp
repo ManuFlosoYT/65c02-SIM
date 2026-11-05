@@ -20,24 +20,12 @@ protected:
 };
 
 TEST_F(LDA_Immediate_Test, LDA_Immediate) {
-    // Programa en memoria:
-    // 0xFFFC: LDA #0xA9
-    // 0xFFFD: 0x67
-    // 0xFFFE: Opcode desconocido (0xFF) para detener la ejecución
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDA_IM);
     bus.Write(0x4001, 0x67);
     bus.Write(0x4002, INS_STP);
 
-    // Ciclo 1:
-    //    Lee LDA #0xA9 en 0xFFFC
-    //    PC avanza a 0xFFFD
-    //    Ejecuta LDA #0xA9
-    // Ciclo 2:
-    //    Lee 0x67 en 0xFFFE
-    //    PC avanza a 0xFFFF
-    //    Opcode desconocido -> Retorna
     cpu.Execute(bus);
 
     EXPECT_EQ(cpu.PC, 0x4003);

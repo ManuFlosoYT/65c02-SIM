@@ -38,7 +38,7 @@ void SDCard::Reset() {
     response_buffer.clear();
     is_acmd = false;
     is_initialized = false;
-    is_sdhc = true;  // Assuming SDHC for 512-byte sectors and blocks addressing
+    is_sdhc = true;  // SDHC block addressing default
     cs_active = false;
     crc_enabled = false;
     is_read_multiblock = false;
@@ -66,13 +66,11 @@ bool SDCard::Mount(const std::string& imagePath) {
     if (imageFile.is_open()) {
         is_read_only = false;
     } else {
-        // Try opening read-only if read-write failed
         imageFile.clear();
         imageFile.open(fsPath, std::ios::in | std::ios::binary);
         if (imageFile.is_open()) {
             is_read_only = true;
         } else {
-            // Try creating it if it doesn't exist
             imageFile.clear();
             imageFile.open(fsPath, std::ios::out | std::ios::binary);
             if (imageFile.is_open()) {
@@ -174,7 +172,6 @@ bool SDCard::SyncToHost() {
 }
 
 void SDCard::SetCS(bool csVal) {
-    // CS is active low
     cs_active = !csVal;
 
     if (!cs_active) {
@@ -188,9 +185,9 @@ void SDCard::SetCS(bool csVal) {
 
 Byte SDCard::Read(Word address) {
     switch (address & 0x03U) {
-        case 0:  // CTRL
+        case 0:
             return (mounted ? 0x01U : 0x00U);
-        case 1:  // DATA
+        case 1:
             return last_miso;
         default:
             return 0xFFU;
@@ -199,10 +196,10 @@ Byte SDCard::Read(Word address) {
 
 void SDCard::Write(Word address, Byte data) {
     switch (address & 0x03U) {
-        case 0:  // CTRL
-            SetCS((data & 0x01U) == 0); // If 0, then high (inactive), if 1, then low (active)
+        case 0:
+            SetCS((data & 0x01U) == 0);
             break;
-        case 1:  // DATA
+        case 1:
             last_mosi = data;
             last_miso = TransferByte(data);
             break;
@@ -274,9 +271,9 @@ uint8_t SDCard::TransferByte(uint8_t mosi) {
 }
 
 void SDCard::HandleIdleState(uint8_t mosi) {
-    if ((mosi & 0xC0U) == 0x40U) {  // Command starts with 01
+    if ((mosi & 0xC0U) == 0x40U) {
         if (!is_initialized && warmup_bytes < 10) {
-            return; // Ignore command if warmup is not complete
+            return;
         }
         cmd_buffer[0] = mosi;
         cmd_bytes_received = 1;
@@ -288,14 +285,11 @@ void SDCard::HandleCommandReceiveState(uint8_t mosi) {
     cmd_buffer.at(static_cast<size_t>(cmd_bytes_received++)) = mosi;
     if (cmd_bytes_received == 6) {
         ProcessCommand();
-        // State is now WAIT_RESPONSE (from ProcessCommand's QueueResponse calls)
     }
 }
 
 void SDCard::HandleWaitResponseState(uint8_t& miso) {
-    // Standard commands require a 1-8 byte delay before sending the response.
-    // Returning 0xFF here provides a 1-byte gap, making the response
-    // available in the very next byte transfer.
+    // 1-byte SPI response turnaround gap (NCR delay)
     miso = 0xFFU;
     state = State::SEND_RESPONSE;
 }
@@ -305,7 +299,6 @@ void SDCard::HandleSendResponseState(uint8_t& miso) {
         miso = response_buffer.at(static_cast<size_t>(response_index++));
         if (static_cast<size_t>(response_index) == response_buffer.size()) {
             response_buffer.clear();
-            // Transition based on the last command
             uint8_t last_cmd = cmd_buffer[0] & 0x3FU;
             if ((last_cmd == 24U || last_cmd == 25U) && !is_acmd) {
                 state = State::WRITE_DATA_TOKEN;
@@ -315,18 +308,17 @@ void SDCard::HandleSendResponseState(uint8_t& miso) {
                 state = State::CMD12_BUSY;
             } else {
                 state = State::IDLE;
-                sd_status_byte = 0x00; // Clear status on normal completion
+                sd_status_byte = 0x00;
             }
         }
     } else {
         state = State::IDLE;
-        sd_status_byte = 0x00; // Clear status on normal completion
+        sd_status_byte = 0x00;
     }
 }
 
 bool SDCard::CheckForStopCommand(uint8_t mosi) {
     if (is_read_multiblock && mosi == 0x4CU) {
-        // Abort read
         is_read_multiblock = false;
         cmd_buffer[0] = mosi;
         cmd_bytes_received = 1;
@@ -369,7 +361,6 @@ void SDCard::HandleReadDataTokenState(uint8_t mosi, uint8_t& miso) {
         miso = 0xFFU;
         return;
     }
-    // Output token 0xFE before data block
     miso = 0xFEU;
     data_index = 0;
     state = State::READ_DATA_BLOCK;
@@ -414,17 +405,15 @@ void SDCard::HandleReadDataCrcState(uint8_t mosi, uint8_t& miso) {
 }
 
 void SDCard::HandleWriteDataTokenState(uint8_t mosi) {
-    if (mosi == 0xFEU || (is_write_multiblock && mosi == 0xFCU)) {  // Start block token
+    if (mosi == 0xFEU || (is_write_multiblock && mosi == 0xFCU)) {
         data_index = 0;
         state = State::WRITE_DATA_BLOCK;
-    } else if (is_write_multiblock && mosi == 0xFDU) { // Stop Tran token
+    } else if (is_write_multiblock && mosi == 0xFDU) {
         is_write_multiblock = false;
         write_busy_bytes = 5;
         state = State::WRITE_BUSY;
-    } else if ((mosi & 0xF0U) == 0xF0U) {  // Dummy bytes before token
-        // Do nothing
+    } else if ((mosi & 0xF0U) == 0xF0U) {
     } else {
-        // Unexpected token
         state = State::IDLE;
     }
 }
@@ -447,7 +436,6 @@ void SDCard::HandleWriteDataCrcState(uint8_t mosi, uint8_t& miso) {
     data_index++;
     if (data_index == 3) {
         if (crc_enabled && received_crc != CalculateCrc16(data_buffer)) {
-            // CRC Error: xxx01011b = 0x0B -> CRC Error
             miso = 0x0BU;
             state = State::IDLE;
         } else {
@@ -455,8 +443,6 @@ void SDCard::HandleWriteDataCrcState(uint8_t mosi, uint8_t& miso) {
             if (is_write_multiblock) {
                 current_lba++;
             }
-            // Send Data Response:
-            // xxx00101b = 0x05 -> Accepted
             miso = 0x05U;
             write_busy_bytes = 5;
             state = State::WRITE_BUSY;
@@ -485,7 +471,7 @@ void SDCard::HandleCmd12BusyState(uint8_t& miso) {
     } else {
         miso = 0xFFU;
         state = State::IDLE;
-        sd_status_byte = 0x00; // Clear status
+        sd_status_byte = 0x00;
     }
 }
 
@@ -499,7 +485,7 @@ void SDCard::ProcessCommand() {
 
     if (cmd == 0 || cmd == 8) {
         if (cmd_buffer.at(5) != CalculateCrc7(cmd_buffer)) {
-            QueueResponse1(0x09U);  // R1: Idle + CRC error
+            QueueResponse1(0x09U);
             return;
         }
     }
@@ -518,7 +504,7 @@ void SDCard::HandleAcmd(uint8_t cmd, uint32_t arg) {
             HandleAcmd41(arg);
             break;
         default:
-            QueueResponse1(0x04U);  // R1: Illegal command
+            QueueResponse1(0x04U);
             break;
     }
 }
@@ -526,10 +512,10 @@ void SDCard::HandleAcmd(uint8_t cmd, uint32_t arg) {
 void SDCard::HandleAcmd41(uint32_t arg) {
     if (acmd41_attempts < acmd41_target_attempts) {
         acmd41_attempts++;
-        QueueResponse1(0x01U);  // R1: In Idle State
+        QueueResponse1(0x01U);
     } else {
-        is_sdhc = ((arg >> 30) & 1U) != 0; // HCS bit
-        QueueResponse1(0x00U);  // R1: Ready (no idle bit)
+        is_sdhc = ((arg >> 30) & 1U) != 0;  // ACMD41 HCS bit
+        QueueResponse1(0x00U);
         is_initialized = true;
     }
 }
@@ -573,13 +559,13 @@ void SDCard::HandleStandardCmd(uint8_t cmd, uint32_t arg) {
             HandleCmd59(arg);
             break;
         default:
-            QueueResponse1(is_initialized ? 0x04U : 0x05U);  // R1: Illegal command
+            QueueResponse1(is_initialized ? 0x04U : 0x05U);
             break;
     }
 }
 
 void SDCard::HandleCmd0() {
-    QueueResponse1(0x01U);  // R1: In Idle State
+    QueueResponse1(0x01U);
     is_initialized = false;
     acmd41_attempts = 0;
     acmd41_target_attempts = static_cast<uint8_t>((std::rand() % 6) + 1);
@@ -589,33 +575,33 @@ void SDCard::HandleCmd0() {
 }
 
 void SDCard::HandleCmd8(uint32_t arg) {
-    QueueResponse7(0x01U, arg & 0xFFFU);  // Echo back voltage pattern
+    QueueResponse7(0x01U, arg & 0xFFFU);
 }
 
 void SDCard::HandleCmd12() {
     is_read_multiblock = false;
-    cmd12_busy_bytes = 2; // Busy for a couple of bytes
+    cmd12_busy_bytes = 2;
     QueueResponse1(0x00U);
 }
 
 void SDCard::HandleCmd13() {
-    QueueResponse2(is_initialized ? 0x00U : 0x01U, sd_status_byte); // R2 response
+    QueueResponse2(is_initialized ? 0x00U : 0x01U, sd_status_byte);
 }
 
 void SDCard::HandleCmd16() {
-    // We always read/write 512 bytes
+    // Fixed 512-byte sector size
     QueueResponse1(is_initialized ? 0x00U : 0x01U);
 }
 
 bool SDCard::PrepareBlockTransfer(uint32_t arg, State nextState, bool isMultiblock, bool isWrite) {
     (void)nextState;
     if (!is_initialized) {
-        QueueResponse1(0x05U);  // R1: Illegal command + In Idle State
+        QueueResponse1(0x05U);
         return false;
     }
     if (arg >= total_blocks && is_sdhc) {
         sd_status_byte |= 0x40U;
-        QueueResponse1(0x40U); // R1: Parameter Error
+        QueueResponse1(0x40U);
         return false;
     }
     current_lba = arg;
@@ -633,7 +619,7 @@ bool SDCard::PrepareBlockTransfer(uint32_t arg, State nextState, bool isMultiblo
         is_read_multiblock = isMultiblock;
         ReadBlockFromImage();
     }
-    QueueResponse1(0x00U);  // R1: Success
+    QueueResponse1(0x00U);
     return true;
 }
 
@@ -659,7 +645,7 @@ void SDCard::HandleCmd55() {
 }
 
 void SDCard::HandleCmd58() {
-    // Return OCR. Bit 30 (CCS) = is_sdhc ? 1 : 0
+    // OCR bit 30: Card Capacity Status
     uint32_t ocr = is_sdhc ? 0xC0FF8000U : 0x80FF8000U;
     QueueResponse3(is_initialized ? 0x00U : 0x01U, ocr);
 }
@@ -714,7 +700,7 @@ void SDCard::ReadBlockFromImage() {
         return;
     }
 
-    imageFile.clear();  // Clear any EOF flags
+    imageFile.clear();
     imageFile.seekg(static_cast<std::streamoff>(current_lba) * 512, std::ios::beg);
     ISerializable::Deserialize(imageFile, data_buffer);
 }

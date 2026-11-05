@@ -6,7 +6,6 @@
 namespace System::Hardware::Scripting::Lang {
 
 enum class TokenType : uint8_t {
-    // Keywords
     Let,
     If,
     Else,
@@ -18,34 +17,32 @@ enum class TokenType : uint8_t {
     Print,
     Changed,
 
-    // Types
     Identifier,
-    Number, // Int64
+    Number,
     String,
     
-    // Symbols
-    Plus,           // +
-    Minus,          // -
-    Star,           // *
-    Slash,          // /
-    Equal,          // =
-    EqualEqual,     // ==
-    Bang,           // !
-    BangEqual,      // !=
-    Less,           // <
-    LessEqual,      // <=
-    Greater,        // >
-    GreaterEqual,   // >=
-    LeftParen,      // (
-    RightParen,     // )
-    LeftBrace,      // {
-    RightBrace,     // }
-    LeftBracket,    // [
-    RightBracket,   // ]
-    Comma,          // ,
-    Dot,            // .
-    Semicolon,      // ;
-    AndAnd,         // &&
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Equal,
+    EqualEqual,
+    Bang,
+    BangEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    LeftBracket,
+    RightBracket,
+    Comma,
+    Dot,
+    Semicolon,
+    AndAnd,
     OrOr,           // ||
 
     Eof,

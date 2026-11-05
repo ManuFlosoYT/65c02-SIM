@@ -19,7 +19,6 @@ protected:
     CPU cpu;
 };
 
-// BEQ: Branch if Z = 1
 
 TEST_F(BEQ_Test, BEQ_NoBranch_ZeroClear) {
     cpu.Z = 0;

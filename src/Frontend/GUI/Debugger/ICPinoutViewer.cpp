@@ -32,7 +32,7 @@ struct PinInfo {
     int number = 0;
     const char* label = "";
     const char* desc = "";
-    int state = -1; // 1 = High, 0 = Low, -1 = Inactive / NC / Power
+    int state = -1;  // Tri-state pin levels: 1=High, 0=Low, -1=High-Z/Inactive
 };
 
 void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
@@ -41,7 +41,6 @@ void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
     rightPins.clear();
 
     if (chipIdx == 0) {
-        // W65C02S (40 Pin PDIP)
         leftPins = {
             {1, "/VPB", "Vector Pull (Active Low output during vector fetch)", 1},
             {2, "RDY", "Ready input (halts CPU for wait states when low)", sample.rdy ? 1 : 0},
@@ -88,7 +87,6 @@ void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
             {21, "VSS", "Ground Reference (0V)", -1}
         };
     } else if (chipIdx == 1) {
-        // W65C22 (40 Pin PDIP)
         leftPins = {
             {1, "VSS", "Ground Reference (0V)", -1},
             {2, "PA0", "Port A Bidirectional I/O Bit 0", (sample.portA >> 0) & 1},
@@ -136,7 +134,6 @@ void PopulatePins(int chipIdx, const Hardware::LogicSample& sample,
             {21, "/IRQB", "Interrupt Request Output (Active Low)", sample.irq ? 0 : 1}
         };
     } else {
-        // W65C51N (28 Pin PDIP)
         bool aciaSelected = ((sample.address & 0xFFFC) == 0x5000);
         leftPins = {
             {1, "VSS", "Ground Reference (0V)", -1},

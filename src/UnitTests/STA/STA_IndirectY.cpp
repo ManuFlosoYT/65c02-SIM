@@ -23,18 +23,15 @@ TEST_F(STA_IndirectY_Test, STA_IndirectY) {
     cpu.A = 0x37;
     cpu.Y = 0x10;
 
-    // 0xFFFC: STA (IndirectY) 0x20
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STA_INDY);
-    bus.Write(0x4001, 0x20);     // Zero Page
-    bus.Write(0x4002, INS_STP);  // Stop
+    bus.Write(0x4001, 0x20);
+    bus.Write(0x4002, INS_STP);
 
-    // Pointer at 0x20 (ZP) -> 0x2070
-    bus.Write(0x0020, 0x70);  // Low
-    bus.Write(0x0021, 0x20);  // High
+    bus.Write(0x0020, 0x70);
+    bus.Write(0x0021, 0x20);
 
-    // Effective Address = 0x2070 + 0x10 = 0x2080
     bus.Write(0x2080, 0x00);
 
     cpu.Execute(bus);

@@ -125,7 +125,6 @@ class Emulator {
     void SetCycleAccurate(bool enabled);
     bool IsCycleAccurate() const;
 
-    // Threading
     void Start();
     void Stop();
     void Pause();
@@ -210,7 +209,6 @@ class Emulator {
         bool LoadState(std::istream& inStream) override { return Console::LoadState(inStream); }
     };
 
-    // Components
     Bus bus;
     CPU cpu;
     LCD lcd;

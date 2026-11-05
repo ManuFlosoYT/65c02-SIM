@@ -21,8 +21,8 @@ protected:
 TEST_F(BRA_Test, BRA_PositiveOffset) {
     cpu.PC = 0x1000;
     bus.Write(0x1000, INS_BRA);
-    bus.Write(0x1001, 0x05);     // Offset +5
-    bus.Write(0x1007, INS_STP);  // Stop instruction at 0x1000 + 2 + 5 = 1007
+    bus.Write(0x1001, 0x05);
+    bus.Write(0x1007, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x10);
@@ -34,9 +34,9 @@ TEST_F(BRA_Test, BRA_PositiveOffset) {
 TEST_F(BRA_Test, BRA_NegativeOffset) {
     cpu.PC = 0x1010;
     bus.Write(0x1010, INS_BRA);
-    bus.Write(0x1011, 0xFB);  // Offset -5 (0xFB)
+    bus.Write(0x1011, 0xFB);
     // Destination: 0x1010 + 2 - 5 = 0x1012 - 5 = 0x100D
-    bus.Write(0x100D, INS_STP);  // Stop instruction
+    bus.Write(0x100D, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x10);
     bus.WriteDirect(0xFFFD, 0x10);
@@ -46,11 +46,9 @@ TEST_F(BRA_Test, BRA_NegativeOffset) {
 }
 
 TEST_F(BRA_Test, BRA_MaxPositiveOffset) {
-    // Jump +127 (0x7F)
     cpu.PC = 0x2000;
     bus.Write(0x2000, INS_BRA);
     bus.Write(0x2001, 0x7F);
-    // Dest: 0x2000 + 2 + 127 = 0x2002 + 0x7F = 0x2081
     bus.Write(0x2081, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -61,11 +59,9 @@ TEST_F(BRA_Test, BRA_MaxPositiveOffset) {
 }
 
 TEST_F(BRA_Test, BRA_MaxNegativeOffset) {
-    // Jump -128 (0x80)
     cpu.PC = 0x3000;
     bus.Write(0x3000, INS_BRA);
     bus.Write(0x3001, 0x80);
-    // Dest: 0x3000 + 2 - 128 = 0x3002 - 128 = 0x3002 - 0x80 = 0x2F82
     bus.Write(0x2F82, INS_STP);
 
     bus.WriteDirect(0xFFFC, 0x00);

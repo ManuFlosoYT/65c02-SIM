@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(LDY_Immediate_Test, LDY_Immediate) {
-    // 0xFFFC: LDY #0x42
-    // 0xFFFD: 0x42
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_LDY_IM);

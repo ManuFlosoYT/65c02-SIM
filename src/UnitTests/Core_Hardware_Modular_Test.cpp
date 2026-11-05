@@ -57,7 +57,7 @@ TEST(ModularHardwareTest, SPSCQueueOperations) {
     EXPECT_TRUE(queue.push(10));
     EXPECT_TRUE(queue.push(20));
     EXPECT_TRUE(queue.push(30));
-    // Capacity is 4, ring buffer holds at most N-1 = 3 elements
+    // Ring buffer usable capacity is N - 1
     EXPECT_FALSE(queue.push(40));
     EXPECT_FALSE(queue.empty());
     EXPECT_EQ(queue.size(), 3U);

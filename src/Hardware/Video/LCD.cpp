@@ -44,11 +44,11 @@ void LCD::Update(Byte val) {
 void LCD::WriteCharToScreen(char character) {
     if (onChar) {
         if (character == '\n') {
-            onChar('\r');  // Convert \n to \r\n for terminal
+            onChar('\r');
         }
         onChar(character);
         if (character == '\n') {
-            return;  // Don't print newline to LCD buffer directly as character
+            return;  // LCD hardware omits newline glyph
         }
     }
 
@@ -56,7 +56,7 @@ void LCD::WriteCharToScreen(char character) {
         cursorX = 0;
         cursorY++;
         if (cursorY >= 2) {
-            cursorY = 0;  // Wrap to top
+            cursorY = 0;
         }
         return;
     }

@@ -22,27 +22,26 @@ protected:
 TEST_F(STA_Absolute_Test, STA_Absolute) {
     cpu.A = 0x37;
 
-    // 0xFFFC: STA (Absolute) 0x8000
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STA_ABS);
-    bus.Write(0x4001, 0x00);  // Low Byte
-    bus.Write(0x4002, 0x20);  // High Byte
+    bus.Write(0x4001, 0x00);
+    bus.Write(0x4002, 0x20);
     bus.Write(0x4003,
-              INS_STP);  // Stop? No, PC is at 0xFFFF, need to be careful.
+              INS_STP);
     // STA ABS is 3 bytes.
     // 0xFFFC: Opcode
     // 0xFFFD: Low
     // 0xFFFE: High
     // 0xFFFF: Next Opcode.
 
-    bus.Write(0x4003, INS_STP);  // Stop
+    bus.Write(0x4003, INS_STP);
 
     bus.WriteDirect(0x2000, 0x00);
 
     cpu.Execute(bus);
 
-    EXPECT_EQ(cpu.PC, 0x4004);  // 0xFFFF + 1 causes wrap to 0x0000 if not
+    EXPECT_EQ(cpu.PC, 0x4004);
                                 // handled, but FetchByte increments PC.
     // Wait, 0xFFFC -> 0xFFFD (Fetch Opcode)
     // 0xFFFD -> 0xFFFE (Fetch Low)

@@ -6,10 +6,7 @@
 
 namespace Control {
 
-/**
- * Applies a cartridge's configuration to the global AppState and Emulator.
- * Handles IPS, GPU enablement, Cycle Accuracy, SID, etc.
- */
+// Applies cartridge config (IPS, GPU, cycle accuracy, SID) to state
 void ApplyCartridgeConfig(AppState& state, const Core::Cartridge& cart);
 
 inline bool ShouldPromptCartridgeSDSave(const AppState& state) {

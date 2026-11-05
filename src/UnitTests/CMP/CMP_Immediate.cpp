@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(CMP_Immediate_Test, CMP_Immediate_Equal) {
-    // A = 0x05, M = 0x05. Result = 0. Z=1, C=1.
     cpu.A = 0x05;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -38,7 +37,6 @@ TEST_F(CMP_Immediate_Test, CMP_Immediate_Equal) {
 }
 
 TEST_F(CMP_Immediate_Test, CMP_Immediate_Less) {
-    // A = 0x04, M = 0x05. Result = -1 (0xFF). Z=0, C=0. N=1.
     cpu.A = 0x04;
 
     bus.WriteDirect(0xFFFC, 0x00);
@@ -56,7 +54,6 @@ TEST_F(CMP_Immediate_Test, CMP_Immediate_Less) {
 }
 
 TEST_F(CMP_Immediate_Test, CMP_Immediate_Greater) {
-    // A = 0x06, M = 0x05. Result = 1. Z=0, C=1. N=0.
     cpu.A = 0x06;
 
     bus.WriteDirect(0xFFFC, 0x00);

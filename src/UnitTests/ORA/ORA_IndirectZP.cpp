@@ -24,10 +24,10 @@ TEST_F(ORA_IndirectZP_Test, ORA_IndirectZP) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ORA_IND_ZP);
-    bus.Write(0x4001, 0x20);     // ZP Pointer
-    bus.Write(0x0020, 0x00);     // Low Byte
-    bus.Write(0x0021, 0x80);     // High Byte -> Target Base: 0x8000
-    bus.WriteDirect(0x8000, 0x0F);  // Target Value.
+    bus.Write(0x4001, 0x20);
+    bus.Write(0x0020, 0x00);
+    bus.Write(0x0021, 0x80);
+    bus.WriteDirect(0x8000, 0x0F);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);

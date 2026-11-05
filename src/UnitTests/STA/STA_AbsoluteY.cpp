@@ -23,15 +23,13 @@ TEST_F(STA_AbsoluteY_Test, STA_AbsoluteY) {
     cpu.A = 0x37;
     cpu.Y = 0x10;
 
-    // 0xFFFC: STA (AbsoluteY) 0x2000
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STA_ABSY);
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
-    bus.Write(0x4003, INS_STP);  // Stop
+    bus.Write(0x4003, INS_STP);
 
-    // Target = 0x2000 + 0x10 = 0x2010
     bus.Write(0x2010, 0x00);
 
     cpu.Execute(bus);

@@ -23,14 +23,12 @@ TEST_F(STX_ZeroPageY_Test, STX_ZeroPageY) {
     cpu.X = 0x37;
     cpu.Y = 0x0F;
 
-    // 0xFFFC: STX (ZeroPageY) 0x80
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STX_ZPY);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x4002, INS_STP);  // Stop
+    bus.Write(0x4002, INS_STP);
 
-    // Target Zero Page Address = 0x80 + 0x0F = 0x8F
     bus.Write(0x008F, 0x00);
 
     cpu.Execute(bus);

@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(LSR_ZeroPageX_Test, LSR_ZeroPageX) {
-    // Addr = 0x42 + 2 = 0x44
-    // Mem[0x44] = 0x02 -> 0x01
     cpu.X = 0x02;
 
     bus.WriteDirect(0xFFFC, 0x00);

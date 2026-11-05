@@ -358,7 +358,6 @@ static void DrawVideoOptions(AppState& state) {
     ImGui::Checkbox("Raw Track", &state.emulation.recordingSettings.recordRaw);
     ImGui::Checkbox("Processed Track", &state.emulation.recordingSettings.recordProcessed);
 
-    // Forcing MKV if both tracks are selected
     bool forcedMKV = state.emulation.recordingSettings.recordRaw && state.emulation.recordingSettings.recordProcessed;
     if (forcedMKV) {
         state.emulation.recordingSettings.format = VideoFormat::MKV;
@@ -387,7 +386,6 @@ static void DrawVideoOptions(AppState& state) {
 }
 
 static void HandleSIDWindowSettings(AppState& state) {
-    // Force MP4 and Processed track for SID Window
     state.emulation.recordingSettings.format = VideoFormat::MP4;
     state.emulation.recordingSettings.recordRaw = false;
     state.emulation.recordingSettings.recordProcessed = true;

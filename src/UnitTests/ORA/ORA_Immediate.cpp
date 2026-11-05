@@ -20,7 +20,7 @@ protected:
 };
 
 TEST_F(ORA_Immediate_Test, ORA_Immediate) {
-    cpu.A = 0x00;  // Start with 0x00
+    cpu.A = 0x00;
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ORA_IM);

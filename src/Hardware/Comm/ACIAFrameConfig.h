@@ -17,9 +17,8 @@ struct ACIAFrameConfig {
     }
 
     static constexpr int CalculateFrameBits(Byte ctrl, Byte cmd) noexcept {
-        int bits = 1;  // Start bit
+        int bits = 1;
 
-        // Word length
         Byte wl = (ctrl >> 5) & 0x03;
         switch (wl) {
             case 0: bits += 8; break;
@@ -29,12 +28,10 @@ struct ACIAFrameConfig {
             default: break;
         }
 
-        // Parity
         if ((cmd & 0x20) != 0) {
             bits += 1;
         }
 
-        // Stop bits
         if ((ctrl & 0x80) != 0) {
             bits += 2;
         } else {

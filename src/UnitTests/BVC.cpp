@@ -19,7 +19,6 @@ protected:
     CPU cpu;
 };
 
-// BVC: Branch if V = 0
 
 TEST_F(BVC_Test, BVC_NoBranch_OverflowSet) {
     cpu.V = 1;

@@ -339,15 +339,13 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
 
     const OpcodeEntry<Debug>& entry = dispatchTable<Debug>[opcode];
 
-    // Execute instruction
     if (entry.executor) {
         entry.executor(cpu, bus);
     }
 
-    // Assign cycle accuracy offsets (branchless equivalent to: baseCycles > 0 ? baseCycles - 1 : 0)
+    // Cycle offset: baseCycles - 1 if non-zero
     cpu.remainingCycles += static_cast<int>(entry.baseCycles) - static_cast<int>(entry.baseCycles != 0);
 
-    // Error handling
     if (entry.exitCode == -1) {
         std::cerr << "Unknown opcode: 0x" << std::hex << static_cast<int>(opcode) << " PC: 0x" << cpu.PC << std::dec
                   << " execution cancelled.\n";

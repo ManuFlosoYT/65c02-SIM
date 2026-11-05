@@ -20,7 +20,6 @@ protected:
 };
 
 TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage) {
-    // Mem[0x42] = 0x01 -> 0x02
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ASL_ZP);
@@ -37,7 +36,6 @@ TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage) {
 }
 
 TEST_F(ASL_ZeroPage_Test, ASL_ZeroPage_Carry) {
-    // Mem[0x42] = 0x80 -> 0x00, C=1
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_ASL_ZP);

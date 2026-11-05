@@ -20,8 +20,6 @@ protected:
 };
 
 TEST_F(ROR_ZeroPageX_Test, ROR_ZeroPageX) {
-    // Mem = 0x01 -> 0x00 (Shift Right, C=0 into bit 7).
-    // Carry Out = Old Bit 0 (1).
     cpu.C = 0;
     cpu.X = 0x04;
 

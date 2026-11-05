@@ -26,7 +26,7 @@ TEST_F(AND_ZeroPageX_Test, AND_ZeroPageX) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_ZPX);
     bus.Write(0x4001, 0x42);
-    bus.Write(0x0047, 0x37);  // 0x42 + 0x05 = 0x47
+    bus.Write(0x0047, 0x37);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);
@@ -43,7 +43,7 @@ TEST_F(AND_ZeroPageX_Test, AND_ZeroPageX_WrapAround) {
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_AND_ZPX);
     bus.Write(0x4001, 0x80);
-    bus.Write(0x007F, 0x37);  // 0x80 + 0xFF = 0x17F -> 0x7F (Zero Page Wrap)
+    bus.Write(0x007F, 0x37);
     bus.Write(0x4002, INS_STP);
 
     cpu.Execute(bus);

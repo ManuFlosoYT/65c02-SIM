@@ -22,13 +22,12 @@ protected:
 TEST_F(STY_Absolute_Test, STY_Absolute) {
     cpu.Y = 0x37;
 
-    // 0xFFFC: STY (Absolute) 0x8000
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
     bus.Write(0x4000, INS_STY_ABS);
     bus.Write(0x4001, 0x00);
     bus.Write(0x4002, 0x20);
-    bus.Write(0x4003, INS_STP);  // Stop
+    bus.Write(0x4003, INS_STP);
 
     bus.WriteDirect(0x2000, 0x00);
 

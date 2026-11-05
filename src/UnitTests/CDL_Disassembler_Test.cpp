@@ -48,7 +48,7 @@ TEST_F(CDL_Disassembler_Test, DataLoggingPreventsFakeInstructions) {
     bus.WriteDirect(0xFFFC, 0x00);
     bus.WriteDirect(0xFFFD, 0x40);
 
-    // 0x4C is INS_JMP_ABS, which normally would decode as a 3-byte JMP instruction
+    // 0x4C (JMP) decodes as data byte when masked by CDL flags
     bus.Write(0x5000, 0x4C);
     bus.Write(0x5001, 0x00);
     bus.Write(0x5002, 0x80);
