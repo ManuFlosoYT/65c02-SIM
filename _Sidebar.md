@@ -9,6 +9,7 @@
 * [CPU Instructions Reference](CPU-Instructions)
 * [Linker & Memory Layout](Linker-and-Memory-Layout)
 * [Save States & Rollback](Save-States)
+* [Logging Subsystem](Logging-System)
 
 ---
 
