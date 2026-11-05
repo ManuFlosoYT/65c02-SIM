@@ -135,6 +135,44 @@ static const uint8_t face_colors_light_occlusion[NUM_FACES] = {
     0x00U, 0x1CU, 0x1CU, 0x08U, 0x04U, 0x19U, 0x2DU,
 };
 
+static const uint8_t tex_grass_side[256] = {
+    0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x14U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x14U, 0x19U, 0x15U, 0x15U, 0x14U, 0x15U, 0x14U, 0x15U, 0x15U, 0x15U, 0x19U, 0x14U, 0x14U, 0x15U, 0x14U,
+    0x14U, 0x15U, 0x14U, 0x14U, 0x15U, 0x14U, 0x14U, 0x14U, 0x15U, 0x14U, 0x15U, 0x14U, 0x15U, 0x14U, 0x14U, 0x15U,
+    0x25U, 0x15U, 0x25U, 0x29U, 0x14U, 0x25U, 0x15U, 0x15U, 0x14U, 0x14U, 0x14U, 0x15U, 0x15U, 0x25U, 0x14U, 0x15U,
+    0x15U, 0x14U, 0x25U, 0x25U, 0x15U, 0x25U, 0x14U, 0x14U, 0x14U, 0x15U, 0x15U, 0x14U, 0x15U, 0x15U, 0x15U, 0x29U,
+    0x29U, 0x15U, 0x15U, 0x15U, 0x2AU, 0x15U, 0x15U, 0x29U, 0x29U, 0x15U, 0x29U, 0x29U, 0x15U, 0x25U, 0x15U, 0x25U,
+    0x15U, 0x15U, 0x29U, 0x29U, 0x25U, 0x25U, 0x15U, 0x15U, 0x25U, 0x14U, 0x25U, 0x25U, 0x15U, 0x15U, 0x25U, 0x25U,
+    0x25U, 0x15U, 0x15U, 0x25U, 0x15U, 0x25U, 0x15U, 0x14U, 0x15U, 0x25U, 0x25U, 0x15U, 0x15U, 0x15U, 0x14U, 0x15U,
+    0x15U, 0x25U, 0x14U, 0x15U, 0x15U, 0x14U, 0x14U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x29U, 0x29U, 0x15U, 0x25U,
+    0x15U, 0x25U, 0x15U, 0x29U, 0x29U, 0x15U, 0x29U, 0x25U, 0x14U, 0x29U, 0x29U, 0x14U, 0x25U, 0x25U, 0x2AU, 0x15U,
+    0x25U, 0x15U, 0x15U, 0x25U, 0x25U, 0x29U, 0x15U, 0x25U, 0x15U, 0x25U, 0x25U, 0x15U, 0x14U, 0x25U, 0x15U, 0x14U,
+    0x15U, 0x14U, 0x25U, 0x15U, 0x25U, 0x25U, 0x29U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x29U, 0x29U,
+    0x15U, 0x25U, 0x15U, 0x15U, 0x15U, 0x15U, 0x25U, 0x25U, 0x15U, 0x14U, 0x29U, 0x14U, 0x15U, 0x29U, 0x25U, 0x25U,
+    0x25U, 0x15U, 0x14U, 0x29U, 0x15U, 0x14U, 0x15U, 0x14U, 0x29U, 0x29U, 0x15U, 0x25U, 0x15U, 0x15U, 0x25U, 0x25U,
+    0x25U, 0x15U, 0x29U, 0x25U, 0x25U, 0x15U, 0x2AU, 0x15U, 0x25U, 0x25U, 0x15U, 0x15U, 0x25U, 0x25U, 0x15U, 0x14U,
+};
+
+static const uint8_t tex_grass_top[256] = {
+    0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x14U, 0x15U,
+    0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x14U, 0x15U, 0x19U,
+    0x14U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x19U, 0x15U, 0x19U, 0x19U, 0x15U, 0x19U, 0x19U, 0x14U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x14U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x14U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x19U, 0x19U, 0x19U, 0x15U, 0x19U, 0x15U, 0x19U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U,
+    0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x19U, 0x14U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U,
+    0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U,
+    0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x14U, 0x15U,
+    0x15U, 0x15U, 0x14U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U,
+    0x15U, 0x15U, 0x19U, 0x15U, 0x19U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x14U,
+    0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x19U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U, 0x15U,
+};
+
 typedef struct {
     uint8_t id;
     int16_t z_depth;
@@ -142,56 +180,32 @@ typedef struct {
 
 static RenderFace visible_faces[FACE_OBJ_COUNT];
 
-void rotate_all(uint8_t ax, uint8_t ay, uint8_t az) {
+void rotate_all(uint8_t ax, uint8_t ay, int8_t y_cam) {
     int8_t sin_y = ISIN(ay);
     int8_t cos_y = ICOS(ay);
-
-    if (ax == 0 && az == 0) {
-        for (int8_t i = 0; i < NUM_VERTICES; ++i) {
-            int16_t x = cvx[i];
-            int16_t z = (int16_t)((cvz[i] * 110) / 128);
-
-            int16_t tx = (int16_t)(((x * cos_y) + (z * sin_y)) / 128);
-            int16_t tz = (int16_t)(((-x * sin_y) + (z * cos_y)) / 128);
-
-            vx[i] = (int8_t)((tx * 110) / 128);
-            vz[i] = (int8_t)tz;
-        }
-        return;
-    }
-
     int8_t sin_x = ISIN(ax);
     int8_t cos_x = ICOS(ax);
-    int8_t sin_z = ISIN(az);
-    int8_t cos_z = ICOS(az);
 
     for (int8_t i = 0; i < NUM_VERTICES; ++i) {
         int16_t x = cvx[i];
-        int16_t y = cvy[i];
+        int16_t y = (int16_t)(cvy[i] - y_cam);
         int16_t z = cvz[i];
 
-        int16_t ty = ((y * cos_x) - (z * sin_x)) / 128;
-        int16_t tz = ((y * sin_x) + (z * cos_x)) / 128;
-        y = ty;
-        z = tz;
+        int16_t tx = (int16_t)(((x * cos_y) + (z * sin_y)) / 128);
+        int16_t tz = (int16_t)(((-x * sin_y) + (z * cos_y)) / 128);
 
-        int16_t tx = ((x * cos_y) + (z * sin_y)) / 128;
-        tz = ((-x * sin_y) + (z * cos_y)) / 128;
-        x = tx;
-        z = tz;
-
-        tx = ((x * cos_z) - (y * sin_z)) / 128;
-        ty = ((x * sin_z) + (y * cos_z)) / 128;
+        int16_t ty = (int16_t)(((y * cos_x) - (tz * sin_x)) / 128);
+        int16_t tz2 = (int16_t)(((y * sin_x) + (tz * cos_x)) / 128);
 
         vx[i] = (int8_t)tx;
         vy[i] = (int8_t)ty;
-        vz[i] = (int8_t)z;
+        vz[i] = (int8_t)tz2;
     }
 }
 
 void project_all(void) {
-    const int16_t distance = 150;
-    const int8_t factor = 120;
+    const int16_t distance = 160;
+    const int8_t factor = 110;
 
     for (int8_t i = 0; i < NUM_VERTICES; ++i) {
         int16_t z_shifted = vz[i] + distance;
@@ -199,10 +213,10 @@ void project_all(void) {
             z_shifted = 5;
         }
 
-        int16_t factor_precalc = vx[i] * factor;
+        int16_t factor_precalc = (int16_t)(vx[i] * factor);
         px[i] = (int16_t)((factor_precalc / z_shifted) + (GPU_WIDTH / 2));
 
-        factor_precalc = vy[i] * factor;
+        factor_precalc = (int16_t)(vy[i] * factor);
         py[i] = (int16_t)((GPU_HEIGHT / 2) - (factor_precalc / z_shifted));
     }
 }
@@ -210,9 +224,28 @@ void project_all(void) {
 void init_graphics(void) {
     lcd_init();
     gpu_fill_screen(0x00U);
-    for (int8_t i = 0; i < NUM_VERTICES; ++i) {
-        int16_t y = (int16_t)((cvy[i] * 110) / 128);
-        vy[i] = (int8_t)((y * 110) / 128);
+}
+
+static inline int32_t calc_face_cross(uint8_t f) {
+    uint8_t p1 = faces[f][0];
+    uint8_t p2 = faces[f][1];
+    uint8_t p3 = faces[f][2];
+    int16_t v1x = (int16_t)(px[p2] - px[p1]);
+    int16_t v1y = (int16_t)(py[p2] - py[p1]);
+    int16_t v2x = (int16_t)(px[p3] - px[p1]);
+    int16_t v2y = (int16_t)(py[p3] - py[p1]);
+    return ((int32_t)v1x * v2y) - ((int32_t)v1y * v2x);
+}
+
+static void draw_faces_simple(int8_t start, int8_t count, const uint8_t* colors) {
+    for (int8_t i = start; i < start + count; ++i) {
+        if (calc_face_cross((uint8_t)i) >= 0) {
+            uint8_t p1 = faces[i][0];
+            uint8_t p2 = faces[i][1];
+            uint8_t p3 = faces[i][2];
+            gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
+                         colors[i], true);
+        }
     }
 }
 
@@ -220,6 +253,7 @@ int main(void) {
     uint8_t ang_y = 0;
     bool enable_light = true;
     bool enable_occlusion = true;
+    bool enable_tex = false;
 
     if (arg_count > 1 && _args_ptr != NULL) {
         char** args = _args_ptr;
@@ -236,6 +270,8 @@ int main(void) {
                     enable_light = true;
                 } else if (strcmp(args[a], "-occlusion") == 0) {
                     enable_occlusion = true;
+                } else if (strcmp(args[a], "-tex") == 0) {
+                    enable_tex = true;
                 }
             }
         }
@@ -263,83 +299,27 @@ int main(void) {
 
         ang_y = (uint8_t)(ang_y + 1U);
 
-        rotate_all(0, ang_y, 0);
+        rotate_all(228, ang_y, 40);
         project_all();
 
         gpu_fill_screen(0x00U);
 
-        for (int8_t i = FACE_ROOM_START; i < FACE_ROOM_START + FACE_ROOM_COUNT; ++i) {
-            uint8_t p1 = faces[i][0];
-            uint8_t p2 = faces[i][1];
-            uint8_t p3 = faces[i][2];
-
-            int16_t v1x = (int16_t)(px[p2] - px[p1]);
-            int16_t v1y = (int16_t)(py[p2] - py[p1]);
-            int16_t v2x = (int16_t)(px[p3] - px[p1]);
-            int16_t v2y = (int16_t)(py[p3] - py[p1]);
-
-            int32_t cross = ((int32_t)v1x * v2y) - ((int32_t)v1y * v2x);
-
-            if (cross >= 0) {
-                gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
-                             active_colors[i], true);
-            }
-        }
+        draw_faces_simple(FACE_ROOM_START, FACE_ROOM_COUNT, active_colors);
 
         if (enable_occlusion) {
-            for (int8_t i = FACE_AO_START; i < FACE_AO_START + FACE_AO_COUNT; ++i) {
-                uint8_t p1 = faces[i][0];
-                uint8_t p2 = faces[i][1];
-                uint8_t p3 = faces[i][2];
-
-                int16_t v1x = (int16_t)(px[p2] - px[p1]);
-                int16_t v1y = (int16_t)(py[p2] - py[p1]);
-                int16_t v2x = (int16_t)(px[p3] - px[p1]);
-                int16_t v2y = (int16_t)(py[p3] - py[p1]);
-
-                int32_t cross = ((int32_t)v1x * v2y) - ((int32_t)v1y * v2x);
-
-                if (cross >= 0) {
-                    gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
-                                 active_colors[i], true);
-                }
-            }
+            draw_faces_simple(FACE_AO_START, FACE_AO_COUNT, active_colors);
         }
 
         if (enable_light) {
-            for (int8_t i = FACE_SHADOW_START; i < FACE_SHADOW_START + FACE_SHADOW_COUNT; ++i) {
-                uint8_t p1 = faces[i][0];
-                uint8_t p2 = faces[i][1];
-                uint8_t p3 = faces[i][2];
-
-                int16_t v1x = (int16_t)(px[p2] - px[p1]);
-                int16_t v1y = (int16_t)(py[p2] - py[p1]);
-                int16_t v2x = (int16_t)(px[p3] - px[p1]);
-                int16_t v2y = (int16_t)(py[p3] - py[p1]);
-
-                int32_t cross = ((int32_t)v1x * v2y) - ((int32_t)v1y * v2x);
-
-                if (cross >= 0) {
-                    gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
-                                 active_colors[i], true);
-                }
-            }
+            draw_faces_simple(FACE_SHADOW_START, FACE_SHADOW_COUNT, active_colors);
         }
 
         int8_t count = 0;
         for (int8_t i = FACE_OBJ_START; i < FACE_OBJ_START + FACE_OBJ_COUNT; ++i) {
-            uint8_t p1 = faces[i][0];
-            uint8_t p2 = faces[i][1];
-            uint8_t p3 = faces[i][2];
-
-            int16_t v1x = (int16_t)(px[p2] - px[p1]);
-            int16_t v1y = (int16_t)(py[p2] - py[p1]);
-            int16_t v2x = (int16_t)(px[p3] - px[p1]);
-            int16_t v2y = (int16_t)(py[p3] - py[p1]);
-
-            int32_t cross = ((int32_t)v1x * v2y) - ((int32_t)v1y * v2x);
-
-            if (cross >= 0) {
+            if (calc_face_cross((uint8_t)i) >= 0) {
+                uint8_t p1 = faces[i][0];
+                uint8_t p2 = faces[i][1];
+                uint8_t p3 = faces[i][2];
                 visible_faces[count].id = (uint8_t)i;
                 visible_faces[count].z_depth = (int16_t)(vz[p1] + vz[p2] + vz[p3]);
                 count++;
@@ -364,8 +344,21 @@ int main(void) {
             uint8_t p2 = faces[f][1];
             uint8_t p3 = faces[f][2];
 
-            gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
-                         active_colors[f], true);
+            if (enable_tex && f >= 25 && f <= 34) {
+                bool is_tri2 = ((f - 25) & 1U) != 0;
+                uint8_t u0 = 0, v0 = 15;
+                uint8_t u1 = 15, v1 = (uint8_t)(is_tri2 ? 0 : 15);
+                uint8_t u2 = (uint8_t)(is_tri2 ? 0 : 15), v2 = 0;
+                const uint8_t* tex = (f >= 33) ? tex_grass_top : tex_grass_side;
+
+                gpu_draw_tri_tex16(px[p1], py[p1], u0, v0,
+                                   px[p2], py[p2], u1, v1,
+                                   px[p3], py[p3], u2, v2,
+                                   tex);
+            } else {
+                gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
+                             active_colors[f], true);
+            }
         }
 
         drawFrame();
