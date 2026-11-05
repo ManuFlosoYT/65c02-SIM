@@ -4,9 +4,9 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <iostream>
 #include <string>
 #include <vector>
+#include "Hardware/Core/Logger.h"
 
 namespace fs = std::filesystem;
 
@@ -34,10 +34,10 @@ void SDKCatalogScanner::ScanExtractedSDK(AppState& state, const fs::path& sdkDir
     scan_dir(sdkDir / "vram", state.sdk.vrams, ".65c");
 
     if (state.sdk.roms.empty() && state.sdk.midis.empty() && state.sdk.vrams.empty()) {
-        std::cerr << "SDKManager: No SDK resources found in SDK/ subfolders\n";
+        Core::Logger::Warn("SDKManager: No SDK resources found in SDK/ subfolders");
     } else {
-        std::cout << "SDKManager: Found " << state.sdk.roms.size() << " ROMs, " << state.sdk.midis.size()
-                  << " MIDIs, " << state.sdk.vrams.size() << " VRAMs\n";
+        Core::Logger::Info("SDKManager: Found {} ROMs, {} MIDIs, {} VRAMs",
+                           state.sdk.roms.size(), state.sdk.midis.size(), state.sdk.vrams.size());
     }
 
     state.sdk.loaded = !state.sdk.roms.empty() || !state.sdk.midis.empty() || !state.sdk.vrams.empty();

@@ -1,4 +1,5 @@
 #include "Hardware/Audio/SIDAudioSink.h"
+#include "Hardware/Core/Logger.h"
 
 #include <algorithm>
 #include <iostream>
@@ -22,7 +23,7 @@ void SIDAudioSink::Init(int sampleRate) {
     this->sampleRate = sampleRate;
 
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-        std::cerr << "SDL Audio init failed: " << SDL_GetError() << '\n';
+        Core::Logger::Error("SDL Audio init failed: {}", SDL_GetError());
         return;
     }
 
@@ -34,7 +35,7 @@ void SIDAudioSink::Init(int sampleRate) {
 
     audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &want, nullptr, nullptr);
     if (audioStream == nullptr) {
-        std::cerr << "Failed to open audio: " << SDL_GetError() << '\n';
+        Core::Logger::Error("Failed to open audio: {}", SDL_GetError());
     } else {
         SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audioStream));
     }

@@ -2,8 +2,8 @@
 
 #include <SDL3/SDL.h>
 #include <malloc.h>
-#include <iostream>
 #include <string_view>
+#include "Hardware/Core/Logger.h"
 
 namespace Frontend::Platform {
 
@@ -19,7 +19,7 @@ bool RetryInitializeGraphics(const std::function<bool()>& retryFn) {
     bool alreadyX11 = (envDriver != nullptr && std::string_view(envDriver) == "x11") ||
                       (hintDriver != nullptr && std::string_view(hintDriver) == "x11");
     if (!alreadyX11) {
-        std::cerr << "Retrying graphics initialization with SDL_VIDEO_DRIVER=x11...\n";
+        Core::Logger::Warn("Retrying graphics initialization with SDL_VIDEO_DRIVER=x11...");
         SDL_Quit();
         SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "x11", SDL_HINT_OVERRIDE);
         return retryFn();

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "Hardware/Core/Console.h"
+#include "Hardware/Core/Logger.h"
 
 using namespace Control;
 using namespace Core;
@@ -54,7 +55,7 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
                     state.popups.showCartridgeLoaded = Control::LoadCartridge(state, filename, dataVec);
                 } else {
                     if (!Control::LoadBinaryRom(state, filename, dataVec)) {
-                        std::cerr << "Failed to load ROM\n";
+                        Core::Logger::Error("Failed to load ROM");
                     }
                 }
             };
@@ -92,7 +93,7 @@ static void DrawSDKButton(AppState& state) {
                     state.sdk.loaded = true;
                     state.sdk.showPopup = true;
                 } catch (...) {
-                    std::cerr << "Failed to parse roms.json" << "\n";
+                    Core::Logger::Error("Failed to parse roms.json");
                 }
             };
             WebFileUtils::fetch_file("roms/roms.json", "roms.json");

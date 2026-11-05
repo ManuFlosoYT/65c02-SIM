@@ -3,8 +3,7 @@
 #include "Frontend/Control/CartridgeUtils.h"
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Hardware/Core/Console.h"
-
-#include <iostream>
+#include "Hardware/Core/Logger.h"
 
 namespace Control {
 
@@ -20,7 +19,7 @@ bool LoadBinaryRom(AppState& state, const std::string& path, const std::vector<u
     }
 
     if (!success) {
-        std::cerr << "Failed to load ROM: " << errorMsg << "\n";
+        Core::Logger::Error("Failed to load ROM: {}", errorMsg);
         return false;
     }
 
@@ -45,13 +44,13 @@ bool LoadCartridge(AppState& state, const std::string& path, const std::vector<u
     }
 
     if (!loaded) {
-        std::cerr << "Failed to load cartridge: " << errorMsg << "\n";
+        Core::Logger::Error("Failed to load cartridge: {}", errorMsg);
         return false;
     }
 
     Control::ApplyCartridgeConfig(state, cart);
     if (!state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
-        std::cerr << "Failed to init cartridge ROM: " << errorMsg << "\n";
+        Core::Logger::Error("Failed to init cartridge ROM: {}", errorMsg);
         return false;
     }
 

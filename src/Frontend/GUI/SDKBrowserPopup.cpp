@@ -5,11 +5,10 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "Hardware/Core/Logger.h"
 
 #ifdef TARGET_WASM
 #include "Frontend/web/WebFileUtils.h"
-#else
-#include <iostream>
 #endif
 
 namespace GUI {
@@ -53,7 +52,7 @@ static void DrawSDKColumn(Control::AppState& state, const std::vector<std::strin
             if (Control::LoadCartridge(state, path)) {
                 ImGui::OpenPopup("Cartridge Loaded");
             } else {
-                std::cerr << "SDK: Failed to load SDK cartridge " << file << "\n";
+                Core::Logger::Error("SDK: Failed to load SDK cartridge {}", file);
                 ImGui::OpenPopup("ErrorLoadingROM");
             }
 #endif

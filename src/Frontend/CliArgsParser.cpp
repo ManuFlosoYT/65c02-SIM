@@ -44,6 +44,9 @@ void CliArgsParser::PrintUsage(const char* exeName) {
               << "  --nsf-trace <path>      Simulate NSF and write 60Hz APU trace JSON\n"
               << "  --nsf-max-duration <S>  Maximum NSF duration in seconds (0 = auto)\n"
               << "  --nsf-song <N>          1-based NSF song index (0 = header default)\n"
+              << "  --log-console           Log to console\n"
+              << "  --log-file <path>       Write logs to file\n"
+              << "  --log-level <level>     Log level (trace, debug, info, warn, error, off)\n"
               << "  --help                  Show this help\n";
 }
 
@@ -159,6 +162,29 @@ ParseArgsResult CliArgsParser::Parse(std::span<const char* const> argv) {
                 return result;
             }
             args.nsfSong = parsedSong;
+        } else if (arg == "--log-console") {
+            args.logConsole = true;
+        } else if (arg == "--log-file") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --log-file";
+                return result;
+            }
+            args.logFile = argv[++i];
+        } else if (arg == "--log-level") {
+            if (i + 1 >= argv.size()) {
+                result.ok = false;
+                result.error = "Missing value for --log-level";
+                return result;
+            }
+            std::string_view value = argv[++i];
+            if (value != "trace" && value != "debug" && value != "info" &&
+                value != "warn" && value != "error" && value != "off") {
+                result.ok = false;
+                result.error = "Invalid value for --log-level: " + std::string(value);
+                return result;
+            }
+            args.logLevel = value;
         } else if (!arg.empty() && arg[0] == '-') {
             result.ok = false;
             result.error = "Unknown option: " + std::string(arg);

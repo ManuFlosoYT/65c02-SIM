@@ -2,8 +2,8 @@
 #include <miniz.h>
 #include <fstream>
 #include <filesystem>
-#include <iostream>
 #include <format>
+#include "Hardware/Core/Logger.h"
 #include <SDL3/SDL.h>
 #include "Frontend/Platform/PlatformUtils.h"
 #include <imgui.h>
@@ -109,7 +109,7 @@ bool CartridgeExporter::ExportCartridgeToFile(const AppState& state,
     if (state.emulator.GetSDCard().IsMounted()) {
         std::string sdPath = state.emulator.GetSDCard().GetMountedPath();
         if (!mz_zip_writer_add_file(&zip, "sdcard.img", sdPath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION)) {
-            std::cerr << "Warning: Could not read mounted SD Card file for export: " << sdPath << "\n";
+            Core::Logger::Warn("Warning: Could not read mounted SD Card file for export: {}", sdPath);
         }
     }
 
@@ -157,7 +157,7 @@ bool CartridgeExporter::ExportCartridgeToUrl(AppState& state, const std::string&
     SDL_SetClipboardText(fullUrl.c_str());
     ImGui::SetClipboardText(fullUrl.c_str());
     Frontend::Platform::OpenURL(fullUrl);
-    std::cout << "URL copied to clipboard: " << fullUrl << '\n';
+    Core::Logger::Info("URL copied to clipboard: {}", fullUrl);
 
     return true;
 }

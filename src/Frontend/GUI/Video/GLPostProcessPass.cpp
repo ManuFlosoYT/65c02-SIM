@@ -1,9 +1,9 @@
 #include "Frontend/GUI/Video/GLPostProcessPass.h"
 
 #include <bit>
-#include <iostream>
 #include <string>
 #include <utility>
+#include "Hardware/Core/Logger.h"
 
 namespace GUI {
 
@@ -58,7 +58,7 @@ GLuint GLPostProcessPass::CompileShader(const char* vertSrc, const char* fragSrc
         if (isCompiled == 0) {
             std::array<char, 512> log{};
             glGetShaderInfoLog(shaderId, static_cast<GLsizei>(log.size()), nullptr, log.data());
-            std::cerr << "[GLPostProcessPass] Shader compile error: " << log.data() << "\n";
+            Core::Logger::Error("[GLPostProcessPass] Shader compile error: {}", log.data());
             glDeleteShader(shaderId);
             return 0;
         }
@@ -89,7 +89,7 @@ GLuint GLPostProcessPass::CompileShader(const char* vertSrc, const char* fragSrc
     if (isLinked == 0) {
         std::array<char, 512> log{};
         glGetProgramInfoLog(prog, static_cast<GLsizei>(log.size()), nullptr, log.data());
-        std::cerr << "[GLPostProcessPass] Shader link error: " << log.data() << "\n";
+        Core::Logger::Error("[GLPostProcessPass] Shader link error: {}", log.data());
         glDeleteProgram(prog);
         return 0;
     }

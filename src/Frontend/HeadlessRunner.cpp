@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
+#include "Hardware/Core/Logger.h"
 
 #include "Hardware/Audio/NSFRunner.h"
 #include "Hardware/Core/Emulator/Emulator.h"
@@ -37,7 +37,7 @@ std::string ResolveHeadlessRomPath(const Args& args) {
 int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
     if (!args.nsfTracePath.empty()) {
         if (args.romPath.empty()) {
-            std::cerr << "[NSFRunner] Error: No input .nsf path specified.\n";
+            Core::Logger::Error("[NSFRunner] Error: No input .nsf path specified.");
             return 1;
         }
         const Hardware::NSFRunConfig nsfConfig{
@@ -46,16 +46,15 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
         };
         const Hardware::NSFRunResult res = Hardware::NSFRunner::RunFile(args.romPath, nsfConfig);
         if (!res.success) {
-            std::cerr << "[NSFRunner] Error: " << res.errorMessage << '\n';
+            Core::Logger::Error("[NSFRunner] Error: {}", res.errorMessage);
             return 1;
         }
         if (!Hardware::NSFRunner::WriteTraceJson(res, args.nsfTracePath)) {
-            std::cerr << "[NSFRunner] Error: Failed to write trace JSON to " << args.nsfTracePath << '\n';
+            Core::Logger::Error("[NSFRunner] Error: Failed to write trace JSON to {}", args.nsfTracePath);
             return 1;
         }
-        std::cout << std::fixed << std::setprecision(2)
-                  << "[NSFRunner] Trace written to " << args.nsfTracePath
-                  << " (" << res.totalFrames << " frames, " << res.durationSec << "s, stop=" << res.stopReason << ")\n";
+        Core::Logger::Info("[NSFRunner] Trace written to {} ({} frames, {:.2f}s, stop={})",
+                           args.nsfTracePath, res.totalFrames, res.durationSec, res.stopReason);
         return 0;
     }
 
@@ -70,17 +69,16 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
 
     std::string romPath = ResolveHeadlessRomPath(args);
     if (romPath.empty()) {
-        std::cerr << "Headless: No ROM provided and fallback ROM not found.\n"
-                  << "Tried: output/rom/room.bin, ./output/rom/room.bin, room.bin\n";
+        Core::Logger::Error("Headless: No ROM provided and fallback ROM not found.\nTried: output/rom/room.bin, ./output/rom/room.bin, room.bin");
         return -1;
     }
     if (args.romPath.empty()) {
-        std::cerr << "Headless: No ROM specified, using fallback ROM: " << romPath << '\n';
+        Core::Logger::Warn("Headless: No ROM specified, using fallback ROM: {}", romPath);
     }
 
     std::string errorMsg;
     if (!emulator.Init(romPath, errorMsg)) {
-        std::cerr << "Headless: Failed to load ROM: " << errorMsg << '\n';
+        Core::Logger::Error("Headless: Failed to load ROM: {}", errorMsg);
         return -1;
     }
 
@@ -110,13 +108,13 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
         const auto toMilliseconds = [](std::uint64_t nanoseconds) {
             return static_cast<double>(nanoseconds) / 1'000'000.0;
         };
-        std::cout << std::fixed << std::setprecision(3)
-                  << "SID profile: clocks=" << stats.clockCount
-                  << ", oscillator_ms=" << toMilliseconds(stats.oscillatorNanoseconds)
-                  << ", envelope_ms=" << toMilliseconds(stats.envelopeNanoseconds)
-                  << ", filter_ms=" << toMilliseconds(stats.filterNanoseconds)
-                  << ", resampler_ms=" << toMilliseconds(stats.resamplerNanoseconds)
-                  << ", output_ms=" << toMilliseconds(stats.outputNanoseconds) << '\n';
+        Core::Logger::Info("SID profile: clocks={}, oscillator_ms={:.3f}, envelope_ms={:.3f}, filter_ms={:.3f}, resampler_ms={:.3f}, output_ms={:.3f}",
+                           stats.clockCount,
+                           toMilliseconds(stats.oscillatorNanoseconds),
+                           toMilliseconds(stats.envelopeNanoseconds),
+                           toMilliseconds(stats.filterNanoseconds),
+                           toMilliseconds(stats.resamplerNanoseconds),
+                           toMilliseconds(stats.outputNanoseconds));
     }
 
     if (!args.dumpMemPath.empty()) {
@@ -128,7 +126,7 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
                 out.write(&val, 1);
             }
         } else {
-            std::cerr << "Headless: Failed to open dump file " << args.dumpMemPath << '\n';
+            Core::Logger::Error("Headless: Failed to open dump file {}", args.dumpMemPath);
         }
     }
 

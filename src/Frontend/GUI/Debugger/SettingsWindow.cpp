@@ -14,7 +14,7 @@
 #include <filesystem>
 #include "Frontend/Control/CartridgeExporter.h"
 #include <nlohmann/json.hpp>
-#include <iostream>
+#include "Hardware/Core/Logger.h"
 
 #include "Frontend/Control/SDUtils.h"
 #ifdef TARGET_WASM
@@ -475,9 +475,9 @@ void DrawSettingsContent(AppState& state) {
         if (Frontend::CustomFileDialog::IsOk()) {
             std::string outPath = Frontend::CustomFileDialog::GetFilePathName();
             if (CartridgeExporter::ExportCartridgeToFile(state, pendingManifestStr, outPath)) {
-                std::cout << "Cartridge exported successfully to " << outPath << "\n";
+                Core::Logger::Info("Cartridge exported successfully to {}", outPath);
             } else {
-                std::cerr << "Failed to initialize zip for cartridge export: " << outPath << "\n";
+                Core::Logger::Error("Failed to initialize zip for cartridge export: {}", outPath);
             }
         }
         Frontend::CustomFileDialog::Close();

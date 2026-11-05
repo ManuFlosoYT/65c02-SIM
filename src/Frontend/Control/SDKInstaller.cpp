@@ -5,8 +5,8 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <nlohmann/json.hpp>
+#include "Hardware/Core/Logger.h"
 
 #if !defined(TARGET_WASM)
 #include "sdk_zip.h"
@@ -36,7 +36,7 @@ void SDKInstaller::ExtractBundledSDK() {
     std::memset(&zip_archive, 0, sizeof(zip_archive));
 
     if (mz_zip_reader_init_mem(&zip_archive, sdk_zip_data.data(), sdk_zip_data.size(), 0) == 0) {
-        std::cerr << "SDKManager: Failed to initialize ZIP reader from bundled data\n";
+        Core::Logger::Error("SDKManager: Failed to initialize ZIP reader from bundled data");
         return;
     }
 
@@ -72,13 +72,13 @@ void SDKInstaller::ExtractBundledSDK() {
         }
 
         if (mz_zip_reader_extract_to_file(&zip_archive, static_cast<mz_uint>(i), target_path.string().c_str(), 0) == 0) {
-            std::cerr << "SDKManager: Failed to extract " << target_path << "\n";
+            Core::Logger::Error("SDKManager: Failed to extract {}", target_path.string());
         } else {
             extracted_count++;
         }
     }
 
-    std::cout << "SDKManager: Extracted " << extracted_count << " files to SDK/ directory\n";
+    Core::Logger::Info("SDKManager: Extracted {} files to SDK/ directory", extracted_count);
     mz_zip_reader_end(&zip_archive);
 
     WriteManifest();
@@ -91,9 +91,9 @@ void SDKInstaller::DeleteSDK() {
     if (fs::exists(sdkDir)) {
         try {
             fs::remove_all(sdkDir);
-            std::cout << "SDKManager: SDK folder deleted.\n";
+            Core::Logger::Info("SDKManager: SDK folder deleted.");
         } catch (const std::exception& e) {
-            std::cerr << "SDKManager: Error deleting SDK folder: " << e.what() << "\n";
+            Core::Logger::Error("SDKManager: Error deleting SDK folder: {}", e.what());
         }
     }
 #endif
@@ -109,7 +109,7 @@ void SDKInstaller::WriteManifest() {
             ofs << manifest.dump(4);
         }
     } catch (...) {
-        std::cerr << "SDKManager: Failed to write manifest.json\n";
+        Core::Logger::Error("SDKManager: Failed to write manifest.json");
     }
 #endif
 }

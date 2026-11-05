@@ -11,8 +11,8 @@
 
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <vector>
+#include "Hardware/Core/Logger.h"
 
 using namespace Control;
 using namespace Core;
@@ -44,7 +44,7 @@ static void HandleROMFilePicker(AppState& state) {
                         ImGui::OpenPopup("ErrorLoadingROM");
                     }
                 } else {
-                    std::cerr << "Cartridge load error: " << errorMsg << "\n";
+                    Core::Logger::Error("Cartridge load error: {}", errorMsg);
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }
             } else {

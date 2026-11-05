@@ -12,6 +12,7 @@ add_executable(SIM_65C02
     src/Hardware/Core/SourceCodeCache.cpp
     src/Hardware/Core/DbgFormatParser.cpp
     src/Hardware/Core/DwarfNmParser.cpp
+    src/Hardware/Core/Logger.cpp
 )
 
 target_include_directories(SIM_65C02 PRIVATE

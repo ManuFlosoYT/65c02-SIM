@@ -2,10 +2,10 @@
 #include "Frontend/Control/SDKInstaller.h"
 #include "Frontend/Control/SDKCatalogScanner.h"
 #include "Frontend/Control/AppState.h"
+#include "Hardware/Core/Logger.h"
 
 #include <array>
 #include <filesystem>
-#include <iostream>
 #include <unordered_set>
 #include <algorithm>
 
@@ -20,7 +20,7 @@ void SDKManager::CheckSDKStatus(AppState& state) {
     return;
 #else
     if (!SDKInstaller::IsInstalled()) {
-        std::cout << "SDKManager: SDK folder missing. Performing initial extraction..." << "\n";
+        Core::Logger::Info("SDKManager: SDK folder missing. Performing initial extraction...");
         SDKInstaller::ExtractBundledSDK();
         SDKCatalogScanner::ScanExtractedSDK(state);
         return;
@@ -30,12 +30,13 @@ void SDKManager::CheckSDKStatus(AppState& state) {
     std::string currentVersion = std::string(PROJECT_VERSION);
 
     if (extractedVersion.empty() || extractedVersion != currentVersion) {
-        std::cout << "SDKManager: SDK version mismatch (Extracted: " << (extractedVersion.empty() ? "None" : extractedVersion)
-                  << ", Current: " << currentVersion << "). Queuing update popup..." << "\n";
+        Core::Logger::Info("SDKManager: SDK version mismatch (Extracted: {}, Current: {}). Queuing update popup...",
+                           extractedVersion.empty() ? "None" : extractedVersion,
+                           currentVersion);
         state.sdk.showUpdatePopup = true;
         state.sdk.extractedVersion = extractedVersion;
     } else {
-        std::cout << "SDKManager: SDK is up to date (Version: " << currentVersion << ")" << "\n";
+        Core::Logger::Info("SDKManager: SDK is up to date (Version: {})", currentVersion);
         SDKCatalogScanner::ScanExtractedSDK(state);
     }
 #endif

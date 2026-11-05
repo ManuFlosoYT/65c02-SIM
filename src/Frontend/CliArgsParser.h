@@ -17,6 +17,9 @@ struct Args {
     std::string nsfTracePath;
     double nsfMaxDuration = 0.0;
     int nsfSong = 0;
+    bool logConsole = false;
+    std::string logFile;
+    std::string logLevel;
 };
 
 struct ParseArgsResult {

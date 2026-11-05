@@ -21,6 +21,7 @@
 #include "Frontend/CliArgsParser.h"
 #include "Frontend/HeadlessRunner.h"
 #include "Hardware/Core/Console.h"
+#include "Hardware/Core/Logger.h"
 #include "Frontend/GUI/Style/Style.h"
 #include "UpdateChecker.h"
 #include "Frontend/MediaExporter.h"
@@ -50,7 +51,7 @@ static constexpr int sidSampleRate = 48000;
 
 static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
-        std::cerr << "Error: " << SDL_GetError() << '\n';
+        Core::Logger::Error("Error: {}", SDL_GetError());
         return false;
     }
 
@@ -71,7 +72,7 @@ static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
                                           SDL_WINDOW_MAXIMIZED);
     window = SDL_CreateWindow("65C02 Simulator " PROJECT_VERSION, 1920, 1080, window_flags);
     if (window == nullptr) {
-        std::cerr << "Failed to create window: " << SDL_GetError() << '\n';
+        Core::Logger::Error("Failed to create window: {}", SDL_GetError());
         return false;
     }
 
@@ -83,7 +84,7 @@ static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
 
     gl_context = SDL_GL_CreateContext(window);
     if (gl_context == nullptr) {
-        std::cerr << "Failed to create GL context: " << SDL_GetError() << '\n';
+        Core::Logger::Error("Failed to create GL context: {}", SDL_GetError());
         SDL_DestroyWindow(window);
         window = nullptr;
         return false;
@@ -93,7 +94,7 @@ static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
 
     int version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
     if (version == 0) {
-        std::cerr << "Failed to initialize OpenGL loader (gladLoadGL)!\n";
+        Core::Logger::Error("Failed to initialize OpenGL loader (gladLoadGL)!");
         SDL_GL_DestroyContext(gl_context);
         gl_context = nullptr;
         SDL_DestroyWindow(window);
@@ -306,6 +307,26 @@ int main(int argc, char* argv[]) {
     }
     const Args args = parseResult.args;
 
+    if (args.headless) {
+        Core::Logger::Instance().SetMode(Core::LogMode::Console);
+    } else {
+        Core::Logger::Instance().SetMode(Core::LogMode::Discard);
+    }
+    if (args.logConsole) {
+        Core::Logger::Instance().SetMode(Core::LogMode::Console);
+    }
+    if (!args.logFile.empty()) {
+        Core::Logger::Instance().SetFileSink(args.logFile);
+    }
+    if (!args.logLevel.empty()) {
+        if (args.logLevel == "trace") Core::Logger::Instance().SetLevel(Core::LogLevel::Trace);
+        else if (args.logLevel == "debug") Core::Logger::Instance().SetLevel(Core::LogLevel::Debug);
+        else if (args.logLevel == "info") Core::Logger::Instance().SetLevel(Core::LogLevel::Info);
+        else if (args.logLevel == "warn") Core::Logger::Instance().SetLevel(Core::LogLevel::Warn);
+        else if (args.logLevel == "error") Core::Logger::Instance().SetLevel(Core::LogLevel::Error);
+        else if (args.logLevel == "off") Core::Logger::Instance().SetLevel(Core::LogLevel::Off);
+    }
+
 #ifndef TARGET_WASM
     Control::SymbolTable::SetElfLoader(&CompilerFrontend::LoadELF);
 #endif
@@ -355,7 +376,7 @@ int main(int argc, char* argv[]) {
             state.rom.symbols.Clear();
             state.emulator.ClearProfiler();
         } else {
-            std::cerr << "Failed to load ROM from args: " << errorMsg << '\n';
+            Core::Logger::Error("Failed to load ROM from args: {}", errorMsg);
         }
     }
     state.emulator.SetOutputCallback(Console::OutputCallback);

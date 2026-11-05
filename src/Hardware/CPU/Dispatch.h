@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "Hardware/Core/Bus.h"
+#include "Hardware/Core/Logger.h"
 
 namespace Hardware {
 
@@ -347,8 +348,7 @@ inline int Dispatch(CPU& cpu, Bus& bus) {
     cpu.remainingCycles += static_cast<int>(entry.baseCycles) - static_cast<int>(entry.baseCycles != 0);
 
     if (entry.exitCode == -1) {
-        std::cerr << "Unknown opcode: 0x" << std::hex << static_cast<int>(opcode) << " PC: 0x" << cpu.PC << std::dec
-                  << " execution cancelled.\n";
+        Core::Logger::Error("Unknown opcode: 0x{:02X} PC: 0x{:04X}", opcode, cpu.PC);
     }
 
     return entry.exitCode;

@@ -4,7 +4,7 @@
 #include "Frontend/Control/AppState.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #include "Frontend/Control/SDUtils.h"
-#include <iostream>
+#include "Hardware/Core/Logger.h"
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Hardware/Core/Console.h"
 #ifndef TARGET_WASM
@@ -250,7 +250,7 @@ void ExecuteReset(Control::AppState& state) {
                 Control::ApplyCartridgeConfig(state, cart);
                 state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg);
             } else {
-                std::cerr << "Failed to reload cartridge from " << path << ": " << errorMsg << "\n";
+                Core::Logger::Error("Failed to reload cartridge from {}: {}", path, errorMsg);
                 state.emulator.SetupHardware();
             }
         } else {

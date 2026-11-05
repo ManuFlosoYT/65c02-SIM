@@ -1,5 +1,6 @@
 #include "Hardware/Core/Emulator/BinaryFileWatcher.h"
 #include "Hardware/Core/Emulator/Emulator.h"
+#include "Hardware/Core/Logger.h"
 
 #include <iostream>
 
@@ -22,9 +23,9 @@ void BinaryFileWatcher::CheckAutoReload(Emulator& emulator, std::chrono::high_re
                     auto latestTime = std::filesystem::last_write_time(binPath);
                     if (latestTime > lastBinModificationTime) {
                         std::string errorMsg;
-                        std::cerr << "Auto-reloading: " << binPath << '\n';
+                        Core::Logger::Info("Auto-reloading: {}", binPath);
                         if (!emulator.Init(binPath, errorMsg)) {
-                            std::cerr << "Auto-reload failed: " << errorMsg << '\n';
+                            Core::Logger::Error("Auto-reload failed: {}", errorMsg);
                         }
                     }
                 }

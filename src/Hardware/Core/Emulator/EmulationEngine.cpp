@@ -1,6 +1,7 @@
 #include "Hardware/Core/Emulator/EmulationEngine.h"
 #include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Core/CartridgeLoader.h"
+#include "Hardware/Core/Logger.h"
 
 #include <chrono>
 #include <iostream>
@@ -254,7 +255,7 @@ void EmulationEngine::HandleStop(int code) {
 #endif
     halted = true;
     if (code != 0) {
-        std::cerr << "Emulator stopped with code: " << code << '\n';
+        Core::Logger::Error("Emulator stopped with code: {}", code);
     }
     emulator.sid.SetEmulationPaused(true);
 }

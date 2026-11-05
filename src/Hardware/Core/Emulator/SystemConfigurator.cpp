@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "Hardware/Core/Emulator/Emulator.h"
+#include "Hardware/Core/Logger.h"
 
 namespace Core {
 
@@ -150,7 +151,7 @@ void SystemConfigurator::SetupHardware(Emulator& emu) {
             RegisterDefaultLayout(emu);
         }
     } catch (const std::exception& e) {
-        std::cerr << "Exception during SetupHardware: " << e.what() << '\n';
+        Core::Logger::Error("Exception during SetupHardware: {}", e.what());
         if (emu.cartridge.loaded) {
             emu.cartridge.loaded = false;
             SetupHardware(emu);

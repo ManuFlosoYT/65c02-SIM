@@ -4,8 +4,8 @@
 #include <bit>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <vector>
+#include "Hardware/Core/Logger.h"
 #include "embedded_llvm_mos.h"
 
 namespace fs = std::filesystem;
@@ -34,7 +34,7 @@ void CompilerVFS::Initialize() {
     tempDir = tempRoot.string();
     compilerPath = ToolchainLocator::FindCompiler();
 
-    std::cout << "[CompilerVFS] Initializing at " << tempDir << " with compiler: " << compilerPath << "\n";
+    Core::Logger::Info("[CompilerVFS] Initializing at {} with compiler: {}", tempDir, compilerPath);
 
     for (const auto& [vpath, data] : embedded_llvm_mos_files) {
         WriteFile((tempRoot / vpath).string(), data);

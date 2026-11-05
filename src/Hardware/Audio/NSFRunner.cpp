@@ -1,4 +1,5 @@
 #include "Hardware/Audio/NSFRunner.h"
+#include "Hardware/Core/Logger.h"
 
 #include <algorithm>
 #include <array>
@@ -1055,11 +1056,11 @@ bool NSFRunner::RunAndWriteTrace(const std::string& nsfPath, const std::string& 
                                  const NSFRunConfig& config) {
     const NSFRunResult res = RunFile(nsfPath, config);
     if (!res.success) {
-        std::cerr << "[NSFRunner] Error: " << res.errorMessage << '\n';
+        Core::Logger::Error("[NSFRunner] Error: {}", res.errorMessage);
         return false;
     }
     if (!WriteTraceJson(res, outputPath)) {
-        std::cerr << "[NSFRunner] Failed to write trace JSON to: " << outputPath << '\n';
+        Core::Logger::Error("[NSFRunner] Failed to write trace JSON to: {}", outputPath);
         return false;
     }
     return true;

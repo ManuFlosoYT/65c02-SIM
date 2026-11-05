@@ -1,4 +1,5 @@
 #include "Hardware/Core/Emulator/Emulator.h"
+#include "Hardware/Core/Logger.h"
 #include "Hardware/Core/SubroutineProfiler.h"
 
 #include <cstring>
@@ -37,21 +38,21 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
     std::ifstream file(bin, std::ios::binary);
     if (!file.is_open()) {
         errorMsg = "Error opening file " + bin;
-        std::cerr << errorMsg << "\n";
+        Core::Logger::Error("{}", errorMsg);
         return false;
     }
 
     std::uintmax_t fileSize = std::filesystem::file_size(bin);
     if (fileSize > ROM_SIZE) {
         errorMsg = "Error: File size too large (max 32KB, got " + std::to_string(fileSize) + ")";
-        std::cerr << errorMsg << "\n";
+        Core::Logger::Error("{}", errorMsg);
         return false;
     }
 
     std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     if (buffer.size() != fileSize) {
         errorMsg = "Error reading file " + bin;
-        std::cerr << errorMsg << "\n";
+        Core::Logger::Error("{}", errorMsg);
         return false;
     }
 
@@ -61,14 +62,14 @@ bool Emulator::Init(const std::string& bin, std::string& errorMsg) {
 bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& name, std::string& errorMsg) {
     if (data.size() > ROM_SIZE) {
         errorMsg = "Error: ROM data too large (max 32KB, got " + std::to_string(data.size()) + ")";
-        std::cerr << errorMsg << "\n";
+        Core::Logger::Error("{}", errorMsg);
         return false;
     }
 
     Byte* romRaw = rom.GetRawMemory();
     if (romRaw == nullptr || rom.GetRawMemorySize() < ROM_SIZE) {
         errorMsg = "Error: ROM raw memory is not available or too small";
-        std::cerr << errorMsg << "\n";
+        Core::Logger::Error("{}", errorMsg);
         return false;
     }
 
@@ -88,7 +89,7 @@ bool Emulator::InitFromMemory(std::span<const uint8_t> data, const std::string& 
     serialBridge.Clear();
     
     SetupHardware();
-    std::cout << "Loaded ROM from memory: " << name << " (" << data.size() << " bytes)\n";
+    Core::Logger::Info("Loaded ROM from memory: {} ({} bytes)", name, data.size());
 
     try {
 #ifndef TARGET_WASM

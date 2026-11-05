@@ -7,6 +7,7 @@
 #include <string>
 
 #include "Hardware/Core/Emulator/Emulator.h"
+#include "Hardware/Core/Logger.h"
 #include "Scripting/EmulatorScriptBindings.h"
 #include "Scripting/Lang/Lexer.h"
 #include "Scripting/Lang/Parser.h"
@@ -59,7 +60,7 @@ void ScriptEngine::ClearOutput() {
 
 void ScriptEngine::AppendOutput(const std::string& text) {
     if (mirrorToStdout.load(std::memory_order_relaxed)) {
-        std::cout << text << '\n';
+        Core::Logger::Info("{}", text);
     }
     std::lock_guard<std::mutex> lock(pImpl->outputMutex);
     pImpl->outputQueue.emplace_back(text);

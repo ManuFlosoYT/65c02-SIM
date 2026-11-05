@@ -1,4 +1,5 @@
 #include "Hardware/Core/Bus.h"
+#include "Hardware/Core/Logger.h"
 
 #include <format>
 #include <iostream>
@@ -59,23 +60,22 @@ bool Bus::LoadState(std::istream& inStream) {
         if (i < registeredDevices.size()) {
             const auto& reg = registeredDevices.at(i);
             if (reg.device->GetName() != name || reg.startAddress != startAddress || reg.endAddress != endAddress) {
-                std::cerr << "Memory map mismatch! Savestate: " << name << " [0x" << std::hex << startAddress << "-0x"
-                          << endAddress << "], Current: " << reg.device->GetName() << " [0x" << reg.startAddress
-                          << "-0x" << reg.endAddress << "]" << std::dec << '\n';
+                Core::Logger::Error("Memory map mismatch! Savestate: {} [0x{:x}-0x{:x}], Current: {} [0x{:x}-0x{:x}]",
+                                    name, startAddress, endAddress, reg.device->GetName(), reg.startAddress, reg.endAddress);
                 return false;
             }
             registeredDevices.at(i).enabled = enabled;
             registeredDevices.at(i).ignoreCollision = ignoreCollision;
         } else {
-            std::cerr << "Memory map mismatch! Savestate has more devices (" << deviceCount
-                      << ") than current configuration (" << registeredDevices.size() << ")" << '\n';
+            Core::Logger::Error("Memory map mismatch! Savestate has more devices ({}) than current configuration ({})",
+                                deviceCount, registeredDevices.size());
             return false;
         }
     }
 
     if (deviceCount != registeredDevices.size()) {
-        std::cerr << "Memory map count mismatch! Savestate: " << deviceCount
-                  << ", Current: " << registeredDevices.size() << '\n';
+        Core::Logger::Error("Memory map count mismatch! Savestate: {}, Current: {}",
+                            deviceCount, registeredDevices.size());
         return false;
     }
 

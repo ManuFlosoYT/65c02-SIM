@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <iostream>
 
+#include "Hardware/Core/Logger.h"
+
 namespace System::Hardware::Scripting::Lang {
 
 Interpreter::Interpreter()
@@ -24,7 +26,7 @@ void Interpreter::interpret(const std::vector<std::unique_ptr<Stmt>>& statements
         if (printHandler) {
             printHandler(errStr);
         } else {
-            std::cerr << errStr << "\n";
+            Core::Logger::Error("{}", errStr);
         }
     }
 }
@@ -287,7 +289,7 @@ void Interpreter::visitPrintStmt(PrintStmt* stmt) {
     if (printHandler) {
         printHandler(text);
     } else {
-        std::cout << text << "\n";
+        Core::Logger::Info("{}", text);
     }
 }
 

@@ -1,6 +1,7 @@
 #include "Hardware/Core/Emulator/SavestateManager.h"
 #include "Hardware/Core/Emulator/Emulator.h"
 #include "Hardware/Core/ISerializable.h"
+#include "Hardware/Core/Logger.h"
 #include "Hardware/Core/SHA256.h"
 
 #include <array>
@@ -117,7 +118,7 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
     lastLoadResult = SavestateLoadResult::Success;
 
     if (strncmp(fileMetadataHash.data(), computedMetadataHash.c_str(), hashLen) != 0) {
-        std::cerr << "Error: Savestate metadata corruption detected!\n";
+        Core::Logger::Error("Error: Savestate metadata corruption detected!");
         lastLoadResult = SavestateLoadResult::GenericError;
         if (!forceLoad) {
             return false;
@@ -129,15 +130,14 @@ bool SavestateManager::LoadState(const std::string& filename, bool forceLoad) {
     std::string computedPayloadHash = Hardware::SHA256::HashHex(payload);
     if (strncmp(filePayloadHash.data(), computedPayloadHash.c_str(), hashLen) != 0) {
         lastLoadResult = SavestateLoadResult::HashMismatch;
-        std::cerr << "Warning: Savestate payload hash mismatch!\n";
+        Core::Logger::Warn("Warning: Savestate payload hash mismatch!");
     }
 
     if (lastLoadVersion != PROJECT_VERSION) {
         if (lastLoadResult == SavestateLoadResult::Success) {
             lastLoadResult = SavestateLoadResult::VersionMismatch;
         }
-        std::cerr << "Warning: Savestate version mismatch! File: " << lastLoadVersion << " Current: " << PROJECT_VERSION
-                  << '\n';
+        Core::Logger::Warn("Warning: Savestate version mismatch! File: {} Current: {}", lastLoadVersion, PROJECT_VERSION);
     }
 
     std::stringstream stateStream(payload);

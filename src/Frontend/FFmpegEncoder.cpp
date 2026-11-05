@@ -1,6 +1,6 @@
 #ifndef TARGET_WASM
 #include "Frontend/FFmpegEncoder.h"
-#include <iostream>
+#include "Hardware/Core/Logger.h"
 #include <cstring>
 #include <algorithm>
 
@@ -53,7 +53,7 @@ bool FFmpegEncoder::Initialize(const std::string& filename,
         avformat_alloc_output_context2(&fmtCtx, nullptr, "ogg", filename.c_str());
     }
     if (fmtCtx == nullptr) {
-        std::cerr << "MediaExporter: Failed to allocate format context for " << (formatName != nullptr ? formatName : "unknown") << "\n";
+        Core::Logger::Error("MediaExporter: Failed to allocate format context for {}", formatName != nullptr ? formatName : "unknown");
         return false;
     }
 
@@ -78,12 +78,12 @@ bool FFmpegEncoder::Initialize(const std::string& filename,
 
     if (((fmtCtx->oformat->flags & AVFMT_NOFILE) == 0) &&
         (avio_open(&fmtCtx->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0)) {
-        std::cerr << "MediaExporter: Could not open output file\n";
+        Core::Logger::Error("MediaExporter: Could not open output file");
         return false;
     }
 
     if (avformat_write_header(fmtCtx, nullptr) < 0) {
-        std::cerr << "MediaExporter: Error writing header\n";
+        Core::Logger::Error("MediaExporter: Error writing header");
         return false;
     }
     headerWritten = true;
@@ -137,7 +137,7 @@ bool FFmpegEncoder::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
     }
 
     if (codec == nullptr) {
-        std::cerr << "MediaExporter: H.264 encoder not found\n";
+        Core::Logger::Error("MediaExporter: H.264 encoder not found");
         return false;
     }
 
@@ -179,7 +179,7 @@ bool FFmpegEncoder::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
     }
 
     if (avcodec_open2(*outCodecCtx, codec, &param) < 0) {
-        std::cerr << "MediaExporter: avcodec_open2 failed for " << trackName << '\n';
+        Core::Logger::Error("MediaExporter: avcodec_open2 failed for {}", trackName);
         av_dict_free(&param);
         avcodec_free_context(outCodecCtx);
         return false;
@@ -202,7 +202,7 @@ bool FFmpegEncoder::SetupAudioStream(const AudioParams& params) {
     }
 
     if (codec == nullptr) {
-        std::cerr << "MediaExporter: Audio encoder not found\n";
+        Core::Logger::Error("MediaExporter: Audio encoder not found");
         return false;
     }
 
@@ -236,7 +236,7 @@ bool FFmpegEncoder::SetupAudioStream(const AudioParams& params) {
     }
 
     if (avcodec_open2(audioCodecCtx, codec, nullptr) < 0) {
-        std::cerr << "MediaExporter: avcodec_open2 failed for audio encoder\n";
+        Core::Logger::Error("MediaExporter: avcodec_open2 failed for audio encoder");
         avcodec_free_context(&audioCodecCtx);
         return false;
     }

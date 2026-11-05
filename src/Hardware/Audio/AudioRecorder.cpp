@@ -1,5 +1,6 @@
 #ifndef TARGET_WASM
 #include "Hardware/Audio/AudioRecorder.h"
+#include "Hardware/Core/Logger.h"
 
 #include <iostream>
 #include <span>
@@ -46,7 +47,7 @@ bool AudioRecorder::Start(const std::string& filename, int sampleRate) {
 
     outFile.open(filename, std::ios::binary);
     if (!outFile.is_open()) {
-        std::cerr << "AudioRecorder: Failed to open file " << filename << '\n';
+        Core::Logger::Error("AudioRecorder: Failed to open file {}", filename);
         return false;
     }
 

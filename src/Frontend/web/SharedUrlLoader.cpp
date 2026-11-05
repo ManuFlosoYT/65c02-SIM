@@ -4,10 +4,10 @@
 #ifdef TARGET_WASM
 #include <cstdio>
 #include <cstring>
-#include <iostream>
 #include <span>
 #include <vector>
 #include <miniz.h>
+#include "Hardware/Core/Logger.h"
 #include "Frontend/Control/AppState.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #include "Hardware/Core/CartridgeLoader.h"
@@ -75,7 +75,7 @@ bool SharedUrlLoader::LoadPayload(const uint8_t* data, size_t size) {
                 state.emulator.ClearProfiler();
                 state.emulator.Resume();
                 Console::Clear();
-                std::cout << "Loaded shared cartridge: " << state.rom.bin << "\n";
+                Core::Logger::Info("Loaded shared cartridge: {}", state.rom.bin);
                 BrowserFileBridge::ShowToast("Loaded demo from URL!");
                 return true;
             }
@@ -92,7 +92,7 @@ bool SharedUrlLoader::LoadPayload(const uint8_t* data, size_t size) {
             if (state.emulator.LoadState(virtualPath, true)) {
                 Control::SyncUIStateFromEmulator(state);
                 state.emulator.Resume();
-                std::cout << "Loaded shared savestate.\n";
+                Core::Logger::Info("Loaded shared savestate.");
                 BrowserFileBridge::ShowToast("Loaded state from URL!");
                 return true;
             }
@@ -111,7 +111,7 @@ bool SharedUrlLoader::LoadPayload(const uint8_t* data, size_t size) {
         state.emulator.ClearProfiler();
         state.emulator.ClearCartridge();
         state.emulator.Resume();
-        std::cout << "Loaded shared ROM.\n";
+        Core::Logger::Info("Loaded shared ROM.");
         BrowserFileBridge::ShowToast("Loaded ROM from URL!");
         return true;
     }

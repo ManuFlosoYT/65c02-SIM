@@ -3,10 +3,10 @@
 
 #include <httplib.h>
 
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <thread>
+#include "Hardware/Core/Logger.h"
 
 namespace Frontend {
 
@@ -45,7 +45,7 @@ std::string UpdateChecker::FetchLatestReleaseTag() {
                 return jsonResponse["tag_name"];
             }
         } catch (const std::exception& exception) {
-            std::cerr << "Failed to parse update json: " << exception.what() << '\n';
+            Core::Logger::Error("Failed to parse update json: {}", exception.what());
         }
     }
 
