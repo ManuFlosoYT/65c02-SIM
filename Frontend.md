@@ -9,6 +9,9 @@
 
 The **65c02-SIM** frontend delivers a responsive, multi-window graphical interface designed for real-time hardware inspection, code development, and peripheral monitoring. Built upon **Dear ImGui** and accelerated via **OpenGL 3.3**, the frontend is strictly decoupled from the emulation core to guarantee fluid 60 FPS user interaction and tear-free rendering regardless of the CPU emulation workload.
 
+> [!NOTE]
+> **Subsystem Logging Behavior:** By default, graphical sessions operate silently without console output (`Core::NullSink`) to avoid terminal pollution and maximize emulation throughput. Console logging can be selectively enabled in GUI mode using `--log-console`, or redirected to disk via `--log-file <path>`. In headless mode (`--headless`), console output (`Core::ConsoleSink`) is enabled by default. See the [Logging Subsystem](Logging-System) documentation for full architectural details.
+
 ```
 +-----------------------------------------------------------------------------------+
 |                                  Main Thread (SDL3)                               |
@@ -328,6 +331,9 @@ For continuous integration (CI/CD) test runners, automated regression testing, a
 | `--nsf-trace` | `<path>` | Generates an NSF audio execution JSON trace report. |
 | `--nsf-duration`| `<sec>` | Maximum execution duration for NSF traces. |
 | `--nsf-song` | `<index>`| Song track index for NSF playback. |
+| `--log-console` | None | Enables console logging in GUI mode (default is silent / `NullSink`). |
+| `--log-file` | `<path>` | Appends formatted log entries to the specified file (`FileSink`). |
+| `--log-level` | `<level>` | Sets minimum log severity: `trace`, `debug`, `info`, `warn`, `error`, `critical`, or `off`. |
 
 ### 8.3 Example: Headless Automated Regression
 
@@ -342,3 +348,14 @@ For continuous integration (CI/CD) test runners, automated regression testing, a
 # Verify test assertion exit code
 echo "Headless test run completed successfully."
 ```
+
+### 8.4 Logging & Diagnostics Configuration
+
+By default, the graphical frontend suppresses terminal log spew using `Core::NullSink`. In contrast, headless mode activates `Core::ConsoleSink` to stream diagnostic telemetry to standard output.
+
+Both execution profiles can be configured via command-line flags:
+- **Enable Console Output in GUI Mode**: Use `--log-console` to stream logs directly to the launching terminal.
+- **Log to File**: Pass `--log-file <path>` to capture logs on disk via `Core::FileSink`.
+- **Set Severity Threshold**: Pass `--log-level <level>` (e.g. `--log-level debug` or `--log-level warn`) to filter messages.
+
+For in-depth details on sink architecture, custom sinks, and C++23 usage, consult the [Logging Subsystem](Logging-System) guide.
