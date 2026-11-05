@@ -43,8 +43,8 @@ static const int8_t SIN_TABLE[256] = {
 static int8_t vx[NUM_VERTICES];
 static int8_t vy[NUM_VERTICES];
 static int8_t vz[NUM_VERTICES];
-static int8_t px[NUM_VERTICES];
-static int8_t py[NUM_VERTICES];
+static int16_t px[NUM_VERTICES];
+static int16_t py[NUM_VERTICES];
 
 static const int8_t cvx[NUM_VERTICES] = {
     -100, 100, 100, -100, -100, 100, 100, -100,
@@ -168,24 +168,10 @@ void project_all(void) {
         }
 
         int16_t factor_precalc = vx[i] * factor;
-        int16_t p = (factor_precalc / z_shifted) + (GPU_WIDTH / 2);
-        if (p > 125) {
-            p = 125;
-        }
-        if (p < -125) {
-            p = -125;
-        }
-        px[i] = (int8_t)p;
+        px[i] = (int16_t)((factor_precalc / z_shifted) + (GPU_WIDTH / 2));
 
         factor_precalc = vy[i] * factor;
-        p = (GPU_HEIGHT / 2) - (factor_precalc / z_shifted);
-        if (p > 125) {
-            p = 125;
-        }
-        if (p < -125) {
-            p = -125;
-        }
-        py[i] = (int8_t)p;
+        py[i] = (int16_t)((GPU_HEIGHT / 2) - (factor_precalc / z_shifted));
     }
 }
 
