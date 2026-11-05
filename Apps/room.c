@@ -218,14 +218,21 @@ void init_graphics(void) {
 
 int main(void) {
     uint8_t ang_y = 0;
-    bool enable_light = false;
-    bool enable_occlusion = false;
+    bool enable_light = true;
+    bool enable_occlusion = true;
 
     if (arg_count > 1 && _args_ptr != NULL) {
         char** args = _args_ptr;
         for (uint8_t a = 1; a < arg_count; ++a) {
             if (args[a] != NULL) {
-                if (strcmp(args[a], "-light") == 0) {
+                if (strcmp(args[a], "-no-light") == 0) {
+                    enable_light = false;
+                } else if (strcmp(args[a], "-no-occlusion") == 0) {
+                    enable_occlusion = false;
+                } else if (strcmp(args[a], "-plain") == 0 || strcmp(args[a], "-fast") == 0) {
+                    enable_light = false;
+                    enable_occlusion = false;
+                } else if (strcmp(args[a], "-light") == 0) {
                     enable_light = true;
                 } else if (strcmp(args[a], "-occlusion") == 0) {
                     enable_occlusion = true;
