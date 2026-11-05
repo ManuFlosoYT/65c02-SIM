@@ -107,28 +107,7 @@ static const uint8_t faces[NUM_FACES][3] = {
     {19, 20, 16},
 };
 
-static const uint8_t face_colors_default[NUM_FACES] = {
-    0x92U, 0x92U, 0x54U, 0x54U, 0x3FU, 0x3FU, 0x4AU, 0x4AU, 0x4AU, 0x4AU, 0x92U, 0x92U,
-    0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U,
-    0x04U, 0x03U, 0x03U, 0x03U, 0x03U, 0x07U, 0x07U, 0x23U, 0x23U, 0x47U, 0x47U, 0x02U,
-    0x02U, 0x1CU, 0x1CU, 0x0CU, 0x1DU, 0x09U, 0x18U,
-};
-
-static const uint8_t face_colors_light[NUM_FACES] = {
-    0x92U, 0x92U, 0x54U, 0x54U, 0x3FU, 0x3FU, 0x4BU, 0x4BU, 0x4BU, 0x4BU, 0x92U, 0x92U,
-    0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U,
-    0x04U, 0x02U, 0x02U, 0x02U, 0x02U, 0x0BU, 0x0BU, 0x12U, 0x12U, 0x1FU, 0x1FU, 0x01U,
-    0x01U, 0x1CU, 0x1CU, 0x08U, 0x04U, 0x19U, 0x2DU,
-};
-
-static const uint8_t face_colors_occlusion[NUM_FACES] = {
-    0x91U, 0x91U, 0x54U, 0x54U, 0x3FU, 0x3FU, 0x49U, 0x49U, 0x49U, 0x49U, 0x91U, 0x91U,
-    0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U,
-    0x04U, 0x02U, 0x02U, 0x02U, 0x02U, 0x06U, 0x06U, 0x22U, 0x22U, 0x47U, 0x47U, 0x00U,
-    0x00U, 0x1CU, 0x1CU, 0x08U, 0x19U, 0x08U, 0x14U,
-};
-
-static const uint8_t face_colors_light_occlusion[NUM_FACES] = {
+static const uint8_t face_colors[NUM_FACES] = {
     0x91U, 0x91U, 0x54U, 0x54U, 0x3FU, 0x3FU, 0x4AU, 0x4AU, 0x4AU, 0x4AU, 0x91U, 0x91U,
     0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U, 0x04U,
     0x04U, 0x01U, 0x01U, 0x01U, 0x01U, 0x0BU, 0x0BU, 0x11U, 0x11U, 0x1FU, 0x1FU, 0x00U,
@@ -310,13 +289,13 @@ static inline int32_t calc_face_cross(uint8_t f) {
 }
 
 __attribute__((noinline))
-static void draw_static_faces(int8_t start, int8_t count, const uint8_t* colors, bool enable_tex) {
+static void draw_static_faces(int8_t start, int8_t count) {
     for (int8_t i = start; i < start + count; ++i) {
         if (calc_face_cross((uint8_t)i) >= 0) {
             uint8_t p1 = faces[i][0];
             uint8_t p2 = faces[i][1];
             uint8_t p3 = faces[i][2];
-            if (enable_tex && i < FACE_ROOM_COUNT && i != 4 && i != 5) {
+            if (i < FACE_ROOM_COUNT && i != 4 && i != 5) {
                 const uint8_t* tex = (i == 2 || i == 3) ? tex_emerald_block : tex_copper_bulb;
                 const uint8_t* uv = room_uvs[i];
                 gpu_draw_tri_tex16(px[p1], py[p1], uv[0], uv[1],
@@ -325,14 +304,14 @@ static void draw_static_faces(int8_t start, int8_t count, const uint8_t* colors,
                                    tex);
             } else {
                 gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
-                             colors[i], true);
+                             face_colors[i], true);
             }
         }
     }
 }
 
 __attribute__((noinline))
-static void draw_objects(const uint8_t* active_colors, bool enable_tex) {
+static void draw_objects(void) {
     int8_t count = 0;
     for (int8_t i = FACE_OBJ_START; i < FACE_OBJ_START + FACE_OBJ_COUNT; ++i) {
         if (calc_face_cross((uint8_t)i) >= 0) {
@@ -363,68 +342,27 @@ static void draw_objects(const uint8_t* active_colors, bool enable_tex) {
         uint8_t p2 = faces[f][1];
         uint8_t p3 = faces[f][2];
 
-        if (enable_tex && ((f >= 25 && f <= 34) || (f >= 37 && f <= 42))) {
-            uint8_t u0 = 0, v0 = 15;
-            uint8_t u1, v1, u2, v2;
-            const uint8_t* tex;
-            if (f >= 39) {
-                u1 = 8; v1 = 0; u2 = 15; v2 = 15;
-                tex = tex_oxidized_copper;
-            } else {
-                bool is_tri2 = (f <= 34) ? (((f - 25) & 1U) != 0) : (f == 38);
-                u1 = 15; v1 = (uint8_t)(is_tri2 ? 0 : 15);
-                u2 = (uint8_t)(is_tri2 ? 0 : 15); v2 = 0;
-                tex = (f <= 34) ? ((f >= 33) ? tex_grass_top : tex_grass_side) : tex_oxidized_copper;
-            }
-            gpu_draw_tri_tex16(px[p1], py[p1], u0, v0,
-                               px[p2], py[p2], u1, v1,
-                               px[p3], py[p3], u2, v2,
-                               tex);
+        uint8_t u0 = 0, v0 = 15;
+        uint8_t u1, v1, u2, v2;
+        const uint8_t* tex;
+        if (f >= 39) {
+            u1 = 8; v1 = 0; u2 = 15; v2 = 15;
+            tex = tex_oxidized_copper;
         } else {
-            gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
-                         active_colors[f], true);
+            bool is_tri2 = (f <= 34) ? (((f - 25) & 1U) != 0) : (f == 38);
+            u1 = 15; v1 = (uint8_t)(is_tri2 ? 0 : 15);
+            u2 = (uint8_t)(is_tri2 ? 0 : 15); v2 = 0;
+            tex = (f <= 34) ? ((f >= 33) ? tex_grass_top : tex_grass_side) : tex_oxidized_copper;
         }
+        gpu_draw_tri_tex16(px[p1], py[p1], u0, v0,
+                           px[p2], py[p2], u1, v1,
+                           px[p3], py[p3], u2, v2,
+                           tex);
     }
 }
 
 int main(void) {
     uint8_t ang_y = 0;
-    bool enable_light = true;
-    bool enable_occlusion = true;
-    bool enable_tex = false;
-
-    if (arg_count > 1 && _args_ptr != NULL) {
-        char** args = _args_ptr;
-        for (uint8_t a = 1; a < arg_count; ++a) {
-            if (args[a] != NULL) {
-                if (strcmp(args[a], "-no-light") == 0) {
-                    enable_light = false;
-                } else if (strcmp(args[a], "-no-occlusion") == 0) {
-                    enable_occlusion = false;
-                } else if (strcmp(args[a], "-plain") == 0 || strcmp(args[a], "-fast") == 0) {
-                    enable_light = false;
-                    enable_occlusion = false;
-                } else if (strcmp(args[a], "-light") == 0) {
-                    enable_light = true;
-                } else if (strcmp(args[a], "-occlusion") == 0) {
-                    enable_occlusion = true;
-                } else if (strcmp(args[a], "-tex") == 0) {
-                    enable_tex = true;
-                }
-            }
-        }
-    }
-
-    const uint8_t* active_colors;
-    if (enable_light && enable_occlusion) {
-        active_colors = face_colors_light_occlusion;
-    } else if (enable_light) {
-        active_colors = face_colors_light;
-    } else if (enable_occlusion) {
-        active_colors = face_colors_occlusion;
-    } else {
-        active_colors = face_colors_default;
-    }
 
     init_graphics();
     lcd_print("Room 3D");
@@ -442,17 +380,11 @@ int main(void) {
 
         gpu_fill_screen(0x00U);
 
-        draw_static_faces(FACE_ROOM_START, FACE_ROOM_COUNT, active_colors, enable_tex);
+        draw_static_faces(FACE_ROOM_START, FACE_ROOM_COUNT);
+        draw_static_faces(FACE_AO_START, FACE_AO_COUNT);
+        draw_static_faces(FACE_SHADOW_START, FACE_SHADOW_COUNT);
 
-        if (enable_occlusion) {
-            draw_static_faces(FACE_AO_START, FACE_AO_COUNT, active_colors, false);
-        }
-
-        if (enable_light) {
-            draw_static_faces(FACE_SHADOW_START, FACE_SHADOW_COUNT, active_colors, false);
-        }
-
-        draw_objects(active_colors, enable_tex);
+        draw_objects();
 
         drawFrame();
     }
