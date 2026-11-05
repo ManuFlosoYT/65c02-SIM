@@ -6,6 +6,10 @@
 #include <string.h>
 
 void exec_command(const char* name) {
+    if (strcmp(name, "reboot") == 0) {
+        __asm__("jmp 0x8000");
+        return;
+    }
     if (strcmp(name, "run") == 0) {
         cmd_run();
         return;
