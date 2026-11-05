@@ -144,8 +144,15 @@ static inline void gpu_draw_line(int8_t x0, int8_t y0, int8_t x1, int8_t y1, uin
     }
 }
 
-static inline void gpu_draw_tri16(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2,
-                                 uint8_t color, bool fill) {
+static inline void gpu_swap_u8(uint8_t* a, uint8_t* b) {
+    uint8_t t = *a;
+    *a = *b;
+    *b = t;
+}
+
+__attribute__((noinline))
+static void gpu_draw_tri16(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+                          uint8_t color, bool fill) {
     if (!fill) {
         gpu_draw_line((int8_t)x0, (int8_t)y0, (int8_t)x1, (int8_t)y1, color);
         gpu_draw_line((int8_t)x1, (int8_t)y1, (int8_t)x2, (int8_t)y2, color);
@@ -170,20 +177,22 @@ static inline void gpu_draw_tri16(int16_t x0, int16_t y0, int16_t x1, int16_t y1
         return;
     }
 
-    fixed_t dx_long = (fixed_t)(((int32_t)(x2 - x0) << 8U) / (y2 - y0));
+    int16_t dy_long = (int16_t)(y2 - y0);
+    fixed_t dx_long = (fixed_t)(((int32_t)(x2 - x0) << 8U) / dy_long);
     fixed_t x_long = to_fixed(x0);
 
     if (y0 < 0) {
-        x_long += (fixed_t)(dx_long * -y0);
+        x_long += (fixed_t)(dx_long * (int16_t)-y0);
     }
 
     if (y1 > y0 && y1 > 0) {
-        fixed_t dx_short = (fixed_t)(((int32_t)(x1 - x0) << 8U) / (y1 - y0));
+        int16_t dy_short = (int16_t)(y1 - y0);
+        fixed_t dx_short = (fixed_t)(((int32_t)(x1 - x0) << 8U) / dy_short);
         fixed_t x_short = to_fixed(x0);
 
         int16_t start_y = y0;
         if (start_y < 0) {
-            x_short += (fixed_t)(dx_short * -start_y);
+            x_short += (fixed_t)(dx_short * (int16_t)-start_y);
             start_y = 0;
         }
 
@@ -192,18 +201,13 @@ static inline void gpu_draw_tri16(int16_t x0, int16_t y0, int16_t x1, int16_t y1
         for (int16_t y = start_y; y < end_y; ++y) {
             int16_t xl = from_fixed(x_long);
             int16_t xr = from_fixed(x_short);
+
             if (xl > xr) {
-                int16_t t = xl;
-                xl = xr;
-                xr = t;
+                int16_t tx = xl; xl = xr; xr = tx;
             }
 
-            if (xl < 0) {
-                xl = 0;
-            }
-            if (xr >= GPU_WIDTH) {
-                xr = GPU_WIDTH - 1;
-            }
+            if (xl < 0) xl = 0;
+            if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
 
             if (xl <= xr) {
                 uint16_t offset = (uint16_t)((uint16_t)y * (uint16_t)GPU_BACKBUF_STRIDE + (uint16_t)xl);
@@ -216,12 +220,156 @@ static inline void gpu_draw_tri16(int16_t x0, int16_t y0, int16_t x1, int16_t y1
     }
 
     if (y2 > y1 && y2 > 0) {
-        fixed_t dx_short = (fixed_t)(((int32_t)(x2 - x1) << 8U) / (y2 - y1));
+        int16_t dy_short = (int16_t)(y2 - y1);
+        fixed_t dx_short = (fixed_t)(((int32_t)(x2 - x1) << 8U) / dy_short);
         fixed_t x_short = to_fixed(x1);
 
         int16_t start_y = y1;
         if (start_y < 0) {
-            x_short += (fixed_t)(dx_short * -start_y);
+            x_short += (fixed_t)(dx_short * (int16_t)-start_y);
+            start_y = 0;
+        }
+
+        int16_t end_y = (y2 > GPU_HEIGHT) ? GPU_HEIGHT : y2;
+
+        for (int16_t y = start_y; y < end_y; ++y) {
+            int16_t xl = from_fixed(x_long);
+            int16_t xr = from_fixed(x_short);
+
+            if (xl > xr) {
+                int16_t tx = xl; xl = xr; xr = tx;
+            }
+
+            if (xl < 0) xl = 0;
+            if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
+
+            if (xl <= xr) {
+                uint16_t offset = (uint16_t)((uint16_t)y * (uint16_t)GPU_BACKBUF_STRIDE + (uint16_t)xl);
+                memset((void*)(GPU_BACKBUF_START + offset), color, (size_t)(xr - xl + 1));
+            }
+
+            x_long += dx_long;
+            x_short += dx_short;
+        }
+    }
+}
+
+__attribute__((noinline))
+static void gpu_draw_tri_tex16(int16_t x0, int16_t y0, uint8_t u0, uint8_t v0,
+                               int16_t x1, int16_t y1, uint8_t u1, uint8_t v1,
+                               int16_t x2, int16_t y2, uint8_t u2, uint8_t v2,
+                               const uint8_t* tex) {
+    if (tex == NULL) {
+        return;
+    }
+
+    if (y0 > y1) {
+        gpu_swap_coord16(&x0, &x1);
+        gpu_swap_coord16(&y0, &y1);
+        gpu_swap_u8(&u0, &u1);
+        gpu_swap_u8(&v0, &v1);
+    }
+    if (y0 > y2) {
+        gpu_swap_coord16(&x0, &x2);
+        gpu_swap_coord16(&y0, &y2);
+        gpu_swap_u8(&u0, &u2);
+        gpu_swap_u8(&v0, &v2);
+    }
+    if (y1 > y2) {
+        gpu_swap_coord16(&x1, &x2);
+        gpu_swap_coord16(&y1, &y2);
+        gpu_swap_u8(&u1, &u2);
+        gpu_swap_u8(&v1, &v2);
+    }
+
+    if (y2 < 0 || y0 >= GPU_HEIGHT || y0 == y2) {
+        return;
+    }
+
+    int16_t dx1 = (int16_t)(x1 - x0);
+    int16_t dy1 = (int16_t)(y1 - y0);
+    int16_t dx2 = (int16_t)(x2 - x0);
+    int16_t dy2 = (int16_t)(y2 - y0);
+    int16_t du1 = (int16_t)(u1 - u0);
+    int16_t dv1 = (int16_t)(v1 - v0);
+    int16_t du2 = (int16_t)(u2 - u0);
+    int16_t dv2 = (int16_t)(v2 - v0);
+
+    int32_t denom = (int32_t)dx1 * dy2 - (int32_t)dx2 * dy1;
+    if (denom == 0) {
+        return;
+    }
+
+    fixed_t dudx = (fixed_t)((((int32_t)du1 * dy2 - (int32_t)du2 * dy1) << 8U) / denom);
+    fixed_t dudy = (fixed_t)((((int32_t)du2 * dx1 - (int32_t)du1 * dx2) << 8U) / denom);
+    fixed_t dvdx = (fixed_t)((((int32_t)dv1 * dy2 - (int32_t)dv2 * dy1) << 8U) / denom);
+    fixed_t dvdy = (fixed_t)((((int32_t)dv2 * dx1 - (int32_t)dv1 * dx2) << 8U) / denom);
+
+    int16_t dy_long = dy2;
+    fixed_t dx_long = (fixed_t)(((int32_t)dx2 << 8U) / dy_long);
+    fixed_t x_long = to_fixed(x0);
+
+    fixed_t u0_fixed = to_fixed((int16_t)u0);
+    fixed_t v0_fixed = to_fixed((int16_t)v0);
+
+    if (y0 < 0) {
+        x_long += (fixed_t)(dx_long * (int16_t)-y0);
+    }
+
+    if (y1 > y0 && y1 > 0) {
+        int16_t dy_short = dy1;
+        fixed_t dx_short = (fixed_t)(((int32_t)dx1 << 8U) / dy_short);
+        fixed_t x_short = to_fixed(x0);
+
+        int16_t start_y = y0;
+        if (start_y < 0) {
+            x_short += (fixed_t)(dx_short * (int16_t)-start_y);
+            start_y = 0;
+        }
+
+        int16_t end_y = (y1 > GPU_HEIGHT) ? GPU_HEIGHT : y1;
+
+        for (int16_t y = start_y; y < end_y; ++y) {
+            int16_t xl = from_fixed(x_long);
+            int16_t xr = from_fixed(x_short);
+            if (xl > xr) {
+                int16_t tx = xl; xl = xr; xr = tx;
+            }
+
+            int16_t left = xl;
+            if (left < 0) left = 0;
+            if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
+
+            if (left <= xr) {
+                int16_t dy = (int16_t)(y - y0);
+                int16_t dx = (int16_t)(left - x0);
+                fixed_t u_curr = (fixed_t)(u0_fixed + (fixed_t)(dudy * dy) + (fixed_t)(dudx * dx));
+                fixed_t v_curr = (fixed_t)(v0_fixed + (fixed_t)(dvdy * dy) + (fixed_t)(dvdx * dx));
+                uint16_t offset = (uint16_t)((uint16_t)y * (uint16_t)GPU_BACKBUF_STRIDE + (uint16_t)left);
+                uint8_t* dst = (uint8_t*)(GPU_BACKBUF_START + offset);
+
+                for (int16_t x = left; x <= xr; ++x) {
+                    uint8_t u_idx = (uint8_t)(from_fixed(u_curr) & 0x0FU);
+                    uint8_t v_idx = (uint8_t)(from_fixed(v_curr) & 0x0FU);
+                    *dst++ = tex[(uint8_t)((v_idx << 4U) | u_idx)];
+                    u_curr += dudx;
+                    v_curr += dvdx;
+                }
+            }
+
+            x_long += dx_long;
+            x_short += dx_short;
+        }
+    }
+
+    if (y2 > y1 && y2 > 0) {
+        int16_t dy_short = (int16_t)(y2 - y1);
+        fixed_t dx_short = (fixed_t)(((int32_t)(x2 - x1) << 8U) / dy_short);
+        fixed_t x_short = to_fixed(x1);
+
+        int16_t start_y = y1;
+        if (start_y < 0) {
+            x_short += (fixed_t)(dx_short * (int16_t)-start_y);
             start_y = 0;
         }
 
@@ -231,21 +379,28 @@ static inline void gpu_draw_tri16(int16_t x0, int16_t y0, int16_t x1, int16_t y1
             int16_t xl = from_fixed(x_long);
             int16_t xr = from_fixed(x_short);
             if (xl > xr) {
-                int16_t t = xl;
-                xl = xr;
-                xr = t;
+                int16_t tx = xl; xl = xr; xr = tx;
             }
 
-            if (xl < 0) {
-                xl = 0;
-            }
-            if (xr >= GPU_WIDTH) {
-                xr = GPU_WIDTH - 1;
-            }
+            int16_t left = xl;
+            if (left < 0) left = 0;
+            if (xr >= GPU_WIDTH) xr = GPU_WIDTH - 1;
 
-            if (xl <= xr) {
-                uint16_t offset = (uint16_t)((uint16_t)y * (uint16_t)GPU_BACKBUF_STRIDE + (uint16_t)xl);
-                memset((void*)(GPU_BACKBUF_START + offset), color, (size_t)(xr - xl + 1));
+            if (left <= xr) {
+                int16_t dy = (int16_t)(y - y0);
+                int16_t dx = (int16_t)(left - x0);
+                fixed_t u_curr = (fixed_t)(u0_fixed + (fixed_t)(dudy * dy) + (fixed_t)(dudx * dx));
+                fixed_t v_curr = (fixed_t)(v0_fixed + (fixed_t)(dvdy * dy) + (fixed_t)(dvdx * dx));
+                uint16_t offset = (uint16_t)((uint16_t)y * (uint16_t)GPU_BACKBUF_STRIDE + (uint16_t)left);
+                uint8_t* dst = (uint8_t*)(GPU_BACKBUF_START + offset);
+
+                for (int16_t x = left; x <= xr; ++x) {
+                    uint8_t u_idx = (uint8_t)(from_fixed(u_curr) & 0x0FU);
+                    uint8_t v_idx = (uint8_t)(from_fixed(v_curr) & 0x0FU);
+                    *dst++ = tex[(uint8_t)((v_idx << 4U) | u_idx)];
+                    u_curr += dudx;
+                    v_curr += dvdx;
+                }
             }
 
             x_long += dx_long;
