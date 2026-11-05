@@ -617,7 +617,7 @@ public:
         apu.Reset();
 
         const size_t maxFlatCopy =
-            (img.loadAddr < 0x10000U) ? std::min<size_t>(img.payload.size(), 0x10000U - img.loadAddr) : 0U;
+            std::min<size_t>(img.payload.size(), 0x10000U - img.loadAddr);
         std::copy_n(img.payload.data(), maxFlatCopy, flatMemory.data() + img.loadAddr);
 
         if (img.loadAddr >= 0x6000U && img.loadAddr < 0x8000U) {
