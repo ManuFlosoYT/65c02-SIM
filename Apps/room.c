@@ -6,8 +6,10 @@
 #include "Libs/LCD.h"
 
 enum RoomConfig {
-    NUM_VERTICES = 21,
-    NUM_FACES    = 30,
+    NUM_VERTICES   = 21,
+    NUM_ROOM_FACES = 12,
+    NUM_OBJ_FACES  = 18,
+    NUM_FACES      = 30,
 };
 
 static const int8_t SIN_TABLE[256] = {
@@ -87,8 +89,8 @@ static const uint8_t faces[NUM_FACES][3] = {
     {15, 10, 11},
     {8, 9, 13},
     {8, 13, 12},
-    {16, 19, 18},
-    {16, 18, 17},
+    {16, 18, 19},
+    {16, 17, 18},
     {16, 20, 17},
     {17, 20, 18},
     {18, 20, 19},
@@ -106,13 +108,28 @@ typedef struct {
     int16_t z_depth;
 } RenderFace;
 
-static RenderFace visible_faces[NUM_FACES];
+static RenderFace visible_faces[NUM_OBJ_FACES];
 
 void rotate_all(uint8_t ax, uint8_t ay, uint8_t az) {
-    int8_t sin_x = ISIN(ax);
-    int8_t cos_x = ICOS(ax);
     int8_t sin_y = ISIN(ay);
     int8_t cos_y = ICOS(ay);
+
+    if (ax == 0 && az == 0) {
+        for (int8_t i = 0; i < NUM_VERTICES; ++i) {
+            int16_t x = cvx[i];
+            int16_t z = (int16_t)((cvz[i] * 110) / 128);
+
+            int16_t tx = (int16_t)(((x * cos_y) + (z * sin_y)) / 128);
+            int16_t tz = (int16_t)(((-x * sin_y) + (z * cos_y)) / 128);
+
+            vx[i] = (int8_t)((tx * 110) / 128);
+            vz[i] = (int8_t)tz;
+        }
+        return;
+    }
+
+    int8_t sin_x = ISIN(ax);
+    int8_t cos_x = ICOS(ax);
     int8_t sin_z = ISIN(az);
     int8_t cos_z = ICOS(az);
 
@@ -175,6 +192,10 @@ void project_all(void) {
 void init_graphics(void) {
     lcd_init();
     gpu_fill_screen(0x00U);
+    for (int8_t i = 0; i < NUM_VERTICES; ++i) {
+        int16_t y = (int16_t)((cvy[i] * 110) / 128);
+        vy[i] = (int8_t)((y * 110) / 128);
+    }
 }
 
 int main(void) {
@@ -196,8 +217,26 @@ int main(void) {
 
         gpu_fill_screen(0x00U);
 
+        for (int8_t i = 0; i < NUM_ROOM_FACES; ++i) {
+            uint8_t p1 = faces[i][0];
+            uint8_t p2 = faces[i][1];
+            uint8_t p3 = faces[i][2];
+
+            int16_t v1x = (int16_t)(px[p2] - px[p1]);
+            int16_t v1y = (int16_t)(py[p2] - py[p1]);
+            int16_t v2x = (int16_t)(px[p3] - px[p1]);
+            int16_t v2y = (int16_t)(py[p3] - py[p1]);
+
+            int32_t cross = ((int32_t)v1x * v2y) - ((int32_t)v1y * v2x);
+
+            if (cross >= 0) {
+                gpu_draw_tri(px[p1], py[p1], px[p2], py[p2], px[p3], py[p3],
+                             face_colors[i], true);
+            }
+        }
+
         int8_t count = 0;
-        for (int8_t i = 0; i < NUM_FACES; ++i) {
+        for (int8_t i = NUM_ROOM_FACES; i < NUM_FACES; ++i) {
             uint8_t p1 = faces[i][0];
             uint8_t p2 = faces[i][1];
             uint8_t p3 = faces[i][2];
