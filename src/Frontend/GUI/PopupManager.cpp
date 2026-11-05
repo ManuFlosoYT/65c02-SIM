@@ -1,5 +1,7 @@
 #include "Frontend/GUI/PopupManager.h"
+#include <filesystem>
 #include <format>
+#include <memory>
 #include <imgui.h>
 #include "Frontend/Control/AppState.h"
 #include "Frontend/Control/CartridgeUtils.h"
@@ -228,49 +230,78 @@ bool ShouldPromptCartridgeSDSave(const Control::AppState& state) {
 
 void ExecuteReset(Control::AppState& state) {
     bool wasRunning = !state.emulator.IsPaused();
-    if (wasRunning) {
-        state.emulator.Pause();
+
+    if (state.emulator.GetCartridge().loaded && !state.emulator.GetCartridge().sdCardPath.empty() &&
+        state.emulator.GetSDCard().IsMounted() && state.emulator.GetSDCard().IsModified()) {
+        Core::CartridgeLoader::SaveSDToZip(state.emulator.GetCartridge());
+        state.emulator.GetSDCard().SetModified(false);
     }
 
+    Core::Cartridge cart = state.emulator.GetCartridge();
+    bool hadCartridge = cart.loaded;
+    std::string romBin = state.rom.bin;
+    std::vector<uint8_t> romData = state.rom.data;
+    bool hadRom = state.rom.loaded;
+
+    int targetIPS = state.emulation.instructionsPerFrame;
+    bool cycleAccurate = state.emulation.cycleAccurate;
+    bool gpuEnabled = state.emulation.gpuEnabled;
+    bool espEnabled = state.emulation.espEnabled;
+    bool sdEnabled = state.emulation.sdEnabled;
+    bool autoReload = state.emulation.autoReload;
+
+    state.emulator.Stop();
+    std::destroy_at(&state.emulator);
+    std::construct_at(&state.emulator);
+
+    state.emulator.GetSID().Init(44100);
+    state.emulator.SetOutputCallback(Console::OutputCallback);
+
     Console::Clear();
-    state.emulator.GetGPU().Reset();
     state.emulator.ClearProfiler();
     if (state.crtFilter.IsInitialized()) {
         state.crtFilter.Reset();
     }
     state.render.lastDisplayTex = 0;
 
-    if (state.emulator.GetCartridge().loaded) {
-        std::string path = state.emulator.GetCartridge().sourceZipPath;
+    state.emulator.SetTargetIPS(targetIPS);
+    state.emulator.SetCycleAccurate(cycleAccurate);
+    state.emulator.SetGPUEnabled(gpuEnabled);
+    state.emulator.SetESPEnabled(espEnabled);
+    state.emulator.SetSDEnabled(sdEnabled);
+    state.emulator.SetAutoReload(autoReload);
+    state.emulator.GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
+    state.emulator.GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
+
+    if (state.rom.symbols.GetSymbolCount() > 0) {
+        state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+    }
+
+    if (hadCartridge) {
 #ifndef TARGET_WASM
-        if (!path.empty()) {
+        if (!cart.sourceZipPath.empty() && std::filesystem::exists(cart.sourceZipPath)) {
             std::string errorMsg;
-            Core::Cartridge cart;
-            if (Core::CartridgeLoader::Load(path, cart, errorMsg)) {
-                Control::ApplyCartridgeConfig(state, cart);
-                state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg);
-            } else {
-                Core::Logger::Error("Failed to reload cartridge from {}: {}", path, errorMsg);
-                state.emulator.SetupHardware();
+            Core::Cartridge freshCart;
+            if (Core::CartridgeLoader::Load(cart.sourceZipPath, freshCart, errorMsg)) {
+                cart = std::move(freshCart);
             }
-        } else {
-            state.emulator.SetupHardware();
         }
-#else
-        state.emulator.SetupHardware();
 #endif
-    } else if (state.rom.loaded) {
+        Control::ApplyCartridgeConfig(state, cart);
+        std::string errorMsg;
+        state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg);
+    } else if (hadRom) {
         std::string errorMsg;
 #ifdef TARGET_WASM
-        if (!state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg)) {
+        if (!state.emulator.InitFromMemory(romData, romBin, errorMsg)) {
             state.rom.loaded = false;
         }
 #else
         bool initSuccess = false;
-        if (!state.rom.data.empty()) {
-            initSuccess = state.emulator.InitFromMemory(state.rom.data, state.rom.bin, errorMsg);
-        } else {
-            initSuccess = state.emulator.Init(state.rom.bin, errorMsg);
+        if (!romData.empty()) {
+            initSuccess = state.emulator.InitFromMemory(romData, romBin, errorMsg);
+        } else if (!romBin.empty()) {
+            initSuccess = state.emulator.Init(romBin, errorMsg);
         }
         if (!initSuccess) {
             state.rom.loaded = false;
@@ -278,6 +309,8 @@ void ExecuteReset(Control::AppState& state) {
         }
 #endif
     }
+
+    state.emulator.Start();
 
     if (wasRunning) {
         state.emulator.Resume();
