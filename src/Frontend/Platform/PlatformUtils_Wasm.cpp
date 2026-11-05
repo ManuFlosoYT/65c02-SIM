@@ -1,7 +1,7 @@
 #include "Frontend/Platform/PlatformUtils.h"
 
-#ifdef TARGET_WASM
 #include <emscripten.h>
+#include <filesystem>
 #include <string>
 
 namespace Frontend::Platform {
@@ -16,20 +16,16 @@ bool OpenURL(std::string_view url) {
     return true;
 }
 
-}  // namespace Frontend::Platform
-#else
-#include <SDL3/SDL.h>
-#include <string>
+std::filesystem::path GetExecutableDirectory() {
+    return std::filesystem::current_path();
+}
 
-namespace Frontend::Platform {
+char GetEnvPathDelimiter() {
+    return ':';
+}
 
-bool OpenURL(std::string_view url) {
-    if (url.empty()) {
-        return false;
-    }
-    std::string nullTerminatedUrl(url);
-    return SDL_OpenURL(nullTerminatedUrl.c_str());
+std::string AppendExecutableExtension(std::string_view binaryName) {
+    return std::string(binaryName);
 }
 
 }  // namespace Frontend::Platform
-#endif

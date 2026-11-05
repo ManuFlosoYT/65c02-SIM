@@ -1,4 +1,5 @@
 #include "Hardware/Storage/VirtualFAT16Synchronizer.h"
+#include "Hardware/Storage/VirtualFATPlatform.h"
 
 #include <algorithm>
 #include <cctype>
@@ -9,6 +10,8 @@
 #include <iostream>
 
 namespace Hardware {
+
+namespace Platform = Storage::Platform;
 
 std::filesystem::path VirtualFAT16Synchronizer::PathFromUtf8(std::string_view str) {
     return std::filesystem::path(std::u8string(str.begin(), str.end()));
@@ -26,34 +29,13 @@ bool IsPathContained(const std::filesystem::path& target, const std::filesystem:
 
         auto it_base = norm_base.begin();
         auto it_target = norm_target.begin();
-#if defined(_WIN32)
         while (it_base != norm_base.end()) {
-            if (it_target == norm_target.end()) {
-                return false;
-            }
-            std::string s_base = it_base->string();
-            std::string s_target = it_target->string();
-            if (s_base.size() != s_target.size()) {
-                return false;
-            }
-            for (size_t i = 0; i < s_base.size(); ++i) {
-                if (std::tolower(static_cast<unsigned char>(s_base[i])) !=
-                    std::tolower(static_cast<unsigned char>(s_target[i]))) {
-                    return false;
-                }
-            }
-            ++it_base;
-            ++it_target;
-        }
-#else
-        while (it_base != norm_base.end()) {
-            if (it_target == norm_target.end() || *it_base != *it_target) {
+            if (it_target == norm_target.end() || !Platform::ComponentEquals(it_base->string(), it_target->string())) {
                 return false;
             }
             ++it_base;
             ++it_target;
         }
-#endif
         return true;
     } catch (...) {
         return false;
@@ -67,11 +49,7 @@ void GetDosDateTime(const std::filesystem::file_time_type& ft, uint16_t& dosDate
         auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(std::chrono::file_clock::to_sys(ft));
         std::time_t cftime = std::chrono::system_clock::to_time_t(sctp);
         std::tm tm_buf{};
-#if defined(_WIN32)
-        localtime_s(&tm_buf, &cftime);
-#else
-        localtime_r(&cftime, &tm_buf);
-#endif
+        Platform::SafeLocalTime(&cftime, &tm_buf);
         int year = tm_buf.tm_year + 1900;
         if (year < 1980) year = 1980;
         if (year > 2107) year = 2107;
@@ -163,22 +141,7 @@ bool VirtualFAT16Synchronizer::IsProtectedHostPath(const std::filesystem::path& 
         return true;
     }
 
-    std::vector<std::filesystem::path> protectedDirs;
-#if defined(_WIN32)
-    for (const char* env : {"SystemRoot", "WINDIR", "ProgramFiles", "ProgramFiles(x86)", "ProgramData", "USERPROFILE"}) {
-        if (const char* val = std::getenv(env)) {
-            protectedDirs.push_back(PathFromUtf8(val));
-        }
-    }
-#else
-    for (const char* dir : {"/home", "/root", "/usr", "/bin", "/sbin", "/lib", "/etc", "/var", "/tmp", "/sys", "/proc",
-                            "/dev", "/boot", "/opt", "/Users", "/System", "/Library", "/Applications"}) {
-        protectedDirs.emplace_back(dir);
-    }
-    if (const char* home = std::getenv("HOME")) {
-        protectedDirs.push_back(PathFromUtf8(home));
-    }
-#endif
+    std::vector<std::filesystem::path> protectedDirs = Platform::GetProtectedDirectories();
 
     for (const auto& dir : protectedDirs) {
         std::error_code ec;

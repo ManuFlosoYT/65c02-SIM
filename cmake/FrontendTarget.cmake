@@ -19,6 +19,7 @@ file(GLOB_RECURSE FRONTEND_SOURCES CONFIGURE_DEPENDS
     "src/Frontend/*.cpp"
     "src/Frontend/*.h"
 )
+list(FILTER FRONTEND_SOURCES EXCLUDE REGEX ".*_(Win32|Posix|Linux|Wasm|Default)\\.cpp$")
 
 if(WIN32)
     add_executable(SIM_65C02 WIN32
@@ -130,6 +131,24 @@ target_include_directories(SIM_65C02 PRIVATE
 )
 
 target_sources(SIM_65C02 PRIVATE "${CASCADIA_MONO_CPP}")
+if(WIN32)
+    target_sources(SIM_65C02 PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Compiler/ProcessRunner_Win32.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Platform/PlatformUtils_Win32.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Platform/PlatformHooks_Default.cpp"
+    )
+elseif(EMSCRIPTEN)
+    target_sources(SIM_65C02 PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Platform/PlatformUtils_Wasm.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Platform/PlatformHooks_Default.cpp"
+    )
+else()
+    target_sources(SIM_65C02 PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Compiler/ProcessRunner_Posix.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Platform/PlatformUtils_Posix.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Platform/PlatformHooks_Linux.cpp"
+    )
+endif()
 add_dependencies(SIM_65C02 crt_shaders app_icons cascadia_mono)
 if(NOT EMSCRIPTEN)
     add_dependencies(SIM_65C02 embedded_compilers sdk_resource)

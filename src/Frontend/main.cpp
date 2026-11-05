@@ -39,9 +39,7 @@
 #include "Frontend/GUI/UIModules.h"
 #include "Frontend/Control/SDKManager.h"
 #include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
-#if defined(__linux__) && !defined(TARGET_WASM)
-#include <malloc.h>
-#endif
+#include "Frontend/Platform/PlatformHooks.h"
 
 using namespace Control;
 using namespace Core;
@@ -111,32 +109,13 @@ static bool TryInitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
 }
 
 static bool InitializeSDL(SDL_Window*& window, SDL_GLContext& gl_context) {
-    #ifdef __linux__
-    // Si el usuario lanza la app con NVIDIA PRIME offload y no ha forzado un driver manual,
-    // usamos XWayland (x11) para evitar el crash de dmabuf entre NVIDIA e Intel en Wayland.
-    if (SDL_getenv("__NV_PRIME_RENDER_OFFLOAD") != nullptr && SDL_getenv("SDL_VIDEO_DRIVER") == nullptr) {
-        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
-    }
-    #endif
+    Platform::PreInitializeGraphics();
 
     if (TryInitializeSDL(window, gl_context)) {
         return true;
     }
 
-    #ifdef __linux__
-    const char* envDriver = SDL_getenv("SDL_VIDEO_DRIVER");
-    const char* hintDriver = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
-    bool alreadyX11 = (envDriver != nullptr && std::string_view(envDriver) == "x11") ||
-                      (hintDriver != nullptr && std::string_view(hintDriver) == "x11");
-    if (!alreadyX11) {
-        std::cerr << "Retrying graphics initialization with SDL_VIDEO_DRIVER=x11...\n";
-        SDL_Quit();
-        SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "x11", SDL_HINT_OVERRIDE);
-        return TryInitializeSDL(window, gl_context);
-    }
-    #endif
-
-    return false;
+    return Platform::RetryInitializeGraphics([&]() { return TryInitializeSDL(window, gl_context); });
 }
 
 static void SetupStyle(){
@@ -396,9 +375,7 @@ int main(int argc, char* argv[]) {
     static bool done = false;
     state.emulator.Start();
 
-#if defined(__linux__) && !defined(TARGET_WASM)
-    malloc_trim(0);
-#endif
+    Platform::TrimProcessMemory();
     
 #ifndef TARGET_WASM
     static std::unique_ptr<MediaExporter> mediaExporter = nullptr;
@@ -421,9 +398,7 @@ int main(int argc, char* argv[]) {
     while (!done) {
         if (!isEmulationActive(state)) {
             if (framesToRender <= 0) {
-#if defined(__linux__) && !defined(TARGET_WASM)
-                malloc_trim(0);
-#endif
+                Platform::TrimProcessMemory();
                 SDL_Event event;
                 if (SDL_WaitEventTimeout(&event, 250)) {
                     ImGui_ImplSDL3_ProcessEvent(&event);

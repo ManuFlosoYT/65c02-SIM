@@ -1,4 +1,5 @@
 #include "Hardware/Storage/SDCard.h"
+#include "Hardware/Storage/VirtualFATPlatform.h"
 #include <gtest/gtest.h>
 #include <array>
 #include <cstdint>
@@ -238,14 +239,9 @@ TEST(System_VirtualFAT_Test, HostSync_PicksUpNewContent) {
 TEST(System_VirtualFAT_Test, Security_Blacklist) {
     Hardware::SDCard sd;
     EXPECT_FALSE(sd.MountFolder("/"));
-#ifndef _WIN32 // The Windows build protects %SystemRoot% etc.; "/home" under Wine is just Z:\home
-    EXPECT_FALSE(sd.MountFolder("/home"));
-    EXPECT_FALSE(sd.MountFolder("/usr"));
-    EXPECT_FALSE(sd.MountFolder("/bin"));
-    EXPECT_FALSE(sd.MountFolder("/etc"));
-    EXPECT_FALSE(sd.MountFolder("/var"));
-    EXPECT_FALSE(sd.MountFolder("/tmp"));
-#endif
+    for (const auto& dir : Hardware::Storage::Platform::GetProtectedDirectories()) {
+        EXPECT_FALSE(sd.MountFolder(dir.string()));
+    }
 }
 
 TEST(System_VirtualFAT_Test, RestrictedDeletion_WhenSentinelMissing) {

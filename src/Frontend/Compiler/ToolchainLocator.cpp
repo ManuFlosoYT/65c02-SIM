@@ -1,35 +1,16 @@
 #ifndef TARGET_WASM
 #include "Frontend/Compiler/ToolchainLocator.h"
+#include "Frontend/Platform/PlatformUtils.h"
 
-#include <array>
 #include <cstdlib>
 #include <filesystem>
 #include <sstream>
 #include <vector>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
 namespace fs = std::filesystem;
 
 fs::path ToolchainLocator::GetExecutableDir() {
-#ifdef _WIN32
-    std::array<char, MAX_PATH> buffer{};
-    if (GetModuleFileNameA(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())) > 0) {
-        return fs::path(buffer.data()).parent_path();
-    }
-#else
-    std::error_code ec;
-    auto exePath = fs::read_symlink("/proc/self/exe", ec);
-    if (!ec && !exePath.empty()) {
-        return exePath.parent_path();
-    }
-#endif
-    return fs::current_path();
+    return Frontend::Platform::GetExecutableDirectory();
 }
 
 std::string ToolchainLocator::NormalizePath(const fs::path& p) {
@@ -49,7 +30,7 @@ std::string ToolchainLocator::FindCompiler() {
     if (llvmMosDir != nullptr) {
         fs::path base(llvmMosDir);
         for (const auto* binName : {"bin/mos-common-clang", "bin/mos-clang", "mos-common-clang", "mos-clang"}) {
-            fs::path p = base / binName;
+            fs::path p = base / Frontend::Platform::AppendExecutableExtension(binName);
             if (fs::exists(p)) {
                 return NormalizePath(p);
             }
@@ -81,23 +62,11 @@ std::string ToolchainLocator::FindCompiler() {
         "toolchain/bin/mos-clang",
         "bin/mos-common-clang",
         "bin/mos-clang",
-#ifdef _WIN32
-        "build/llvm_mos/llvm-mos/bin/mos-common-clang.exe",
-        "build/llvm_mos/llvm-mos/bin/mos-clang.exe",
-        "llvm_mos/llvm-mos/bin/mos-common-clang.exe",
-        "llvm_mos/llvm-mos/bin/mos-clang.exe",
-        "output/toolchain/bin/mos-common-clang.exe",
-        "output/toolchain/bin/mos-clang.exe",
-        "toolchain/bin/mos-common-clang.exe",
-        "toolchain/bin/mos-clang.exe",
-        "bin/mos-common-clang.exe",
-        "bin/mos-clang.exe",
-#endif
     };
 
     for (const auto& root : searchRoots) {
         for (const auto& rel : relativeCandidates) {
-            fs::path candidate = root / rel;
+            fs::path candidate = root / Frontend::Platform::AppendExecutableExtension(rel);
             if (fs::exists(candidate)) {
                 return NormalizePath(candidate);
             }
@@ -108,21 +77,13 @@ std::string ToolchainLocator::FindCompiler() {
     if (pathEnv != nullptr) {
         std::stringstream stringStream(pathEnv);
         std::string dir;
-#ifdef _WIN32
-        char delimiter = ';';
-#else
-        char delimiter = ':';
-#endif
+        char delimiter = Frontend::Platform::GetEnvPathDelimiter();
         while (std::getline(stringStream, dir, delimiter)) {
             if (dir.empty()) {
                 continue;
             }
-            for (const auto* name : {"mos-common-clang", "mos-clang"
-#ifdef _WIN32
-                                     , "mos-common-clang.exe", "mos-clang.exe"
-#endif
-            }) {
-                fs::path p = fs::path(dir) / name;
+            for (const auto* name : {"mos-common-clang", "mos-clang"}) {
+                fs::path p = fs::path(dir) / Frontend::Platform::AppendExecutableExtension(name);
                 if (fs::exists(p)) {
                     return NormalizePath(p);
                 }
@@ -130,23 +91,15 @@ std::string ToolchainLocator::FindCompiler() {
         }
     }
 
-#ifdef _WIN32
-    return "mos-common-clang.exe";
-#else
-    return "mos-common-clang";
-#endif
+    return Frontend::Platform::AppendExecutableExtension("mos-common-clang");
 }
 
 std::string ToolchainLocator::FindTool(const std::string& toolName) {
     std::string compiler = FindCompiler();
     fs::path binDir = fs::path(compiler).parent_path();
 
-    std::vector<std::string> names = { toolName };
-#ifdef _WIN32
-    if (!toolName.ends_with(".exe")) {
-        names.insert(names.begin(), toolName + ".exe");
-    }
-#endif
+    std::string exeName = Frontend::Platform::AppendExecutableExtension(toolName);
+    std::vector<std::string> names = (exeName != toolName) ? std::vector<std::string>{exeName, toolName} : std::vector<std::string>{toolName};
 
     for (const auto& name : names) {
         fs::path p = binDir / name;
@@ -159,11 +112,7 @@ std::string ToolchainLocator::FindTool(const std::string& toolName) {
     if (pathEnv != nullptr) {
         std::stringstream ss(pathEnv);
         std::string dir;
-#ifdef _WIN32
-        char delimiter = ';';
-#else
-        char delimiter = ':';
-#endif
+        char delimiter = Frontend::Platform::GetEnvPathDelimiter();
         while (std::getline(ss, dir, delimiter)) {
             if (dir.empty()) continue;
             for (const auto& name : names) {
@@ -175,12 +124,7 @@ std::string ToolchainLocator::FindTool(const std::string& toolName) {
         }
     }
 
-#ifdef _WIN32
-    if (!toolName.ends_with(".exe")) {
-        return toolName + ".exe";
-    }
-#endif
-    return toolName;
+    return Frontend::Platform::AppendExecutableExtension(toolName);
 }
 
 std::string ToolchainLocator::FindObjcopy() {

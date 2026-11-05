@@ -1,16 +1,12 @@
 #include "Frontend/Control/SDKInstaller.h"
+#include "Frontend/Platform/PlatformUtils.h"
 
 #include <miniz.h>
-#include <array>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 #if !defined(TARGET_WASM)
 #include "sdk_zip.h"
@@ -21,19 +17,7 @@ namespace fs = std::filesystem;
 namespace Control {
 
 fs::path SDKInstaller::GetSDKDir() {
-#if defined(_WIN32)
-    std::array<char, MAX_PATH> buffer{};
-    if (GetModuleFileNameA(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())) > 0) {
-        return fs::path(buffer.data()).parent_path() / "SDK";
-    }
-#elif !defined(TARGET_WASM)
-    std::error_code ec;
-    auto exePath = fs::read_symlink("/proc/self/exe", ec);
-    if (!ec && !exePath.empty()) {
-        return exePath.parent_path() / "SDK";
-    }
-#endif
-    return fs::current_path() / "SDK";
+    return Frontend::Platform::GetExecutableDirectory() / "SDK";
 }
 
 bool SDKInstaller::IsInstalled() {
