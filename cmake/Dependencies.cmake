@@ -50,7 +50,7 @@ set(ASIO_URL "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-38-
 
 # cpp-httplib
 set(HTTPLIB_REPO "https://github.com/yhirose/cpp-httplib.git")
-set(HTTPLIB_TAG "v0.41.0")
+set(HTTPLIB_TAG "v0.60.1")
 
 
 # LLVM-MOS SDK
