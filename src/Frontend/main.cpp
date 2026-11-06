@@ -18,6 +18,7 @@
 #include <string>
 
 #include "Frontend/Control/AppState.h"
+#include "Frontend/Control/ConfigManager.h"
 #include "Frontend/CliArgsParser.h"
 #include "Frontend/HeadlessRunner.h"
 #include "Hardware/Core/Console.h"
@@ -166,6 +167,7 @@ static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
 
 
 static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
+    Control::ConfigManager::Save(state);
     state.emulator.Stop();
     state.emulator.GetSID().Close();
     if (state.crtFilter.IsInitialized()) {
@@ -218,6 +220,8 @@ static void MainLoop(void* arg) {
     auto& state = *args->state;
     auto& done = *args->done;
     auto* window = args->window;
+
+    Control::ConfigManager::CheckAutoReload(state);
 
     HandleSDLEvents(done, window, state);
 
@@ -346,6 +350,7 @@ int main(int argc, char* argv[]) {
     }
 
     static AppState state;
+    Control::ConfigManager::Init(state);
     state.emulator.GetSID().Init(sidSampleRate);
 
 #ifndef TARGET_WASM

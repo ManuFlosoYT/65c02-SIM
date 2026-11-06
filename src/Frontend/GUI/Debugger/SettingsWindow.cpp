@@ -17,6 +17,8 @@
 #include "Hardware/Core/Logger.h"
 
 #include "Frontend/Control/SDUtils.h"
+#include "Frontend/Control/ConfigManager.h"
+#include "Frontend/Control/ConfigPlatform.h"
 #ifdef TARGET_WASM
 #include <fstream>
 #include "Frontend/web/WebFileUtils.h"
@@ -419,10 +421,8 @@ void LoadDefaultSettings(AppState& state) {
         state.emulator.SetCycleAccurate(true);
     }
     state.emulation.forceLoadSaveState = false;
-#ifndef TARGET_WASM
     state.emulation.autoReload = true;
-    state.emulator.SetAutoReload(true);
-#endif
+    Control::ConfigPlatform::SetAutoReload(state, true);
     state.emulation.sdLatencyEnabled = false;
     state.emulator.GetSDCard().SetReadLatencyEnabled(false);
     state.emulation.ramPowerOnPattern = false;
@@ -454,10 +454,82 @@ void LoadDefaultSettings(AppState& state) {
     state.crt.monitorType = CRTMonitorType::RGB;
     state.crt.rasterBeam = false;
     state.emulator.SetRasterBeamSlowMotion(false);
+    Control::ConfigManager::Save(state);
+}
+
+struct SettingsSnapshot {
+    bool cycleAccurate;
+    bool forceLoadSaveState;
+    bool autoReload;
+    bool sdLatencyEnabled;
+    bool ramPowerOnPattern;
+    bool sidPhaseTrigger;
+    bool sidADSRWarning;
+    bool vramPixelInspector;
+    bool scanlines;
+    bool interlacing;
+    bool curvature;
+    bool chromatic;
+    bool blur;
+    bool shadowMask;
+    bool vignette;
+    bool cornerRounding;
+    bool glassGlare;
+    bool colorBleeding;
+    bool noise;
+    bool vsyncJitter;
+    bool phosphorDecay;
+    bool bloom;
+    bool halation;
+    bool ghosting;
+    bool moire;
+    float gamma;
+    bool sharpPixels;
+    bool humBar;
+    CRTMonitorType monitorType;
+    bool rasterBeam;
+
+    auto operator<=>(const SettingsSnapshot&) const = default;
+};
+
+static SettingsSnapshot CaptureSettings(const AppState& state) {
+    return {
+        .cycleAccurate = state.emulation.cycleAccurate,
+        .forceLoadSaveState = state.emulation.forceLoadSaveState,
+        .autoReload = state.emulation.autoReload,
+        .sdLatencyEnabled = state.emulation.sdLatencyEnabled,
+        .ramPowerOnPattern = state.emulation.ramPowerOnPattern,
+        .sidPhaseTrigger = state.emulation.sidPhaseTrigger,
+        .sidADSRWarning = state.emulation.sidADSRWarning,
+        .vramPixelInspector = state.emulation.vramPixelInspector,
+        .scanlines = state.crt.scanlines,
+        .interlacing = state.crt.interlacing,
+        .curvature = state.crt.curvature,
+        .chromatic = state.crt.chromatic,
+        .blur = state.crt.blur,
+        .shadowMask = state.crt.shadowMask,
+        .vignette = state.crt.vignette,
+        .cornerRounding = state.crt.cornerRounding,
+        .glassGlare = state.crt.glassGlare,
+        .colorBleeding = state.crt.colorBleeding,
+        .noise = state.crt.noise,
+        .vsyncJitter = state.crt.vsyncJitter,
+        .phosphorDecay = state.crt.phosphorDecay,
+        .bloom = state.crt.bloom,
+        .halation = state.crt.halation,
+        .ghosting = state.crt.ghosting,
+        .moire = state.crt.moire,
+        .gamma = state.crt.gamma,
+        .sharpPixels = state.crt.sharpPixels,
+        .humBar = state.crt.humBar,
+        .monitorType = state.crt.monitorType,
+        .rasterBeam = state.crt.rasterBeam
+    };
 }
 
 void DrawSettingsContent(AppState& state) {
     bool openExportCartridgePopup = false;
+    const auto before = CaptureSettings(state);
     ImGui::BeginChild("SettingsContent", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
     if (ImGui::Button("Load Default")) {
@@ -533,6 +605,10 @@ void DrawSettingsContent(AppState& state) {
     }
 
     ImGui::EndChild();
+
+    if (before != CaptureSettings(state)) {
+        Control::ConfigManager::Save(state);
+    }
 }
 
 }  // namespace GUI
