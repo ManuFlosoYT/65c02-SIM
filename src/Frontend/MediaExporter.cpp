@@ -1,6 +1,7 @@
 #ifndef TARGET_WASM
 #include "Frontend/MediaExporter.h"
 #include <span>
+#include <cmath>
 
 MediaExporter::MediaExporter() = default;
 
@@ -31,21 +32,45 @@ bool MediaExporter::Initialize(const std::string& filename,
         grabber.Initialize(rawW, rawH, processedW, processedH, recordRaw, recordProcessed);
     }
 
-    nextVideoPts = 0;
+    startTime = std::chrono::steady_clock::now();
+    totalPausedDuration = std::chrono::steady_clock::duration::zero();
+    wasPaused = false;
+    lastRecordedPts = -1;
     isRunning = true;
     workerThread = std::thread(&MediaExporter::WorkerLoop, this);
     return true;
 }
 
 void MediaExporter::PushFrames(uint32_t texRaw, uint32_t texProcessed, bool emulationPaused) {
-    if (!isRunning || emulationPaused) {
+    if (!isRunning) {
+        return;
+    }
+
+    auto now = std::chrono::steady_clock::now();
+    if (emulationPaused) {
+        if (!wasPaused) {
+            lastPauseStart = now;
+            wasPaused = true;
+        }
+        return;
+    }
+
+    if (wasPaused) {
+        totalPausedDuration += (now - lastPauseStart);
+        wasPaused = false;
+    }
+
+    auto elapsed = now - startTime - totalPausedDuration;
+    int64_t targetPts = static_cast<int64_t>(std::round(std::chrono::duration<double>(elapsed).count() * 60.0));
+    if (targetPts <= lastRecordedPts) {
         return;
     }
 
     VideoFrameData frameData;
     if (grabber.Capture(texRaw, texProcessed, frameData)) {
-        frameData.pts = nextVideoPts++;
+        frameData.pts = targetPts;
         if (videoQueue.push(std::move(frameData))) {
+            lastRecordedPts = targetPts;
             wakeUpCount.fetch_add(1, std::memory_order_release);
             wakeUpCount.notify_one();
         }
@@ -66,27 +91,25 @@ void MediaExporter::PushAudio(const float* samples, int count) {
 
 void MediaExporter::WorkerLoop() {
     while (isRunning || !videoQueue.empty() || !audioQueue.empty()) {
-        VideoFrameData vData;
         std::vector<float> aData;
+        while (audioQueue.pop(aData)) {
+            if (encoder != nullptr) {
+                encoder->ProcessAudioData(aData);
+            }
+        }
 
+        VideoFrameData vData;
         bool hasVideo = videoQueue.pop(vData);
-        bool hasAudio = audioQueue.pop(aData);
+        if (hasVideo && encoder != nullptr) {
+            encoder->ProcessVideoFrame(vData);
+        }
 
-        if (!hasVideo && !hasAudio) {
+        if (!hasVideo && audioQueue.empty()) {
             if (!isRunning) {
                 break;
             }
             int val = wakeUpCount.load(std::memory_order_acquire);
             wakeUpCount.wait(val, std::memory_order_acquire);
-            continue;
-        }
-
-        if (hasVideo && encoder != nullptr) {
-            encoder->ProcessVideoFrame(vData);
-        }
-
-        if (hasAudio && encoder != nullptr) {
-            encoder->ProcessAudioData(aData);
         }
     }
 

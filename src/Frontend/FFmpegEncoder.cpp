@@ -121,6 +121,11 @@ bool FFmpegEncoder::Initialize(const std::string& filename,
         }
     }
 
+    pkt = av_packet_alloc();
+    if (pkt == nullptr) {
+        return false;
+    }
+
     return true;
 }
 
@@ -151,8 +156,8 @@ bool FFmpegEncoder::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
         return false;
     }
 
-    int encW = (texWidth % 2 == 0) ? texWidth : texWidth + 1;
-    int encH = (texHeight % 2 == 0) ? texHeight : texHeight + 1;
+    int encW = (texWidth + 1) & ~1;
+    int encH = (texHeight + 1) & ~1;
 
     (*outCodecCtx)->width = encW;
     (*outCodecCtx)->height = encH;
@@ -160,7 +165,8 @@ bool FFmpegEncoder::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
     (*outStream)->time_base = (*outCodecCtx)->time_base;
     (*outCodecCtx)->framerate = {.num = 60, .den = 1};
     (*outCodecCtx)->gop_size = 12;
-    (*outCodecCtx)->max_b_frames = 2;
+    (*outCodecCtx)->max_b_frames = 0;
+    (*outCodecCtx)->thread_count = 2;
     (*outCodecCtx)->pix_fmt = AV_PIX_FMT_YUV420P;
 
     if ((fmtCtx->oformat->flags & AVFMT_GLOBALHEADER) != 0) {
@@ -172,11 +178,8 @@ bool FFmpegEncoder::SetupVideoStream(AVStream** outStream, AVCodecContext** outC
 
     AVDictionary* param = nullptr;
     av_dict_set(&param, "crf", "23", 0);
-    av_dict_set(&param, "preset", "slow", 0);
-
-    if (trackName == "SID Viewer") {
-        av_dict_set(&param, "tune", "stillimage", 0);
-    }
+    av_dict_set(&param, "preset", "ultrafast", 0);
+    av_dict_set(&param, "tune", "zerolatency", 0);
 
     if (avcodec_open2(*outCodecCtx, codec, &param) < 0) {
         Core::Logger::Error("MediaExporter: avcodec_open2 failed for {}", trackName);
@@ -253,11 +256,6 @@ void FFmpegEncoder::ProcessVideoFrame(const VideoFrameData& vData) {
         const std::array<const uint8_t*, 1> rawSrc = {vData.rawPixels.data()};
         const std::array<int, 1> rawStride = {vData.rawW * 4};
         sws_scale(swsCtxRaw, rawSrc.data(), rawStride.data(), 0, vData.rawH, frameRaw->data, frameRaw->linesize);
-
-        for (int row = vData.rawH; row < videoCodecCtxRaw->height; ++row) {
-            uint8_t* rowPtr = std::next(frameRaw->data[0], static_cast<std::ptrdiff_t>(row) * frameRaw->linesize[0]);
-            memset(rowPtr, 16, static_cast<size_t>(videoCodecCtxRaw->width));
-        }
         frameRaw->pts = vData.pts;
         EncodeVideoFrame(frameRaw, videoCodecCtxRaw, videoStreamRaw);
     }
@@ -340,28 +338,24 @@ void FFmpegEncoder::ProcessAudioData(const std::vector<float>& aData) {
 }
 
 void FFmpegEncoder::EncodeVideoFrame(AVFrame* frame, AVCodecContext* codecCtx, AVStream* stream) {
-    if (avcodec_send_frame(codecCtx, frame) >= 0) {
-        AVPacket* pkt = av_packet_alloc();
+    if (pkt != nullptr && avcodec_send_frame(codecCtx, frame) >= 0) {
         while (avcodec_receive_packet(codecCtx, pkt) >= 0) {
             av_packet_rescale_ts(pkt, codecCtx->time_base, stream->time_base);
             pkt->stream_index = stream->index;
             av_interleaved_write_frame(fmtCtx, pkt);
             av_packet_unref(pkt);
         }
-        av_packet_free(&pkt);
     }
 }
 
 void FFmpegEncoder::EncodeAudioFrame(AVFrame* frame) {
-    if (avcodec_send_frame(audioCodecCtx, frame) >= 0) {
-        AVPacket* pkt = av_packet_alloc();
+    if (pkt != nullptr && avcodec_send_frame(audioCodecCtx, frame) >= 0) {
         while (avcodec_receive_packet(audioCodecCtx, pkt) >= 0) {
             av_packet_rescale_ts(pkt, audioCodecCtx->time_base, audioStream->time_base);
             pkt->stream_index = audioStream->index;
             av_interleaved_write_frame(fmtCtx, pkt);
             av_packet_unref(pkt);
         }
-        av_packet_free(&pkt);
     }
 }
 
@@ -422,6 +416,7 @@ void FFmpegEncoder::Finalize() {
     if (frameRaw != nullptr)       { av_frame_free(&frameRaw); }
     if (frameProcessed != nullptr) { av_frame_free(&frameProcessed); }
     if (audioFrame != nullptr)     { av_frame_free(&audioFrame); }
+    if (pkt != nullptr)            { av_packet_free(&pkt); }
 
     if (videoCodecCtxRaw != nullptr)       { avcodec_free_context(&videoCodecCtxRaw); }
     if (videoCodecCtxProcessed != nullptr) { avcodec_free_context(&videoCodecCtxProcessed); }

@@ -24,6 +24,9 @@ void GLPboFrameGrabber::Initialize(int rawW, int rawH, int processedW, int proce
     processedHeight = processedH;
     shouldRecordRaw = recordRaw;
     shouldRecordProcessed = recordProcessed;
+    lastProcessedTex = 0;
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
     if (shouldRecordRaw) {
         SetupPBOs(pboRaw, rawWidth, rawHeight);
@@ -42,38 +45,50 @@ void GLPboFrameGrabber::Initialize(int rawW, int rawH, int processedW, int proce
 }
 
 bool GLPboFrameGrabber::Capture(uint32_t texRaw, uint32_t texProcessed, VideoFrameData& outFrame) {
+    if ((shouldRecordRaw && texRaw == 0) || (shouldRecordProcessed && texProcessed == 0)) {
+        return false;
+    }
+    if (!shouldRecordRaw && !shouldRecordProcessed) {
+        return false;
+    }
+
     int nextIndex = (pboIndex + 1) % 2;
 
-    if (shouldRecordRaw) {
+    if (shouldRecordRaw && texRaw != 0) {
         glBindBuffer(GL_PIXEL_PACK_BUFFER, pboRaw.at(pboIndex));
         glBindTexture(GL_TEXTURE_2D, texRaw);
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }
 
-    if (shouldRecordProcessed) {
+    if (shouldRecordProcessed && texProcessed != 0) {
         glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(pboIndex));
         glBindTexture(GL_TEXTURE_2D, texProcessed);
 
-        GLint actualProcW = 0;
-        GLint actualProcH = 0;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &actualProcW);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &actualProcH);
+        if (texProcessed != lastProcessedTex) {
+            GLint actualProcW = 0;
+            GLint actualProcH = 0;
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &actualProcW);
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &actualProcH);
 
-        if (actualProcW > 0 && actualProcH > 0 && actualProcW < 8192 && actualProcH < 8192) {
-            const size_t reqSize = static_cast<size_t>(actualProcW) * static_cast<size_t>(actualProcH) * 4U;
-            if (reqSize > pboProcessedCapacity) {
-                for (int i = 0; i < 2; ++i) {
-                    glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(i));
-                    glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(reqSize), nullptr, GL_STREAM_READ);
+            if (actualProcW > 0 && actualProcH > 0 && actualProcW < 8192 && actualProcH < 8192) {
+                processedWidth = actualProcW;
+                processedHeight = actualProcH;
+                const size_t reqSize = static_cast<size_t>(processedWidth) * static_cast<size_t>(processedHeight) * 4U;
+                if (reqSize > pboProcessedCapacity) {
+                    for (int i = 0; i < 2; ++i) {
+                        glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(i));
+                        glBufferData(GL_PIXEL_PACK_BUFFER, static_cast<GLsizeiptr>(reqSize), nullptr, GL_STREAM_READ);
+                    }
+                    glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(pboIndex));
+                    pboProcessedCapacity = reqSize;
                 }
-                glBindBuffer(GL_PIXEL_PACK_BUFFER, pboProcessed.at(pboIndex));
-                pboProcessedCapacity = reqSize;
             }
-            pboProcessedW.at(pboIndex) = actualProcW;
-            pboProcessedH.at(pboIndex) = actualProcH;
-            glPixelStorei(GL_PACK_ALIGNMENT, 1);
-            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            lastProcessedTex = texProcessed;
         }
+
+        pboProcessedW.at(pboIndex) = processedWidth;
+        pboProcessedH.at(pboIndex) = processedHeight;
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }
 
     bool hasData = false;
@@ -130,6 +145,7 @@ void GLPboFrameGrabber::Cleanup() {
         pboProcessedW.fill(0);
         pboProcessedH.fill(0);
     }
+    lastProcessedTex = 0;
     pboIndex = 0;
     pboWarmupFrames = 0;
 }

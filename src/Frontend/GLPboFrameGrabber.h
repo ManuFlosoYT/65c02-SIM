@@ -43,6 +43,7 @@ private:
     int rawHeight = 0;
     int processedWidth = 0;
     int processedHeight = 0;
+    uint32_t lastProcessedTex = 0;
     bool shouldRecordRaw = true;
     bool shouldRecordProcessed = true;
 };

@@ -12,6 +12,7 @@ struct AVStream;
 struct AVFrame;
 struct SwsContext;
 struct AVAudioFifo;
+struct AVPacket;
 
 class FFmpegEncoder {
 public:
@@ -68,6 +69,7 @@ private:
     AVFrame* frameRaw = nullptr;
     AVFrame* frameProcessed = nullptr;
     AVFrame* audioFrame = nullptr;
+    AVPacket* pkt = nullptr;
 
     int rawWidth = 0;
     int rawHeight = 0;

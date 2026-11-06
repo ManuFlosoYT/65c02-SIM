@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <chrono>
 
 #include "Frontend/Control/AppState.h"
 #include "Frontend/GLPboFrameGrabber.h"
@@ -47,11 +48,15 @@ private:
     std::unique_ptr<FFmpegEncoder> encoder;
     std::thread workerThread;
 
-    Hardware::SPSCQueue<VideoFrameData, 240> videoQueue;
+    Hardware::SPSCQueue<VideoFrameData, 60> videoQueue;
     Hardware::SPSCQueue<std::vector<float>, 240> audioQueue;
 
     std::atomic<int> wakeUpCount{0};
     std::atomic<bool> isRunning{false};
 
-    int64_t nextVideoPts = 0;
+    std::chrono::steady_clock::time_point startTime{};
+    std::chrono::steady_clock::duration totalPausedDuration{0};
+    std::chrono::steady_clock::time_point lastPauseStart{};
+    bool wasPaused = false;
+    int64_t lastRecordedPts = -1;
 };
