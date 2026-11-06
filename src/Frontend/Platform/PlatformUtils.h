@@ -10,5 +10,6 @@ bool OpenURL(std::string_view url);
 std::filesystem::path GetExecutableDirectory();
 char GetEnvPathDelimiter();
 std::string AppendExecutableExtension(std::string_view binaryName);
+std::string CaptureStackTrace();
 
 }  // namespace Frontend::Platform

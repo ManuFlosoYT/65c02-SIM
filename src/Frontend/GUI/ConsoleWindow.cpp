@@ -38,8 +38,10 @@ static void DrawLoadFileButton(AppState& state, bool cartLoaded) {
             } else {
                 state.rom.loaded = false;
                 state.rom.bin = "";
-                state.emulator.Reset();
-                state.emulator.Pause();
+                if (state.backend) {
+                    state.backend->Reset();
+                    state.backend->Pause();
+                }
                 if (state.crtFilter.IsInitialized()) {
                     state.crtFilter.Reset();
                 }
@@ -137,7 +139,7 @@ static void DrawIDEButton(AppState& state, bool cartLoaded) {
 #endif
 
 static void DrawConsoleButtonBar(AppState& state) {
-    bool cartLoaded = state.emulator.GetCartridge().loaded;
+    bool cartLoaded = state.backend ? state.backend->GetCartridge().loaded : false;
 
     DrawLoadFileButton(state, cartLoaded);
 
@@ -158,8 +160,8 @@ static void DrawConsoleButtonBar(AppState& state) {
     ImGui::SameLine();
     if (ImGui::Button("Paste")) {
         const char* clip = ImGui::GetClipboardText();
-        if (clip != nullptr && clip[0] != '\0') {
-            state.emulator.InjectText(clip);
+        if (clip != nullptr && clip[0] != '\0' && state.backend) {
+            state.backend->InjectText(clip);
         }
     }
     if (ImGui::IsItemHovered()) {

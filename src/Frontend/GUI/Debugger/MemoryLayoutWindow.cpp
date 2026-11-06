@@ -95,7 +95,7 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
     ImGui::TextUnformatted("Hardware Components");
     ImGui::Separator();
 
-    bool isCartridgeLoaded = state.emulator.GetCartridge().loaded;
+    bool isCartridgeLoaded = state.backend->GetCartridge().loaded;
     if (isCartridgeLoaded) {
         ImGui::BeginDisabled(true);
     }
@@ -159,10 +159,10 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
             ImGui::TableSetColumnIndex(3);
             if (ImGui::Checkbox("##en", &reg.enabled)) {
                 if (reg.device->GetName() == "SD Card") {
-                    state.emulator.SetSDEnabled(reg.enabled);
+                    state.backend->SetSDEnabled(reg.enabled);
                     state.emulation.sdEnabled = reg.enabled;
                 } else if (reg.device->GetName() == "ESP8266") {
-                    state.emulator.SetESPEnabled(reg.enabled);
+                    state.backend->SetESPEnabled(reg.enabled);
                     state.emulation.espEnabled = reg.enabled;
                 }
                 layoutDirty = true;
@@ -196,7 +196,10 @@ void DrawMappedDevicesTable(AppState& state, std::vector<DeviceRegistration>& de
 }  // namespace
 
 void DrawMemoryLayoutWindow(AppState& state) {
-    Bus& bus = state.emulator.GetMem();
+    if (!state.backend) {
+        return;
+    }
+    Bus& bus = state.backend->GetMem();
     static std::vector<DeviceRegistration> editDevices;
     static std::vector<DeviceRegistration> lastBusDevices;
     static bool layoutDirty = true;
@@ -237,27 +240,27 @@ void DrawMemoryLayoutWindow(AppState& state) {
     static std::array<char, 256> collisionError{};
     static bool showCollisionError = false;
 
-    bool isCartridgeLoaded = state.emulator.GetCartridge().loaded;
+    bool isCartridgeLoaded = state.backend->GetCartridge().loaded;
     if (isCartridgeLoaded) {
         ImGui::BeginDisabled(true);
     }
 
     if (ImGui::Button("Apply & Reset Emulator", ImVec2(-1, 40))) {
-        bool wasRunning = !state.emulator.IsPaused();
+        bool wasRunning = !state.backend->IsPaused();
         if (wasRunning) {
-            state.emulator.Pause();
+            state.backend->Pause();
         }
 
         try {
-            state.emulator.WaitUntilSafeToMutate();
+            state.backend->WaitUntilSafeToMutate();
             bus.GetRegisteredDevices() = editDevices;
             lastBusDevices = editDevices;
             bus.RebuildDeviceMap();
-            state.emulator.GetCPU().Reset();
-            state.emulator.GetCPU().PC = static_cast<uint16_t>(bus.ReadDirect(0xFFFC) | (bus.ReadDirect(0xFFFD) << 8));
-            state.emulator.GetCPU().UpdatePagePtr(bus);
+            state.backend->GetCPU().Reset();
+            state.backend->GetCPU().PC = static_cast<uint16_t>(bus.ReadDirect(0xFFFC) | (bus.ReadDirect(0xFFFD) << 8));
+            state.backend->GetCPU().UpdatePagePtr(bus);
             if (wasRunning) {
-                state.emulator.Resume();
+                state.backend->Resume();
             }
         } catch (const std::runtime_error& e) {
             strncpy(collisionError.data(), e.what(), 255);

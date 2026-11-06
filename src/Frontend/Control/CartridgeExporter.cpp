@@ -10,6 +10,10 @@
 
 namespace Control {
 
+namespace {
+const Core::Cartridge emptyCart;
+}
+
 std::string CartridgeExporter::Base64UrlEncode(const uint8_t* data, size_t length) {
     static constexpr char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     std::string encoded;
@@ -36,15 +40,18 @@ std::string CartridgeExporter::Base64UrlEncode(const uint8_t* data, size_t lengt
 
 nlohmann::json CartridgeExporter::BuildBusJson(const AppState& state) {
     auto busArray = nlohmann::json::array();
-    for (const auto& reg : state.emulator.GetMem().GetRegisteredDevices()) {
+    if (!state.backend) {
+        return busArray;
+    }
+    for (const auto& reg : state.backend->GetMem().GetRegisteredDevices()) {
         if (reg.isVirtual || !reg.device) {
             continue;
         }
-        busArray.push_back(nlohmann::json::object({
+        busArray.push_back({
             {"name", reg.device->GetName()},
             {"start", std::format("0x{:04X}", reg.startAddress)},
             {"end", std::format("0x{:04X}", reg.endAddress)}
-        }));
+        });
     }
     return busArray;
 }
@@ -65,7 +72,7 @@ nlohmann::json CartridgeExporter::GenerateManifest(const AppState& state,
         {"type", "rom"}
     };
     manifest["rom"] = "rom.bin";
-    const auto& cart = state.emulator.GetCartridge();
+    const auto& cart = state.backend ? state.backend->GetCartridge() : emptyCart;
     if (cart.loaded && !cart.vramData.empty()) {
         manifest["vram"] = "vram.bin";
     }
@@ -73,7 +80,7 @@ nlohmann::json CartridgeExporter::GenerateManifest(const AppState& state,
         {"target_ips", state.emulation.instructionsPerFrame},
         {"gpu_enabled", state.emulation.gpuEnabled},
         {"cycle_accurate", state.emulation.cycleAccurate},
-        {"sid_enabled", state.emulator.GetSID().IsSoundEnabled()},
+        {"sid_enabled", state.backend ? state.backend->GetSID().IsSoundEnabled() : true},
         {"sid_model", sidModel == 0 ? "6581" : "8580"},
         {"esp_enabled", state.emulation.espEnabled},
         {"sd_enabled", state.emulation.sdEnabled}
@@ -93,7 +100,7 @@ bool CartridgeExporter::ExportCartridgeToFile(const AppState& state,
 
     mz_zip_writer_add_mem(&zip, "manifest.json", manifestStr.data(), manifestStr.size(), MZ_BEST_COMPRESSION);
 
-    const auto& cart = state.emulator.GetCartridge();
+    const auto& cart = state.backend ? state.backend->GetCartridge() : emptyCart;
     if (cart.loaded && !cart.romData.empty()) {
         mz_zip_writer_add_mem(&zip, "rom.bin", cart.romData.data(), cart.romData.size(), MZ_BEST_COMPRESSION);
     } else if (!state.rom.data.empty()) {
@@ -106,8 +113,8 @@ bool CartridgeExporter::ExportCartridgeToFile(const AppState& state,
         mz_zip_writer_add_mem(&zip, "vram.bin", cart.vramData.data(), cart.vramData.size(), MZ_BEST_COMPRESSION);
     }
 
-    if (state.emulator.GetSDCard().IsMounted()) {
-        std::string sdPath = state.emulator.GetSDCard().GetMountedPath();
+    if (state.backend && state.backend->GetSDCard().IsMounted()) {
+        std::string sdPath = state.backend->GetSDCard().GetMountedPath();
         if (!mz_zip_writer_add_file(&zip, "sdcard.img", sdPath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION)) {
             Core::Logger::Warn("Warning: Could not read mounted SD Card file for export: {}", sdPath);
         }

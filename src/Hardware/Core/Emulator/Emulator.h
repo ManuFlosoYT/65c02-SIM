@@ -35,12 +35,13 @@
 #include "Hardware/Core/Emulator/EmulationEngine.h"
 #include "Hardware/Core/Emulator/SerialIOBridge.h"
 #include "Hardware/Core/Emulator/SystemConfigurator.h"
+#include "Backend/IEmulatorBackend.h"
 
 namespace Core {
 
 using namespace Hardware;
 
-class Emulator {
+class Emulator : public Backend::IEmulatorBackend {
    public:
     friend class EmulationEngine;
     friend class SavestateManager;
@@ -48,124 +49,135 @@ class Emulator {
     using RuntimeStats = EmulationEngine::RuntimeStats;
 
     Emulator();
-    ~Emulator() { Stop(); }
+    ~Emulator() override { Stop(); }
 
     Emulator(const Emulator&) = delete;
     Emulator& operator=(const Emulator&) = delete;
     Emulator(Emulator&&) = delete;
     Emulator& operator=(Emulator&&) = delete;
 
-    bool Init(const std::string& binPath, std::string& errorMsg);
-    bool InitFromMemory(std::span<const uint8_t> data, const std::string& name, std::string& errorMsg);
-    void Reset();
+    [[nodiscard]] bool HasError() const noexcept override { return hasError; }
+    [[nodiscard]] const std::string& GetLastError() const noexcept override { return lastError; }
+    void SetError(std::string_view msg) override {
+        hasError = true;
+        lastError = std::string(msg);
+    }
+    void ClearError() noexcept override {
+        hasError = false;
+        lastError.clear();
+    }
 
-    bool SaveState(const std::string& filename);
-    bool LoadState(const std::string& filename, bool forceLoad = false);
+    bool Init(const std::string& binPath, std::string& errorMsg) override;
+    bool InitFromMemory(std::span<const uint8_t> data, const std::string& name, std::string& errorMsg) override;
+    void Reset() override;
 
-    void Rewind();
-    bool CanRewind() const;
-    void StepBack();
+    bool SaveState(const std::string& filename) override;
+    bool LoadState(const std::string& filename, bool forceLoad = false) override;
 
-    int Step();
+    void Rewind() override;
+    [[nodiscard]] bool CanRewind() const override;
+    void StepBack() override;
+
+    int Step() override;
     template <bool Debug>
     int Step();
 
     void TriggerIRQ();
     void TriggerNMI();
 
-    void InjectKey(char key);
-    void InjectText(std::string_view text);
+    void InjectKey(char key) override;
+    void InjectText(std::string_view text) override;
 
-    void SetOutputCallback(std::function<void(char)> callback);
-    const LCD& GetLCD() const;
-    const CPU& GetCPU() const;
-    CPU& GetCPU();
-    const Bus& GetMem() const;
-    Bus& GetMem();
-    const GPU& GetGPU() const;
-    GPU& GetGPU();
-    Hardware::MicroDosGPU& GetMicroDosGPU();
-    const Hardware::MicroDosGPU& GetMicroDosGPU() const;
-    void SetGPUEnabled(bool enabled);
-    bool IsGPUEnabled() const;
-    void SetRasterBeamSlowMotion(bool enabled);
-    [[nodiscard]] bool IsRasterBeamSlowMotion() const;
-    void SetSIDEnabled(bool enabled);
+    void SetOutputCallback(std::function<void(char)> callback) override;
+    [[nodiscard]] const LCD& GetLCD() const override;
+    [[nodiscard]] const CPU& GetCPU() const override;
+    CPU& GetCPU() override;
+    [[nodiscard]] const Bus& GetMem() const override;
+    Bus& GetMem() override;
+    [[nodiscard]] const GPU& GetGPU() const override;
+    GPU& GetGPU() override;
+    Hardware::MicroDosGPU& GetMicroDosGPU() override;
+    [[nodiscard]] const Hardware::MicroDosGPU& GetMicroDosGPU() const override;
+    void SetGPUEnabled(bool enabled) override;
+    [[nodiscard]] bool IsGPUEnabled() const override;
+    void SetRasterBeamSlowMotion(bool enabled) override;
+    [[nodiscard]] bool IsRasterBeamSlowMotion() const override;
+    void SetSIDEnabled(bool enabled) override;
 
-    void SetESPEnabled(bool enabled);
-    bool IsESPEnabled() const;
+    void SetESPEnabled(bool enabled) override;
+    [[nodiscard]] bool IsESPEnabled() const override;
 
-    void SetSDEnabled(bool enabled);
-    bool IsSDEnabled() const;
+    void SetSDEnabled(bool enabled) override;
+    [[nodiscard]] bool IsSDEnabled() const override;
 
-    Hardware::ESP8266& GetESP8266();
-    const Hardware::ESP8266& GetESP8266() const;
+    Hardware::ESP8266& GetESP8266() override;
+    [[nodiscard]] const Hardware::ESP8266& GetESP8266() const override;
     Hardware::ACIA& GetACIA();
     const Hardware::ACIA& GetACIA() const;
-    void SetACIAESPBridge(bool enabled);
-    [[nodiscard]] bool IsACIAESPBridge() const;
+    void SetACIAESPBridge(bool enabled) override;
+    [[nodiscard]] bool IsACIAESPBridge() const override;
 
-    Hardware::SID& GetSID();
-    const Hardware::SID& GetSID() const;
-    [[nodiscard]] bool IsSIDEnabled() const { return sidEnabled; }
+    Hardware::SID& GetSID() override;
+    [[nodiscard]] const Hardware::SID& GetSID() const override;
+    [[nodiscard]] bool IsSIDEnabled() const override { return sidEnabled; }
     Hardware::VIA& GetVIA();
-    Hardware::ROM& GetROM();
-    Hardware::SDCard& GetSDCard();
-    Hardware::RAM& GetRAM() { return ram; }
-    const Hardware::SDCard& GetSDCard() const;
-    Hardware::ScriptEngine& GetScriptEngine();
-    Hardware::BreakpointManager& GetBreakpointManager();
+    Hardware::ROM& GetROM() override;
+    Hardware::SDCard& GetSDCard() override;
+    Hardware::RAM& GetRAM() override { return ram; }
+    [[nodiscard]] const Hardware::SDCard& GetSDCard() const override;
+    Hardware::ScriptEngine& GetScriptEngine() override;
+    Hardware::BreakpointManager& GetBreakpointManager() override;
 
-    void SetLogicAnalyzerEnabled(bool enabled);
-    [[nodiscard]] bool IsLogicAnalyzerEnabled() const;
-    Hardware::LogicAnalyzer& GetLogicAnalyzer();
-    [[nodiscard]] const Hardware::LogicAnalyzer& GetLogicAnalyzer() const;
+    void SetLogicAnalyzerEnabled(bool enabled) override;
+    [[nodiscard]] bool IsLogicAnalyzerEnabled() const override;
+    Hardware::LogicAnalyzer& GetLogicAnalyzer() override;
+    [[nodiscard]] const Hardware::LogicAnalyzer& GetLogicAnalyzer() const override;
     void SampleLogicAnalyzer(Word addr, Byte data, bool rw, bool sync);
 
-    void SetCycleAccurate(bool enabled);
-    bool IsCycleAccurate() const;
+    void SetCycleAccurate(bool enabled) override;
+    [[nodiscard]] bool IsCycleAccurate() const override;
 
-    void Start();
-    void Stop();
-    void Pause();
-    void Resume();
-    void WaitUntilSafeToMutate();
-    bool IsRunning() const;
-    bool IsPaused() const;
-    bool IsHalted() const;
+    void Start() override;
+    void Stop() override;
+    void Pause() override;
+    void Resume() override;
+    void WaitUntilSafeToMutate() override;
+    [[nodiscard]] bool IsRunning() const override;
+    [[nodiscard]] bool IsPaused() const override;
+    [[nodiscard]] bool IsHalted() const override;
 
-    [[nodiscard]] uint64_t GetTotalCycles() const { return totalCycles; }
+    [[nodiscard]] uint64_t GetTotalCycles() const override { return totalCycles; }
     [[nodiscard]] uint64_t GetTotalInstructions() const { return totalInstructions; }
-    void SetTargetIPS(int ips);
-    int GetTargetIPS() const;
-    [[nodiscard]] RuntimeStats GetRuntimeStats() const;
+    void SetTargetIPS(int ips) override;
+    [[nodiscard]] int GetTargetIPS() const override;
+    [[nodiscard]] RuntimeStats GetRuntimeStats() const override;
 
-    void SetProfilingEnabled(bool enabled);
-    void ClearProfiler();
-    Hardware::SubroutineProfiler& GetSubroutineProfiler();
-    const Hardware::SubroutineProfiler& GetSubroutineProfiler() const;
-    uint32_t* GetProfilerCounts();
-    uint32_t* GetProfilerReadCounts();
-    uint32_t* GetProfilerWriteCounts();
+    void SetProfilingEnabled(bool enabled) override;
+    void ClearProfiler() override;
+    Hardware::SubroutineProfiler& GetSubroutineProfiler() override;
+    [[nodiscard]] const Hardware::SubroutineProfiler& GetSubroutineProfiler() const override;
+    uint32_t* GetProfilerCounts() override;
+    uint32_t* GetProfilerReadCounts() override;
+    uint32_t* GetProfilerWriteCounts() override;
 
-    void SetHeatmapEnabled(bool enabled);
-    void ClearHeatmap();
-    void DecayHeatmap(uint8_t amount);
+    void SetHeatmapEnabled(bool enabled) override;
+    void ClearHeatmap() override;
+    void DecayHeatmap(uint8_t amount) override;
 
-    void SetAutoReload(bool enabled);
-    bool IsAutoReloadEnabled() const;
+    void SetAutoReload(bool enabled) override;
+    [[nodiscard]] bool IsAutoReloadEnabled() const override;
 
-    SavestateLoadResult GetLastLoadResult() const;
-    std::string GetLastLoadVersion() const;
-    std::string GetCurrentBinPath() const;
+    [[nodiscard]] SavestateLoadResult GetLastLoadResult() const override;
+    [[nodiscard]] std::string GetLastLoadVersion() const override;
+    [[nodiscard]] std::string GetCurrentBinPath() const override;
 
-    void SetCartridge(const Cartridge& cart) { cartridge = cart; }
-    const Cartridge& GetCartridge() const { return cartridge; }
-    Cartridge& GetCartridge() { return cartridge; }
-    void ClearCartridge() { cartridge = Cartridge(); }
+    void SetCartridge(const Cartridge& cart) override { cartridge = cart; }
+    [[nodiscard]] const Cartridge& GetCartridge() const override { return cartridge; }
+    Cartridge& GetCartridge() override { return cartridge; }
+    void ClearCartridge() override { cartridge = Cartridge(); }
 
     void SetupHardware();
-    void SetRewindSnapshotsEnabled(bool enabled);
+    void SetRewindSnapshotsEnabled(bool enabled) override;
     void SetRewindInterval(int n);
     [[nodiscard]] int GetRewindInterval() const;
     void ClearRewindBuffer();
@@ -247,6 +259,8 @@ class Emulator {
     std::string currentBinPath;
     std::atomic<bool> rasterBeamSlowMotion{false};
     Cartridge cartridge;
+    bool hasError = false;
+    std::string lastError;
 
     EmulationEngine engine;
     SavestateManager savestateManager;

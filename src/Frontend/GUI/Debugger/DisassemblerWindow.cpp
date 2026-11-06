@@ -88,6 +88,9 @@ static void ResolveSymbolsForInstruction(const Control::AppState& state, uint16_
 }
 
 void DrawDisassemblerContent(Control::AppState& state) {
+    if (!state.backend) {
+        return;
+    }
 #ifdef TARGET_WASM
     ImGui::BeginDisabled();
     if (ImGui::Button("Load Symbols (.dbg / .elf)")) {
@@ -149,7 +152,7 @@ void DrawDisassemblerContent(Control::AppState& state) {
         ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
-        uint16_t progCounter = state.emulator.GetCPU().PC;
+        uint16_t progCounter = state.backend->GetCPU().PC;
         // Heuristic reverse scan to find instruction boundary
         uint16_t currentAddr = (progCounter > 32) ? progCounter - 32 : 0;
 
@@ -158,7 +161,7 @@ void DrawDisassemblerContent(Control::AppState& state) {
 
         for (int i = 0; i < 50; i++) {
             Hardware::DisassembledInstruction instr =
-                Hardware::Disassembler::Disassemble(state.emulator.GetMem(), currentAddr);
+                Hardware::Disassembler::Disassemble(state.backend->GetMem(), currentAddr);
 
             std::string labelText;
             std::string sourceText;

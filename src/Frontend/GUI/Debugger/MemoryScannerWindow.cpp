@@ -65,7 +65,10 @@ void DrawResults(Hardware::Bus& bus, const ScannerState& scan) {
 }  // namespace
 
 void DrawMemoryScannerWindow(AppState& state) {
-    Hardware::Bus& bus = state.emulator.GetMem();
+    if (!state.backend) {
+        return;
+    }
+    Hardware::Bus& bus = state.backend->GetMem();
     ScannerState& scan = state.scanner;
     auto read = [&bus](std::uint16_t addr) { return bus.ReadDirect(addr); };
 

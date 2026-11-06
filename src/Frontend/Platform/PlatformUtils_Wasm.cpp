@@ -28,4 +28,8 @@ std::string AppendExecutableExtension(std::string_view binaryName) {
     return std::string(binaryName);
 }
 
+std::string CaptureStackTrace() {
+    return "[WASM execution stack: check browser developer console]";
+}
+
 }  // namespace Frontend::Platform

@@ -57,7 +57,7 @@ namespace {
     }
 
     std::string GetDebugTooltip(Control::AppState& state, const std::string& word) {
-        if ((state.emulator.IsRunning() && !state.emulator.IsPaused()) || word.empty()) {
+        if (!state.backend || (state.backend->IsRunning() && !state.backend->IsPaused()) || word.empty()) {
             return {};
         }
 
@@ -65,7 +65,7 @@ namespace {
             if (const auto* sym = state.rom.symbols.FindSymbol(word)) {
                 if (sym->val >= 0) {
                     auto addr = static_cast<uint16_t>(sym->val);
-                    const auto& bus = state.emulator.GetMem();
+                    const auto& bus = state.backend->GetMem();
                     uint8_t byteVal = bus.ReadDirect(addr);
                     uint8_t highByte = bus.ReadDirect(static_cast<uint16_t>(addr + 1));
                     auto wordVal = static_cast<uint16_t>(byteVal | (highByte << 8));
@@ -86,7 +86,7 @@ namespace {
             return static_cast<char>(std::tolower(c));
         });
 
-        const auto& cpu = state.emulator.GetCPU();
+        const auto& cpu = state.backend->GetCPU();
         if (lower == "a") {
             uint8_t val = cpu.A;
             return std::format(

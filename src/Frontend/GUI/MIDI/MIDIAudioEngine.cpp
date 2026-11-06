@@ -8,8 +8,11 @@
 namespace GUI::MIDI {
 
 void MIDIAudioEngine::EnsureSIDReady(Control::AppState& state) {
-    state.emulator.Pause();
-    Hardware::SID& sid = state.emulator.GetSID();
+    if (!state.backend) {
+        return;
+    }
+    state.backend->Pause();
+    Hardware::SID& sid = state.backend->GetSID();
     if (!sid.IsSoundEnabled()) {
         sid.EnableSound(true);
     }
@@ -26,10 +29,13 @@ void MIDIAudioEngine::EnsureSIDReady(Control::AppState& state) {
 
 void MIDIAudioEngine::TriggerAuditionNote(Control::AppState& state, int channel, int program, int note, int velocity,
                                          std::uint8_t customWaveOverride, MIDITrackRole role) {
-    state.emulator.Pause();
+    if (!state.backend) {
+        return;
+    }
+    state.backend->Pause();
     synth_.ResetRegCache();
     EnsureSIDReady(state);
-    Hardware::SID& sid = state.emulator.GetSID();
+    Hardware::SID& sid = state.backend->GetSID();
 
     const SIDPatchParams params =
         MIDISoundBank::GetInstrumentParams(program, channel, note, velocity, sid.GetModel(), customWaveOverride);
@@ -62,8 +68,8 @@ void MIDIAudioEngine::ReleaseAuditionNote(Control::AppState& state) {
         return;
     }
     auditionReleased_ = true;
-    if (auditionElapsedSec_ >= 0.12) {
-        Hardware::SID& sid = state.emulator.GetSID();
+    if (auditionElapsedSec_ >= 0.12 && state.backend) {
+        Hardware::SID& sid = state.backend->GetSID();
         synth_.TriggerVoiceNoteOff(sid, auditionVoiceIndex_);
         auditionActive_ = false;
         auditionReleased_ = false;
@@ -71,7 +77,10 @@ void MIDIAudioEngine::ReleaseAuditionNote(Control::AppState& state) {
 }
 
 void MIDIAudioEngine::Play(Control::AppState& state, const MIDIProject& project) {
-    state.emulator.Pause();
+    if (!state.backend) {
+        return;
+    }
+    state.backend->Pause();
     synth_.ResetRegCache();
     EnsureSIDReady(state);
     transport_.Play(project);
@@ -79,10 +88,13 @@ void MIDIAudioEngine::Play(Control::AppState& state, const MIDIProject& project)
 
 void MIDIAudioEngine::Pause(Control::AppState& state) {
     transport_.Pause();
-    Hardware::SID& sid = state.emulator.GetSID();
+    if (!state.backend) {
+        return;
+    }
+    Hardware::SID& sid = state.backend->GetSID();
     AllNotesOff(sid);
-    sid.SetEmulationPaused(state.emulator.IsPaused());
-    sid.SetCpuClockRate(static_cast<double>(state.emulator.GetTargetIPS()));
+    sid.SetEmulationPaused(state.backend->IsPaused());
+    sid.SetCpuClockRate(static_cast<double>(state.backend->GetTargetIPS()));
 }
 
 void MIDIAudioEngine::Stop(Control::AppState& state) {
@@ -90,10 +102,13 @@ void MIDIAudioEngine::Stop(Control::AppState& state) {
     auditionActive_ = false;
     auditionReleased_ = false;
     synth_.ResetRegCache();
-    Hardware::SID& sid = state.emulator.GetSID();
+    if (!state.backend) {
+        return;
+    }
+    Hardware::SID& sid = state.backend->GetSID();
     AllNotesOff(sid);
-    sid.SetEmulationPaused(state.emulator.IsPaused());
-    sid.SetCpuClockRate(static_cast<double>(state.emulator.GetTargetIPS()));
+    sid.SetEmulationPaused(state.backend->IsPaused());
+    sid.SetCpuClockRate(static_cast<double>(state.backend->GetTargetIPS()));
 }
 
 void MIDIAudioEngine::Reset(Control::AppState& state) {
@@ -116,12 +131,12 @@ void MIDIAudioEngine::SetPlayheadBeats(double beats) {
 }
 
 void MIDIAudioEngine::Update(Control::AppState& state, const MIDIProject& project, float deltaSeconds) {
-    if (!IsActive()) {
+    if (!IsActive() || !state.backend) {
         return;
     }
 
     EnsureSIDReady(state);
-    Hardware::SID& sid = state.emulator.GetSID();
+    Hardware::SID& sid = state.backend->GetSID();
 
     const double clampedDelta = static_cast<double>(std::clamp(deltaSeconds, 0.001F, 0.050F));
     constexpr double SLICE_SEC = 0.001;

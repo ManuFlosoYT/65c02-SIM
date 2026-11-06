@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <array>
 #include <filesystem>
+#include <format>
 #include <string>
 
 namespace Frontend::Platform {
@@ -33,6 +34,16 @@ std::string AppendExecutableExtension(std::string_view binaryName) {
         return std::string(binaryName) + ".exe";
     }
     return std::string(binaryName);
+}
+
+std::string CaptureStackTrace() {
+    std::array<void*, 62> stack{};
+    WORD frames = CaptureStackBackTrace(0, 62, stack.data(), nullptr);
+    std::string result;
+    for (WORD i = 0; i < frames; ++i) {
+        result += std::format("[{}] 0x{:016X}\n", i, reinterpret_cast<uintptr_t>(stack[i]));
+    }
+    return result.empty() ? "No stack trace available." : result;
 }
 
 }  // namespace Frontend::Platform

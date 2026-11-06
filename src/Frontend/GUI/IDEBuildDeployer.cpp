@@ -78,26 +78,33 @@ void IDEBuildDeployer::HandleCompileAndRun(Control::AppState& state) {
                     state.rom.symbols.LoadFromFile(result.symbolFile);
                 }
                 state.ide.outputLog += "\nMicroDOS app built successfully: " + targetApp;
-                if (state.emulator.GetSDCard().IsMounted() && state.emulator.GetSDCard().IsFolderMount()) {
-                    state.emulator.GetSDCard().SyncFromHost();
+                if (state.backend && state.backend->GetSDCard().IsMounted() && state.backend->GetSDCard().IsFolderMount()) {
+                    state.backend->GetSDCard().SyncFromHost();
                     state.ide.outputLog += "\nSD Card synchronized with host folder.";
                 }
             } else {
                 state.ide.outputLog += "\nFailed to write MicroDOS app: " + targetApp;
             }
         } else {
-            state.emulator.Pause();
-            state.emulator.SetCartridge(Core::Cartridge{});
+            if (!state.backend) {
+                state.CreateBackend(state.cachedSidSampleRate);
+            }
+            if (!state.backend) {
+                state.ide.outputLog += "\nFailed to create emulator backend.";
+                return;
+            }
+            state.backend->Pause();
+            state.backend->SetCartridge(Core::Cartridge{});
             state.emulation.gpuEnabled = result.hardware.gpu;
-            state.emulator.SetGPUEnabled(result.hardware.gpu);
-            state.emulator.GetSID().EnableSound(result.hardware.sid);
-            state.emulator.SetSIDEnabled(result.hardware.sid);
+            state.backend->SetGPUEnabled(result.hardware.gpu);
+            state.backend->GetSID().EnableSound(result.hardware.sid);
+            state.backend->SetSIDEnabled(result.hardware.sid);
             state.emulation.espEnabled = result.hardware.net;
-            state.emulator.SetESPEnabled(result.hardware.net);
+            state.backend->SetESPEnabled(result.hardware.net);
             state.emulation.sdEnabled = result.hardware.sd;
-            state.emulator.SetSDEnabled(result.hardware.sd);
+            state.backend->SetSDEnabled(result.hardware.sd);
             std::string errorMsg;
-            if (state.emulator.InitFromMemory(result.binary, "compiled.bin", errorMsg)) {
+            if (state.backend->InitFromMemory(result.binary, "compiled.bin", errorMsg)) {
                 state.rom.bin = "compiled.bin";
                 state.rom.data = result.binary;
                 state.rom.loaded = true;
@@ -132,9 +139,9 @@ void IDEBuildDeployer::HandleCompileAndRun(Control::AppState& state) {
                     state.ide.outputLog += "\nLoaded " + std::to_string(state.rom.symbols.GetSymbolCount()) +
                                            " debug symbols into Disassembly.";
                 }
-                state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-                state.emulator.ClearProfiler();
-                state.emulator.Resume();
+                state.backend->SetGPUEnabled(state.emulation.gpuEnabled);
+                state.backend->ClearProfiler();
+                state.backend->Resume();
                 state.ide.outputLog += "\nSuccessfully loaded to emulator and Reset.";
             } else {
                 state.ide.outputLog += "\nEmulator Load Error: " + errorMsg;

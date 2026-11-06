@@ -78,7 +78,7 @@ bool MIDICompilerPipeline::CompileMIDIProjectToBinary(
     }
 
     const std::string cleanName = SanitizeCleanStem(midPath);
-    const std::string chipStr = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? "6581" : "8580";
+    const std::string chipStr = (state.backend && state.backend->GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? "6581" : "8580";
     const std::string sysStr = isNtsc ? "NTSC" : "PAL";
     const int mainTrackIdx = project.GetMainTrackIndex();
 
@@ -179,19 +179,26 @@ bool MIDICompilerPipeline::HandleCompileAndRunROM(
         return false;
     }
 
-    state.emulator.Pause();
-    state.emulator.SetCartridge(Core::Cartridge{});
-    state.emulator.GetSID().EnableSound(true);
-    state.emulator.SetSIDEnabled(true);
+    if (!state.backend) {
+        state.CreateBackend(state.cachedSidSampleRate);
+    }
+    if (!state.backend) {
+        session.SetStatusLog("Failed to create emulator backend.");
+        return false;
+    }
+    state.backend->Pause();
+    state.backend->SetCartridge(Core::Cartridge{});
+    state.backend->GetSID().EnableSound(true);
+    state.backend->SetSIDEnabled(true);
 
     std::string errMsg;
     const std::string romName = std::filesystem::path(binPath).filename().string();
-    if (state.emulator.InitFromMemory(binary, romName, errMsg)) {
+    if (state.backend->InitFromMemory(binary, romName, errMsg)) {
         state.rom.bin = romName;
         state.rom.data = binary;
         state.rom.loaded = true;
-        state.emulator.ClearProfiler();
-        state.emulator.Resume();
+        state.backend->ClearProfiler();
+        state.backend->Resume();
         state.ide.open = false;
         session.SetStatusLog("Loaded & running on 65C02 Emulator: " + romName);
         return true;

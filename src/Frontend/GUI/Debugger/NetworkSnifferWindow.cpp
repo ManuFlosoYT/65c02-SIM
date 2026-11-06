@@ -60,7 +60,10 @@ const char* ChannelToString(Hardware::TrafficChannel ch) {
 }  // namespace
 
 void DrawNetworkSnifferContent(Control::AppState& state) {
-    auto& esp = state.emulator.GetESP8266();
+    if (!state.backend) {
+        return;
+    }
+    auto& esp = state.backend->GetESP8266();
     auto& snifferState = state.sniffer;
 
     ImGui::BeginGroup();
@@ -90,9 +93,9 @@ void DrawNetworkSnifferContent(Control::AppState& state) {
     ImGui::Checkbox("Auto-Scroll", &snifferState.autoScroll);
     ImGui::SameLine();
 
-    bool bridgeEnabled = state.emulator.IsACIAESPBridge();
+    bool bridgeEnabled = state.backend->IsACIAESPBridge();
     if (ImGui::Checkbox("Bridge ACIA <-> ESP8266", &bridgeEnabled)) {
-        state.emulator.SetACIAESPBridge(bridgeEnabled);
+        state.backend->SetACIAESPBridge(bridgeEnabled);
         snifferState.aciaBridgeEnabled = bridgeEnabled;
     }
     ImGui::EndGroup();

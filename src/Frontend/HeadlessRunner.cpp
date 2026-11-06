@@ -6,7 +6,7 @@
 #include "Hardware/Core/Logger.h"
 
 #include "Hardware/Audio/NSFRunner.h"
-#include "Hardware/Core/Emulator/Emulator.h"
+#include "Backend/BackendFactory.h"
 
 namespace Frontend {
 
@@ -58,14 +58,18 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
         return 0;
     }
 
-    Core::Emulator emulator;
-    emulator.SetRewindSnapshotsEnabled(false);
-    emulator.GetSID().Init(sidSampleRate);
-    emulator.SetSIDEnabled(args.sidDevice);
-    emulator.GetSID().EnableSound(args.sidSound);
-    emulator.GetSID().SetProfilingEnabled(args.profileSID);
-    emulator.GetSID().ClearProfilingStats();
-    emulator.SetGPUEnabled(false);
+    auto backend = Backend::CreateEmulatorBackend();
+    if (!backend) {
+        Core::Logger::Error("Headless: Failed to create backend instance.");
+        return -1;
+    }
+    backend->SetRewindSnapshotsEnabled(false);
+    backend->GetSID().Init(sidSampleRate);
+    backend->SetSIDEnabled(args.sidDevice);
+    backend->GetSID().EnableSound(args.sidSound);
+    backend->GetSID().SetProfilingEnabled(args.profileSID);
+    backend->GetSID().ClearProfilingStats();
+    backend->SetGPUEnabled(false);
 
     std::string romPath = ResolveHeadlessRomPath(args);
     if (romPath.empty()) {
@@ -77,34 +81,34 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
     }
 
     std::string errorMsg;
-    if (!emulator.Init(romPath, errorMsg)) {
+    if (!backend->Init(romPath, errorMsg)) {
         Core::Logger::Error("Headless: Failed to load ROM: {}", errorMsg);
         return -1;
     }
 
     if (!args.scriptPath.empty()) {
-        emulator.GetScriptEngine().SetMirrorToStdout(true);
-        emulator.GetScriptEngine().LoadAndRun(args.scriptPath);
+        backend->GetScriptEngine().SetMirrorToStdout(true);
+        backend->GetScriptEngine().LoadAndRun(args.scriptPath);
     }
 
-    if (emulator.GetScriptEngine().HasPendingScript()) {
-        emulator.GetScriptEngine().ExecutePendingScript();
+    if (backend->GetScriptEngine().HasPendingScript()) {
+        backend->GetScriptEngine().ExecutePendingScript();
     }
 
     if (args.runCycles > 0) {
-        emulator.Resume();
+        backend->Resume();
         for (int i = 0; i < args.runCycles; ++i) {
-            if (emulator.IsHalted() || emulator.Step() != 0) {
+            if (backend->IsHalted() || backend->Step() != 0) {
                 break;
             }
         }
-        if (!emulator.IsPaused()) {
-            emulator.Pause();
+        if (!backend->IsPaused()) {
+            backend->Pause();
         }
     }
 
     if (args.profileSID) {
-        const auto stats = emulator.GetSID().GetProfilingStats();
+        const auto stats = backend->GetSID().GetProfilingStats();
         const auto toMilliseconds = [](std::uint64_t nanoseconds) {
             return static_cast<double>(nanoseconds) / 1'000'000.0;
         };
@@ -120,7 +124,7 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
     if (!args.dumpMemPath.empty()) {
         std::ofstream out(args.dumpMemPath, std::ios::binary);
         if (out.is_open()) {
-            auto& mem = emulator.GetMem();
+            auto& mem = backend->GetMem();
             for (uint32_t addr = 0; addr <= 0xFFFF; ++addr) {
                 char val = static_cast<char>(mem.Read<true>(static_cast<uint16_t>(addr)));
                 out.write(&val, 1);
@@ -130,8 +134,8 @@ int HeadlessRunner::Run(const Args& args, int sidSampleRate) {
         }
     }
 
-    emulator.Stop();
-    emulator.GetSID().Close();
+    backend->Stop();
+    backend->GetSID().Close();
     return 0;
 }
 

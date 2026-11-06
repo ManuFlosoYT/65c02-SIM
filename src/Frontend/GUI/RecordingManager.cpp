@@ -18,7 +18,10 @@ static void HandleSIDWindowCapture(AppState& state) {
 }
 
 static bool InitializeExporter(AppState& state, std::unique_ptr<MediaExporter>& mediaExporter) {
-    auto& sid = state.emulator.GetSID();
+    if (!state.backend) {
+        return false;
+    }
+    auto& sid = state.backend->GetSID();
 
     mediaExporter = std::make_unique<MediaExporter>();
     const MediaExporter::AudioParams audioParams{.sampleRate = sidSampleRate, .channels = 1, .bitDepth = 16};
@@ -64,11 +67,11 @@ static void HandleAutoStop(AppState& state) {
         return;
     }
 
-    bool shouldAutoStop = (state.emulator.IsHalted() || !state.emulator.IsRunning());
-    if (shouldAutoStop && state.emulator.GetTotalCycles() > 0) {
+    bool shouldAutoStop = !state.backend || state.backend->IsHalted() || !state.backend->IsRunning();
+    if (shouldAutoStop && (!state.backend || state.backend->GetTotalCycles() > 0)) {
         state.emulation.isRecordingVideo = false;
-        if (state.emulator.GetSID().IsRecording()) {
-            state.emulator.GetSID().StopRecording();
+        if (state.backend && state.backend->GetSID().IsRecording()) {
+            state.backend->GetSID().StopRecording();
         }
     }
 }
@@ -79,7 +82,9 @@ void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& media
     if (state.emulation.isRecordingVideo && !mediaExporter) {
         InitializeExporter(state, mediaExporter);
     } else if (!state.emulation.isRecordingVideo && mediaExporter) {
-        state.emulator.GetSID().ClearAudioCallback();
+        if (state.backend) {
+            state.backend->GetSID().ClearAudioCallback();
+        }
         mediaExporter->Finalize();
         mediaExporter.reset();
     }
@@ -94,7 +99,7 @@ void UpdateMediaRecording(AppState& state, std::unique_ptr<MediaExporter>& media
             processedTex = state.render.sidTexture;
         }
 
-        mediaExporter->PushFrames(rawTex, processedTex, state.emulator.IsPaused());
+        mediaExporter->PushFrames(rawTex, processedTex, state.backend ? state.backend->IsPaused() : true);
     }
 }
 

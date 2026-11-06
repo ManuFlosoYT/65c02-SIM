@@ -34,8 +34,11 @@ static void DrawFlagBadge(const char* label, bool active) {
 }
 
 void DrawRegistersSection(AppState& state) {
+    if (!state.backend) {
+        return;
+    }
     const float scale = state.render.uiScale;
-    const auto& cpu = state.emulator.GetCPU();
+    const auto& cpu = state.backend->GetCPU();
     auto printHex16 = [](const char* prefix, uint16_t val) {
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
         ImGui::TextUnformatted(prefix);

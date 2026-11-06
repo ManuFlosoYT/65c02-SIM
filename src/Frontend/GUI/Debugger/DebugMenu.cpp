@@ -55,21 +55,24 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
     ImGui::SetCursorPosY(ImGui::GetWindowHeight() - totalBottomSpace);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
 
-    ImGui::BeginDisabled(!state.rom.loaded);
+    bool isPaused = state.backend ? state.backend->IsPaused() : true;
+    ImGui::BeginDisabled(!state.rom.loaded || !state.backend);
     ImGui::SetCursorPosX(horizontalPadding);
-    if (ImGui::Button(state.emulator.IsPaused() ? "Run " : "Pause", ImVec2(adjustedWidth, 0))) {
-        if (state.emulator.IsPaused()) {
-            state.emulator.Resume();
-        } else {
-            state.emulator.Pause();
+    if (ImGui::Button(isPaused ? "Run " : "Pause", ImVec2(adjustedWidth, 0))) {
+        if (state.backend) {
+            if (state.backend->IsPaused()) {
+                state.backend->Resume();
+            } else {
+                state.backend->Pause();
+            }
+            state.backend->GetSID().SetEmulationPaused(state.backend->IsPaused());
         }
-        state.emulator.GetSID().SetEmulationPaused(state.emulator.IsPaused());
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
         if (!state.rom.loaded) {
             ImGui::TextUnformatted("Load a ROM to start execution.");
-        } else if (state.emulator.IsPaused()) {
+        } else if (isPaused) {
             ImGui::TextUnformatted("Resume CPU execution.");
         } else {
             ImGui::TextUnformatted("Pause CPU execution.");
@@ -79,11 +82,13 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
 
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button("Step", ImVec2(adjustedWidth, 0))) {
-        state.emulator.DecayHeatmap(48);
-        state.emulator.GetSID().SetEmulationPaused(false);
-        state.emulator.Pause();
-        state.emulator.Step();
-        state.emulator.GetSID().SetEmulationPaused(true);
+        if (state.backend) {
+            state.backend->DecayHeatmap(48);
+            state.backend->GetSID().SetEmulationPaused(false);
+            state.backend->Pause();
+            state.backend->Step();
+            state.backend->GetSID().SetEmulationPaused(true);
+        }
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
@@ -95,14 +100,16 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
         ImGui::EndTooltip();
     }
 
-    bool canStepBack = state.emulator.CanRewind() && state.emulator.IsPaused();
+    bool canStepBack = state.backend && state.backend->CanRewind() && state.backend->IsPaused();
     ImGui::BeginDisabled(!canStepBack);
     ImGui::SetCursorPosX(horizontalPadding);
     if (ImGui::Button("Step Back", ImVec2(adjustedWidth, 0))) {
-        state.emulator.GetSID().SetEmulationPaused(false);
-        state.emulator.Pause();
-        state.emulator.StepBack();
-        state.emulator.GetSID().SetEmulationPaused(true);
+        if (state.backend) {
+            state.backend->GetSID().SetEmulationPaused(false);
+            state.backend->Pause();
+            state.backend->StepBack();
+            state.backend->GetSID().SetEmulationPaused(true);
+        }
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
@@ -148,18 +155,22 @@ void DrawDebugControlButtons(Control::AppState& state, float sidebarWidth) {
 
 void DrawDebugMenu(Control::AppState& state) {
     if (!state.debugger.open) {
-        state.emulator.SetProfilingEnabled(false);
-        state.emulator.SetHeatmapEnabled(false);
-        state.emulator.SetLogicAnalyzerEnabled(false);
+        if (state.backend) {
+            state.backend->SetProfilingEnabled(false);
+            state.backend->SetHeatmapEnabled(false);
+            state.backend->SetLogicAnalyzerEnabled(false);
+        }
         return;
     }
 
     ImVec2 vpSize = ImGui::GetMainViewport()->Size;
     ImGui::SetNextWindowSize(ImVec2(vpSize.x * 0.75F, vpSize.y * 0.75F), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Debug Menu", &state.debugger.open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)) {
-        state.emulator.SetProfilingEnabled(false);
-        state.emulator.SetHeatmapEnabled(false);
-        state.emulator.SetLogicAnalyzerEnabled(false);
+        if (state.backend) {
+            state.backend->SetProfilingEnabled(false);
+            state.backend->SetHeatmapEnabled(false);
+            state.backend->SetLogicAnalyzerEnabled(false);
+        }
         ImGui::End();
         return;
     }
@@ -177,10 +188,12 @@ void DrawDebugMenu(Control::AppState& state) {
 
     ImGui::BeginChild("DebugContent", ImVec2(0, 0), ImGuiChildFlags_None);
 
-    state.emulator.SetProfilingEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Profiler);
-    state.emulator.SetHeatmapEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Debugger &&
-                                     state.debugger.heatmapEnabled);
-    state.emulator.SetLogicAnalyzerEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::LogicAnalyzer);
+    if (state.backend) {
+        state.backend->SetProfilingEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Profiler);
+        state.backend->SetHeatmapEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::Debugger &&
+                                         state.debugger.heatmapEnabled);
+        state.backend->SetLogicAnalyzerEnabled(state.debugger.open && state.debugger.mode == Control::DebuggerMode::LogicAnalyzer);
+    }
 
     if (state.debugger.mode == Control::DebuggerMode::Settings) {
         DrawSettingsContent(state);

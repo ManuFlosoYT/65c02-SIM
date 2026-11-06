@@ -1,4 +1,5 @@
 #include "Frontend/GUI/Debugger/DebuggerWindow.h"
+#include "Backend/IEmulatorBackend.h"
 #include "Hardware/Core/MemoryFuzzer.h"
 
 #include <imgui.h>
@@ -11,7 +12,7 @@ namespace GUI {
 namespace {
 
 void DrawCPURegisters(Control::AppState& state) {
-    Hardware::CPU& cpu = state.emulator.GetCPU();
+    Hardware::CPU& cpu = state.backend->GetCPU();
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("CPU Registers");
     ImGui::PopStyleColor();
@@ -21,43 +22,43 @@ void DrawCPURegisters(Control::AppState& state) {
     uint16_t pcVal = cpu.PC;
     if (ImGui::InputScalar("PC", ImGuiDataType_U16, &pcVal, nullptr, nullptr, "%04X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
-        state.emulator.WaitUntilSafeToMutate();
+        state.backend->WaitUntilSafeToMutate();
         cpu.PC = static_cast<uint16_t>(pcVal);
-        cpu.UpdatePagePtr(state.emulator.GetMem());
+        cpu.UpdatePagePtr(state.backend->GetMem());
     }
 
     uint16_t spVal = cpu.SP;
     if (ImGui::InputScalar("SP", ImGuiDataType_U16, &spVal, nullptr, nullptr, "%04X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
-        state.emulator.WaitUntilSafeToMutate();
+        state.backend->WaitUntilSafeToMutate();
         cpu.SP = spVal;
     }
 
     uint8_t aVal = cpu.A;
     if (ImGui::InputScalar("A", ImGuiDataType_U8, &aVal, nullptr, nullptr, "%02X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
-        state.emulator.WaitUntilSafeToMutate();
+        state.backend->WaitUntilSafeToMutate();
         cpu.A = aVal;
     }
 
     uint8_t xVal = cpu.X;
     if (ImGui::InputScalar("X", ImGuiDataType_U8, &xVal, nullptr, nullptr, "%02X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
-        state.emulator.WaitUntilSafeToMutate();
+        state.backend->WaitUntilSafeToMutate();
         cpu.X = xVal;
     }
 
     uint8_t yVal = cpu.Y;
     if (ImGui::InputScalar("Y", ImGuiDataType_U8, &yVal, nullptr, nullptr, "%02X",
                            ImGuiInputTextFlags_CharsHexadecimal)) {
-        state.emulator.WaitUntilSafeToMutate();
+        state.backend->WaitUntilSafeToMutate();
         cpu.Y = yVal;
     }
 
     ImGui::PopItemWidth();
 }
 
-void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled, float scale) {
+void DrawMemoryRow(Backend::IEmulatorBackend& backend, Hardware::Bus& bus, int row, uint16_t pc, bool heatmapEnabled, float scale) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
@@ -103,7 +104,7 @@ void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row, uint16
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0F, ImGui::GetStyle().FramePadding.y));
         if (ImGui::InputScalar("##m", ImGuiDataType_U8, &val, nullptr, nullptr, "%02X",
                                ImGuiInputTextFlags_CharsHexadecimal)) {
-            emulator.WaitUntilSafeToMutate();
+            backend.WaitUntilSafeToMutate();
             bus.WriteDirect(addr, val);
         }
         ImGui::PopStyleVar();
@@ -117,8 +118,8 @@ void DrawMemoryRow(Core::Emulator& emulator, Hardware::Bus& bus, int row, uint16
 }
 
 void DrawMemoryEditor(Control::AppState& state) {
-    Hardware::Bus& bus = state.emulator.GetMem();
-    if (!state.emulator.IsPaused() && state.debugger.heatmapEnabled) {
+    Hardware::Bus& bus = state.backend->GetMem();
+    if (!state.backend->IsPaused() && state.debugger.heatmapEnabled) {
         float dt = ImGui::GetIO().DeltaTime;
         auto decay = static_cast<uint8_t>(std::clamp(static_cast<int>(255.0F * dt / 0.8F), 1, 255));
         bus.DecayHeatmap(decay);
@@ -154,13 +155,13 @@ void DrawMemoryEditor(Control::AppState& state) {
             }
             ImGui::TableHeadersRow();
 
-            uint16_t pc = state.emulator.GetCPU().PC;
+            uint16_t pc = state.backend->GetCPU().PC;
             bool heatmapEnabled = state.debugger.heatmapEnabled;
             ImGuiListClipper clipper;
             clipper.Begin((0xFFFF + 1) / 16);
             while (clipper.Step()) {
                 for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                    DrawMemoryRow(state.emulator, bus, row, pc, heatmapEnabled, state.render.uiScale);
+                    DrawMemoryRow(*state.backend, bus, row, pc, heatmapEnabled, state.render.uiScale);
                 }
             }
             ImGui::EndTable();
@@ -169,8 +170,8 @@ void DrawMemoryEditor(Control::AppState& state) {
     ImGui::EndChild();
 }
 
-void DrawTools(Core::Emulator& emulator, float scale) {
-    Hardware::Bus& bus = emulator.GetMem();
+void DrawTools(Backend::IEmulatorBackend& backend, float scale) {
+    Hardware::Bus& bus = backend.GetMem();
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7F, 0.7F, 1.0F, 1.0F));
     ImGui::TextUnformatted("Tools");
     ImGui::PopStyleColor();
@@ -187,12 +188,12 @@ void DrawTools(Core::Emulator& emulator, float scale) {
     ImGui::PopItemWidth();
     ImGui::SameLine();
     if (ImGui::Button("Fill Random Junk")) {
-        emulator.WaitUntilSafeToMutate();
+        backend.WaitUntilSafeToMutate();
         Hardware::MemoryFuzzer::FuzzMemory(bus, startAddr, endAddr);
     }
 
     if (ImGui::Button("Corrupt Random Byte")) {
-        emulator.WaitUntilSafeToMutate();
+        backend.WaitUntilSafeToMutate();
         Hardware::MemoryFuzzer::CorruptRandomByte(bus);
     }
 }
@@ -200,6 +201,9 @@ void DrawTools(Core::Emulator& emulator, float scale) {
 }  // namespace
 
 void DrawDebuggerWindow(Control::AppState& state) {
+    if (!state.backend) {
+        return;
+    }
     DrawCPURegisters(state);
 
     ImGui::Separator();
@@ -210,7 +214,7 @@ void DrawDebuggerWindow(Control::AppState& state) {
     ImGui::Separator();
     ImGui::Spacing();
 
-    DrawTools(state.emulator, state.render.uiScale);
+    DrawTools(*state.backend, state.render.uiScale);
 }
 
 }  // namespace GUI

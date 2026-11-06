@@ -42,6 +42,8 @@
 #include "Frontend/Control/SDKManager.h"
 #include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 #include "Frontend/Platform/PlatformHooks.h"
+#include "Frontend/GUI/BackendErrorPopup.h"
+#include "Frontend/Control/RomCartridgeLoaderService.h"
 
 using namespace Control;
 using namespace Core;
@@ -155,7 +157,9 @@ static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
         if (event.type == SDL_EVENT_QUIT ||
             (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))) {
             if (Control::ShouldPromptCartridgeSDSave(state)) {
-                state.emulator.Pause();
+                if (state.backend) {
+                    state.backend->Pause();
+                }
                 state.popups.showCartridgeSavePrompt = true;
                 state.popups.pendingCartridgeAction = Control::PendingCartridgeAction::Exit;
             } else {
@@ -168,8 +172,7 @@ static void HandleSDLEvents(bool& done, SDL_Window* window, AppState& state) {
 
 static void Cleanup(AppState& state, SDL_Window* window, SDL_GLContext gl_context) {
     Control::ConfigManager::Save(state);
-    state.emulator.Stop();
-    state.emulator.GetSID().Close();
+    state.DestroyBackend();
     if (state.crtFilter.IsInitialized()) {
         state.crtFilter.Destroy();
     }
@@ -229,8 +232,8 @@ static void MainLoop(void* arg) {
         done = true;
     }
 
-    if (!state.emulator.IsPaused()) {
-        state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
+    if (state.backend && !state.backend->IsPaused()) {
+        state.emulation.instructionsPerFrame = state.backend->GetTargetIPS();
     }
 
     ImGui_ImplOpenGL3_NewFrame();
@@ -274,6 +277,7 @@ static void MainLoop(void* arg) {
 
     Frontend::HandleDialogs(state);
     Frontend::DrawPopups(state);
+    Frontend::DrawBackendErrorPopup(state);
 
     Frontend::DrawGUIWindows(state, work_pos, work_size, top_section_height, windowFlags);
 
@@ -289,6 +293,26 @@ static void MainLoop(void* arg) {
 #endif
 
     SDL_GL_SwapWindow(window);
+
+    if (state.backendStatus == Control::AppState::BackendStatus::Uninitialized) {
+        state.backendStatus = Control::AppState::BackendStatus::Initializing;
+        if (state.CreateBackend(state.cachedSidSampleRate)) {
+            if (!state.rom.bin.empty() || !state.rom.data.empty()) {
+                bool isCartridge = state.rom.bin.ends_with(".65c") || state.rom.bin.ends_with(".c65");
+                bool success = false;
+                if (isCartridge) {
+                    success = Control::LoadCartridge(state, state.rom.bin, state.rom.data);
+                } else {
+                    success = Control::LoadBinaryRom(state, state.rom.bin, state.rom.data);
+                }
+                if (success) {
+                    state.backend->Start();
+                }
+            } else {
+                state.backend->Start();
+            }
+        }
+    }
 
 #ifdef TARGET_WASM
     if (done) {
@@ -351,7 +375,7 @@ int main(int argc, char* argv[]) {
 
     static AppState state;
     Control::ConfigManager::Init(state);
-    state.emulator.GetSID().Init(sidSampleRate);
+    state.cachedSidSampleRate = sidSampleRate;
 
 #ifndef TARGET_WASM
     SDKManager::CheckSDKStatus(state);
@@ -375,22 +399,9 @@ int main(int argc, char* argv[]) {
 
     if (!args.romPath.empty()) {
         state.rom.bin = args.romPath;
-        std::string errorMsg;
-        if (state.emulator.Init(state.rom.bin, errorMsg)) {
-            state.rom.loaded = true;
-            state.rom.symbols.Clear();
-            state.emulator.ClearProfiler();
-        } else {
-            Core::Logger::Error("Failed to load ROM from args: {}", errorMsg);
-        }
     }
-    state.emulator.SetOutputCallback(Console::OutputCallback);
-    Console::SetInputResponseCallback([](char c) { state.emulator.InjectKey(c); });
-    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
 
     static bool done = false;
-    state.emulator.Start();
-
     Platform::TrimProcessMemory();
     
 #ifndef TARGET_WASM
@@ -406,7 +417,7 @@ int main(int argc, char* argv[]) {
     int framesToRender = 2;
 
     const auto isEmulationActive = [](const AppState& s) {
-        return (!s.emulator.IsPaused() && s.emulator.IsRunning()) ||
+        return (s.backend && !s.backend->IsPaused() && s.backend->IsRunning()) ||
                s.emulation.isRecordingVideo ||
                (s.ide.open && s.ide.mode == Control::IDEMode::MIDI && GUI::IsMIDIAudioActive());
     };
@@ -421,7 +432,9 @@ int main(int argc, char* argv[]) {
                     if (event.type == SDL_EVENT_QUIT ||
                         (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))) {
                         if (Control::ShouldPromptCartridgeSDSave(state)) {
-                            state.emulator.Pause();
+                            if (state.backend) {
+                                state.backend->Pause();
+                            }
                             state.popups.showCartridgeSavePrompt = true;
                             state.popups.pendingCartridgeAction = Control::PendingCartridgeAction::Exit;
                         } else {

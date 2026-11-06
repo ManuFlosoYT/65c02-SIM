@@ -362,7 +362,10 @@ void DrawSignedIntegersView(Hardware::Bus& bus, uint16_t startAddr, uint16_t end
 }  // namespace
 
 void DrawDataInspectorWindow(AppState& state) {
-    Bus& bus = state.emulator.GetMem();
+    if (!state.backend) {
+        return;
+    }
+    Bus& bus = state.backend->GetMem();
     const auto& devices = bus.GetRegisteredDevices();
     static InspectorState inspector;
 

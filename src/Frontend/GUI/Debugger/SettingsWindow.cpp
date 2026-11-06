@@ -33,10 +33,10 @@ namespace GUI {
 
 static void DrawEmulationSettings(AppState& state) {
     ImGui::SeparatorText("Emulation");
-    bool cycleOverridden = state.emulator.GetCartridge().config.cycleAccurate.has_value();
+    bool cycleOverridden = state.backend->GetCartridge().config.cycleAccurate.has_value();
     ImGui::BeginDisabled(cycleOverridden);
     if (ImGui::Checkbox("Cycle-Accurate", &state.emulation.cycleAccurate)) {
-        state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
+        state.backend->SetCycleAccurate(state.emulation.cycleAccurate);
     }
     ImGui::EndDisabled();
     if (cycleOverridden && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -60,14 +60,14 @@ static void DrawEmulationSettings(AppState& state) {
     }
 #else
     if (ImGui::Checkbox("Auto-Reload Bin", &state.emulation.autoReload)) {
-        state.emulator.SetAutoReload(state.emulation.autoReload);
+        state.backend->SetAutoReload(state.emulation.autoReload);
     }
 #endif
     if (ImGui::Checkbox("Random SD Read Latency", &state.emulation.sdLatencyEnabled)) {
-        state.emulator.GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
+        state.backend->GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
     }
     if (ImGui::Checkbox("Random RAM at Power-On", &state.emulation.ramPowerOnPattern)) {
-        state.emulator.GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
+        state.backend->GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
     }
     ImGui::SetItemTooltip("Fills RAM with random bytes on next Reset to catch uninitialized variables.");
     ImGui::Checkbox("Phase Trigger (Wave Stabilization)", &state.emulation.sidPhaseTrigger);
@@ -86,7 +86,7 @@ static void DrawScriptingSettings(AppState& state) {
         ImGui::TextUnformatted("Script Loaded & Running");
         ImGui::PopStyleColor();
         if (ImGui::Button("Stop Script", ImVec2(-FLT_MIN, 0))) {
-            state.emulator.GetScriptEngine().Stop();
+            state.backend->GetScriptEngine().Stop();
             state.script.loaded = false;
         }
     } else {
@@ -107,8 +107,8 @@ static void DrawScriptingSettings(AppState& state) {
                 state.script.path = virtualPath;
                 state.script.loaded = true;
                 state.script.showConsole = true;
-                state.emulator.Pause();
-                state.emulator.GetScriptEngine().LoadAndRun(virtualPath);
+                state.backend->Pause();
+                state.backend->GetScriptEngine().LoadAndRun(virtualPath);
             };
             WebFileUtils::open_browser_file_picker(".s65");
         }
@@ -131,25 +131,25 @@ static void DrawScriptingSettings(AppState& state) {
 static void DrawSDCardSettings(AppState& state) {
     ImGui::SeparatorText("Storage (SD Card)");
 
-    bool cartridgeHasSD = !state.emulator.GetCartridge().sdCardPath.empty();
-    bool sdMounted = state.emulator.GetSDCard().IsMounted();
+    bool cartridgeHasSD = !state.backend->GetCartridge().sdCardPath.empty();
+    bool sdMounted = state.backend->GetSDCard().IsMounted();
     if (sdMounted) {
-        if (state.emulator.GetSDCard().IsFolderMount()) {
+        if (state.backend->GetSDCard().IsFolderMount()) {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
             ImGui::TextUnformatted("SD Host Folder Mounted");
             ImGui::PopStyleColor();
-            ImGui::Text("Path: %s", state.emulator.GetSDCard().GetMountedPath().c_str());
-            if (state.emulator.GetSDCard().IsDeletionAllowed()) {
+            ImGui::Text("Path: %s", state.backend->GetSDCard().GetMountedPath().c_str());
+            if (state.backend->GetSDCard().IsDeletionAllowed()) {
                 ImGui::TextUnformatted("Host Deletions: Allowed");
             } else {
                 ImGui::TextUnformatted("Host Deletions: Restricted");
             }
             if (ImGui::Button("Sync Folder", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
-                state.emulator.GetSDCard().SyncFromHost();
+                state.backend->GetSDCard().SyncFromHost();
             }
             ImGui::SameLine();
             if (ImGui::Button("Unmount SD Card", ImVec2(-FLT_MIN, 0))) {
-                state.emulator.GetSDCard().Unmount();
+                state.backend->GetSDCard().Unmount();
             }
         } else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0F, 1.0F, 0.0F, 1.0F));
@@ -157,7 +157,7 @@ static void DrawSDCardSettings(AppState& state) {
             ImGui::PopStyleColor();
 #ifdef TARGET_WASM
             if (ImGui::Button("Save Changes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
-                std::string path = state.emulator.GetSDCard().GetMountedPath();
+                std::string path = state.backend->GetSDCard().GetMountedPath();
                 if (!path.empty()) {
                     std::ifstream ifs(path, std::ios::binary);
                     if (ifs.is_open()) {
@@ -169,11 +169,11 @@ static void DrawSDCardSettings(AppState& state) {
             }
             ImGui::SameLine();
             if (ImGui::Button("Unmount", ImVec2(-FLT_MIN, 0))) {
-                state.emulator.GetSDCard().Unmount();
+                state.backend->GetSDCard().Unmount();
             }
 #else
             if (ImGui::Button("Unmount SD Card", ImVec2(-FLT_MIN, 0))) {
-                state.emulator.GetSDCard().Unmount();
+                state.backend->GetSDCard().Unmount();
             }
 #endif
         }
@@ -191,7 +191,7 @@ static void DrawSDCardSettings(AppState& state) {
                 WebFileUtils::download_file("new_sd.img", buffer.data(), buffer.size());
                 
                 if (GUI::IsSDCardEnabled(state)) {
-                    state.emulator.GetSDCard().Mount(tempPath);
+                    state.backend->GetSDCard().Mount(tempPath);
                     state.popups.sdCardWebWarning = true;
                 }
             }
@@ -207,7 +207,7 @@ static void DrawSDCardSettings(AppState& state) {
                 }
 
                 if (GUI::IsSDCardEnabled(state)) {
-                    state.emulator.GetSDCard().Mount(virtualPath);
+                    state.backend->GetSDCard().Mount(virtualPath);
                     state.popups.sdCardWebWarning = true;
                 } else {
                     state.popups.sdCardDisabled = true;
@@ -245,7 +245,7 @@ static void DrawSettingsSaveState(AppState& state) {
 #ifdef TARGET_WASM
     if (ImGui::Button("Save State", ImVec2(ImGui::GetContentRegionAvail().x * 0.5F, 0))) {
         std::string tempPath = "/tmp/save.savestate";
-        if (state.emulator.SaveState(tempPath)) {
+        if (state.backend->SaveState(tempPath)) {
             std::ifstream ifs(tempPath, std::ios::binary);
             std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
             WebFileUtils::download_file("emulator_state.savestate", buffer.data(), buffer.size());
@@ -261,8 +261,8 @@ static void DrawSettingsSaveState(AppState& state) {
                 fclose(f);
             }
 
-            state.emulator.Pause();
-            state.emulator.LoadState(virtualPath, state.emulation.forceLoadSaveState);
+            state.backend->Pause();
+            state.backend->LoadState(virtualPath, state.emulation.forceLoadSaveState);
             Control::SyncUIStateFromEmulator(state);
         };
         WebFileUtils::open_browser_file_picker(".savestate");
@@ -352,7 +352,7 @@ static void DrawSettingsCRTPart2(AppState& state) {
     ImGui::Spacing();
     ImGui::TextUnformatted("Electron Beam");
     if (ImGui::Checkbox("Raster Beam Visualization", &state.crt.rasterBeam)) {
-        state.emulator.SetRasterBeamSlowMotion(state.crt.rasterBeam);
+        state.backend->SetRasterBeamSlowMotion(state.crt.rasterBeam);
     }
 }
 
@@ -375,7 +375,7 @@ static void DrawExportCartridgePopup(AppState& state) {
         ImGui::Text("Target IPS: %d", state.emulation.instructionsPerFrame);
         ImGui::Text("GPU: %s", state.emulation.gpuEnabled ? "Enabled" : "Disabled");
         ImGui::Text("Cycle Accurate: %s", state.emulation.cycleAccurate ? "Enabled" : "Disabled");
-        ImGui::Text("SID: %s", state.emulator.GetSID().IsSoundEnabled() ? "Enabled" : "Disabled");
+        ImGui::Text("SID: %s", state.backend->GetSID().IsSoundEnabled() ? "Enabled" : "Disabled");
         
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted("SID Model:");
@@ -415,18 +415,24 @@ static void DrawExportCartridgePopup(AppState& state) {
 }
 
 void LoadDefaultSettings(AppState& state) {
-    bool cycleOverridden = state.emulator.GetCartridge().config.cycleAccurate.has_value();
+    bool cycleOverridden = state.backend ? state.backend->GetCartridge().config.cycleAccurate.has_value() : false;
     if (!cycleOverridden) {
         state.emulation.cycleAccurate = true;
-        state.emulator.SetCycleAccurate(true);
+        if (state.backend) {
+            state.backend->SetCycleAccurate(true);
+        }
     }
     state.emulation.forceLoadSaveState = false;
     state.emulation.autoReload = true;
     Control::ConfigPlatform::SetAutoReload(state, true);
     state.emulation.sdLatencyEnabled = false;
-    state.emulator.GetSDCard().SetReadLatencyEnabled(false);
+    if (state.backend) {
+        state.backend->GetSDCard().SetReadLatencyEnabled(false);
+    }
     state.emulation.ramPowerOnPattern = false;
-    state.emulator.GetRAM().SetPowerOnPattern(false);
+    if (state.backend) {
+        state.backend->GetRAM().SetPowerOnPattern(false);
+    }
     state.emulation.sidPhaseTrigger = true;
     state.emulation.sidADSRWarning = false;
     state.emulation.vramPixelInspector = false;
@@ -453,7 +459,9 @@ void LoadDefaultSettings(AppState& state) {
     state.crt.humBar = true;
     state.crt.monitorType = CRTMonitorType::RGB;
     state.crt.rasterBeam = false;
-    state.emulator.SetRasterBeamSlowMotion(false);
+    if (state.backend) {
+        state.backend->SetRasterBeamSlowMotion(false);
+    }
     Control::ConfigManager::Save(state);
 }
 
@@ -528,6 +536,9 @@ static SettingsSnapshot CaptureSettings(const AppState& state) {
 }
 
 void DrawSettingsContent(AppState& state) {
+    if (!state.backend) {
+        return;
+    }
     bool openExportCartridgePopup = false;
     const auto before = CaptureSettings(state);
     ImGui::BeginChild("SettingsContent", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
@@ -568,7 +579,7 @@ void DrawSettingsContent(AppState& state) {
             if (ImGui::Button("Export to URL")) {
                 std::filesystem::path binPath(state.rom.bin);
                 std::string romTitle = binPath.stem().empty() ? "My Cartridge" : binPath.stem().string();
-                const auto& cart = state.emulator.GetCartridge();
+                const auto& cart = state.backend->GetCartridge();
                 std::string name = (cart.loaded && !cart.metadata.name.empty()) ? cart.metadata.name : romTitle;
                 std::string author = (cart.loaded && !cart.metadata.author.empty()) ? cart.metadata.author : authorBuf;
                 std::string desc = cart.loaded ? cart.metadata.description : descBuf;

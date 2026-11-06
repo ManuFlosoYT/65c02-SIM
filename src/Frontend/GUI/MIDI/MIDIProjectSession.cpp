@@ -19,7 +19,8 @@ void MIDIProjectSession::PushUndoState() {
 }
 
 void MIDIProjectSession::RecomputeAllocation(Control::AppState& state, MIDIAudioEngine& audioEngine) {
-    MIDIFile::ComputeVoicePreviewAllocation(project_, state.emulator.GetSID().GetModel());
+    Hardware::SIDModel model = state.backend ? state.backend->GetSID().GetModel() : Hardware::SIDModel::MOS8580;
+    MIDIFile::ComputeVoicePreviewAllocation(project_, model);
     const double totalBeats = std::max(16.0, std::ceil(project_.GetTotalDurationBeats() / 4.0) * 4.0);
     audioEngine.SetLoopRegion(0.0, totalBeats);
 }

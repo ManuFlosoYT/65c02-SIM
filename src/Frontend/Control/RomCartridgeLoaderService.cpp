@@ -8,18 +8,24 @@
 namespace Control {
 
 bool LoadBinaryRom(AppState& state, const std::string& path, const std::vector<uint8_t>& data) {
-    state.emulator.Pause();
+    if (!state.backend) {
+        if (!state.CreateBackend(state.cachedSidSampleRate)) {
+            return false;
+        }
+    }
+    state.backend->Pause();
     std::string errorMsg;
     bool success = false;
     if (!data.empty()) {
         state.rom.data = data;
-        success = state.emulator.InitFromMemory(state.rom.data, path, errorMsg);
+        success = state.backend->InitFromMemory(state.rom.data, path, errorMsg);
     } else {
-        success = state.emulator.Init(path, errorMsg);
+        success = state.backend->Init(path, errorMsg);
     }
 
     if (!success) {
         Core::Logger::Error("Failed to load ROM: {}", errorMsg);
+        state.TriggerBackendError(errorMsg, false);
         return false;
     }
 
@@ -27,13 +33,18 @@ bool LoadBinaryRom(AppState& state, const std::string& path, const std::vector<u
     state.rom.bin = path;
     state.rom.loaded = true;
     state.rom.symbols.Clear();
-    state.emulator.ClearProfiler();
-    state.emulator.ClearCartridge();
+    state.backend->ClearProfiler();
+    state.backend->ClearCartridge();
     return true;
 }
 
 bool LoadCartridge(AppState& state, const std::string& path, const std::vector<uint8_t>& data) {
-    state.emulator.Pause();
+    if (!state.backend) {
+        if (!state.CreateBackend(state.cachedSidSampleRate)) {
+            return false;
+        }
+    }
+    state.backend->Pause();
     std::string errorMsg;
     Core::Cartridge cart;
     bool loaded = false;
@@ -45,18 +56,20 @@ bool LoadCartridge(AppState& state, const std::string& path, const std::vector<u
 
     if (!loaded) {
         Core::Logger::Error("Failed to load cartridge: {}", errorMsg);
+        state.TriggerBackendError(errorMsg, false);
         return false;
     }
 
     Control::ApplyCartridgeConfig(state, cart);
-    if (!state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
+    if (!state.backend->InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
         Core::Logger::Error("Failed to init cartridge ROM: {}", errorMsg);
+        state.TriggerBackendError(errorMsg, false);
         return false;
     }
 
     state.rom.bin = path;
     state.rom.loaded = true;
-    state.emulator.ClearProfiler();
+    state.backend->ClearProfiler();
     return true;
 }
 

@@ -76,8 +76,10 @@ void MemoryHeatmapExporter::DrawControls(Control::AppState& state,
                                         std::span<unsigned char> pixels,
                                         bool& profilerDirty) {
     if (ImGui::Button("Clear Data")) {
-        state.emulator.ClearProfiler();
-        state.emulator.GetSubroutineProfiler().Clear();
+        if (state.backend) {
+            state.backend->ClearProfiler();
+            state.backend->GetSubroutineProfiler().Clear();
+        }
         profilerDirty = true;
     }
     ImGui::SameLine();
@@ -144,7 +146,9 @@ void MemoryHeatmapExporter::HandleDialogs(Control::AppState& state,
         if (Frontend::CustomFileDialog::IsOk()) {
             std::string filePath = Frontend::CustomFileDialog::GetFilePathName();
             if (state.rom.symbols.LoadFromFile(filePath)) {
-                state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+                if (state.backend) {
+                    state.backend->GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+                }
             }
         }
         Frontend::CustomFileDialog::Close();

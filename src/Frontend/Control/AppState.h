@@ -13,7 +13,9 @@
 #include "Frontend/Control/IDEState.h"
 #include "Frontend/Control/UIModalState.h"
 #include "Frontend/GUI/Video/CRTFilter.h"
-#include "Hardware/Core/Emulator/Emulator.h"
+#include "Backend/IEmulatorBackend.h"
+#include "Backend/BackendFactory.h"
+#include "Backend/BackendError.h"
 #include "Hardware/Core/MemoryScanner.h"
 #include "Hardware/Core/SymbolTable.h"
 
@@ -57,7 +59,11 @@ struct CRTSettings {
 };
 
 struct AppState {
-    Emulator emulator;
+    std::unique_ptr<Backend::IEmulatorBackend> backend;
+    enum class BackendStatus { Uninitialized, Initializing, Ready, Error };
+    BackendStatus backendStatus = BackendStatus::Uninitialized;
+    Backend::BackendErrorState lastBackendError;
+    int cachedSidSampleRate = 48000;
 
     ROMState rom;
     ScriptState script;
@@ -74,16 +80,29 @@ struct AppState {
     bool requestExit = false;
 
     GUI::CRTFilter crtFilter;
+
+    [[nodiscard]] bool HasBackend() const noexcept {
+        return backend != nullptr && backendStatus == BackendStatus::Ready;
+    }
+
+    bool CreateBackend(int sidSampleRate = 48000);
+    void DestroyBackend();
+    bool RecreateBackend(int sidSampleRate = 48000, bool reloadRom = true);
+    void TriggerBackendError(std::string_view summary, bool fatal = true);
+    void ConnectBackendCallbacksAndConfig();
 };
 
 inline void SyncUIStateFromEmulator(AppState& state) {
+    if (!state.backend) {
+        return;
+    }
     state.rom.loaded = true;
-    state.emulation.gpuEnabled = state.emulator.IsGPUEnabled();
-    state.emulation.instructionsPerFrame = state.emulator.GetTargetIPS();
-    state.emulation.cycleAccurate = state.emulator.IsCycleAccurate();
-    state.emulation.autoReload = state.emulator.IsAutoReloadEnabled();
-    state.emulation.sdLatencyEnabled = state.emulator.GetSDCard().IsReadLatencyEnabled();
-    state.rom.bin = state.emulator.GetCurrentBinPath();
+    state.emulation.gpuEnabled = state.backend->IsGPUEnabled();
+    state.emulation.instructionsPerFrame = state.backend->GetTargetIPS();
+    state.emulation.cycleAccurate = state.backend->IsCycleAccurate();
+    state.emulation.autoReload = state.backend->IsAutoReloadEnabled();
+    state.emulation.sdLatencyEnabled = state.backend->GetSDCard().IsReadLatencyEnabled();
+    state.rom.bin = state.backend->GetCurrentBinPath();
 }
 
 }  // namespace Control

@@ -17,7 +17,13 @@ void DrawLCDWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float top
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0F * state.render.uiScale, 10.0F * state.render.uiScale));
     ImGui::Begin("LCD Output", nullptr, window_flags);
 
-    const auto& lcd = state.emulator.GetLCD();
+    if (!state.backend) {
+        ImGui::End();
+        ImGui::PopStyleVar();
+        return;
+    }
+
+    const auto& lcd = state.backend->GetLCD();
     const auto& screen = lcd.GetScreen();
     bool is_initialized = lcd.IsInitialized();
 

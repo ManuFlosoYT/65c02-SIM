@@ -1,4 +1,6 @@
 file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
+    "src/Backend/*.cpp"
+    "src/Backend/*.h"
     "src/Scripting/*.cpp"
     "src/Scripting/*.h"
     "src/Hardware/*.cpp"

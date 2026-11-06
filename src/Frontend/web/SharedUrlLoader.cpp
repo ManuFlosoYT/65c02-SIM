@@ -62,18 +62,25 @@ bool SharedUrlLoader::LoadPayload(const uint8_t* data, size_t size) {
         }
     }
 
+    if (!state.backend) {
+        state.CreateBackend(state.cachedSidSampleRate);
+    }
+    if (!state.backend) {
+        return false;
+    }
+
     if (payloadSize >= 4 && payloadData[0] == 'P' && payloadData[1] == 'K' &&
         payloadData[2] == 0x03 && payloadData[3] == 0x04) {
-        state.emulator.Pause();
+        state.backend->Pause();
         std::string errorMsg;
         Core::Cartridge cart;
         if (Core::CartridgeLoader::LoadFromMemory(payloadData, payloadSize, cart, errorMsg)) {
             Control::ApplyCartridgeConfig(state, cart);
-            if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
+            if (state.backend->InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
                 state.rom.bin = cart.metadata.name.empty() ? "shared_demo.65c" : cart.metadata.name;
                 state.rom.loaded = true;
-                state.emulator.ClearProfiler();
-                state.emulator.Resume();
+                state.backend->ClearProfiler();
+                state.backend->Resume();
                 Console::Clear();
                 Core::Logger::Info("Loaded shared cartridge: {}", state.rom.bin);
                 BrowserFileBridge::ShowToast("Loaded demo from URL!");
@@ -88,10 +95,10 @@ bool SharedUrlLoader::LoadPayload(const uint8_t* data, size_t size) {
         if (f != nullptr) {
             fwrite(payloadData, 1, payloadSize, f);
             fclose(f);
-            state.emulator.Pause();
-            if (state.emulator.LoadState(virtualPath, true)) {
+            state.backend->Pause();
+            if (state.backend->LoadState(virtualPath, true)) {
                 Control::SyncUIStateFromEmulator(state);
-                state.emulator.Resume();
+                state.backend->Resume();
                 Core::Logger::Info("Loaded shared savestate.");
                 BrowserFileBridge::ShowToast("Loaded state from URL!");
                 return true;
@@ -101,16 +108,16 @@ bool SharedUrlLoader::LoadPayload(const uint8_t* data, size_t size) {
 
     std::span<const uint8_t> dataSpan(payloadData, payloadSize);
     state.rom.data.assign(dataSpan.begin(), dataSpan.end());
-    state.emulator.Pause();
+    state.backend->Pause();
     std::string errorMsg;
-    if (state.emulator.InitFromMemory(state.rom.data, "shared_demo.bin", errorMsg)) {
+    if (state.backend->InitFromMemory(state.rom.data, "shared_demo.bin", errorMsg)) {
         Console::Clear();
         state.rom.bin = "shared_demo.bin";
         state.rom.loaded = true;
         state.rom.symbols.Clear();
-        state.emulator.ClearProfiler();
-        state.emulator.ClearCartridge();
-        state.emulator.Resume();
+        state.backend->ClearProfiler();
+        state.backend->ClearCartridge();
+        state.backend->Resume();
         Core::Logger::Info("Loaded shared ROM.");
         BrowserFileBridge::ShowToast("Loaded ROM from URL!");
         return true;

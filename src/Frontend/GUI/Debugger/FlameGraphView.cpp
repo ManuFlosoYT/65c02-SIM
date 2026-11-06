@@ -84,15 +84,18 @@ void FlameGraphView::ClearFilter() {
 }
 
 void FlameGraphView::Draw(Control::AppState& state, const Hardware::SubroutineProfiler::Snapshot& snapshot) {
+    if (!state.backend) {
+        return;
+    }
     if (ImGui::Button("Clear Data")) {
-        state.emulator.ClearProfiler();
-        state.emulator.GetSubroutineProfiler().Clear();
+        state.backend->ClearProfiler();
+        state.backend->GetSubroutineProfiler().Clear();
         gZoomPath.clear();
     }
     ImGui::SameLine();
-    bool enabled = state.emulator.GetSubroutineProfiler().IsEnabled();
+    bool enabled = state.backend->GetSubroutineProfiler().IsEnabled();
     if (ImGui::Checkbox("Capture", &enabled)) {
-        state.emulator.GetSubroutineProfiler().SetEnabled(enabled);
+        state.backend->GetSubroutineProfiler().SetEnabled(enabled);
     }
     ImGui::SameLine();
     bool hasZoom = !gZoomPath.empty();

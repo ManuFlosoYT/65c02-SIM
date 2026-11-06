@@ -15,12 +15,18 @@
 namespace GUI {
 
 static void InjectSequence(Control::AppState& state, std::string_view seq) {
+    if (!state.backend) {
+        return;
+    }
     for (char chr : seq) {
-        state.emulator.InjectKey(chr);
+        state.backend->InjectKey(chr);
     }
 }
 
 static void HandleQueueCharacters(Control::AppState& state, const ImGuiIO& imgui_io) {
+    if (!state.backend) {
+        return;
+    }
     for (int idx = 0; idx < imgui_io.InputQueueCharacters.Size; idx++) {
         unsigned int chr = imgui_io.InputQueueCharacters[idx];
         if (chr == '\r' || chr == '\n') {
@@ -29,7 +35,7 @@ static void HandleQueueCharacters(Control::AppState& state, const ImGuiIO& imgui
         std::array<char, 5> utf8Buf = {0};
         size_t len = TerminalInputMapper::CodepointToUtf8(chr, utf8Buf);
         for (size_t i = 0; i < len; ++i) {
-            state.emulator.InjectKey(utf8Buf[i]);
+            state.backend->InjectKey(utf8Buf[i]);
         }
     }
 }
@@ -52,17 +58,20 @@ static void HandleNavigationKeys(Control::AppState& state, const ImGuiIO& imgui_
 }
 
 static void HandleSpecialKeys(Control::AppState& state, const ImGuiIO& imgui_io) {
+    if (!state.backend) {
+        return;
+    }
     if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-        state.emulator.InjectKey(0x1B);
+        state.backend->InjectKey(0x1B);
     }
     if (!imgui_io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Tab)) {
-        state.emulator.InjectKey(0x09);
+        state.backend->InjectKey(0x09);
     }
     if (ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
-        state.emulator.InjectKey(0x7F);
+        state.backend->InjectKey(0x7F);
     }
     if (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)) {
-        state.emulator.InjectKey('\r');
+        state.backend->InjectKey('\r');
     }
 }
 
@@ -89,8 +98,8 @@ static bool HandlePasteInput(Control::AppState& state, const ImGuiIO& imgui_io) 
                    (imgui_io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Insert));
     if (isPaste) {
         const char* clip = ImGui::GetClipboardText();
-        if (clip != nullptr && clip[0] != '\0') {
-            state.emulator.InjectText(clip);
+        if (clip != nullptr && clip[0] != '\0' && state.backend) {
+            state.backend->InjectText(clip);
         }
         return true;
     }
@@ -218,7 +227,7 @@ void DrawConsoleView(Control::AppState& state) {
         }
     }
 
-    bool isEmuActive = state.emulator.IsRunning() && !state.emulator.IsPaused() && !state.emulator.IsHalted();
+    bool isEmuActive = state.backend && state.backend->IsRunning() && !state.backend->IsPaused() && !state.backend->IsHalted();
     if (Console::IsCursorVisible() && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
         bool showCursor = !isEmuActive || (static_cast<int>(ImGui::GetTime() * 2.0) % 2 == 0);
         if (showCursor) {

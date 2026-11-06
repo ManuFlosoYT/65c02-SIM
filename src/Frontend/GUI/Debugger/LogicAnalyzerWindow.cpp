@@ -141,7 +141,7 @@ void DrawTopBar(Control::AppState& state, Hardware::LogicAnalyzer& analyzer) {
     ImGui::Checkbox("Bit-Level Ports", &uiState.showPortBits);
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0F);
-    int targetIPS = state.emulator.GetTargetIPS();
+    int targetIPS = state.backend->GetTargetIPS();
     if (targetIPS <= 0) {
         targetIPS = 1000000;
     }
@@ -475,7 +475,10 @@ void DrawWaveforms(Hardware::LogicAnalyzer& analyzer, float availWidth, float av
 }  // namespace
 
 void DrawLogicAnalyzerWindow(Control::AppState& state) {
-    auto& analyzer = state.emulator.GetLogicAnalyzer();
+    if (!state.backend) {
+        return;
+    }
+    auto& analyzer = state.backend->GetLogicAnalyzer();
 
     DrawTopBar(state, analyzer);
 

@@ -15,7 +15,7 @@ using Frontend::CustomFileDialog;
 
 #include "Hardware/Core/Console.h"
 #include "Frontend/GUI/Debugger/DebugMenu.h"
-#include "Hardware/Core/Emulator/Emulator.h"
+#include "Backend/IEmulatorBackend.h"
 #include "Hardware/Core/CartridgeLoader.h"
 #include "Frontend/Control/CartridgeUtils.h"
 #ifdef TARGET_WASM
@@ -33,18 +33,21 @@ static void DrawRecordingControls(AppState& state);
 
 
 static void DrawPlaybackControls(AppState& state) {
-    ImGui::BeginDisabled((!state.rom.loaded && !state.script.loaded) || state.emulator.IsHalted());
-    const bool isPaused = state.emulator.IsPaused();
+    bool isHalted = state.backend && state.backend->IsHalted();
+    ImGui::BeginDisabled((!state.rom.loaded && !state.script.loaded) || isHalted || !state.backend);
+    const bool isPaused = !state.backend || state.backend->IsPaused();
     if (isPaused) {
         ImGui::PushStyleColor(ImGuiCol_Button, Theme::RunBg);
         ImGui::PushStyleColor(ImGuiCol_Border, Theme::AccentActive);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     }
     if (ImGui::Button(isPaused ? "Run" : "Pause")) {
-        if (isPaused) {
-            state.emulator.Resume();
-        } else {
-            state.emulator.Pause();
+        if (state.backend) {
+            if (isPaused) {
+                state.backend->Resume();
+            } else {
+                state.backend->Pause();
+            }
         }
     }
     if (isPaused) {
@@ -53,7 +56,7 @@ static void DrawPlaybackControls(AppState& state) {
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
-        if (state.emulator.IsHalted()) {
+        if (isHalted) {
             ImGui::TextUnformatted("CPU is halted. Reset system to run.");
         } else if (!state.rom.loaded && !state.script.loaded) {
             ImGui::TextUnformatted("Load a ROM or script to start execution.");
@@ -65,23 +68,25 @@ static void DrawPlaybackControls(AppState& state) {
         ImGui::EndTooltip();
     }
     ImGui::SameLine();
-    bool stepDisabled = !state.emulator.IsPaused() || state.emulator.IsHalted();
+    bool stepDisabled = !state.backend || !state.backend->IsPaused() || isHalted;
     ImGui::BeginDisabled(stepDisabled);
     ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
     ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     if (ImGui::Button("Step")) {
-        state.emulator.Step();
+        if (state.backend) {
+            state.backend->Step();
+        }
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
-        if (state.emulator.IsHalted()) {
+        if (isHalted) {
             ImGui::TextUnformatted("CPU is halted. Reset system to step.");
         } else if (!state.rom.loaded && !state.script.loaded) {
             ImGui::TextUnformatted("Load a ROM or script to step.");
-        } else if (!state.emulator.IsPaused()) {
+        } else if (state.backend && !state.backend->IsPaused()) {
             ImGui::TextUnformatted("Emulator must be paused to use Step.");
         } else {
             ImGui::TextUnformatted("Execute a single CPU instruction.");
@@ -91,22 +96,25 @@ static void DrawPlaybackControls(AppState& state) {
     ImGui::EndDisabled();
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(!state.emulator.CanRewind() || !state.emulator.IsRunning() || !state.emulator.IsPaused());
+    bool canRewind = state.backend && state.backend->CanRewind() && state.backend->IsRunning() && state.backend->IsPaused();
+    ImGui::BeginDisabled(!canRewind);
     ImGui::PushStyleColor(ImGuiCol_Button, Theme::Surface);
     ImGui::PushStyleColor(ImGuiCol_Border, Theme::BorderSubtle);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0F);
     if (ImGui::Button("Rewind")) {
-        state.emulator.Rewind();
+        if (state.backend) {
+            state.backend->Rewind();
+        }
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
-        if (!state.emulator.IsRunning()) {
+        if (!state.backend || !state.backend->IsRunning()) {
             ImGui::TextUnformatted("Rewind unavailable: Emulation has not started.");
-        } else if (!state.emulator.IsPaused()) {
+        } else if (!state.backend->IsPaused()) {
             ImGui::TextUnformatted("Rewind unavailable: Emulator must be paused.");
-        } else if (!state.emulator.CanRewind()) {
+        } else if (!state.backend->CanRewind()) {
             ImGui::TextUnformatted("Rewind unavailable: No execution history available.");
         } else {
             ImGui::TextUnformatted("Rewind emulation to previous instruction / frame state.");
@@ -120,10 +128,14 @@ static void DrawPlaybackControls(AppState& state) {
 }
 
 static void DrawAudioVideoControls(AppState& state) {
-    bool gpuOverridden = state.emulator.GetCartridge().config.gpuEnabled.has_value();
-    ImGui::BeginDisabled(gpuOverridden);
+    static const Core::Cartridge emptyCart;
+    const auto& cart = state.backend ? state.backend->GetCartridge() : emptyCart;
+    bool gpuOverridden = cart.config.gpuEnabled.has_value();
+    ImGui::BeginDisabled(gpuOverridden || !state.backend);
     if (ImGui::Checkbox("GPU", &state.emulation.gpuEnabled)) {
-        state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
+        if (state.backend) {
+            state.backend->SetGPUEnabled(state.emulation.gpuEnabled);
+        }
     }
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -134,11 +146,13 @@ static void DrawAudioVideoControls(AppState& state) {
     }
 
     ImGui::SameLine();
-    bool soundEnabled = state.emulator.GetSID().IsSoundEnabled();
-    bool sidOverridden = state.emulator.GetCartridge().config.sidEnabled.has_value();
-    ImGui::BeginDisabled(sidOverridden);
+    bool soundEnabled = state.backend ? state.backend->GetSID().IsSoundEnabled() : true;
+    bool sidOverridden = cart.config.sidEnabled.has_value();
+    ImGui::BeginDisabled(sidOverridden || !state.backend);
     if (ImGui::Checkbox("SID", &soundEnabled)) {
-        state.emulator.GetSID().EnableSound(soundEnabled);
+        if (state.backend) {
+            state.backend->GetSID().EnableSound(soundEnabled);
+        }
     }
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -150,13 +164,15 @@ static void DrawAudioVideoControls(AppState& state) {
 
     if (soundEnabled) {
         ImGui::SameLine();
-        bool sidModelOverridden = state.emulator.GetCartridge().config.sidModel.has_value();
-        ImGui::BeginDisabled(sidModelOverridden);
+        bool sidModelOverridden = cart.config.sidModel.has_value();
+        ImGui::BeginDisabled(sidModelOverridden || !state.backend);
         ImGui::PushItemWidth(150.0F * state.render.uiScale);
         const char* sidModels[] = { "MOS 6581", "MOS 8580" };
-        int currentSIDModel = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
+        int currentSIDModel = (state.backend && state.backend->GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
         if (ImGui::Combo("##SIDModel", &currentSIDModel, sidModels, 2)) {
-            state.emulator.GetSID().SetModel(currentSIDModel == 0 ? Hardware::SIDModel::MOS6581 : Hardware::SIDModel::MOS8580);
+            if (state.backend) {
+                state.backend->GetSID().SetModel(currentSIDModel == 0 ? Hardware::SIDModel::MOS6581 : Hardware::SIDModel::MOS8580);
+            }
         }
         ImGui::PopItemWidth();
         ImGui::EndDisabled();
@@ -211,8 +227,10 @@ static void DrawTargetIPS(AppState& state) {
         s_displayValue = static_cast<double>(s_lastIPS) / mult;
     }
 
-    bool ipsOverridden = state.emulator.GetCartridge().config.targetIPS.has_value();
-    ImGui::BeginDisabled(ipsOverridden);
+    static const Core::Cartridge emptyCart;
+    const auto& cart = state.backend ? state.backend->GetCartridge() : emptyCart;
+    bool ipsOverridden = cart.config.targetIPS.has_value();
+    ImGui::BeginDisabled(ipsOverridden || !state.backend);
 
     ImGui::AlignTextToFramePadding();
     ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
@@ -235,7 +253,9 @@ static void DrawTargetIPS(AppState& state) {
         double mult = (s_currentUnit == 0) ? 1'000'000.0 : (s_currentUnit == 1 ? 1'000.0 : 1.0);
         int newIPS = std::max(1, static_cast<int>(std::round(s_displayValue * mult)));
         state.emulation.instructionsPerFrame = newIPS;
-        state.emulator.SetTargetIPS(newIPS);
+        if (state.backend) {
+            state.backend->SetTargetIPS(newIPS);
+        }
         s_lastIPS = newIPS;
     }
 
@@ -263,15 +283,15 @@ static void DrawTargetIPS(AppState& state) {
 }
 
 static void DrawActualIPS(AppState& state) {
-    const auto stats = state.emulator.GetRuntimeStats();
+    const auto stats = state.backend ? state.backend->GetRuntimeStats() : Core::RuntimeStats{};
     const uint64_t displayedRate = state.emulation.cycleAccurate
                                        ? stats.cyclesPerSecond
                                        : stats.instructionsPerSecond;
     const char* unitM = state.emulation.cycleAccurate ? "MHz" : "MIPS";
     const char* unitK = state.emulation.cycleAccurate ? "KHz" : "KIPS";
     const char* unitH = state.emulation.cycleAccurate ? "Hz" : "IPS";
-    const auto targetRate = static_cast<uint64_t>(state.emulator.GetTargetIPS());
-    const bool isLate = state.emulator.IsRunning() && !state.emulator.IsPaused() &&
+    const auto targetRate = state.backend ? static_cast<uint64_t>(state.backend->GetTargetIPS()) : 1000000ULL;
+    const bool isLate = state.backend && state.backend->IsRunning() && !state.backend->IsPaused() &&
                         (displayedRate < static_cast<uint64_t>(static_cast<double>(targetRate) * 0.95));
     ImGui::PushStyleColor(ImGuiCol_Text, isLate ? Theme::RecActive : Theme::AccentPrimary);
     if (displayedRate >= 1000000) {
@@ -288,7 +308,7 @@ static void DrawActualIPS(AppState& state) {
             ImGui::TextUnformatted("Simulation Rate");
             ImGui::Separator();
             ImGui::Text("Cycles/s: %llu", static_cast<unsigned long long>(stats.cyclesPerSecond));
-            if (state.emulator.IsGPUEnabled()) {
+            if (state.backend && state.backend->IsGPUEnabled()) {
                 const double gpuPercent = stats.cyclesPerSecond > 0
                                               ? (static_cast<double>(stats.gpuCyclesPerSecond) * 100.0 /
                                                  static_cast<double>(stats.cyclesPerSecond))
@@ -313,10 +333,12 @@ static void DrawActualIPS(AppState& state) {
 
             std::vector<std::string> activeComponents;
             std::unordered_set<const Hardware::IBusDevice*> seenDevices;
-            for (const auto& reg : state.emulator.GetMem().GetRegisteredDevices()) {
-                if (reg.enabled && reg.device && !seenDevices.contains(reg.device)) {
-                    seenDevices.insert(reg.device);
-                    activeComponents.push_back(reg.device->GetName());
+            if (state.backend) {
+                for (const auto& reg : state.backend->GetMem().GetRegisteredDevices()) {
+                    if (reg.enabled && reg.device && !seenDevices.contains(reg.device)) {
+                        seenDevices.insert(reg.device);
+                        activeComponents.push_back(reg.device->GetName());
+                    }
                 }
             }
 
@@ -491,7 +513,7 @@ static void DrawRecordingConfigPopup(AppState& state) {
 }
 
 static void DrawRecordingControls(AppState& state) {
-    bool isRecording = state.emulation.isRecordingVideo || state.emulator.GetSID().IsRecording();
+    bool isRecording = state.emulation.isRecordingVideo || (state.backend && state.backend->GetSID().IsRecording());
 
     ImGui::BeginDisabled(!state.rom.loaded);
 
@@ -510,8 +532,8 @@ static void DrawRecordingControls(AppState& state) {
         if (isRecording) {
             if (state.emulation.isRecordingVideo) {
                 state.emulation.isRecordingVideo = false;
-            } else {
-                state.emulator.GetSID().StopRecording();
+            } else if (state.backend) {
+                state.backend->GetSID().StopRecording();
             }
         } else {
             ImGui::OpenPopup("RecordingConfig");
@@ -564,7 +586,9 @@ static void HandleRecordAudioDialog(AppState& state) {
     if (CustomFileDialog::Display("RecordSIDDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePath = CustomFileDialog::GetFilePathName();
-            state.emulator.GetSID().StartRecording(filePath);
+            if (state.backend) {
+                state.backend->GetSID().StartRecording(filePath);
+            }
         }
         CustomFileDialog::Close();
     }

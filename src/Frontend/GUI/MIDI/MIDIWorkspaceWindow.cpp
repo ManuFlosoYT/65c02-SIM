@@ -353,11 +353,13 @@ void DrawSecondRowTransportAndPipelineBar(MIDIWorkspaceState& ws, Control::AppSt
 
     ImGui::SameLine();
     ImGui::SetNextItemWidth(74.0F * state.render.uiScale);
-    int chipIdx = (state.emulator.GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
+    int chipIdx = (state.backend && state.backend->GetSID().GetModel() == Hardware::SIDModel::MOS6581) ? 0 : 1;
     static constexpr std::array<const char*, 2> CHIP_LABELS = {"6581", "8580"};
     if (ImGui::Combo("##ChipModel", &chipIdx, CHIP_LABELS.data(), static_cast<int>(CHIP_LABELS.size()))) {
         const auto newModel = (chipIdx == 0) ? Hardware::SIDModel::MOS6581 : Hardware::SIDModel::MOS8580;
-        state.emulator.GetSID().SetModel(newModel);
+        if (state.backend) {
+            state.backend->GetSID().SetModel(newModel);
+        }
         ws.session.RecomputeAllocation(state, ws.audioEngine);
     }
     ShowTextTooltip("Target SID Chip Model (6581 Warm Analog vs 8580 Crisp Clean Mixed Waveforms)");
@@ -636,8 +638,9 @@ void DrawTrackInspectorPanel(MIDIWorkspaceState& ws, Control::AppState& state, f
     }
 
     const int inspectPitch = (track.channel == 9) ? 38 : 60;
+    Hardware::SIDModel sidModel = state.backend ? state.backend->GetSID().GetModel() : Hardware::SIDModel::MOS8580;
     const auto patch = MIDI::MIDISoundBank::GetInstrumentParams(
-        track.program, track.channel, inspectPitch, 100, state.emulator.GetSID().GetModel(), track.customWaveOverride);
+        track.program, track.channel, inspectPitch, 100, sidModel, track.customWaveOverride);
 
     const std::uint8_t attack = (patch.attackDecay >> 4U) & 0x0FU;
     const std::uint8_t decay = patch.attackDecay & 0x0FU;

@@ -274,8 +274,11 @@ void DrawBreakpointList(Hardware::BreakpointManager& manager, const std::vector<
 }  // namespace
 
 void DrawBreakpointWindow(Control::AppState& state) {
+    if (!state.backend) {
+        return;
+    }
     static BreakpointFormState form;
-    auto& manager = state.emulator.GetBreakpointManager();
+    auto& manager = state.backend->GetBreakpointManager();
     const auto bpSnapshot = manager.GetBreakpointsSnapshot();
 
     int activeCount = 0;

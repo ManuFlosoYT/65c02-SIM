@@ -1,16 +1,19 @@
 #include "Frontend/Control/SDUtils.h"
 #include "Hardware/Storage/FAT16Utils.h"
-#include "Hardware/Core/Emulator/Emulator.h"
+#include "Hardware/Core/IBusDevice.h"
 #include <filesystem>
 #include <fstream>
 
 namespace GUI {
 
 bool IsSDCardEnabled(Control::AppState& state) {
-    auto& bus = state.emulator.GetMem();
+    if (!state.backend) {
+        return false;
+    }
+    auto& bus = state.backend->GetMem();
     const auto& devices = bus.GetRegisteredDevices();
     for (const auto& reg : devices) {
-        if (reg.device == static_cast<Hardware::IBusDevice*>(&state.emulator.GetSDCard())) {
+        if (reg.device == static_cast<Hardware::IBusDevice*>(&state.backend->GetSDCard())) {
             return reg.enabled;
         }
     }
@@ -22,10 +25,10 @@ bool CreateFAT16Image(const std::string& path) {
 }
 
 bool MountFolder(Control::AppState& state, const std::string& folderPath, bool allowDeletion) {
-    if (!IsSDCardEnabled(state)) {
+    if (!IsSDCardEnabled(state) || !state.backend) {
         return false;
     }
-    return state.emulator.GetSDCard().MountFolder(folderPath, allowDeletion);
+    return state.backend->GetSDCard().MountFolder(folderPath, allowDeletion);
 }
 
 bool CreateFAT16FromFolder(const std::string& folderPath, const std::string& outputPath) {

@@ -21,7 +21,7 @@ void VRAMImageIO::ConvertVRAMToRGB(const Hardware::GPU& gpu, uint8_t* dst) {
     for (size_t yIndex = 0; yIndex < Hardware::GPU::VRAM_HEIGHT; yIndex++) {
         for (size_t xIndex = 0; xIndex < Hardware::GPU::VRAM_WIDTH; xIndex++) {
             size_t idx = (yIndex * Hardware::GPU::VRAM_WIDTH + xIndex) * 3;
-            Core::Byte val = gpu.GetVRAM().at(yIndex).at(xIndex);
+            uint8_t val = gpu.GetVRAM().at(yIndex).at(xIndex);
             dst[idx + 0] = ((val >> 4) & 0x03) * 85;
             dst[idx + 1] = ((val >> 2) & 0x03) * 85;
             dst[idx + 2] = (val & 0x03) * 85;
@@ -40,8 +40,10 @@ void VRAMImageIO::LoadVRAMFromFile(const std::string& imgPath, Control::AppState
         file.seekg(0, std::ios::beg);
         std::vector<unsigned char> buf(static_cast<size_t>(fileSize));
         if (file.read(std::bit_cast<char*>(buf.data()), fileSize)) {
-            Hardware::GPU& gpu = state.emulator.GetGPU();
-            gpu.LoadVRAM(buf);
+            if (state.backend) {
+                Hardware::GPU& gpu = state.backend->GetGPU();
+                gpu.LoadVRAM(buf);
+            }
         }
     }
 }
@@ -53,7 +55,10 @@ void VRAMImageIO::ExportVRAMBMP(Control::AppState& state) {
     int capW = Hardware::GPU::VRAM_WIDTH;
     int capH = Hardware::GPU::VRAM_HEIGHT;
     pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
-    Hardware::GPU& gpu = state.emulator.GetGPU();
+    if (!state.backend) {
+        return;
+    }
+    Hardware::GPU& gpu = state.backend->GetGPU();
     ConvertVRAMToRGB(gpu, pixels.data());
     SDL_Surface* surface = SDL_CreateSurfaceFrom(capW, capH, SDL_PIXELFORMAT_RGB24, pixels.data(), capW * 3);
     if (surface != nullptr) {
@@ -115,8 +120,10 @@ void VRAMImageIO::HandleVRAMSaveDialog(Control::AppState& state) {
             capW = Hardware::GPU::VRAM_WIDTH;
             capH = Hardware::GPU::VRAM_HEIGHT;
             pixels.resize(static_cast<std::size_t>(capW) * static_cast<std::size_t>(capH) * 3);
-            Hardware::GPU& gpu = state.emulator.GetGPU();
-            ConvertVRAMToRGB(gpu, pixels.data());
+            if (state.backend) {
+                Hardware::GPU& gpu = state.backend->GetGPU();
+                ConvertVRAMToRGB(gpu, pixels.data());
+            }
         }
 
         SDL_Surface* surface = SDL_CreateSurfaceFrom(capW, capH, SDL_PIXELFORMAT_RGB24, pixels.data(), capW * 3);

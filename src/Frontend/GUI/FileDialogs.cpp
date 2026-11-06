@@ -29,17 +29,22 @@ static void HandleROMFilePicker(AppState& state) {
     if (CustomFileDialog::Display("ChooseFileDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePathName = CustomFileDialog::GetFilePathName();
-            state.emulator.Pause();
+            if (!state.backend) {
+                state.CreateBackend(state.cachedSidSampleRate);
+            }
+            if (state.backend) {
+                state.backend->Pause();
+            }
             std::string errorMsg;
             if (filePathName.ends_with(".65c") || filePathName.ends_with(".c65")) {
                 Core::Cartridge cart;
                 if (Core::CartridgeLoader::Load(filePathName, cart, errorMsg)) {
                     Control::ApplyCartridgeConfig(state, cart);
                     ImGui::OpenPopup("Cartridge Loaded");
-                    if (state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
+                    if (state.backend && state.backend->InitFromMemory(cart.romData, cart.romFileName, errorMsg)) {
                         state.rom.bin = filePathName;
                         state.rom.loaded = true;
-                        state.emulator.ClearProfiler();
+                        state.backend->ClearProfiler();
                     } else {
                         ImGui::OpenPopup("ErrorLoadingROM");
                     }
@@ -48,13 +53,13 @@ static void HandleROMFilePicker(AppState& state) {
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }
             } else {
-                if (state.emulator.Init(filePathName, errorMsg)) {
+                if (state.backend && state.backend->Init(filePathName, errorMsg)) {
                     Console::Clear();
                     state.rom.bin = filePathName;
                     state.rom.loaded = true;
                     state.rom.symbols.Clear();
-                    state.emulator.ClearProfiler();
-                    state.emulator.ClearCartridge();
+                    state.backend->ClearProfiler();
+                    state.backend->ClearCartridge();
                 } else {
                     ImGui::OpenPopup("ErrorLoadingROM");
                 }
@@ -68,9 +73,11 @@ static void HandleSaveStateFilePicker(AppState& state) {
     if (CustomFileDialog::Display("SaveStateDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePathName = CustomFileDialog::GetFilePathName();
-            state.emulator.Pause();
-            if (!state.emulator.SaveState(filePathName)) {
-                ImGui::OpenPopup("ErrorSavingState");
+            if (state.backend) {
+                state.backend->Pause();
+                if (!state.backend->SaveState(filePathName)) {
+                    ImGui::OpenPopup("ErrorSavingState");
+                }
             }
         }
         CustomFileDialog::Close();
@@ -81,19 +88,21 @@ static void HandleLoadStateFilePicker(AppState& state) {
     if (CustomFileDialog::Display("LoadStateDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePathName = CustomFileDialog::GetFilePathName();
-            state.emulator.Pause();
-            state.emulator.LoadState(filePathName, state.emulation.forceLoadSaveState);
-            auto loadResult = state.emulator.GetLastLoadResult();
-            bool loadedOk = loadResult == SavestateLoadResult::Success ||
-                            loadResult == SavestateLoadResult::VersionMismatch ||
-                            loadResult == SavestateLoadResult::HashMismatch;
+            if (state.backend) {
+                state.backend->Pause();
+                state.backend->LoadState(filePathName, state.emulation.forceLoadSaveState);
+                auto loadResult = state.backend->GetLastLoadResult();
+                bool loadedOk = loadResult == SavestateLoadResult::Success ||
+                                loadResult == SavestateLoadResult::VersionMismatch ||
+                                loadResult == SavestateLoadResult::HashMismatch;
 
-            if (loadedOk) {
-                Control::SyncUIStateFromEmulator(state);
-            }
+                if (loadedOk) {
+                    Control::SyncUIStateFromEmulator(state);
+                }
 
-            if (loadResult != SavestateLoadResult::Success) {
-                ImGui::OpenPopup("SavestateFeedback");
+                if (loadResult != SavestateLoadResult::Success) {
+                    ImGui::OpenPopup("SavestateFeedback");
+                }
             }
         }
         CustomFileDialog::Close();
@@ -117,8 +126,8 @@ void HandleCreateSDDialog(AppState& state) {
                 std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
                 WebFileUtils::download_file("new_sd.img", buffer.data(), buffer.size());
 #endif
-                if (GUI::IsSDCardEnabled(state)) {
-                    state.emulator.GetSDCard().Mount(filePath);
+                if (GUI::IsSDCardEnabled(state) && state.backend) {
+                    state.backend->GetSDCard().Mount(filePath);
                 } else {
                     state.popups.sdCardDisabled = true;
                 }
@@ -132,8 +141,8 @@ void HandleMountSDDialog(AppState& state) {
     if (CustomFileDialog::Display("MountSDDlgKey")) {
         if (CustomFileDialog::IsOk()) {
             std::string filePath = CustomFileDialog::GetFilePathName();
-            if (GUI::IsSDCardEnabled(state)) {
-                state.emulator.GetSDCard().Mount(filePath);
+            if (GUI::IsSDCardEnabled(state) && state.backend) {
+                state.backend->GetSDCard().Mount(filePath);
             } else {
                 state.popups.sdCardDisabled = true;
             }
@@ -171,8 +180,10 @@ void HandleLoadScriptDialog(AppState& state) {
             state.script.path = filePath;
             state.script.loaded = true;
             state.script.showConsole = true;
-            state.emulator.Pause();
-            state.emulator.GetScriptEngine().LoadAndRun(filePath);
+            if (state.backend) {
+                state.backend->Pause();
+                state.backend->GetScriptEngine().LoadAndRun(filePath);
+            }
             ImGui::CloseCurrentPopup();
         }
         CustomFileDialog::Close();

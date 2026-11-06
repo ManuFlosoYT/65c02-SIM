@@ -1,7 +1,6 @@
 #include "Frontend/GUI/ScriptConsoleWindow.h"
 
 #include "Frontend/Control/AppState.h"
-#include "Hardware/Core/Emulator/Emulator.h"
 
 namespace GUI {
 
@@ -15,7 +14,9 @@ void DrawScriptConsoleWindow(Control::AppState& state, const ImVec2& work_pos, c
 
     if (ImGui::Begin("Script Console", &state.script.showConsole, ImGuiWindowFlags_NoCollapse)) {
         if (ImGui::Button("Clear")) {
-            state.emulator.GetScriptEngine().ClearOutput();
+            if (state.backend) {
+                state.backend->GetScriptEngine().ClearOutput();
+            }
         }
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
@@ -36,9 +37,11 @@ void DrawScriptConsoleWindow(Control::AppState& state, const ImVec2& work_pos, c
 
         ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
         
-        auto output = state.emulator.GetScriptEngine().GetOutput();
-        for (const auto& line : output) {
-            ImGui::TextUnformatted(line.c_str());
+        if (state.backend) {
+            auto output = state.backend->GetScriptEngine().GetOutput();
+            for (const auto& line : output) {
+                ImGui::TextUnformatted(line.c_str());
+            }
         }
         
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {

@@ -183,9 +183,11 @@ bool ConfigManager::Load(AppState& state) {
         if (currentSection == "emulation") {
             if (key == "cycle_accurate") {
                 state.emulation.cycleAccurate = ParseBool(val, state.emulation.cycleAccurate);
-                bool cycleOverridden = state.emulator.GetCartridge().config.cycleAccurate.has_value();
-                if (!cycleOverridden) {
-                    state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
+                if (state.backend) {
+                    bool cycleOverridden = state.backend->GetCartridge().config.cycleAccurate.has_value();
+                    if (!cycleOverridden) {
+                        state.backend->SetCycleAccurate(state.emulation.cycleAccurate);
+                    }
                 }
             } else if (key == "force_load_savestate") {
                 state.emulation.forceLoadSaveState = ParseBool(val, state.emulation.forceLoadSaveState);
@@ -194,10 +196,14 @@ bool ConfigManager::Load(AppState& state) {
                 ConfigPlatform::SetAutoReload(state, state.emulation.autoReload);
             } else if (key == "sd_latency") {
                 state.emulation.sdLatencyEnabled = ParseBool(val, state.emulation.sdLatencyEnabled);
-                state.emulator.GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
+                if (state.backend) {
+                    state.backend->GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
+                }
             } else if (key == "ram_power_on_pattern") {
                 state.emulation.ramPowerOnPattern = ParseBool(val, state.emulation.ramPowerOnPattern);
-                state.emulator.GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
+                if (state.backend) {
+                    state.backend->GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
+                }
             } else if (key == "sid_phase_trigger") {
                 state.emulation.sidPhaseTrigger = ParseBool(val, state.emulation.sidPhaseTrigger);
             } else if (key == "sid_adsr_warning") {
@@ -250,7 +256,9 @@ bool ConfigManager::Load(AppState& state) {
                 state.crt.monitorType = ParseMonitorType(val, state.crt.monitorType);
             } else if (key == "raster_beam") {
                 state.crt.rasterBeam = ParseBool(val, state.crt.rasterBeam);
-                state.emulator.SetRasterBeamSlowMotion(state.crt.rasterBeam);
+                if (state.backend) {
+                    state.backend->SetRasterBeamSlowMotion(state.crt.rasterBeam);
+                }
             }
         }
     }

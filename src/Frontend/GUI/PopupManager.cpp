@@ -41,7 +41,7 @@ static void DrawROMAndStatePopups(AppState& state) {
 
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
     if (ImGui::BeginPopupModal("SavestateFeedback", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
-        auto result = state.emulator.GetLastLoadResult();
+        auto result = state.backend ? state.backend->GetLastLoadResult() : SavestateLoadResult::GenericError;
         if (result == SavestateLoadResult::VersionMismatch || result == SavestateLoadResult::HashMismatch) {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 1.0F, 0.0F, 1.0F));
             ImGui::TextUnformatted("Warning: Savestate compatibility issue");
@@ -49,7 +49,8 @@ static void DrawROMAndStatePopups(AppState& state) {
             if (result == SavestateLoadResult::VersionMismatch) {
                 ImGui::TextUnformatted("Version mismatch detected:");
                 ImGui::Bullet();
-                ImGui::TextUnformatted(std::format("Saved: {}", state.emulator.GetLastLoadVersion()).c_str());
+                std::string savedVer = state.backend ? state.backend->GetLastLoadVersion() : "unknown";
+                ImGui::TextUnformatted(std::format("Saved: {}", savedVer).c_str());
                 ImGui::Bullet();
                 ImGui::TextUnformatted(std::format("Current: {}", PROJECT_VERSION).c_str());
             } else {
@@ -162,7 +163,8 @@ static void DrawCartridgePopups(AppState& state) {
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
 
     if (ImGui::BeginPopupModal("Cartridge Loaded", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
-        const auto& cart = state.emulator.GetCartridge();
+        static const Core::Cartridge emptyCart;
+        const auto& cart = state.backend ? state.backend->GetCartridge() : emptyCart;
         if (cart.loaded) {
             std::string nameLine = "Name: " + cart.metadata.name;
             std::string authorLine = "Author: " + cart.metadata.author;
@@ -223,58 +225,40 @@ void DrawPopups(AppState& state) {
 }
 
 bool ShouldPromptCartridgeSDSave(const Control::AppState& state) {
-    const auto& cart = state.emulator.GetCartridge();
-    return cart.loaded && !cart.sdCardPath.empty() && state.emulator.GetSDCard().IsMounted() &&
-           state.emulator.GetSDCard().IsModified();
+    if (!state.backend) {
+        return false;
+    }
+    const auto& cart = state.backend->GetCartridge();
+    return cart.loaded && !cart.sdCardPath.empty() && state.backend->GetSDCard().IsMounted() &&
+           state.backend->GetSDCard().IsModified();
 }
 
 void ExecuteReset(Control::AppState& state) {
-    bool wasRunning = !state.emulator.IsPaused();
+    bool wasRunning = state.backend && !state.backend->IsPaused();
 
-    if (state.emulator.GetCartridge().loaded && !state.emulator.GetCartridge().sdCardPath.empty() &&
-        state.emulator.GetSDCard().IsMounted() && state.emulator.GetSDCard().IsModified()) {
-        Core::CartridgeLoader::SaveSDToZip(state.emulator.GetCartridge());
-        state.emulator.GetSDCard().SetModified(false);
+    if (state.backend && state.backend->GetCartridge().loaded && !state.backend->GetCartridge().sdCardPath.empty() &&
+        state.backend->GetSDCard().IsMounted() && state.backend->GetSDCard().IsModified()) {
+        Core::CartridgeLoader::SaveSDToZip(state.backend->GetCartridge());
+        state.backend->GetSDCard().SetModified(false);
     }
 
-    Core::Cartridge cart = state.emulator.GetCartridge();
+    static const Core::Cartridge emptyCart;
+    Core::Cartridge cart = state.backend ? state.backend->GetCartridge() : emptyCart;
     bool hadCartridge = cart.loaded;
     std::string romBin = state.rom.bin;
     std::vector<uint8_t> romData = state.rom.data;
     bool hadRom = state.rom.loaded;
 
-    int targetIPS = state.emulation.instructionsPerFrame;
-    bool cycleAccurate = state.emulation.cycleAccurate;
-    bool gpuEnabled = state.emulation.gpuEnabled;
-    bool espEnabled = state.emulation.espEnabled;
-    bool sdEnabled = state.emulation.sdEnabled;
-    bool autoReload = state.emulation.autoReload;
-
-    state.emulator.Stop();
-    std::destroy_at(&state.emulator);
-    std::construct_at(&state.emulator);
-
-    state.emulator.GetSID().Init(44100);
-    state.emulator.SetOutputCallback(Console::OutputCallback);
+    state.RecreateBackend(state.cachedSidSampleRate, /*reloadRom=*/false);
 
     Console::Clear();
-    state.emulator.ClearProfiler();
     if (state.crtFilter.IsInitialized()) {
         state.crtFilter.Reset();
     }
     state.render.lastDisplayTex = 0;
 
-    state.emulator.SetTargetIPS(targetIPS);
-    state.emulator.SetCycleAccurate(cycleAccurate);
-    state.emulator.SetGPUEnabled(gpuEnabled);
-    state.emulator.SetESPEnabled(espEnabled);
-    state.emulator.SetSDEnabled(sdEnabled);
-    state.emulator.SetAutoReload(autoReload);
-    state.emulator.GetRAM().SetPowerOnPattern(state.emulation.ramPowerOnPattern);
-    state.emulator.GetSDCard().SetReadLatencyEnabled(state.emulation.sdLatencyEnabled);
-
-    if (state.rom.symbols.GetSymbolCount() > 0) {
-        state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+    if (state.rom.symbols.GetSymbolCount() > 0 && state.backend) {
+        state.backend->GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
     }
 
     if (hadCartridge) {
@@ -289,19 +273,21 @@ void ExecuteReset(Control::AppState& state) {
 #endif
         Control::ApplyCartridgeConfig(state, cart);
         std::string errorMsg;
-        state.emulator.InitFromMemory(cart.romData, cart.romFileName, errorMsg);
+        if (state.backend) {
+            state.backend->InitFromMemory(cart.romData, cart.romFileName, errorMsg);
+        }
     } else if (hadRom) {
         std::string errorMsg;
 #ifdef TARGET_WASM
-        if (!state.emulator.InitFromMemory(romData, romBin, errorMsg)) {
+        if (state.backend && !state.backend->InitFromMemory(romData, romBin, errorMsg)) {
             state.rom.loaded = false;
         }
 #else
         bool initSuccess = false;
-        if (!romData.empty()) {
-            initSuccess = state.emulator.InitFromMemory(romData, romBin, errorMsg);
-        } else if (!romBin.empty()) {
-            initSuccess = state.emulator.Init(romBin, errorMsg);
+        if (!romData.empty() && state.backend) {
+            initSuccess = state.backend->InitFromMemory(romData, romBin, errorMsg);
+        } else if (!romBin.empty() && state.backend) {
+            initSuccess = state.backend->Init(romBin, errorMsg);
         }
         if (!initSuccess) {
             state.rom.loaded = false;
@@ -310,37 +296,43 @@ void ExecuteReset(Control::AppState& state) {
 #endif
     }
 
-    state.emulator.Start();
+    if (state.backend) {
+        state.backend->Start();
 
-    if (wasRunning) {
-        state.emulator.Resume();
-        state.emulator.GetSID().SetEmulationPaused(false);
+        if (wasRunning) {
+            state.backend->Resume();
+            state.backend->GetSID().SetEmulationPaused(false);
+        }
     }
 }
 
 void ExecuteEjectCartridge(Control::AppState& state) {
-    state.emulator.GetSDCard().Unmount();
-    state.emulator.ClearCartridge();
+    if (state.backend) {
+        state.backend->GetSDCard().Unmount();
+        state.backend->ClearCartridge();
+        state.backend->SetGPUEnabled(false);
+        state.backend->SetESPEnabled(false);
+        state.backend->SetSDEnabled(false);
+        state.backend->SetCycleAccurate(true);
+        state.backend->SetTargetIPS(1000000);
+        state.backend->Reset();
+        state.backend->Pause();
+    }
     state.emulation.gpuEnabled = false;
     state.emulation.espEnabled = false;
     state.emulation.sdEnabled = false;
     state.emulation.cycleAccurate = true;
     state.emulation.instructionsPerFrame = 1000000;
-    state.emulator.SetGPUEnabled(state.emulation.gpuEnabled);
-    state.emulator.SetESPEnabled(state.emulation.espEnabled);
-    state.emulator.SetSDEnabled(state.emulation.sdEnabled);
-    state.emulator.SetCycleAccurate(state.emulation.cycleAccurate);
-    state.emulator.SetTargetIPS(state.emulation.instructionsPerFrame);
     state.rom.symbols.Clear();
     state.rom.loaded = false;
     state.rom.bin = "";
-    state.emulator.Reset();
-    state.emulator.Pause();
 }
 
 void PromptOrExecuteCartridgeAction(Control::AppState& state, Control::PendingCartridgeAction action) {
     if (Frontend::ShouldPromptCartridgeSDSave(state)) {
-        state.emulator.Pause();
+        if (state.backend) {
+            state.backend->Pause();
+        }
         state.popups.showCartridgeSavePrompt = true;
         state.popups.pendingCartridgeAction = action;
         return;
@@ -362,13 +354,15 @@ void PromptOrExecuteCartridgeAction(Control::AppState& state, Control::PendingCa
 }
 
 void ConfirmCartridgeAction(Control::AppState& state, bool saveChanges) {
-    if (saveChanges) {
-        const auto& cart = state.emulator.GetCartridge();
+    if (saveChanges && state.backend) {
+        const auto& cart = state.backend->GetCartridge();
         if (cart.loaded && !cart.sdCardPath.empty()) {
             Core::CartridgeLoader::SaveSDToZip(cart);
         }
     }
-    state.emulator.GetSDCard().SetModified(false);
+    if (state.backend) {
+        state.backend->GetSDCard().SetModified(false);
+    }
 
     auto action = state.popups.pendingCartridgeAction;
     state.popups.pendingCartridgeAction = Control::PendingCartridgeAction::None;

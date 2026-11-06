@@ -3,7 +3,9 @@
 namespace Control {
 
 void DesktopConfigPlatform::SetAutoReload(AppState& state, bool enabled) {
-    state.emulator.SetAutoReload(enabled);
+    if (state.backend) {
+        state.backend->SetAutoReload(enabled);
+    }
 }
 
 bool DesktopConfigPlatform::CheckFileModified(const std::filesystem::path& path) {

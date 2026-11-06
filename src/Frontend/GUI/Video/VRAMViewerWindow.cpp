@@ -32,9 +32,12 @@ Word GetVRAMBusAddress(AppState& state, int x, int y, bool& isMapped) {
     Word baseAddr = 0x2000;
     Word endAddr = 0x3FFF;
     isMapped = true;
+    if (!state.backend) {
+        return baseAddr;
+    }
 
-    for (const auto& reg : state.emulator.GetMem().GetRegisteredDevices()) {
-        if (reg.device == &state.emulator.GetGPU() && !reg.isVirtual) {
+    for (const auto& reg : state.backend->GetMem().GetRegisteredDevices()) {
+        if (reg.device == &state.backend->GetGPU() && !reg.isVirtual) {
             baseAddr = reg.startAddress;
             endAddr = reg.endAddress;
             isMapped = reg.enabled;
@@ -61,7 +64,7 @@ ImVec4 VRAMColorToRGBA(Byte val) {
 
 static void DrawVRAMControls(AppState& state) {
 #ifdef TARGET_WASM
-    bool cartLoaded = state.emulator.GetCartridge().loaded;
+    bool cartLoaded = state.backend ? state.backend->GetCartridge().loaded : false;
     ImGui::BeginDisabled(cartLoaded || state.rom.loaded);
     if (ImGui::Button("Load Image")) {
         WebFileUtils::onFilePickedCallback = [&state](const char* filename, const uint8_t* data, int size) {
@@ -96,7 +99,7 @@ static void DrawVRAMControls(AppState& state) {
         ImGui::EndTooltip();
     }
 #else
-    bool cartLoaded = state.emulator.GetCartridge().loaded;
+    bool cartLoaded = state.backend ? state.backend->GetCartridge().loaded : false;
     ImGui::BeginDisabled(cartLoaded || state.rom.loaded);
     if (ImGui::Button("Load Image")) {
         if (!Frontend::CustomFileDialog::IsOpened()) {
@@ -140,7 +143,7 @@ static void DrawVRAMControls(AppState& state) {
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-        Byte val = state.emulator.GetGPU().GetVRAM().at(static_cast<size_t>(selectedPixelY)).at(static_cast<size_t>(selectedPixelX));
+        Byte val = state.backend ? state.backend->GetGPU().GetVRAM().at(static_cast<size_t>(selectedPixelY)).at(static_cast<size_t>(selectedPixelX)) : Byte{0};
         ImVec4 col = VRAMColorToRGBA(val);
 
         bool isMapped = false;
@@ -167,7 +170,10 @@ static void DrawVRAMControls(AppState& state) {
 }
 
 void ForceRefreshVRAM(AppState& state) {
-    GPU& gpu = state.emulator.GetGPU();
+    if (!state.backend) {
+        return;
+    }
+    GPU& gpu = state.backend->GetGPU();
     std::array<unsigned char, static_cast<size_t>(GPU::VRAM_HEIGHT) * static_cast<size_t>(GPU::VRAM_WIDTH) * 3>
         pixels{};
     VRAMImageIO::ConvertVRAMToRGB(gpu, pixels.data());
@@ -179,7 +185,10 @@ void ForceRefreshVRAM(AppState& state) {
 }
 
 static void DrawRasterBeamOverlay(AppState& state, ImVec2 imgMin, int scale, float imgW, float imgH) {
-    const GPU& gpu = state.emulator.GetGPU();
+    if (!state.backend) {
+        return;
+    }
+    const GPU& gpu = state.backend->GetGPU();
     uint16_t beamX = gpu.GetPixelX();
     uint16_t beamY = gpu.GetPixelY();
     bool isBlanking = gpu.IsInBlankingInterval();
@@ -287,7 +296,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
     ImGui::Begin("VRAM Viewer", nullptr, window_flags);
 
     DrawVRAMControls(state);
-    bool vramDirty = state.emulator.GetGPU().ConsumeVRAMDirty();
+    bool vramDirty = state.backend ? state.backend->GetGPU().ConsumeVRAMDirty() : false;
     if (vramDirty) {
         ForceRefreshVRAM(state);
     }
@@ -314,7 +323,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
         if (anyCRT) {
             const int internalH = 1080;
             const int internalW = 1440;
-            bool isEmulating = (!state.emulator.IsPaused() && state.emulator.IsRunning());
+            bool isEmulating = state.backend && (!state.backend->IsPaused() && state.backend->IsRunning());
             if (vramDirty || state.render.lastDisplayTex == 0 || isEmulating) {
                 GUI::CRTParams params;
                 params.scanlines = state.crt.scanlines;
@@ -394,8 +403,10 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
             if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
                 mouseButtons |= MicroDosGPU::MOUSE_BTN_MIDDLE;
             }
-            state.emulator.GetMicroDosGPU().UpdateHostMouse(static_cast<Byte>(hoveredX), static_cast<Byte>(hoveredY),
-                                                            mouseButtons);
+            if (state.backend) {
+                state.backend->GetMicroDosGPU().UpdateHostMouse(static_cast<Byte>(hoveredX), static_cast<Byte>(hoveredY),
+                                                                mouseButtons);
+            }
 
             if (state.emulation.vramPixelInspector) {
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
@@ -408,7 +419,7 @@ void DrawVRAMViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, fl
                 }
 
                 if (ImGui::BeginItemTooltip()) {
-                    Byte val = state.emulator.GetGPU().GetVRAM().at(static_cast<size_t>(hoveredY)).at(static_cast<size_t>(hoveredX));
+                    Byte val = state.backend ? state.backend->GetGPU().GetVRAM().at(static_cast<size_t>(hoveredY)).at(static_cast<size_t>(hoveredX)) : Byte{0};
                     uint8_t r = (val >> 4) & 0x03;
                     uint8_t g = (val >> 2) & 0x03;
                     uint8_t b = val & 0x03;

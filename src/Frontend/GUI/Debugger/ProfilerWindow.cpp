@@ -215,7 +215,7 @@ void DrawPageCrossAlertsTab(AppState& state, const SubroutineProfiler::Snapshot&
     ImGui::Text("Total page cross penalties: %u extra CPU cycles consumed", totalPenalties);
     ImGui::SameLine();
     if (ImGui::Button("Clear Alerts")) {
-        state.emulator.GetSubroutineProfiler().Clear();
+        state.backend->GetSubroutineProfiler().Clear();
     }
 
     auto alerts = snapshot.pageCrossAlerts;
@@ -285,7 +285,9 @@ void DrawSymbolLoader(AppState& state) {
                 fclose(f);
             }
             if (state.rom.symbols.LoadFromFile(virtualPath)) {
-                state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+                if (state.backend) {
+                    state.backend->GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+                }
             }
         };
         WebFileUtils::open_browser_file_picker(".dbg,.elf");
@@ -307,19 +309,22 @@ void DrawSymbolLoader(AppState& state) {
 }  // namespace
 
 void DrawProfilerWindow(AppState& state) {
-    state.emulator.GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
-    auto snapshot = state.emulator.GetSubroutineProfiler().GetSnapshot();
+    if (!state.backend) {
+        return;
+    }
+    state.backend->GetSubroutineProfiler().SetSymbolTable(&state.rom.symbols);
+    auto snapshot = state.backend->GetSubroutineProfiler().GetSnapshot();
 
     DrawSymbolLoader(state);
     ImGui::Spacing();
 
-    std::span<const uint32_t> counts(state.emulator.GetProfilerCounts(), 65536);
-    std::span<const uint32_t> readCounts(state.emulator.GetProfilerReadCounts(), 65536);
-    std::span<const uint32_t> writeCounts(state.emulator.GetProfilerWriteCounts(), 65536);
+    std::span<const uint32_t> counts(state.backend->GetProfilerCounts(), 65536);
+    std::span<const uint32_t> readCounts(state.backend->GetProfilerReadCounts(), 65536);
+    std::span<const uint32_t> writeCounts(state.backend->GetProfilerWriteCounts(), 65536);
     static std::array<unsigned char, 256ULL * 256ULL * 3ULL> pixels{};
     static bool profilerDirty = true;
     static uint64_t lastProfilerCycles = 0;
-    uint64_t currentCycles = state.emulator.GetTotalCycles();
+    uint64_t currentCycles = state.backend->GetTotalCycles();
     bool cyclesChanged = (currentCycles != lastProfilerCycles);
 
     if (ImGui::BeginTabBar("ProfilerTabs", ImGuiTabBarFlags_None)) {
@@ -336,7 +341,7 @@ void DrawProfilerWindow(AppState& state) {
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Memory Heatmap")) {
-            if ((!state.emulator.IsPaused() && !state.emulator.IsHalted()) || profilerDirty || cyclesChanged) {
+            if ((!state.backend->IsPaused() && !state.backend->IsHalted()) || profilerDirty || cyclesChanged) {
                 MemoryHeatmapExporter::UpdateTexture(state, readCounts, writeCounts, pixels);
                 lastProfilerCycles = currentCycles;
                 profilerDirty = false;

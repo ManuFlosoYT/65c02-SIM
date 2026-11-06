@@ -414,7 +414,7 @@ static void DrawVoiceADSRWarning(const Hardware::SID& sid, int voiceIndex, bool 
     }
 }
 
-static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex, bool showADSRWarning) {
+static void DrawVoiceParameters(const Hardware::SID& sid, int voiceIndex, bool showADSRWarning) {
     const auto& voice = sid.GetVoice(voiceIndex);
     const ImVec4 voiceColor = ImColor(VOICE_COLORS.at(voiceIndex)).Value;
 
@@ -474,7 +474,7 @@ static void DrawVoiceParameters(const Core::SID& sid, int voiceIndex, bool showA
     ImGui::EndGroup();
 }
 
-static void DrawPianoRoll(const Core::SID& sid) {
+static void DrawPianoRoll(const Hardware::SID& sid) {
     const float fullAvailW = ImGui::GetContentRegionAvail().x;
     ImGui::TextUnformatted("Piano Roll:");
 
@@ -1049,10 +1049,13 @@ static void DrawFilterAndRegistersTab(Hardware::SID& sid, bool should_update) {
 }
 
 static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_update) {
+    if (!state.backend) {
+        return;
+    }
     std::array<float, 32> spectrum{};
     std::array<std::array<float, 3>, 32> voiceShares{};
     static SIDAudioAnalyzer audioAnalyzer;
-    audioAnalyzer.ProcessFFT(state.emulator.GetSID(), spectrum, voiceShares, should_update);
+    audioAnalyzer.ProcessFFT(state.backend->GetSID(), spectrum, voiceShares, should_update);
 
     if (ImGui::BeginTabBar("SIDViewerTabs")) {
         if (ImGui::BeginTabItem("Oscillators")) {
@@ -1062,15 +1065,15 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
                     ImGui::Separator();
                 }
 
-                DrawVoiceWaveform(state.emulator.GetSID(), voiceIndex, sid_time, should_update, state.emulation.sidPhaseTrigger);
+                DrawVoiceWaveform(state.backend->GetSID(), voiceIndex, sid_time, should_update, state.emulation.sidPhaseTrigger);
                 ImGui::SameLine(0.0F, 28.0F);
-                DrawVoiceParameters(state.emulator.GetSID(), voiceIndex, state.emulation.sidADSRWarning);
+                DrawVoiceParameters(state.backend->GetSID(), voiceIndex, state.emulation.sidADSRWarning);
 
                 ImGui::PopID();
             }
 
             ImGui::Separator();
-            DrawPianoRoll(state.emulator.GetSID());
+            DrawPianoRoll(state.backend->GetSID());
             ImGui::Spacing();
             DrawCompactSpectrum(spectrum, voiceShares);
 
@@ -1078,12 +1081,12 @@ static void DrawSIDViewerContent(AppState& state, double sid_time, bool should_u
         }
 
         if (ImGui::BeginTabItem("FFT Spectrogram")) {
-            DrawFullSpectrogramTab(state.emulator.GetSID(), spectrum, voiceShares, should_update);
+            DrawFullSpectrogramTab(state.backend->GetSID(), spectrum, voiceShares, should_update);
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("Filter & Registers")) {
-            DrawFilterAndRegistersTab(state.emulator.GetSID(), should_update);
+            DrawFilterAndRegistersTab(state.backend->GetSID(), should_update);
             ImGui::EndTabItem();
         }
 
@@ -1107,11 +1110,12 @@ void DrawSIDViewerWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, flo
 
     static double sid_time = 0.0;
     const bool midiActive = (state.ide.open && state.ide.mode == Control::IDEMode::MIDI && GUI::IsMIDIAudioActive());
-    if ((state.emulator.IsRunning() && !state.emulator.IsPaused()) || midiActive) {
+    const bool isRunningAndUnpaused = state.backend && state.backend->IsRunning() && !state.backend->IsPaused();
+    if (isRunningAndUnpaused || midiActive) {
         sid_time += ImGui::GetIO().DeltaTime;
     }
 
-    bool should_update = (state.emulator.IsRunning() && !state.emulator.IsPaused()) || midiActive;
+    bool should_update = isRunningAndUnpaused || midiActive;
     DrawSIDViewerContent(state, sid_time, should_update);
 
     ImGui::End();
