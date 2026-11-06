@@ -107,6 +107,13 @@ if command -v ninja >/dev/null 2>&1; then
     fi
 fi
 
+if command -v mold >/dev/null 2>&1; then
+    if [[ "$TARGET_OS" == "linux" || "$MINIMAL_CORE" == true ]]; then
+        echo "mold found, enabling..."
+        CMAKE_OPTS="$CMAKE_OPTS -DCMAKE_LINKER_TYPE=MOLD"
+    fi
+fi
+
 if [ "$MINIMAL_CORE" = true ]; then
     cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_NSF_RUNNER_ONLY=ON $CMAKE_OPTS
     cmake --build "$BUILD_DIR" -j$(nproc)
