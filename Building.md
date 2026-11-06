@@ -279,12 +279,15 @@ On Linux, `cmake/CompilerOptions.cmake` mandates the use of the **mold** high-sp
 ```cmake
 if(UNIX AND NOT EMSCRIPTEN)
     find_program(MOLD_PATH mold REQUIRED)
+    set(CMAKE_LINKER_TYPE MOLD)
     add_link_options("-fuse-ld=mold")
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_link_options("-Wl,--whole-archive" "-lstdc++" "-Wl,--no-whole-archive")
     endif()
 endif()
 ```
+
+Additionally, `build.sh` automatically detects `mold` on Linux and passes `-DCMAKE_LINKER_TYPE=MOLD`.
 
 Mold provides a 4x to 10x link-time acceleration over `gold` and `lld`, enabling virtually instantaneous incremental rebuilds when editing frontend or core code.
 
