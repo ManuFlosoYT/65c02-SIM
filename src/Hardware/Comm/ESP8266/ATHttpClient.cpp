@@ -117,7 +117,7 @@ void ATHttpClient::PerformHttpsRequest(int linkId, const std::string& host, int 
         cli.set_follow_location(true);
         cli.set_connection_timeout(std::chrono::seconds(5));
         cli.set_read_timeout(std::chrono::seconds(10));
-        if (!headers.contains("User-Agent")) {
+        if (headers.find("User-Agent") == headers.end()) {
             headers.emplace("User-Agent", "65C02-SIM/ESP8266");
         }
 
