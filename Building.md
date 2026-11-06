@@ -191,7 +191,7 @@ The Windows cross-compilation pipeline:
 - Applies `cmake/mingw-toolchain.cmake`, utilizing `x86_64-w64-mingw32ucrt-gcc` and `x86_64-w64-mingw32ucrt-g++`.
 - Statically links GCC runtime libraries (`-static -static-libgcc -static-libstdc++`) and sets an 8 MB thread stack (`-Wl,--stack,8388608`).
 - Links against required Windows API libraries: `ws2_32`, `crypt32`, `pathcch`, `bcrypt`, and `opengl32`.
-- Automatically fetches prebuilt FFmpeg Windows shared builds (BtbN); CMake copies the runtime DLLs (`avcodec-*.dll`, `avformat-*.dll`, `avutil-*.dll`, `swscale-*.dll`) into the build directory (`build_win/release/`). When deploying `output/SIM_65C02.exe`, keep these DLLs in the same folder.
+- Automatically fetches prebuilt FFmpeg Windows builds (BtbN) and links them via delay-import libraries (`libdelayimp`). The runtime DLLs (`avcodec-*.dll`, `avformat-*.dll`, `avutil-*.dll`, `swscale-*.dll`) are embedded directly into the PE executable as `RCDATA` resources and extracted on demand at startup to `%LOCALAPPDATA%\65c02-SIM\bin\`. This produces a completely standalone single `output/SIM_65C02.exe` without requiring external DLLs.
 - Runs unit tests under `wine` if installed on the host system.
 
 ---
