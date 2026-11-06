@@ -137,9 +137,11 @@ bool ConfigManager::Save(const AppState& state) {
     ofs << "halation = " << (state.crt.halation ? "true" : "false") << "\n";
     ofs << "ghosting = " << (state.crt.ghosting ? "true" : "false") << "\n";
     ofs << "moire = " << (state.crt.moire ? "true" : "false") << "\n";
+    ofs << "# Range: 1.00 - 3.50\n";
     ofs << "gamma = " << std::format("{:.2f}", state.crt.gamma) << "\n";
     ofs << "sharp_pixels = " << (state.crt.sharpPixels ? "true" : "false") << "\n";
     ofs << "hum_bar = " << (state.crt.humBar ? "true" : "false") << "\n";
+    ofs << "# Options: RGB, Green P1, Amber P3, White P4\n";
     ofs << "monitor_type = " << MonitorTypeToString(state.crt.monitorType) << "\n";
     ofs << "raster_beam = " << (state.crt.rasterBeam ? "true" : "false") << "\n";
 
