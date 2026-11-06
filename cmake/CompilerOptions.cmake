@@ -22,6 +22,7 @@ endif()
 
 if(UNIX AND NOT EMSCRIPTEN)
     find_program(MOLD_PATH mold REQUIRED)
+    set(CMAKE_LINKER_TYPE MOLD)
     add_link_options("-fuse-ld=mold")
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_link_options("-Wl,--whole-archive" "-lstdc++" "-Wl,--no-whole-archive")
