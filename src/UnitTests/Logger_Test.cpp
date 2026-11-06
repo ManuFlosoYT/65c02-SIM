@@ -98,22 +98,22 @@ TEST_F(LoggerTest, OffLevelSuppressesAll) {
 
 TEST_F(LoggerTest, FileSinkWritesToFile) {
     const std::string tempLogPath = "logger_unit_test.tmp.log";
-    if (std::filesystem::exists(tempLogPath)) {
-        std::filesystem::remove(tempLogPath);
-    }
+    std::error_code ec;
+    std::filesystem::remove(tempLogPath, ec);
 
     auto& logger = Core::Logger::Instance();
     logger.SetFileSink(tempLogPath);
 
     Core::Logger::Info("Written to file");
     logger.Flush();
+    logger.ClearSinks();
 
     EXPECT_TRUE(std::filesystem::exists(tempLogPath));
     std::ifstream in(tempLogPath);
     std::string line;
     std::getline(in, line);
     in.close();
-    std::filesystem::remove(tempLogPath);
+    std::filesystem::remove(tempLogPath, ec);
 
     EXPECT_NE(line.find("[INFO] Written to file"), std::string::npos);
 }
