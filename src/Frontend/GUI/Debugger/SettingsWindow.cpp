@@ -412,9 +412,58 @@ static void DrawExportCartridgePopup(AppState& state) {
     }
 }
 
+void LoadDefaultSettings(AppState& state) {
+    bool cycleOverridden = state.emulator.GetCartridge().config.cycleAccurate.has_value();
+    if (!cycleOverridden) {
+        state.emulation.cycleAccurate = true;
+        state.emulator.SetCycleAccurate(true);
+    }
+    state.emulation.forceLoadSaveState = false;
+#ifndef TARGET_WASM
+    state.emulation.autoReload = true;
+    state.emulator.SetAutoReload(true);
+#endif
+    state.emulation.sdLatencyEnabled = false;
+    state.emulator.GetSDCard().SetReadLatencyEnabled(false);
+    state.emulation.ramPowerOnPattern = false;
+    state.emulator.GetRAM().SetPowerOnPattern(false);
+    state.emulation.sidPhaseTrigger = true;
+    state.emulation.sidADSRWarning = false;
+    state.emulation.vramPixelInspector = false;
+
+    state.crt.scanlines = false;
+    state.crt.interlacing = true;
+    state.crt.curvature = true;
+    state.crt.chromatic = true;
+    state.crt.blur = true;
+    state.crt.shadowMask = true;
+    state.crt.vignette = true;
+    state.crt.cornerRounding = true;
+    state.crt.glassGlare = true;
+    state.crt.colorBleeding = true;
+    state.crt.noise = true;
+    state.crt.vsyncJitter = false;
+    state.crt.phosphorDecay = false;
+    state.crt.bloom = true;
+    state.crt.halation = true;
+    state.crt.ghosting = false;
+    state.crt.moire = true;
+    state.crt.gamma = 2.20F;
+    state.crt.sharpPixels = true;
+    state.crt.humBar = true;
+    state.crt.monitorType = CRTMonitorType::RGB;
+    state.crt.rasterBeam = false;
+    state.emulator.SetRasterBeamSlowMotion(false);
+}
+
 void DrawSettingsContent(AppState& state) {
     bool openExportCartridgePopup = false;
     ImGui::BeginChild("SettingsContent", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+    if (ImGui::Button("Load Default")) {
+        LoadDefaultSettings(state);
+    }
+    ImGui::Spacing();
     
     if (ImGui::BeginTable("SettingsLayoutTable", 3, ImGuiTableFlags_None)) {
         ImGui::TableNextColumn();
