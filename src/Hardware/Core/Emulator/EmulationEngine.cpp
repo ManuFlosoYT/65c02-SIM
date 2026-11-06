@@ -98,76 +98,84 @@ void EmulationEngine::ThreadLoop() {
     double instructionAccumulator = 0.0;
     auto lastWatchCheck = high_resolution_clock::now();
 
-    while (running.load(std::memory_order_relaxed)) {
-        if (paused.load(std::memory_order_relaxed)) {
-            isActuallyPaused.store(true, std::memory_order_release);
-            std::unique_lock<std::mutex> lock(threadMutex);
-            pauseCV.wait(lock, [this] { return !paused || !running; });
+    try {
+        while (running.load(std::memory_order_relaxed)) {
+            if (paused.load(std::memory_order_relaxed)) {
+                isActuallyPaused.store(true, std::memory_order_release);
+                std::unique_lock<std::mutex> lock(threadMutex);
+                pauseCV.wait(lock, [this] { return !paused || !running; });
+                isActuallyPaused.store(false, std::memory_order_release);
+                nextSliceTime = high_resolution_clock::now();
+                lastSecondTime = nextSliceTime;
+            }
+            if (!running.load(std::memory_order_relaxed)) {
+                break;
+            }
+
+            if (emulator.scriptEngine.HasPendingScript()) {
+                emulator.scriptEngine.ExecutePendingScript();
+                continue;
+            }
+
+            int currentTarget = targetIPS.load();
+            if (currentTarget <= 0) {
+                currentTarget = 1;
+            }
+
+            int sliceDurationMs = 10;
+            double targetPerSlice = (double)currentTarget / (1000.0 / sliceDurationMs);
+
+            instructionAccumulator += targetPerSlice;
+            int instructionsPerSlice = (int)instructionAccumulator;
+            instructionAccumulator -= instructionsPerSlice;
+
             isActuallyPaused.store(false, std::memory_order_release);
-            nextSliceTime = high_resolution_clock::now();
-            lastSecondTime = nextSliceTime;
+            const auto sliceStart = high_resolution_clock::now();
+            const SliceResult slice = EmulateSlice(instructionsPerSlice);
+            const auto sliceEnd = high_resolution_clock::now();
+            emulationThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(sliceEnd - sliceStart).count());
+            cyclesThisSecond += slice.cycles;
+            cpuCyclesThisSecond += slice.cpuCycles;
+            gpuCyclesThisSecond += slice.gpuCycles;
+            instructionsThisSecond += slice.instructions;
+            slicesThisSecond++;
+
+            auto now = high_resolution_clock::now();
+            if (duration_cast<seconds>(now - lastSecondTime).count() >= 1) {
+                telemetry.CommitSecond(cyclesThisSecond, cpuCyclesThisSecond, gpuCyclesThisSecond,
+                                       instructionsThisSecond, slicesThisSecond, emulationThisSecond,
+                                       sleepThisSecond, lateThisSecond);
+                cyclesThisSecond = 0;
+                cpuCyclesThisSecond = 0;
+                gpuCyclesThisSecond = 0;
+                instructionsThisSecond = 0;
+                slicesThisSecond = 0;
+                emulationThisSecond = 0;
+                sleepThisSecond = 0;
+                lateThisSecond = 0;
+                lastSecondTime = now;
+            }
+
+            nextSliceTime += milliseconds(sliceDurationMs);
+
+            auto sleepCheckTime = high_resolution_clock::now();
+            if (sleepCheckTime < nextSliceTime) {
+                sleepThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(nextSliceTime - sleepCheckTime).count());
+                std::this_thread::sleep_until(nextSliceTime);
+            } else {
+                lateThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(sleepCheckTime - nextSliceTime).count());
+                nextSliceTime = sleepCheckTime;
+                std::this_thread::yield();
+            }
+
+            CheckAutoReload(lastWatchCheck);
         }
-        if (!running.load(std::memory_order_relaxed)) {
-            break;
-        }
-
-        if (emulator.scriptEngine.HasPendingScript()) {
-            emulator.scriptEngine.ExecutePendingScript();
-            continue;
-        }
-
-        int currentTarget = targetIPS.load();
-        if (currentTarget <= 0) {
-            currentTarget = 1;
-        }
-
-        int sliceDurationMs = 10;
-        double targetPerSlice = (double)currentTarget / (1000.0 / sliceDurationMs);
-
-        instructionAccumulator += targetPerSlice;
-        int instructionsPerSlice = (int)instructionAccumulator;
-        instructionAccumulator -= instructionsPerSlice;
-
-        isActuallyPaused.store(false, std::memory_order_release);
-        const auto sliceStart = high_resolution_clock::now();
-        const SliceResult slice = EmulateSlice(instructionsPerSlice);
-        const auto sliceEnd = high_resolution_clock::now();
-        emulationThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(sliceEnd - sliceStart).count());
-        cyclesThisSecond += slice.cycles;
-        cpuCyclesThisSecond += slice.cpuCycles;
-        gpuCyclesThisSecond += slice.gpuCycles;
-        instructionsThisSecond += slice.instructions;
-        slicesThisSecond++;
-
-        auto now = high_resolution_clock::now();
-        if (duration_cast<seconds>(now - lastSecondTime).count() >= 1) {
-            telemetry.CommitSecond(cyclesThisSecond, cpuCyclesThisSecond, gpuCyclesThisSecond,
-                                   instructionsThisSecond, slicesThisSecond, emulationThisSecond,
-                                   sleepThisSecond, lateThisSecond);
-            cyclesThisSecond = 0;
-            cpuCyclesThisSecond = 0;
-            gpuCyclesThisSecond = 0;
-            instructionsThisSecond = 0;
-            slicesThisSecond = 0;
-            emulationThisSecond = 0;
-            sleepThisSecond = 0;
-            lateThisSecond = 0;
-            lastSecondTime = now;
-        }
-
-        nextSliceTime += milliseconds(sliceDurationMs);
-
-        auto sleepCheckTime = high_resolution_clock::now();
-        if (sleepCheckTime < nextSliceTime) {
-            sleepThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(nextSliceTime - sleepCheckTime).count());
-            std::this_thread::sleep_until(nextSliceTime);
-        } else {
-            lateThisSecond += static_cast<uint64_t>(duration_cast<nanoseconds>(sleepCheckTime - nextSliceTime).count());
-            nextSliceTime = sleepCheckTime;
-            std::this_thread::yield();
-        }
-
-        CheckAutoReload(lastWatchCheck);
+    } catch (const std::exception& e) {
+        emulator.SetError(e.what());
+        running.store(false, std::memory_order_release);
+    } catch (...) {
+        emulator.SetError("Fatal unhandled exception in emulation thread");
+        running.store(false, std::memory_order_release);
     }
 }
 

@@ -56,19 +56,6 @@ if(WIN32)
         pathcch
         ${FFMPEG_LIBRARIES}
     )
-
-    if(FFMPEG_LIBRARIES)
-        foreach(lib_target ${FFMPEG_LIBRARIES})
-            get_target_property(dll_path ${lib_target} IMPORTED_LOCATION)
-            if(dll_path)
-                add_custom_command(TARGET SIM_65C02 POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${dll_path}"
-                    "$<TARGET_FILE_DIR:SIM_65C02>/"
-                )
-            endif()
-        endforeach()
-    endif()
 else()
     add_executable(SIM_65C02 
         ${FRONTEND_SOURCES}

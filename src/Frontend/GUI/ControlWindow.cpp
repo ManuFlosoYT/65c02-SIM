@@ -646,6 +646,7 @@ void DrawControlWindow(AppState& state, ImVec2 work_pos, ImVec2 work_size, float
 
     ImGui::SetCursorPosY(regPosY);
     DrawRegistersSection(state);
+    ImGui::Dummy(ImVec2(0.0F, 0.0F));
 
     HandleDialogs(state);
 

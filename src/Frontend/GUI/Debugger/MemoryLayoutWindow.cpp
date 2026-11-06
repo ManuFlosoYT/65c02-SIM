@@ -283,7 +283,9 @@ void DrawMemoryLayoutWindow(AppState& state) {
         showCollisionError = false;
     }
 
-    if (ImGui::BeginPopupModal("Collision Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
+    if (ImGui::BeginPopupModal("Collision Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.0F, 0.0F, 1.0F));
         ImGui::TextUnformatted("Hardware Configuration Error:");
         ImGui::PopStyleColor();

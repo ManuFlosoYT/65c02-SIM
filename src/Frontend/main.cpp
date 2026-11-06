@@ -42,6 +42,7 @@
 #include "Frontend/Control/SDKManager.h"
 #include "Frontend/GUI/MIDI/MIDIWorkspaceWindow.h"
 #include "Frontend/Platform/PlatformHooks.h"
+#include "Frontend/Platform/PlatformUtils.h"
 #include "Frontend/GUI/BackendErrorPopup.h"
 #include "Frontend/Control/RomCartridgeLoaderService.h"
 
@@ -232,6 +233,11 @@ static void MainLoop(void* arg) {
         done = true;
     }
 
+    if (state.backend && state.backend->HasError()) {
+        state.TriggerBackendError(state.backend->GetLastError(), true);
+        state.backend->ClearError();
+    }
+
     if (state.backend && !state.backend->IsPaused()) {
         state.emulation.instructionsPerFrame = state.backend->GetTargetIPS();
     }
@@ -322,7 +328,27 @@ static void MainLoop(void* arg) {
 #endif
 }
 
+static void SafeMainLoop(void* arg) {
+    auto* args = static_cast<MainLoopArgs*>(arg);
+    std::string crashError;
+    bool ok = Platform::RunProtected([&]() {
+        MainLoop(args);
+    }, crashError);
+
+    if (!ok) {
+        if (ImGui::GetCurrentContext()) {
+            ImGui::EndFrame();
+        }
+        if (args && args->state) {
+            args->state->DestroyBackend();
+            args->state->TriggerBackendError(crashError, true);
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
+    Platform::InstallCrashHandler();
+    Platform::EnsurePlatformDependencies();
     const ParseArgsResult parseResult = CliArgsParser::Parse(std::span<const char* const>(argv, static_cast<std::size_t>(argc)));
     if (parseResult.showUsage) {
         CliArgsParser::PrintUsage(argv[0]);
@@ -411,7 +437,7 @@ int main(int argc, char* argv[]) {
 #ifdef TARGET_WASM
     WebFileUtils::init_url_loader(&state);
     static MainLoopArgs loopArgs = { .window = window, .gl_context = gl_context, .state = &state, .mediaExporter = nullptr, .done = &done };
-    emscripten_set_main_loop_arg(MainLoop, &loopArgs, 0, 1);
+    emscripten_set_main_loop_arg(SafeMainLoop, &loopArgs, 0, 1);
 #else
     MainLoopArgs loopArgs = { .window = window, .gl_context = gl_context, .state = &state, .mediaExporter = &mediaExporter, .done = &done };
     int framesToRender = 2;
@@ -446,11 +472,11 @@ int main(int argc, char* argv[]) {
             }
             if (framesToRender > 0) {
                 framesToRender--;
-                MainLoop(&loopArgs);
+                SafeMainLoop(&loopArgs);
             }
         } else {
             framesToRender = 2;
-            MainLoop(&loopArgs);
+            SafeMainLoop(&loopArgs);
         }
     }
 

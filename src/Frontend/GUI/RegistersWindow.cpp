@@ -34,11 +34,13 @@ static void DrawFlagBadge(const char* label, bool active) {
 }
 
 void DrawRegistersSection(AppState& state) {
-    if (!state.backend) {
-        return;
+    static const Hardware::CPU dummyCpu{};
+    const bool disabled = !state.backend;
+    if (disabled) {
+        ImGui::BeginDisabled(true);
     }
     const float scale = state.render.uiScale;
-    const auto& cpu = state.backend->GetCPU();
+    const auto& cpu = state.backend ? state.backend->GetCPU() : dummyCpu;
     auto printHex16 = [](const char* prefix, uint16_t val) {
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::TextSecondary);
         ImGui::TextUnformatted(prefix);
@@ -94,6 +96,9 @@ void DrawRegistersSection(AppState& state) {
         std::string valStr = std::format("0x{:02X}", static_cast<int>(cpu.GetStatus()));
         ImGui::TextUnformatted(valStr.c_str());
         ImGui::EndTooltip();
+    }
+    if (disabled) {
+        ImGui::EndDisabled();
     }
 }
 

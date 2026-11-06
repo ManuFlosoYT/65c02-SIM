@@ -95,13 +95,41 @@ target_embed_resource(""
     COMMENT "Generating SDL3 icon pixel header"
 )
 
-add_custom_command(
-    OUTPUT "${ICON_RESOURCE_RC}"
-    COMMAND ${CMAKE_COMMAND} -E echo "IDI_ICON1 ICON DISCARDABLE \"${ICON_ICO}\"" > "${ICON_RESOURCE_RC}"
-    DEPENDS "${ICON_ICO}"
-    COMMENT "Generating Windows resource file"
-    VERBATIM
-)
+if(WIN32)
+    set(RC_FFMPEG_COMMANDS "")
+    set(RC_FFMPEG_DEPENDS "")
+    if(FFMPEG_avutil_DLL AND FFMPEG_swscale_DLL AND FFMPEG_avcodec_DLL AND FFMPEG_avformat_DLL)
+        set(RC_FFMPEG_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E echo "AVUTIL_DLL RCDATA \"${FFMPEG_avutil_DLL}\"" >> "${ICON_RESOURCE_RC}"
+            COMMAND ${CMAKE_COMMAND} -E echo "SWSCALE_DLL RCDATA \"${FFMPEG_swscale_DLL}\"" >> "${ICON_RESOURCE_RC}"
+            COMMAND ${CMAKE_COMMAND} -E echo "AVCODEC_DLL RCDATA \"${FFMPEG_avcodec_DLL}\"" >> "${ICON_RESOURCE_RC}"
+            COMMAND ${CMAKE_COMMAND} -E echo "AVFORMAT_DLL RCDATA \"${FFMPEG_avformat_DLL}\"" >> "${ICON_RESOURCE_RC}"
+        )
+        set(RC_FFMPEG_DEPENDS
+            "${FFMPEG_avutil_DLL}"
+            "${FFMPEG_swscale_DLL}"
+            "${FFMPEG_avcodec_DLL}"
+            "${FFMPEG_avformat_DLL}"
+        )
+    endif()
+
+    add_custom_command(
+        OUTPUT "${ICON_RESOURCE_RC}"
+        COMMAND ${CMAKE_COMMAND} -E echo "IDI_ICON1 ICON DISCARDABLE \"${ICON_ICO}\"" > "${ICON_RESOURCE_RC}"
+        ${RC_FFMPEG_COMMANDS}
+        DEPENDS "${ICON_ICO}" ${RC_FFMPEG_DEPENDS}
+        COMMENT "Generating Windows resource file"
+        VERBATIM
+    )
+else()
+    add_custom_command(
+        OUTPUT "${ICON_RESOURCE_RC}"
+        COMMAND ${CMAKE_COMMAND} -E echo "IDI_ICON1 ICON DISCARDABLE \"${ICON_ICO}\"" > "${ICON_RESOURCE_RC}"
+        DEPENDS "${ICON_ICO}"
+        COMMENT "Generating Windows resource file"
+        VERBATIM
+    )
+endif()
 
 add_custom_target(app_icons DEPENDS "${ICON_PIXELS_H}" "${ICON_RESOURCE_RC}")
 

@@ -19,9 +19,9 @@ void DrawBackendErrorPopup(Control::AppState& state) {
     }
 
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5F, 0.5F));
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
 
-    if (ImGui::BeginPopupModal(popupId, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (ImGui::BeginPopupModal(popupId, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::TextColored(ImVec4(1.0F, 0.3F, 0.3F, 1.0F), "A backend error has been detected:");
         ImGui::Spacing();
 
@@ -54,6 +54,14 @@ void DrawBackendErrorPopup(Control::AppState& state) {
         ImGui::SameLine();
         if (ImGui::Button("Report Issue")) {
             Frontend::Platform::OpenURL("https://github.com/ManuFlosoYT/65c02-SIM/issues");
+        }
+
+        if (!state.lastBackendError.isFatal) {
+            ImGui::SameLine();
+            if (ImGui::Button("Ignore Error")) {
+                state.lastBackendError.Clear();
+                ImGui::CloseCurrentPopup();
+            }
         }
 
         ImGui::SameLine();
