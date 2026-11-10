@@ -47,11 +47,10 @@ int main(void) {
 
     // Voice 2: Bass (Triangle)
     voice_adsr(2, 2, 9, 8, 9);
-
     // Voice 3: Drums (Noise)
     voice_adsr(3, 0, 5, 0, 0);
 
-    while (true) {
+    for(int i = 0; i < 255; i++) {
         if (melody[step] != 0) {
             voice_freq(1, melody[step]);
             voice_control(1, WAVE_PULSE | WAVE_GATE);
