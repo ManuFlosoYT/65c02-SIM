@@ -60,6 +60,7 @@ State mutation across thread boundaries is handled without heavyweight global mu
 - **Lock-Free SPSC Queues ([`Hardware::SPSCQueue<T, N>`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Hardware/Core/SPSCQueue.h))**: Single-producer single-consumer circular ring buffers with `std::atomic<size_t>` head/tail tracking and acquire-release memory orderings. Used for asynchronous video frame streaming (240 frames deep) and audio PCM streaming.
 - **Atomic Execution Flags**: Emulation status (`running`, `paused`, `halted`, `targetIPS`) are stored in `std::atomic` variables.
 - **Safe State Barrier (`WaitUntilSafeToMutate()`)**: When the UI requires broad structural alterations (such as resetting hardware, flashing a new ROM binary, or resizing memory spaces), the UI invokes `emulator.WaitUntilSafeToMutate()`. The emulation loop pauses cleanly at an instruction boundary, allowing deterministic mutation.
+- **Backend Freeze Watchdog (5s Cycle Progress Monitor)**: When the frontend expects active execution (`HasBackend()`, `!IsPaused()`, `!IsHalted()`, and no active backend error) but `GetTotalCycles()` emits zero cycles for 5,000 ms, `PopupState::UpdateWatchdog()` triggers the `"Backend Frozen"` recovery modal allowing the user to restart the backend (`ExecuteReset`) or ignore the alert.
 
 ```mermaid
 sequenceDiagram
@@ -120,6 +121,7 @@ struct AppState {
 | [`IDEState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/IDEState.h) | `IDEState.h` | Open status, source code buffer, compiler diagnostic output, current file path, and active mode (`IDEMode::C`, `ASM`, `MicroDOS`, `MIDI`). |
 | [`DebuggerState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/UIModalState.h) | `UIModalState.h` | Debugger window open toggle and active view mode ([`DebuggerMode`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/UIModalState.h) enum with 10 modules). |
 | [`CRTSettings`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/AppState.h) | `AppState.h` | Boolean toggles for 20 shader effects, monitor phosphor type (`RGB`, `GreenP1`, `AmberP3`, `WhiteP4`), gamma curve, and time uniforms. |
+| [`PopupState`](file:///home/manu/Documents/GitHub/65c02-SIM/src/Frontend/Control/UIModalState.h) | `UIModalState.h` | Modal dialogues, cartridge SD save alerts, and the 5-second backend freeze watchdog state (`backendFrozen`, `UpdateWatchdog`). |
 
 ---
 
