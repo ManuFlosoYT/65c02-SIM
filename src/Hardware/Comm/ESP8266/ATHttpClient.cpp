@@ -157,6 +157,14 @@ void ATHttpClient::PerformHttpsRequest(int linkId, const std::string& host, int 
             constexpr size_t kChunkSize = 512;
             for (size_t offset = 0; offset < responseData.size(); offset += kChunkSize) {
                 size_t len = std::min(kChunkSize, responseData.size() - offset);
+                int waitTicks = 0;
+                while (esp.IsRxBufferFull() && esp.GetNetworkLoop().IsConnectionActive(linkId) && waitTicks < 400) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                    ++waitTicks;
+                }
+                if (!esp.GetNetworkLoop().IsConnectionActive(linkId)) {
+                    return;
+                }
                 esp.EnqueueIPD(linkId, responseData.data() + offset, len);
                 std::this_thread::sleep_for(std::chrono::milliseconds(2));
             }
@@ -171,6 +179,10 @@ void ATHttpClient::PerformHttpsRequest(int linkId, const std::string& host, int 
         esp.RecordTraffic(TrafficDirection::NetRX, TrafficChannel::TLS_HTTP, linkId, "HTTPS Exception", errStr);
         std::string failResp = "HTTP/1.1 500 Internal Server Error\r\n\r\n" + errStr;
         esp.EnqueueIPD(linkId, failResp.data(), failResp.size());
+    }
+    if (esp.GetNetworkLoop().IsConnectionActive(linkId)) {
+        esp.GetNetworkLoop().DisconnectLink(linkId);
+        esp.EnqueueLinkClosedResponse(linkId);
     }
 }
 

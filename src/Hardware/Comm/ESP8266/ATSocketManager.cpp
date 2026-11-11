@@ -40,7 +40,7 @@ void ATSocketManager::ConnectTCP(int linkId, const std::string& host, int port) 
     asio::ip::tcp::resolver resolver(ioContext);
     asio::error_code dnsErrCode;
 
-    auto endpoints = resolver.resolve(host, std::to_string(port), dnsErrCode);
+    auto endpoints = resolver.resolve(asio::ip::tcp::v4(), host, std::to_string(port), dnsErrCode);
     if (dnsErrCode) {
         conn.tcpSocket.reset();
         esp.EnqueueResponse("\r\nDNS Fail\r\nERROR\r\n");
@@ -54,6 +54,9 @@ void ATSocketManager::ConnectTCP(int linkId, const std::string& host, int port) 
         esp.EnqueueResponse("\r\nERROR\r\n");
         return;
     }
+
+    asio::error_code nbErrCode;
+    conn.tcpSocket->non_blocking(true, nbErrCode);
 
     conn.active = true;
     conn.protocol = "TCP";
@@ -131,36 +134,8 @@ void ATSocketManager::ConnectSSL(int linkId, const std::string& host, int port) 
 
     std::lock_guard<std::recursive_mutex> lock(conn.rxThreadMutex);
     conn.StopRxThread();
-    conn.sslStream = std::make_unique<asio::ssl::stream<asio::ip::tcp::socket>>(ioContext, sslContext);
 
-    if (!SSL_set_tlsext_host_name(conn.sslStream->native_handle(), host.c_str())) {
-        conn.sslStream.reset();
-        esp.EnqueueResponse("\r\nERROR\r\n");
-        return;
-    }
-
-    asio::ip::tcp::resolver resolver(ioContext);
-    asio::error_code dnsErrCode;
-
-    auto endpoints = resolver.resolve(host, std::to_string(port), dnsErrCode);
-    if (dnsErrCode) {
-        conn.sslStream.reset();
-        esp.EnqueueResponse("\r\nDNS Fail\r\nERROR\r\n");
-        return;
-    }
-
-    asio::error_code connectErrCode;
-    asio::connect(conn.sslStream->lowest_layer(), endpoints, connectErrCode);
-    if (connectErrCode) {
-        conn.sslStream.reset();
-        esp.EnqueueResponse("\r\nERROR\r\n");
-        return;
-    }
-
-    asio::error_code handshakeErrCode;
-    handshakeErrCode = conn.sslStream->handshake(asio::ssl::stream_base::client, handshakeErrCode);
-    if (handshakeErrCode) {
-        conn.sslStream.reset();
+    if (host.empty() || port <= 0) {
         esp.EnqueueResponse("\r\nERROR\r\n");
         return;
     }
@@ -170,7 +145,6 @@ void ATSocketManager::ConnectSSL(int linkId, const std::string& host, int port) 
     conn.protocol = "SSL";
     conn.remoteHost = host;
     conn.remotePort = port;
-    conn.rxThread = std::thread(&ATSocketManager::RxLoopSSL, this, linkId);
 
     if (esp.IsMuxEnabled()) {
         esp.EnqueueResponse(std::to_string(linkId) + ",CONNECT\r\n\r\nOK\r\n");

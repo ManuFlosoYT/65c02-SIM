@@ -27,6 +27,7 @@ void ATConnection::StopRxThread() {
 #ifndef TARGET_WASM
             if (sslStream) {
                 asio::error_code closeErr;
+                sslStream->lowest_layer().shutdown(asio::ip::tcp::socket::shutdown_both, closeErr);
                 closeErr = sslStream->lowest_layer().close(closeErr);
                 (void)closeErr;
             }
