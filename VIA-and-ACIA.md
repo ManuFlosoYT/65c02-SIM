@@ -220,16 +220,17 @@ Asynchronous communication between host I/O (GUI text console, standard input, o
 +--------------------+                        +---------+---------+
                                                         │
                                                         │ ProcessSerialInput()
-                                                        │ (Paced by baudDelay)
+                                                        │ (acia.CanReceive() & baudDelay)
                                                         v
                                               +---------+---------+
                                               |    ACIA 6551      |
                                               | ReceiveData(chr)  |
-                                              +---------+---------+
-                                                        │
-                         ForwardOutputIfBridged()       │ ACIA Transmit
-                      (when aciaEspBridge is true)      v
-                                              +-------------------+
+                                              +----+---------+----+
+                                                   │         ^
+                     ForwardOutputIfBridged()      │         │ ProcessSerialInput()
+                  (when aciaEspBridge is true)     │         │ TryPopRxByte()
+                                                   v         │ (RDRF == 0 & baudDelay)
+                                              +----+---------+----+
                                               |   ESP8266 MMIO    |
                                               |   (0x5004 DATA)   |
                                               +-------------------+
@@ -237,11 +238,11 @@ Asynchronous communication between host I/O (GUI text console, standard input, o
 
 #### Key Architecture Responsibilities:
 1. **Thread-Safe Input Queue:** Keystrokes injected from host threads via `InjectKey(char)` or pasted text via `InjectText(string_view)` are stored in an internal `std::deque<char>` protected by `bufferMutex`. Line ending conversion (`\n` $\to$ `\r`) is automatically performed for terminal compatibility.
-2. **Baud Rate Delay Pacing:** Characters are not dumped into the CPU instantly. Every CPU cycle, `DecrementBaudDelay()` ticks down. Once `baudDelay <= 0` and `acia.CanReceive()` confirms the receiver is empty (`RDRF = 0`), the next character is delivered to `acia.ReceiveData(chr)`, and `baudDelay` is recharged:
-   $$\text{baudDelay} = \frac{\text{targetIps} \times 10}{\text{baudRate}}$$
-   This prevents keyboard buffer inundation and ensures polled software routines don't suffer from receiver overrun errors (`OVRN = 1`).
+2. **Baud Rate Delay Pacing & Virtual Flow Control:** Characters from the host `inputBuffer` or bridged `ESP8266` RX FIFO are not dumped into the CPU instantly. Every CPU cycle, `DecrementBaudDelay()` ticks down. Once `baudDelay <= 0` and `acia.CanReceive()` confirms the receiver is ready (`DTR` active and `RDRF = 0`), the next character is delivered to `acia.ReceiveData(chr)`, and `baudDelay` is recharged using the configured frame bit count:
+   $$\text{baudDelay} = \frac{\text{targetIps} \times \text{frameBits}}{\text{baudRate}}$$
+   This prevents keyboard and network buffer inundation and ensures polled or interrupt-driven software routines never suffer from receiver overrun errors (`OVRN = 1`), even when the CPU is temporarily busy inside video or timer interrupts.
 3. **Interrupt Dispatch:** If receiver interrupts are enabled in `ACIA_CMD`, delivering a character triggers `acia.HasIRQ()` and atomically flags `pendingInterruptAny = true` to alert the CPU core.
-4. **ACIA-to-ESP8266 Modem Bridging (`ForwardOutputIfBridged`):**
+4. **Bidirectional ACIA-to-ESP8266 Modem Bridging (`ForwardOutputIfBridged` & `ProcessSerialInput`):**
    When `aciaEspBridge` is enabled (via `SetACIAESPBridge(true)`), bytes transmitted over the ACIA serial line are automatically piped into the virtual ESP8266:
    ```cpp
    void SerialIOBridge::ForwardOutputIfBridged(char c, Hardware::ESP8266& esp8266) {
@@ -250,7 +251,7 @@ Asynchronous communication between host I/O (GUI text console, standard input, o
        esp8266.Write(0x5004, static_cast<uint8_t>(c));
    }
    ```
-   This allows vintage 6502 applications written for standalone serial modems to communicate directly with the virtual Wi-Fi SoC and issue AT commands over UART without requiring microDOS MMIO drivers.
+   In the reverse direction (`ESP8266 -> ACIA`), `SerialIOBridge::ProcessSerialInput()` pulls one byte at a time from `ESP8266::TryPopRxByte()` only when `acia.CanReceive()` (`RDRF == 0`) and `baudDelay <= 0`, recording `"ESP8266 -> ACIA"` traffic and preserving `ESP8266::IsRxBufferFull()` backpressure on background network sockets. This allows vintage 6502 applications written for standalone serial modems to communicate directly with the virtual Wi-Fi SoC and issue AT commands over UART without requiring microDOS MMIO drivers.
 
 ---
 
