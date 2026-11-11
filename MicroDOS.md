@@ -297,7 +297,7 @@ The TUI library enables sophisticated text-based user interfaces:
 
 ---
 
-## 7. Complete Application Catalog (47 Built-in Apps)
+## 7. Complete Application Catalog (48 Built-in Apps)
 
 All applications are located in `sdk/microdos/Apps/` and compiled to `/bin/*.app`:
 
@@ -307,6 +307,7 @@ All applications are located in `sdk/microdos/Apps/` and compiled to `/bin/*.app
 | `ascii2.c` | Utilities | Extended ASCII & IBM CP437 character set reference. |
 | `basic.c` | Languages | Full Microsoft-compatible BASIC interpreter using 4 overlay pages. Supports floating point, strings, multi-dimensional arrays, and file I/O. |
 | `boxes.c` | Graphics Demo | Graphical demo drawing animated color-cycling concentric rectangles. |
+| `browser.c` | Networking | Graphical HTTPS/HTTP web browser rendering HTML on the 100x64 GPU canvas using the 3x5 ASCII font, interactive URL bar, vertical/horizontal scrollbars, and 3-page overlay architecture. |
 | `calc.c` | Utilities | Command-line expression evaluator and arithmetic calculator. |
 | `cat.c` | File System | Concatenates and prints file contents to stdout. |
 | `cd.c` | File System | Changes current working directory (`cd /bin`, `cd ..`). |
