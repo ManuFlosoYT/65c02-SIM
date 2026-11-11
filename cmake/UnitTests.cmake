@@ -23,6 +23,7 @@ if(TEST_SOURCES AND NOT EMSCRIPTEN)
         "src/UnitTests/Shell_History_Completion_Test.cpp"
         "src/UnitTests/MicroDos_FSCommands_Test.cpp"
         "src/UnitTests/Batch_Script_Test.cpp"
+        "src/UnitTests/MicroDosBrowser_Test.cpp"
         "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDIFile.cpp"
         "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDISoundBank.cpp"
         "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDISoundBankLoader.cpp"
