@@ -216,7 +216,7 @@ class SerialIOBridge {
 
 1. **Thread-Safe Input Injection**: GUI keypresses (`InjectKey`, `InjectText`) are pushed to a thread-safe FIFO.
 2. **Baud Rate Throttling**: The 65C02 CPU reads characters from ACIA at simulated bus speeds. Pushing characters too fast causes buffer overruns in target firmware. `SerialIOBridge` enforces a configurable `baudDelay` between characters matching standard 19200 or 115200 baud timings.
-3. **ACIA <-> ESP8266 Bridge**: When enabled (`SetACIAESPBridge(true)`), serial characters emitted by ACIA are routed directly into the virtual ESP8266 modem, enabling network communication over standard serial terminal firmware.
+3. **ACIA <-> ESP8266 Bridge**: When enabled (`SetACIAESPBridge(true)`), serial characters emitted by ACIA are routed directly into the virtual ESP8266 modem, while incoming ESP8266 bytes are pulled one byte at a time via `ESP8266::TryPopRxByte()` with `RDRF` virtual flow control (`acia.CanReceive()`) and `baudDelay` frame pacing to prevent 6551 receiver overruns during large network transfers or CPU interrupts.
 
 ---
 
