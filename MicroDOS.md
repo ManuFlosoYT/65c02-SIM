@@ -297,7 +297,7 @@ The TUI library enables sophisticated text-based user interfaces:
 
 ---
 
-## 7. Complete Application Catalog (48 Built-in Apps)
+## 7. Complete Application Catalog (49 Built-in Apps)
 
 All applications are located in `sdk/microdos/Apps/` and compiled to `/bin/*.app`:
 
@@ -320,6 +320,7 @@ All applications are located in `sdk/microdos/Apps/` and compiled to `/bin/*.app
 | `game.c` | Games | 2D platformer jump-and-run game with physics, platform collision, and animation. |
 | `grep.c` | Utilities | Regular text pattern search across files or standard input streams. |
 | `hexdump.c` | Utilities | Displays binary files in formatted hexadecimal and ASCII columns. |
+| `linux.c` | Operating Systems | Minimal functional uCLinux 6.6 NOMMU kernel (16-bit port of `torvalds/linux` `init`, CPIO `newc` `initramfs`, `printk`, `ramfs`, `/proc`, `/sys`, `/dev`, `/mnt/sd` VFAT bridge, and BusyBox `/bin/sh` VT100 terminal across 7 overlay pages without GPU). |
 | `ls.c` | File System | Lists directory contents with file size and attributes. |
 | `membench.c`| Benchmarks | Measures CPU memory read/write throughput (MB/s). |
 | `memtest.c` | Diagnostics | Comprehensive RAM integrity tester running pattern tests over safe RAM. |
@@ -351,6 +352,18 @@ All applications are located in `sdk/microdos/Apps/` and compiled to `/bin/*.app
 | `wifi.c` | Networking | WiFi configuration tool for scanning SSIDs, connecting, and testing signal. |
 | `word.c` | Editors | Advanced TUI word processor with virtual memory swap paging for large documents. |
 | `wozmon.c` | System | Embedded Apple 1 Wozniak system monitor CLI running inside microDOS. |
+
+### Architecture Spotlight: uCLinux 6.6 NOMMU Kernel (`linux.c`)
+
+`linux.c` ports core `torvalds/linux` initialization, VFS, and userland concepts to the 8-bit 65C02 (`mos65c02-nommu` architecture) without requiring the microDOS-GPU:
+
+- **7-Page Overlay & Memory Layout:** Uses 7 8KB overlay banks (`.overlay_1` through `.overlay_7`, 56 KB total paged code/rodata mapped at `$2800–$47FF`), resident `core_ram` (`$0200–$27FF`) for cross-overlay trampolines, the `printk` ring buffer, and task/VFS state, plus the 8 KB `extra_ram` segment (`$5FC0–$7FBF`, reclaimed by disabling the GPU) for the `ramfs` inode table and data block pool.
+- **16-Bit Ported `torvalds/linux` Subsystems:**
+  - `init/main.c` (`start_kernel()`) & `init/calibrate.c` (`calibrate_delay()`): Hardware BogoMIPS calibration loop timed against VIA 6522 Timer 1 (`$7FD4–$7FD5`).
+  - `init/initramfs.c` (`unpack_to_rootfs()`): Authentic SVR4 CPIO `newc` (`070701` magic, 110-byte ASCII hex headers) archive parser that populates the root `ramfs` from an embedded `initramfs` image in `.overlay_2`.
+  - `kernel/printk/`: Circular kernel log buffer with `[    0.xxxx]` timestamps inspectable and clearable via `dmesg`.
+  - **Virtual Filesystem (VFS) & Pseudo-Filesystems:** `ramfs` root filesystem (`/`), dynamic `procfs` (`/proc/cpuinfo`, `/proc/meminfo`, `/proc/version`, `/proc/uptime`, `/proc/mounts`, `/proc/<pid>/status`), `sysfs` (`/sys/kernel/hostname`, `/sys/kernel/osrelease`, `/sys/devices/system/cpu/cpu0/clock_hz`), `devtmpfs` (`/dev/null`, `/dev/zero`, `/dev/random`, `/dev/urandom`, `/dev/ttyS0`, `/dev/console`, `/dev/mem`), and transparent VFAT SD card mounting at `/mnt/sd` via the microDOS FatFs ABI.
+- **VT100 Serial Console (`ttyS0`) & BusyBox `/bin/sh`:** Interactive ANSI/VT100 terminal over the ACIA 6850 serial interface featuring command history, tab auto-completion, `$VAR` expansion, output redirection (`>` / `>>`), and single-stage pipes (`|`), paired with a built-in BusyBox multi-call shell (`ls`, `cat`, `echo`, `mkdir`, `rm`, `cp`, `mv`, `touch`, `pwd`, `cd`, `stat`, `df`, `free`, `ps`, `uname`, `uptime`, `dmesg`, `hexdump`, `peek`, `poke`, `grep`, `wc`, `head`, `tail`, `sync`, `clear`, `help`, `reboot`, `halt`, `poweroff`, `exit`).
 
 ---
 
