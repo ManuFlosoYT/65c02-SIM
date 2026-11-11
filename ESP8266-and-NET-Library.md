@@ -59,7 +59,7 @@ The emulator supports two distinct connection topologies between the 65c02 CPU a
 2. **ACIA Serial UART Bridge Mode (`SerialIOBridge`):**
    - In legacy or retro-modem configurations, the 6502 communicates with the ESP8266 using standard MOS 6551 ACIA registers (`0x5000` / `0x7FC0`).
    - `SerialIOBridge::ForwardOutputIfBridged()` intercepts bytes transmitted over the ACIA serial line, logs them in `NetworkTrafficLogger`, and pipes them into the ESP8266 at `0x5004`.
-   - Incoming responses from the ESP8266 are shifted back into the ACIA receiver buffer paced by the configured baud rate delay (`baudDelay = (ips * 10) / baudRate`).
+   - Incoming bytes in `ESP8266::rxQueue` are dequeued one byte at a time via `ESP8266::TryPopRxByte()` by `SerialIOBridge::ProcessSerialInput()` only when virtual flow control confirms `acia.CanReceive()` (`DTR` active and `RDRF == 0`, waiting if the CPU is busy in video/timer interrupts) and `baudDelay` has expired (`(ips * frameBits) / baudRate`). Because bytes remain in `ESP8266::rxQueue` until the ACIA consumes them, `ESP8266::IsRxBufferFull()` backpressure on `ATSocketManager` and `ATHttpClient` is preserved without causing 6551 receiver overruns (`OVRN`).
 
 ---
 
