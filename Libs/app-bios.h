@@ -36,9 +36,11 @@ enum {
     APP_FLAG_NO_DESKTOP = 0x04
 };
 
+#ifndef MICRODOS_APP_ICON
 #define MICRODOS_APP_ICON(...) \
     __attribute__((section(".header.1_icon"), used)) \
     const uint8_t app_icon[256] = __VA_ARGS__
+#endif
 
 #define MICRODOS_NO_DESKTOP() \
     __attribute__((section(".header.2_nodesktop"), used)) \
