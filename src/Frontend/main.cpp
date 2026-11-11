@@ -282,6 +282,11 @@ static void MainLoop(void* arg) {
                                          ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
     Frontend::HandleDialogs(state);
+    const bool shouldEmitCycles = state.HasBackend() && !state.backend->IsPaused() &&
+                                  !state.backend->IsHalted() && !state.lastBackendError.active;
+    state.popups.UpdateWatchdog(shouldEmitCycles,
+                                state.backend ? state.backend->GetTotalCycles() : 0ULL,
+                                SDL_GetTicks());
     Frontend::DrawPopups(state);
     Frontend::DrawBackendErrorPopup(state);
 
@@ -443,7 +448,7 @@ int main(int argc, char* argv[]) {
     int framesToRender = 2;
 
     const auto isEmulationActive = [](const AppState& s) {
-        return (s.backend && !s.backend->IsPaused() && s.backend->IsRunning()) ||
+        return (s.backend && !s.backend->IsPaused() && !s.backend->IsHalted()) ||
                s.emulation.isRecordingVideo ||
                (s.ide.open && s.ide.mode == Control::IDEMode::MIDI && GUI::IsMIDIAudioActive());
     };

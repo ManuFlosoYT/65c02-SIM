@@ -67,6 +67,34 @@ struct PopupState {
     bool showCartridgeSavePrompt = false;
     bool showCartridgeLoaded = false;
     PendingCartridgeAction pendingCartridgeAction = PendingCartridgeAction::None;
+    bool backendFrozen = false;
+    bool watchdogTracking = false;
+    uint64_t watchdogLastCycles = 0;
+    uint64_t watchdogLastProgressMs = 0;
+
+    static constexpr uint64_t kFreezeTimeoutMs = 5000;
+
+    void ResetWatchdog() noexcept {
+        backendFrozen = false;
+        watchdogTracking = false;
+    }
+
+    void UpdateWatchdog(bool shouldBeEmitting, uint64_t currentCycles, uint64_t nowMs) noexcept {
+        if (!shouldBeEmitting || backendFrozen) {
+            watchdogTracking = false;
+            return;
+        }
+        if (!watchdogTracking || currentCycles != watchdogLastCycles) {
+            watchdogTracking = true;
+            watchdogLastCycles = currentCycles;
+            watchdogLastProgressMs = nowMs;
+            return;
+        }
+        if (nowMs >= watchdogLastProgressMs && (nowMs - watchdogLastProgressMs) >= kFreezeTimeoutMs) {
+            backendFrozen = true;
+            watchdogTracking = false;
+        }
+    }
 };
 
 struct SDKState {

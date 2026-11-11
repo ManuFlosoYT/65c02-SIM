@@ -218,10 +218,48 @@ static void DrawCartridgePopups(AppState& state) {
     }
 }
 
+static void DrawBackendFrozenPopup(AppState& state) {
+    if (!state.popups.backendFrozen) {
+        return;
+    }
+
+    constexpr const char* popupId = "Backend Frozen";
+    if (!ImGui::IsPopupOpen(popupId)) {
+        ImGui::OpenPopup(popupId);
+    }
+
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5F, 0.5F));
+
+    if (ImGui::BeginPopupModal(popupId, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::TextColored(ImVec4(1.0F, 0.3F, 0.3F, 1.0F), "The emulator backend has frozen.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("The emulator should be running, but no cycles have been emitted for 5 seconds.");
+        ImGui::TextUnformatted("Do you want to restart the backend?");
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::Button("Restart Backend", ImVec2(140.0F * state.render.uiScale, 0.0F))) {
+            state.popups.ResetWatchdog();
+            Frontend::ExecuteReset(state);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Ignore", ImVec2(120.0F * state.render.uiScale, 0.0F))) {
+            state.popups.ResetWatchdog();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
 void DrawPopups(AppState& state) {
     DrawROMAndStatePopups(state);
     DrawSDCardPopups(state);
     DrawCartridgePopups(state);
+    DrawBackendFrozenPopup(state);
 }
 
 bool ShouldPromptCartridgeSDSave(const Control::AppState& state) {
@@ -234,6 +272,7 @@ bool ShouldPromptCartridgeSDSave(const Control::AppState& state) {
 }
 
 void ExecuteReset(Control::AppState& state) {
+    state.popups.ResetWatchdog();
     bool wasRunning = state.backend && !state.backend->IsPaused();
 
     if (state.backend && state.backend->GetCartridge().loaded && !state.backend->GetCartridge().sdCardPath.empty() &&
