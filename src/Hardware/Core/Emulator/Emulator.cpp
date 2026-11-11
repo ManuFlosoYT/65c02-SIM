@@ -17,13 +17,7 @@ namespace Core {
 
 Emulator::Emulator() : cpu(), scriptEngine(*this), engine(*this), savestateManager(*this) {
     components = {&bus, &cpu, &ram, &rom, &via, &sid, &acia, &sdcard, &esp8266, &lcd, &gpu, &microDosGpu, &consoleSerializable};
-    esp8266.SetRxByteCallback([this](Byte b) {
-        if (serialBridge.IsACIAESPBridge()) {
-            esp8266.RecordTraffic(TrafficDirection::RX, TrafficChannel::ATResponse, -1, "ESP8266 -> ACIA",
-                                  std::string(1, static_cast<char>(b)));
-            acia.ReceiveData(b);
-        }
-    });
+    SetOutputCallback(nullptr);
     cpu.SetProfiler(&subroutineProfiler);
     SetupHardware();
 }
@@ -256,7 +250,7 @@ void Emulator::HandleInterrupts() {
 
 template <bool Debug>
 void Emulator::HandleSerialInput() {
-    serialBridge.ProcessSerialInput(acia, engine.GetTargetIPS(), pendingInterruptAny);
+    serialBridge.ProcessSerialInput(acia, engine.GetTargetIPS(), pendingInterruptAny, &esp8266);
 }
 
 template <bool Debug, bool CycleAccurateMode>
@@ -275,7 +269,7 @@ int Emulator::StepInternal(int ips) {
         RunCPUTick<Debug, false>(res, cpuStepped);
     }
     SyncHardwareCycles(cpuStepped, isNewInstruction, ips);
-    if (serialBridge.HasInput()) [[unlikely]] {
+    if (serialBridge.HasPendingInput(esp8266)) [[unlikely]] {
         HandleSerialInput<Debug>();
     }
 
@@ -446,7 +440,7 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
                     if (waitCycles > 0 && (!sidEnabled || sid.IsDormant()) && via.IsIdle() &&
                         acia.IsIdle() && serialBridge.GetBaudDelay() == 0 &&
                         !pendingInterruptAny.load(std::memory_order_relaxed) &&
-                        !serialBridge.HasInput()) [[likely]] {
+                        !serialBridge.HasPendingInput(esp8266)) [[likely]] {
                         const auto rem = static_cast<uint32_t>(count - i);
                         const uint32_t skip = (rem < waitCycles) ? rem : waitCycles;
                         activeGpu->SkipDrawingCycles(skip);
@@ -495,7 +489,7 @@ int Emulator::ProcessBatch(int count, bool hooks, bool hasBreakpoints, bool hasC
                 if (sidEnabled) {
                     sid.Clock();
                 }
-                if (serialBridge.HasInput()) [[unlikely]] {
+                if (serialBridge.HasPendingInput(esp8266)) [[unlikely]] {
                     HandleSerialInput<false>();
                 }
                 if (via.isIRQAsserted() || acia.HasIRQ()) [[unlikely]] {

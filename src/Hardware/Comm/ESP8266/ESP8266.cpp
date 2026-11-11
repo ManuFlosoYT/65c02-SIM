@@ -31,16 +31,8 @@ void ESP8266::Reset() {
 Byte ESP8266::Read(Word address) {
     switch (address & 0x03) {
         case 0: {
-            std::lock_guard<std::mutex> lock(rxMutex);
-            if (rxQueue.empty()) {
-                statusReg.fetch_and(0x7F);
-                return 0;
-            }
-            Byte data = rxQueue.front();
-            rxQueue.pop();
-            if (rxQueue.empty()) {
-                statusReg.fetch_and(0x7F);
-            }
+            Byte data = 0;
+            TryPopRxByte(data);
             return data;
         }
         case 1:
@@ -164,6 +156,20 @@ bool ESP8266::IsRxBufferFull() const {
 
 bool ESP8266::IsMuxEnabled() const {
     return atHandler.IsMuxEnabled();
+}
+
+bool ESP8266::TryPopRxByte(Byte& outByte) {
+    std::lock_guard<std::mutex> lock(rxMutex);
+    if (rxQueue.empty()) {
+        statusReg.fetch_and(0x7F);
+        return false;
+    }
+    outByte = rxQueue.front();
+    rxQueue.pop();
+    if (rxQueue.empty()) {
+        statusReg.fetch_and(0x7F);
+    }
+    return true;
 }
 
 }  // namespace Hardware

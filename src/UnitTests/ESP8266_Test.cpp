@@ -135,6 +135,48 @@ TEST_F(ESP8266_Test, ACIAESPBridge) {
     EXPECT_TRUE(foundAciaTx);
 }
 
+TEST_F(ESP8266_Test, ACIAESPBridgeFlowControlNoOverrun) {
+    Core::Emulator emu;
+    emu.SetESPEnabled(true);
+    emu.SetACIAESPBridge(true);
+    emu.GetMem().Write(0x5002, ACIA_CMD_DTR);
+    emu.GetMem().Write(0x5003, 0x1F);
+
+    const std::string payload = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const std::string expected = "+IPD,64:" + payload;
+    emu.GetESP8266().EnqueueIPD(0, payload.data(), payload.size());
+
+    for (int i = 0; i < 5000; ++i) {
+        emu.Step<false>();
+    }
+
+    Byte initialStatus = emu.GetMem().Read(0x5001);
+    EXPECT_NE(initialStatus & ACIA_STATUS_RDRF, 0);
+    EXPECT_EQ(initialStatus & ACIA_STATUS_OVRN, 0);
+
+    std::string received;
+    received += static_cast<char>(emu.GetMem().Read(0x5000));
+    EXPECT_EQ(received, "+");
+
+    int safetySteps = 0;
+    while (received.size() < expected.size() && safetySteps < 500000) {
+        Byte status = emu.GetMem().Read(0x5001);
+        EXPECT_EQ(status & ACIA_STATUS_OVRN, 0);
+        if ((status & ACIA_STATUS_RDRF) != 0) {
+            received += static_cast<char>(emu.GetMem().Read(0x5000));
+            for (int delay = 0; delay < 2000; ++delay) {
+                emu.Step<false>();
+                ++safetySteps;
+            }
+        } else {
+            emu.Step<false>();
+            ++safetySteps;
+        }
+    }
+
+    EXPECT_EQ(received, expected);
+}
+
 TEST_F(ESP8266_Test, HTTPClientCommandSyntax) {
     esp.ClearTrafficLog();
     SendString("AT+HTTPCLIENT=2,0,\"https://httpbin.org/get\"\r\n");

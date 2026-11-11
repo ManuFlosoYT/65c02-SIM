@@ -53,6 +53,10 @@ public:
     void EnqueueLinkClosedResponse(int linkId);
     [[nodiscard]] bool IsRxBufferFull() const;
     [[nodiscard]] bool IsMuxEnabled() const;
+    [[nodiscard]] inline bool HasRxData() const noexcept {
+        return (statusReg.load(std::memory_order_relaxed) & 0x80) != 0;
+    }
+    bool TryPopRxByte(Byte& outByte);
 
     [[nodiscard]] ATHandler& GetATHandler() { return atHandler; }
     [[nodiscard]] const ATHandler& GetATHandler() const { return atHandler; }

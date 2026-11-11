@@ -51,8 +51,14 @@ void SerialIOBridge::InjectText(std::string_view text) {
     }
 }
 
-void SerialIOBridge::ProcessSerialInput(Hardware::ACIA& acia, int targetIps, std::atomic<bool>& pendingInterruptAny) {
-    if (!hasInput.load(std::memory_order_relaxed)) {
+bool SerialIOBridge::HasPendingInput(const Hardware::ESP8266& esp8266) const noexcept {
+    return hasInput.load(std::memory_order_relaxed) || (aciaEspBridge && esp8266.HasRxData());
+}
+
+void SerialIOBridge::ProcessSerialInput(Hardware::ACIA& acia, int targetIps, std::atomic<bool>& pendingInterruptAny, Hardware::ESP8266* esp8266) {
+    const bool hasKeyInput = hasInput.load(std::memory_order_relaxed);
+    const bool hasEspInput = aciaEspBridge && (esp8266 != nullptr) && esp8266->HasRxData();
+    if (!hasKeyInput && !hasEspInput) {
         return;
     }
 
@@ -60,11 +66,26 @@ void SerialIOBridge::ProcessSerialInput(Hardware::ACIA& acia, int targetIps, std
         return;
     }
 
-    std::lock_guard<std::mutex> lock(bufferMutex);
-    if (!inputBuffer.empty() && acia.CanReceive() && baudDelay <= 0) {
-        char chr = inputBuffer.front();
-        inputBuffer.pop_front();
+    Hardware::Byte chr = 0;
+    bool gotByte = false;
+    if (hasKeyInput) {
+        std::lock_guard<std::mutex> lock(bufferMutex);
+        if (!inputBuffer.empty()) {
+            chr = static_cast<Hardware::Byte>(inputBuffer.front());
+            inputBuffer.pop_front();
+            gotByte = true;
+        }
+        if (inputBuffer.empty()) {
+            hasInput.store(false, std::memory_order_relaxed);
+        }
+    } else if (hasEspInput) {
+        if (esp8266->TryPopRxByte(chr)) {
+            gotByte = true;
+            esp8266->RecordTraffic(Hardware::TrafficDirection::RX, Hardware::TrafficChannel::ATResponse, -1, "ESP8266 -> ACIA", std::string(1, static_cast<char>(chr)));
+        }
+    }
 
+    if (gotByte) {
         acia.ReceiveData(chr);
         if (acia.HasIRQ()) {
             pendingInterruptAny.store(true, std::memory_order_relaxed);
@@ -78,11 +99,14 @@ void SerialIOBridge::ProcessSerialInput(Hardware::ACIA& acia, int targetIps, std
         if (ips <= 0) {
             ips = 1000000;
         }
-        baudDelay = (ips * 10) / baudRate;
-    }
-
-    if (inputBuffer.empty()) {
-        hasInput.store(false, std::memory_order_relaxed);
+        int frameBits = acia.GetFrameBits();
+        if (frameBits <= 0) {
+            frameBits = 10;
+        }
+        baudDelay = static_cast<int>((static_cast<int64_t>(ips) * frameBits) / baudRate);
+        if (baudDelay <= 0) {
+            baudDelay = 1;
+        }
     }
 }
 

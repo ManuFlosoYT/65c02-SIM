@@ -31,6 +31,7 @@ public:
     [[nodiscard]] inline bool HasInput() const noexcept {
         return hasInput.load(std::memory_order_relaxed);
     }
+    [[nodiscard]] bool HasPendingInput(const Hardware::ESP8266& esp8266) const noexcept;
 
     [[nodiscard]] inline int GetBaudDelay() const noexcept { return baudDelay; }
     inline void SetBaudDelay(int delay) noexcept { baudDelay = delay; }
@@ -41,7 +42,7 @@ public:
         }
     }
 
-    void ProcessSerialInput(Hardware::ACIA& acia, int targetIps, std::atomic<bool>& pendingInterruptAny);
+    void ProcessSerialInput(Hardware::ACIA& acia, int targetIps, std::atomic<bool>& pendingInterruptAny, Hardware::ESP8266* esp8266 = nullptr);
     void ForwardOutputIfBridged(char c, Hardware::ESP8266& esp8266);
 
     void SerializeBuffer(std::ostream& out) const;

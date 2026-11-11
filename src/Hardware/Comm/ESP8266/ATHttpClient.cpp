@@ -157,13 +157,11 @@ void ATHttpClient::PerformHttpsRequest(int linkId, const std::string& host, int 
             constexpr size_t kChunkSize = 512;
             for (size_t offset = 0; offset < responseData.size(); offset += kChunkSize) {
                 size_t len = std::min(kChunkSize, responseData.size() - offset);
-                int waitTicks = 0;
-                while (esp.IsRxBufferFull() && esp.GetNetworkLoop().IsConnectionActive(linkId) && waitTicks < 400) {
+                while (esp.IsRxBufferFull() && esp.GetNetworkLoop().IsConnectionActive(linkId)) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                    ++waitTicks;
                 }
                 if (!esp.GetNetworkLoop().IsConnectionActive(linkId)) {
-                    return;
+                    break;
                 }
                 esp.EnqueueIPD(linkId, responseData.data() + offset, len);
                 std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -266,6 +264,9 @@ void ATHttpClient::PerformHttpClientRequest(int opt, int contentType, const std:
             esp.RecordTraffic(TrafficDirection::NetRX, TrafficChannel::TLS_HTTP, -1,
                               "HTTPCLIENT " + std::to_string(res->status), res->body);
             std::string resp = "+HTTPCLIENT:" + std::to_string(res->body.size()) + "," + res->body + "\r\n\r\nOK\r\n";
+            while (esp.IsRxBufferFull()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
             esp.EnqueueResponse(resp);
         } else {
             std::string errStr = "HTTPCLIENT error: " + httplib::to_string(res.error());
