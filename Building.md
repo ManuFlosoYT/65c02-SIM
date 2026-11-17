@@ -61,9 +61,12 @@ sudo dnf install -y \
     alsa-lib-devel pulseaudio-libs-devel pipewire-devel pipewire-jack-audio-connection-kit-devel \
     openssl-devel ffmpeg-devel zlib-ng-compat-static \
     ImageMagick librsvg2-tools dosfstools mtools jq wine \
-    flatpak flatpak-builder \
+    flatpak flatpak-builder desktop-file-utils libappstream-glib appstream \
     ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils \
     ucrt64-openssl ucrt64-openssl-static ucrt64-zlib ucrt64-zlib-static
+
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install -y flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.flatpak.Builder
 ```
 
 > **Important (Fedora):** `libstdc++-static` is mandatory because Release builds statically link libstdc++ with `--whole-archive -lstdc++ --no-whole-archive` via `cmake/CompilerOptions.cmake`.
@@ -251,22 +254,29 @@ Output binary is placed in `output/SIM_65C02`.
 
 ### Local Flatpak Build
 
-Install `flatpak` and `flatpak-builder`, add the Flathub remote, and install the `26.08` runtime and SDK:
+Install `flatpak` and `flatpak-builder`, add the Flathub remote, and install the `26.08` runtime, SDK, and `org.flatpak.Builder` (for linting):
 
 ```bash
 sudo dnf install -y flatpak flatpak-builder
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install -y flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08
+flatpak install -y flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.flatpak.Builder
 ./build.sh --target flatpak
 ```
 
-This invokes `flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml` and bundles the resulting `.flatpak` package to `output/SIM_65C02.flatpak`.
+By default, `./build.sh --target flatpak` automatically synchronizes release metadata via the GitHub API—updating the `<releases>` version and date in `flatpak/dev.manufloso.sim_65c02.metainfo.xml`, as well as the `master` tag/commit, `SDK`/`MicroDOS` commits, and `SDK.zip` SHA-256 in `flatpak/dev.manufloso.sim_65c02.yml`—before running `flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml` and bundling `output/SIM_65C02.flatpak`.
+
+When building inside CI or before a tag/asset is published on GitHub, pass `--local-sources` (`./build.sh --target flatpak --local-sources`) to temporarily build from the checked-out workspace and local `SDK.zip` artifact instead of the remote release sources.
+
+Every `./build.sh --target flatpak` run also performs automatic validation:
+- `desktop-file-validate` on `flatpak/dev.manufloso.sim_65c02.desktop`.
+- `appstreamcli validate` on `flatpak/dev.manufloso.sim_65c02.metainfo.xml`.
+- `flatpak-builder-lint` (via `org.flatpak.Builder`) on the manifest and generated OSTree repository.
 
 ### Bundled Runtime Tools
 
 To make the built-in IDE, cartridge generator, and media recording tools work without host packages, the Flatpak manifest bundles the following dependencies into `/app`:
 
-- **LLVM-MOS SDK (`v23.4.0`):** Installed under `/app/toolchain/` and exposed to CMake via `-DLLVM_MOS_DIR=/app/toolchain/bin` (`MOS_CLANG_DEFAULT_PATH`) and at runtime via `MOS_CLANG=/app/toolchain/bin/mos-common-clang`.
+- **LLVM-MOS SDK (`v23.4.0`):** Multi-architecture module installed under `/app/toolchain/` and exposed to CMake via `-DLLVM_MOS_DIR=/app/toolchain/bin` (`MOS_CLANG_DEFAULT_PATH`) and at runtime via `MOS_CLANG=/app/toolchain/bin/mos-common-clang`. Uses the prebuilt `llvm-mos-linux.tar.xz` archive on `x86_64`, and builds `llvm-mos` and `llvm-mos-sdk` (`v23.4.0`) from source on `aarch64`.
 - **FFmpeg (`n8.1.3`):** Built as shared libraries in `/app/lib` for video and GIF export.
 - **dosfstools (`v4.2`):** Configured with `--sbindir=/app/bin --enable-compat-symlinks` so `mkfs.fat` is available on `PATH`.
 - **mtools (`4.0.50`):** Configured with `--disable-floppyd --without-x` for FAT16 SD image manipulation (`mmd`, `mcopy`).
@@ -409,6 +419,6 @@ Continuous Integration and Release Packaging are managed via **GitHub Actions** 
   3. **Linux Build (`build-linux`):** Compiles using mold and runs unit tests via `ctest`.
   4. **Windows Cross-Build & Test (`build-windows`, `test-windows`):** Compiles MinGW UCRT64 executable and validates the test suite under Wine.
   5. **WebAssembly Deployment (`build-web`):** Compiles the Wasm SPA and deploys the build folder to the `gh-pages` branch.
-  6. **Flatpak Bundle (`build-flatpak`):** Builds `SIM_65C02.flatpak` inside a privileged `fedora:latest` container against `org.freedesktop.Sdk//26.08`.
-  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `SIM_65C02.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
+  6. **Flatpak Bundle (`build-flatpak`):** Matrix job targeting `x86_64` (`ubuntu-latest`) and `aarch64` (`ubuntu-24.04-arm`) inside privileged `fedora:latest` containers with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `SIM_65C02-x86_64.flatpak` and `SIM_65C02-aarch64.flatpak`.
+  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `SIM_65C02-x86_64.flatpak` and `SIM_65C02-aarch64.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
   8. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from the `Wiki` git branch to the live GitHub Wiki repository.
