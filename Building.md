@@ -17,6 +17,7 @@ This guide provides a comprehensive walkthrough for building the **65c02-SIM** e
   - [Windows Cross-Compilation](#windows-cross-compilation)
   - [WebAssembly Build](#webassembly-build)
   - [Headless Minimal NSF Runner](#headless-minimal-nsf-runner)
+- [Flatpak Build & Packaging](#flatpak-build--packaging)
 - [CMake Presets](#cmake-presets)
 - [Toolchain & Compiler Optimizations](#toolchain--compiler-optimizations)
   - [C++23 Standard](#c23-standard)
@@ -60,6 +61,7 @@ sudo dnf install -y \
     alsa-lib-devel pulseaudio-libs-devel pipewire-devel pipewire-jack-audio-connection-kit-devel \
     openssl-devel ffmpeg-devel zlib-ng-compat-static \
     ImageMagick librsvg2-tools dosfstools mtools jq wine \
+    flatpak flatpak-builder \
     ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils \
     ucrt64-openssl ucrt64-openssl-static ucrt64-zlib ucrt64-zlib-static
 ```
@@ -121,12 +123,12 @@ The repository includes a unified build script, `./build.sh`, which automates ca
 ### Command-Line Options
 
 ```bash
-./build.sh [OPTIONS] [linux|win|web]
+./build.sh [OPTIONS] [linux|win|web|flatpak]
 ```
 
 | Flag | Parameter / Format | Description |
 |---|---|---|
-| `--target` | `linux`, `win`, `web` | Specifies the compilation target platform (default: `linux`). |
+| `--target` | `linux`, `win`, `web`, `flatpak` | Specifies the compilation target platform (default: `linux`). |
 | `--release` | None | Builds in optimized `Release` mode with LTO enabled (default). |
 | `--debug` | None | Builds in `Debug` mode with full symbols and assertions. |
 | `--clean` | None | Wipes the target build folder before compiling. |
@@ -146,6 +148,7 @@ Build artifacts are separated by platform and configuration to prevent cache pol
 | **Windows** | Release | `build_win/release/` | `output/SIM_65C02.exe` |
 | **Windows** | Debug | `build_win/debug/` | `output/SIM_65C02.exe` |
 | **WebAssembly** | Release / Debug | `build/web/` | `output/web/index.html` |
+| **Flatpak** | Release | `build/flatpak-build/` (repo: `build/flatpak-repo/`) | `output/SIM_65C02.flatpak` |
 | **Minimal NSF** | Minimal Core | `build/nsf_core/` | `output/SIM_65C02` |
 
 ---
@@ -238,6 +241,48 @@ Output binary is placed in `output/SIM_65C02`.
 
 ---
 
+## Flatpak Build & Packaging
+
+65c02-SIM includes a self-contained Flatpak recipe and Flathub AppStream metadata under `flatpak/`:
+
+- `flatpak/dev.manufloso.sim_65c02.yml`: Flatpak builder manifest targeting `org.freedesktop.Platform` / `org.freedesktop.Sdk` `26.08`.
+- `flatpak/dev.manufloso.sim_65c02.desktop`: Desktop launcher entry (`dev.manufloso.sim_65c02`).
+- `flatpak/dev.manufloso.sim_65c02.metainfo.xml`: AppStream metadata and screenshots referencing `assets/screenshots/`.
+
+### Local Flatpak Build
+
+Install `flatpak` and `flatpak-builder`, add the Flathub remote, and install the `26.08` runtime and SDK:
+
+```bash
+sudo dnf install -y flatpak flatpak-builder
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install -y flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08
+./build.sh --target flatpak
+```
+
+This invokes `flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml` and bundles the resulting `.flatpak` package to `output/SIM_65C02.flatpak`.
+
+### Bundled Runtime Tools
+
+To make the built-in IDE, cartridge generator, and media recording tools work without host packages, the Flatpak manifest bundles the following dependencies into `/app`:
+
+- **LLVM-MOS SDK (`v23.4.0`):** Installed under `/app/toolchain/` and exposed to CMake via `-DLLVM_MOS_DIR=/app/toolchain/bin` (`MOS_CLANG_DEFAULT_PATH`) and at runtime via `MOS_CLANG=/app/toolchain/bin/mos-common-clang`.
+- **FFmpeg (`n8.1.3`):** Built as shared libraries in `/app/lib` for video and GIF export.
+- **dosfstools (`v4.2`):** Configured with `--sbindir=/app/bin --enable-compat-symlinks` so `mkfs.fat` is available on `PATH`.
+- **mtools (`4.0.50`):** Configured with `--disable-floppyd --without-x` for FAT16 SD image manipulation (`mmd`, `mcopy`).
+- **Python 3 Modules:** `MarkupSafe==3.0.2`, `Jinja2==3.1.6`, `packaging==24.2`, `mido==1.3.3`, and `pillow==11.1.0` installed under `/app` and exposed via `PYTHONPATH=/app/lib/python3.14/site-packages`.
+
+Because `flatpak-builder` executes module builds offline, all 10 CMake `FetchContent` dependencies are declared as manifest sources under `_flatpak_deps/` and configured with `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` and `-DFETCHCONTENT_SOURCE_DIR_<DEP>`.
+
+### Sandbox Path Behavior
+
+Inside a Flatpak sandbox, `/app/bin` is read-only. In `src/Frontend/Platform/PlatformUtils_Posix.cpp`, `GetAppConfigDirectory()` and `GetAppDataDirectory()` check whether `GetExecutableDirectory()` is writable (`access(..., W_OK) == 0`):
+
+- **Read-only install (Flatpak / system prefix):** `config.ini` is stored in `$XDG_CONFIG_HOME/65c02-SIM` (falling back to `~/.config/65c02-SIM`), while runtime data—the extracted `SDK/` tree (`SDKInstaller::GetSDKDir()`), IDE `.app` build outputs (`output/apps`), and MIDI compilation artifacts (`tools/sid/build`, `output/midi`)—is written under `$XDG_DATA_HOME/65c02-SIM` (falling back to `~/.local/share/65c02-SIM`). `EnsurePlatformDependencies()` also switches the working directory to `GetAppDataDirectory()`.
+- **Writable directory (portable/local builds):** Both functions return `GetExecutableDirectory()`, preserving side-by-side portable layout.
+
+---
+
 ## CMake Presets
 
 The repository defines native presets in `CMakePresets.json` (schema version 3, CMake 3.24+). You can invoke CMake directly without using `build.sh`:
@@ -325,18 +370,18 @@ External libraries are fetched and built automatically during the first CMake ru
 
 | Dependency | Version / Branch | Purpose | Integration Method |
 |---|---|---|---|
-| **SDL3** | `release-3.4.x` | Audio callbacks, window creation, keyboard/mouse events | FetchContent + `patch_sdl3.cmake` |
-| **Dear ImGui** | `docking` branch | Dockable GUI panels, memory editor, debugger windows | FetchContent static library (`imgui_lib`) |
+| **SDL3** | `release-3.4.20` | Audio callbacks, window creation, keyboard/mouse events | FetchContent + `patch_sdl3.cmake` |
+| **Dear ImGui** | `v1.93.0` | Dockable GUI panels, memory editor, debugger windows | FetchContent static library (`imgui_lib`) |
 | **ImGuiFileDialog** | `v0.6.8` | Cross-platform file picker modal dialogs | FetchContent + `patch_imguifiledialog.cmake` |
-| **ImGuiColorTextEdit**| `master` | In-app assembly and script code editor | FetchContent + `patch_imguicolortextedit.cmake` |
+| **ImGuiColorTextEdit**| `ca2f9f1462e3b60e56351bc466acda448c5ea50d` | In-app assembly and script code editor | FetchContent + `patch_imguicolortextedit.cmake` |
 | **nlohmann/json** | `v3.12.0` | Cartridge manifests, profiler export, configuration JSON | FetchContent (header-only archive) |
 | **Glad** | `v2.0.8` | OpenGL 3.3 Core and GLES loader generator | FetchContent + `GladExtensions.cmake` |
-| **Miniz** | `3.1.1` | ZIP cartridge decompression and save-state compression | FetchContent + `patch_miniz.cmake` |
-| **ASIO** | `asio-1-38-0` | Standalone asynchronous I/O for ESP8266 Wi-Fi emulation | FetchContent (`ASIO_STANDALONE`) |
-| **cpp-httplib** | `v0.41.0` | HTTP/HTTPS client for online update checks and web assets | FetchContent + OpenSSL support |
-| **Google Test** | `main` | Unit testing framework (`GTest::gtest_main`) | FetchContent |
-| **LLVM-MOS SDK** | `v23.3.0` | Embedded C compiler toolchain (`mos-clang`) for 6502 | FetchContent / System compiler detection |
-| **FFmpeg** | `master-latest` | Video/audio recording and GIF export | System pkg-config (Linux) / BtbN Zip (Windows) |
+| **Miniz** | `3.1.2` | ZIP cartridge decompression and save-state compression | FetchContent + `patch_miniz.cmake` |
+| **ASIO** | `asio-1-39-0` | Standalone asynchronous I/O for ESP8266 Wi-Fi emulation | FetchContent (`ASIO_STANDALONE`) |
+| **cpp-httplib** | `v0.66.0` | HTTP/HTTPS client for online update checks and web assets | FetchContent + OpenSSL support |
+| **Google Test** | `v1.18.0` | Unit testing framework (`GTest::gtest_main`) | FetchContent |
+| **LLVM-MOS SDK** | `v23.4.0` | Embedded C compiler toolchain (`mos-clang`) for 6502 | FetchContent / System compiler detection |
+| **FFmpeg** | `8.1.3` | Video/audio recording and GIF export | System pkg-config (Linux) / `n8.1.3` (Flatpak) / BtbN Zip (Windows) |
 | **OpenSSL** | System / 3.x | TLS encryption for HTTP client | System package |
 
 ---
@@ -364,5 +409,6 @@ Continuous Integration and Release Packaging are managed via **GitHub Actions** 
   3. **Linux Build (`build-linux`):** Compiles using mold and runs unit tests via `ctest`.
   4. **Windows Cross-Build & Test (`build-windows`, `test-windows`):** Compiles MinGW UCRT64 executable and validates the test suite under Wine.
   5. **WebAssembly Deployment (`build-web`):** Compiles the Wasm SPA and deploys the build folder to the `gh-pages` branch.
-  6. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), and `SDK.zip` to the GitHub release.
-  7. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from the `Wiki` git branch to the live GitHub Wiki repository.
+  6. **Flatpak Bundle (`build-flatpak`):** Builds `SIM_65C02.flatpak` inside a privileged `fedora:latest` container against `org.freedesktop.Sdk//26.08`.
+  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `SIM_65C02.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
+  8. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from the `Wiki` git branch to the live GitHub Wiki repository.
