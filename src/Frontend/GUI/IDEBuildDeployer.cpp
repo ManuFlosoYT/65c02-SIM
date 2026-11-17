@@ -1,7 +1,9 @@
 #include "Frontend/GUI/IDEBuildDeployer.h"
 #include "Frontend/Control/AppState.h"
+#include "Frontend/Control/SDKInstaller.h"
 #include "Frontend/GUI/IDEDocumentController.h"
 #include "Frontend/GUI/CustomFileDialog.h"
+#include "Frontend/Platform/PlatformUtils.h"
 
 #include <filesystem>
 #include <fstream>
@@ -63,10 +65,28 @@ void IDEBuildDeployer::HandleCompileAndRun(Control::AppState& state) {
             if (appName.empty()) {
                 appName = "app";
             }
+            const std::filesystem::path fallbackAppsDir =
+                Frontend::Platform::GetAppDataDirectory() / "output" / "apps";
+            std::filesystem::path appsDir = "output/apps";
             std::error_code ec;
-            std::filesystem::create_directories("output/apps", ec);
-            std::string targetApp = "output/apps/" + appName + ".app";
-            std::ofstream out(targetApp, std::ios::binary);
+            std::filesystem::create_directories(appsDir, ec);
+            bool usedFallback = false;
+            if (ec) {
+                appsDir = fallbackAppsDir;
+                usedFallback = true;
+                ec.clear();
+                std::filesystem::create_directories(appsDir, ec);
+            }
+            std::filesystem::path targetAppPath = appsDir / (appName + ".app");
+            std::ofstream out(targetAppPath, std::ios::binary);
+            if (!out && !usedFallback) {
+                appsDir = fallbackAppsDir;
+                ec.clear();
+                std::filesystem::create_directories(appsDir, ec);
+                targetAppPath = appsDir / (appName + ".app");
+                out.open(targetAppPath, std::ios::binary);
+            }
+            std::string targetApp = targetAppPath.string();
             if (out) {
                 for (const auto byte : result.binary) {
                     out.put(static_cast<char>(byte));
@@ -119,12 +139,18 @@ void IDEBuildDeployer::HandleCompileAndRun(Control::AppState& state) {
                 if (!symbolsLoaded && !state.ide.currentFilePath.empty()) {
                     std::filesystem::path srcPath(state.ide.currentFilePath);
                     std::string stem = srcPath.stem().string();
+                    const std::filesystem::path appDataDir = Frontend::Platform::GetAppDataDirectory();
+                    const std::filesystem::path sdkDir = Control::SDKInstaller::GetSDKDir();
                     const std::vector<std::filesystem::path> dbgCandidates = {
                         srcPath.parent_path() / (stem + ".dbg"),
                         srcPath.parent_path() / "build" / (stem + ".dbg"),
                         srcPath.parent_path().parent_path() / "build" / (stem + ".dbg"),
                         std::filesystem::path("output/rom") / (stem + ".dbg"),
-                        std::filesystem::path("sdk/src/build") / (stem + ".dbg")
+                        std::filesystem::path("sdk/src/build") / (stem + ".dbg"),
+                        appDataDir / "output/rom" / (stem + ".dbg"),
+                        appDataDir / "sdk/src/build" / (stem + ".dbg"),
+                        sdkDir / "rom" / (stem + ".dbg"),
+                        sdkDir / "sdk/src/build" / (stem + ".dbg")
                     };
                     for (const auto& candidate : dbgCandidates) {
                         if (std::filesystem::exists(candidate)) {

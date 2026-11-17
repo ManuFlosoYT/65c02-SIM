@@ -13,15 +13,15 @@ endif()
 # ==============================================================================
 
 # Google Test
-set(GTEST_URL "https://github.com/google/googletest/archive/refs/heads/main.zip")
+set(GTEST_URL "https://github.com/google/googletest/archive/refs/tags/v1.18.0.zip")
 
 # SDL3
 set(SDL3_REPO "https://github.com/libsdl-org/SDL.git")
-set(SDL3_TAG "release-3.4.x")
+set(SDL3_TAG "release-3.4.20")
 
 # ImGui
 set(IMGUI_REPO "https://github.com/ocornut/imgui.git")
-set(IMGUI_TAG "docking")
+set(IMGUI_TAG "v1.93.0")
 
 # ImGuiFileDialog
 set(IMGUI_FILE_DIALOG_REPO "https://github.com/aiekick/ImGuiFileDialog.git")
@@ -29,7 +29,7 @@ set(IMGUI_FILE_DIALOG_TAG "v0.6.8")
 
 # ImGuiColorTextEdit
 set(IMGUI_COLOR_TEXT_EDIT_REPO "https://github.com/BalazsJako/ImGuiColorTextEdit.git")
-set(IMGUI_COLOR_TEXT_EDIT_TAG "master")
+set(IMGUI_COLOR_TEXT_EDIT_TAG "ca2f9f1462e3b60e56351bc466acda448c5ea50d")
 
 # JSON
 set(JSON_URL "https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz")
@@ -40,21 +40,21 @@ set(GLAD_TAG "v2.0.8")
 
 # Miniz
 set(MINIZ_REPO "https://github.com/richgel999/miniz.git")
-set(MINIZ_TAG "3.1.1")
+set(MINIZ_TAG "3.1.2")
 
 # FFmpeg (Windows)
 set(FFMPEG_WIN_URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip")
 
 # ASIO
-set(ASIO_URL "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-38-0.tar.gz")
+set(ASIO_URL "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-39-0.tar.gz")
 
 # cpp-httplib
 set(HTTPLIB_REPO "https://github.com/yhirose/cpp-httplib.git")
-set(HTTPLIB_TAG "v0.60.1")
+set(HTTPLIB_TAG "v0.66.0")
 
 
 # LLVM-MOS SDK
-set(LLVM_MOS_TAG "v23.3.0")
+set(LLVM_MOS_TAG "v23.4.0")
 if(WIN32)
     set(LLVM_MOS_URL "https://github.com/llvm-mos/llvm-mos-sdk/releases/download/${LLVM_MOS_TAG}/llvm-mos-windows.7z")
 else()
@@ -62,6 +62,12 @@ else()
 endif()
 
 # ==============================================================================
+
+set(DEPS_VERSION_STAMP "${GTEST_URL}|${SDL3_TAG}|${IMGUI_TAG}|${IMGUI_FILE_DIALOG_TAG}|${IMGUI_COLOR_TEXT_EDIT_TAG}|${JSON_URL}|${GLAD_TAG}|${MINIZ_TAG}|${ASIO_URL}|${HTTPLIB_TAG}|${LLVM_MOS_TAG}")
+if(NOT FETCHCONTENT_FULLY_DISCONNECTED AND NOT "${LAST_DEPS_VERSION_STAMP}" STREQUAL "${DEPS_VERSION_STAMP}")
+    message(STATUS "Dependency versions changed; enabling FetchContent updates for this configure...")
+    set(FETCHCONTENT_UPDATES_DISCONNECTED OFF CACHE BOOL "Disable network updates for FetchContent dependencies" FORCE)
+endif()
 
 # Google Test
 FetchContent_Declare(
@@ -88,6 +94,12 @@ FetchContent_Declare(
 )
 set(CMAKE_WARN_DEPRECATED OFF)
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
+if(DEFINED FETCHCONTENT_SOURCE_DIR_SDL3 AND EXISTS "${FETCHCONTENT_SOURCE_DIR_SDL3}")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sdl3.cmake"
+        WORKING_DIRECTORY "${FETCHCONTENT_SOURCE_DIR_SDL3}"
+    )
+endif()
 FetchContent_MakeAvailable(SDL3)
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS OFF)
 set(CMAKE_WARN_DEPRECATED ON)
@@ -107,6 +119,12 @@ FetchContent_Declare(
     GIT_TAG ${IMGUI_FILE_DIALOG_TAG}
     PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_imguifiledialog.cmake
 )
+if(DEFINED FETCHCONTENT_SOURCE_DIR_IMGUIFILEDIALOG AND EXISTS "${FETCHCONTENT_SOURCE_DIR_IMGUIFILEDIALOG}")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_imguifiledialog.cmake"
+        WORKING_DIRECTORY "${FETCHCONTENT_SOURCE_DIR_IMGUIFILEDIALOG}"
+    )
+endif()
 FetchContent_MakeAvailable(ImGuiFileDialog)
 if(TARGET ImGuiFileDialog)
     target_include_directories(ImGuiFileDialog PUBLIC ${imgui_SOURCE_DIR})
@@ -119,6 +137,12 @@ FetchContent_Declare(
     GIT_TAG ${IMGUI_COLOR_TEXT_EDIT_TAG}
     PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_imguicolortextedit.cmake
 )
+if(DEFINED FETCHCONTENT_SOURCE_DIR_IMGUICOLORTEXTEDIT AND EXISTS "${FETCHCONTENT_SOURCE_DIR_IMGUICOLORTEXTEDIT}")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_imguicolortextedit.cmake"
+        WORKING_DIRECTORY "${FETCHCONTENT_SOURCE_DIR_IMGUICOLORTEXTEDIT}"
+    )
+endif()
 FetchContent_MakeAvailable(ImGuiColorTextEdit)
 
 # JSON
@@ -145,6 +169,12 @@ FetchContent_Declare(
     GIT_TAG ${MINIZ_TAG}
     PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_miniz.cmake
 )
+if(DEFINED FETCHCONTENT_SOURCE_DIR_MINIZ AND EXISTS "${FETCHCONTENT_SOURCE_DIR_MINIZ}")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_miniz.cmake"
+        WORKING_DIRECTORY "${FETCHCONTENT_SOURCE_DIR_MINIZ}"
+    )
+endif()
 FetchContent_MakeAvailable(miniz)
 
 # OpenGL
@@ -208,9 +238,13 @@ endif()
 
 # LLVM-MOS SDK
 if(NOT EMSCRIPTEN)
-    find_program(SYSTEM_MOS_CLANG mos-common-clang HINTS ENV LLVM_MOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/llvm_mos/llvm-mos/bin")
+    set(LLVM_MOS_HINTS ENV LLVM_MOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/llvm_mos/llvm-mos/bin")
+    if(LLVM_MOS_DIR)
+        list(PREPEND LLVM_MOS_HINTS "${LLVM_MOS_DIR}" "${LLVM_MOS_DIR}/bin")
+    endif()
+    find_program(SYSTEM_MOS_CLANG mos-common-clang HINTS ${LLVM_MOS_HINTS} PATH_SUFFIXES bin)
     if(NOT SYSTEM_MOS_CLANG)
-        find_program(SYSTEM_MOS_CLANG mos-clang HINTS ENV LLVM_MOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/llvm_mos/llvm-mos/bin")
+        find_program(SYSTEM_MOS_CLANG mos-clang HINTS ${LLVM_MOS_HINTS} PATH_SUFFIXES bin)
     endif()
 
     if(SYSTEM_MOS_CLANG)
@@ -232,3 +266,6 @@ if(WIN32 AND NOT MSVC)
     set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
     set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 endif()
+
+set(LAST_DEPS_VERSION_STAMP "${DEPS_VERSION_STAMP}" CACHE INTERNAL "Last configured dependency version stamp")
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Disable network updates for FetchContent dependencies" FORCE)

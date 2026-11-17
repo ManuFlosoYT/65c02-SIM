@@ -117,25 +117,30 @@ def embed_shaders(vert_file: str, frag_file: str, output_header: str) -> None:
         f.write(content)
 
 
-def embed_icon(magick_exec: str, input_png: str, output_header: str) -> None:
-    if not magick_exec:
-        sys.exit("ImageMagick executable not provided.")
-
+def embed_icon(magick_exec: str | None, input_png: str, output_header: str) -> None:
     os.makedirs(os.path.dirname(os.path.abspath(output_header)), exist_ok=True)
-    temp_bin = f"{output_header}.bin"
-    try:
-        res = subprocess.run(
-            [magick_exec, input_png, "-depth", "8", f"RGBA:{temp_bin}"],
-            check=False,
-        )
-        if res.returncode != 0:
-            sys.exit("Failed to convert PNG to raw pixels using ImageMagick.")
+    if magick_exec:
+        temp_bin = f"{output_header}.bin"
+        try:
+            res = subprocess.run(
+                [magick_exec, input_png, "-depth", "8", f"RGBA:{temp_bin}"],
+                check=False,
+            )
+            if res.returncode != 0:
+                sys.exit("Failed to convert PNG to raw pixels using ImageMagick.")
 
-        with open(temp_bin, "rb") as f:
-            data = f.read()
-    finally:
-        if os.path.exists(temp_bin):
-            os.remove(temp_bin)
+            with open(temp_bin, "rb") as f:
+                data = f.read()
+        finally:
+            if os.path.exists(temp_bin):
+                os.remove(temp_bin)
+    else:
+        try:
+            from PIL import Image
+        except ImportError:
+            sys.exit("ImageMagick executable not provided and Pillow is not installed.")
+        with Image.open(input_png) as img:
+            data = img.convert("RGBA").tobytes()
 
     hex_array = ", ".join(f"0x{b:02x}" for b in data)
     content = (

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.manufloso.sim_65c02</id>
+  <name>65C02 SIM</name>
+  <summary>Cycle-accurate 65C02 microcomputer emulator and IDE</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="dev.manufloso">
+    <name>ManuFloso</name>
+  </developer>
+  <launchable type="desktop-id">dev.manufloso.sim_65c02.desktop</launchable>
+  <content_rating type="oars-1.1" />
+  <url type="homepage">https://manufloso.dev/65c02-SIM/</url>
+  <url type="bugtracker">https://github.com/ManuFlosoYT/65c02-SIM/issues</url>
+  <url type="vcs-browser">https://github.com/ManuFlosoYT/65c02-SIM</url>
+  <description>
+    <p>
+      65C02 SIM is a cycle-accurate 65C02 microcomputer emulator and integrated development
+      environment modeled after the Ben Eater 6502 memory architecture and extended with
+      modern retro-computing peripherals.
+    </p>
+    <p>Key features include:</p>
+    <ul>
+      <li>Full hardware simulation of the WDC 65C02 CPU, W65C22 VIA, 6551 ACIA, MOS 6581/8580 SID audio synthesizer, custom GPU with CRT shader support, SPI SD Card, and ESP8266 Wi-Fi interface.</li>
+      <li>Built-in C and 6502 Assembly IDE powered by the bundled LLVM-MOS compiler toolchain, with live diagnostics, disassembly, and symbol inspection.</li>
+      <li>Time-Travel Debugger, cycle-level logic analyzer, subroutine profiler, and interactive SID and MIDI studio tools.</li>
+      <li>Support for distributable .65c cartridges bundling ROMs, VRAM images, and FAT16 SD card images.</li>
+    </ul>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main 65C02 SIM workspace and hardware frontend</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/frontend.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Built-in C and 6502 Assembly IDE</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/ide.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>GPU display output and CRT simulation</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/graphics.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Live 65C02 disassembly and CPU debugger</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/dissasembly.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Cycle-level bus and signal logic analyzer</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/logic.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>MIDI sequencer and SID music conversion pipeline</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/midi.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Subroutine execution and performance profiler</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/profiler.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>MOS 6581/8580 SID sound chip register and voice inspector</caption>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/sid.png</image>
+    </screenshot>
+  </screenshots>
+</component>

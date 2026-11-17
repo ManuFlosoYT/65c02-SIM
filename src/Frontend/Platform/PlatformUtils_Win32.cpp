@@ -29,6 +29,14 @@ std::filesystem::path GetExecutableDirectory() {
     return std::filesystem::current_path();
 }
 
+std::filesystem::path GetAppConfigDirectory() {
+    return GetExecutableDirectory();
+}
+
+std::filesystem::path GetAppDataDirectory() {
+    return GetExecutableDirectory();
+}
+
 char GetEnvPathDelimiter() {
     return ';';
 }

@@ -84,7 +84,7 @@ static const char* MonitorTypeToString(GUI::CRTMonitorType type) {
 }
 
 std::filesystem::path ConfigManager::GetConfigPath() {
-    return Frontend::Platform::GetExecutableDirectory() / "config.ini";
+    return Frontend::Platform::GetAppConfigDirectory() / "config.ini";
 }
 
 void ConfigManager::Init(AppState& state) {

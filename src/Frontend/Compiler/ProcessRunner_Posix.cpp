@@ -65,7 +65,7 @@ int ProcessRunner::PlatformRunCommand(const std::string& cmd, const std::string&
     argv.push_back(nullptr);
 
     pid_t pid = 0;
-    int spawnResult = posix_spawnp(&pid, argv.at(0), &actions, nullptr, argv.data(), nullptr);
+    int spawnResult = posix_spawnp(&pid, argv.at(0), &actions, nullptr, argv.data(), environ);
     if (spawnResult != 0) {
         posix_spawn_file_actions_destroy(&actions);
         WriteTextFile(logFile, "Error: Failed to execute compiler '" + args.at(0) + "': " + std::strerror(spawnResult) + "\n");

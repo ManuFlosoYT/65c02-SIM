@@ -55,22 +55,26 @@ void SDKManager::ScanExtractedSDK(AppState& state) {
 }
 
 std::string SDKManager::ResolveLibPath(const std::string& lib) {
-    static const std::array<const char*, 10> searchDirs = {
-        "sdk/microdos/Libs/",
-        "SDK/sdk/microdos/Libs/",
-        "output/SDK/sdk/microdos/Libs/",
-        "../sdk/microdos/Libs/",
-        "../../sdk/microdos/Libs/",
-        "sdk/src/Libs/",
-        "SDK/sdk/src/Libs/",
-        "output/SDK/sdk/src/Libs/",
-        "../sdk/src/Libs/",
-        "../../sdk/src/Libs/"
+    const std::filesystem::path sdkDir = SDKInstaller::GetSDKDir();
+    const std::array<std::filesystem::path, 12> searchDirs = {
+        "sdk/microdos/Libs",
+        "SDK/sdk/microdos/Libs",
+        sdkDir / "sdk/microdos/Libs",
+        "output/SDK/sdk/microdos/Libs",
+        "../sdk/microdos/Libs",
+        "../../sdk/microdos/Libs",
+        "sdk/src/Libs",
+        "SDK/sdk/src/Libs",
+        sdkDir / "sdk/src/Libs",
+        "output/SDK/sdk/src/Libs",
+        "../sdk/src/Libs",
+        "../../sdk/src/Libs"
     };
-    for (const auto* dir : searchDirs) {
-        std::string path = std::string(dir) + lib;
-        if (std::filesystem::exists(path)) {
-            return path;
+    std::error_code ec;
+    for (const auto& dir : searchDirs) {
+        std::filesystem::path path = dir / lib;
+        if (std::filesystem::exists(path, ec)) {
+            return path.string();
         }
     }
 #ifndef TARGET_WASM
@@ -89,7 +93,7 @@ std::vector<std::string> SDKManager::GetAvailableLibraries(IDEMode mode) {
     std::vector<std::string> libs;
     std::unordered_set<std::string> seen;
 
-    auto scanDir = [&](const std::string& dirPath) {
+    auto scanDir = [&](const std::filesystem::path& dirPath) {
         std::error_code ec;
         std::vector<std::string> files;
         if (std::filesystem::exists(dirPath, ec) && std::filesystem::is_directory(dirPath, ec)) {
@@ -103,12 +107,19 @@ std::vector<std::string> SDKManager::GetAvailableLibraries(IDEMode mode) {
         return files;
     };
 
+    const std::filesystem::path sdkDir = SDKInstaller::GetSDKDir();
+
     if (mode == IDEMode::MicroDOS) {
-        const std::array<const char*, 5> microdosDirs = {
-            "sdk/microdos/Libs", "SDK/sdk/microdos/Libs", "output/SDK/sdk/microdos/Libs", "../sdk/microdos/Libs", "../../sdk/microdos/Libs"
+        const std::array<std::filesystem::path, 6> microdosDirs = {
+            "sdk/microdos/Libs",
+            "SDK/sdk/microdos/Libs",
+            sdkDir / "sdk/microdos/Libs",
+            "output/SDK/sdk/microdos/Libs",
+            "../sdk/microdos/Libs",
+            "../../sdk/microdos/Libs"
         };
         bool scannedMicrodos = false;
-        for (const auto* dir : microdosDirs) {
+        for (const auto& dir : microdosDirs) {
             auto files = scanDir(dir);
             if (!files.empty()) {
                 scannedMicrodos = true;
@@ -132,11 +143,16 @@ std::vector<std::string> SDKManager::GetAvailableLibraries(IDEMode mode) {
         }
     }
 
-    const std::array<const char*, 5> standardDirs = {
-        "sdk/src/Libs", "SDK/sdk/src/Libs", "output/SDK/sdk/src/Libs", "../sdk/src/Libs", "../../sdk/src/Libs"
+    const std::array<std::filesystem::path, 6> standardDirs = {
+        "sdk/src/Libs",
+        "SDK/sdk/src/Libs",
+        sdkDir / "sdk/src/Libs",
+        "output/SDK/sdk/src/Libs",
+        "../sdk/src/Libs",
+        "../../sdk/src/Libs"
     };
     bool scannedAny = false;
-    for (const auto* dir : standardDirs) {
+    for (const auto& dir : standardDirs) {
         auto files = scanDir(dir);
         if (!files.empty()) {
             scannedAny = true;

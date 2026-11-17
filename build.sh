@@ -43,12 +43,12 @@ while [[ $# -gt 0 ]]; do
             TARGET_OS="${1#*=}"
             shift
             ;;
-        linux|win|web)
+        linux|win|web|flatpak)
             TARGET_OS="$1"
             shift
             ;;
         -h|--help)
-            echo "Usage: ./build.sh [OPTIONS] [linux|win|web]"
+            echo "Usage: ./build.sh [OPTIONS] [linux|win|web|flatpak]"
             echo "Options:"
             echo "  --release          Build in Release mode (default)"
             echo "  --debug            Build in Debug mode"
@@ -56,7 +56,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --reconfigure      Force CMake reconfiguration"
             echo "  --minimal-core     Build only minimal headless core for NSF compilation"
             echo "  --run              Run application after build"
-            echo "  --target <os>      Target OS: linux, win, web"
+            echo "  --target <os>      Target OS: linux, win, web, flatpak"
             echo "  -h, --help         Show this help message"
             exit 0
             ;;
@@ -76,6 +76,8 @@ elif [[ "$TARGET_OS" == "win" ]]; then
     if [[ "$BUILD_TYPE" == "Debug" ]]; then BUILD_DIR="build_win/debug"; else BUILD_DIR="build_win/release"; fi
 elif [[ "$TARGET_OS" == "web" ]]; then
     BUILD_DIR="build/web"
+elif [[ "$TARGET_OS" == "flatpak" ]]; then
+    BUILD_DIR="build/flatpak-build"
 else # linux default
     if [[ "$BUILD_TYPE" == "Debug" ]]; then BUILD_DIR="build/debug"; else BUILD_DIR="build/release"; fi
 fi
@@ -206,6 +208,12 @@ elif [[ "$TARGET_OS" == "win" ]]; then
     mkdir -p output
     cp "$BUILD_DIR/SIM_65C02.exe" output/ 2>/dev/null || true
     echo "Windows build completed in output"
+
+elif [[ "$TARGET_OS" == "flatpak" ]]; then
+    flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml
+    mkdir -p output
+    flatpak build-bundle build/flatpak-repo output/SIM_65C02.flatpak dev.manufloso.sim_65c02
+    echo "Flatpak bundle created at output/SIM_65C02.flatpak"
 
 else
     # Linux build

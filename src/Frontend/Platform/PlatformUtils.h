@@ -9,6 +9,8 @@ namespace Frontend::Platform {
 
 bool OpenURL(std::string_view url);
 std::filesystem::path GetExecutableDirectory();
+std::filesystem::path GetAppConfigDirectory();
+std::filesystem::path GetAppDataDirectory();
 char GetEnvPathDelimiter();
 std::string AppendExecutableExtension(std::string_view binaryName);
 std::string CaptureStackTrace();

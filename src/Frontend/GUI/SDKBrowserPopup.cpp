@@ -1,5 +1,6 @@
 #include "Frontend/GUI/SDKBrowserPopup.h"
 #include "Frontend/Control/RomCartridgeLoaderService.h"
+#include "Frontend/Control/SDKInstaller.h"
 
 #include <imgui.h>
 #include <algorithm>
@@ -44,10 +45,7 @@ static void DrawSDKColumn(Control::AppState& state, const std::vector<std::strin
             };
             WebFileUtils::fetch_file(url.c_str(), file.c_str());
 #else
-            std::string path = "SDK/";
-            path += subfolder;
-            path += "/";
-            path += file;
+            std::string path = (Control::SDKInstaller::GetSDKDir() / subfolder / file).string();
 
             if (Control::LoadCartridge(state, path)) {
                 ImGui::OpenPopup("Cartridge Loaded");

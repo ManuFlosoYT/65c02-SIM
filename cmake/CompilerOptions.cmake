@@ -21,10 +21,21 @@ if(CCACHE_PROGRAM)
 endif()
 
 if(UNIX AND NOT EMSCRIPTEN)
-    find_program(MOLD_PATH mold REQUIRED)
-    set(CMAKE_LINKER_TYPE MOLD)
-    add_link_options("-fuse-ld=mold")
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    find_program(MOLD_PATH mold)
+    if(MOLD_PATH)
+        set(CMAKE_LINKER_TYPE MOLD)
+        add_link_options("-fuse-ld=mold")
+    endif()
+    execute_process(
+        COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.a
+        OUTPUT_VARIABLE LIBSTDCXX_STATIC_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    set(HAVE_STATIC_LIBSTDCXX OFF)
+    if(IS_ABSOLUTE "${LIBSTDCXX_STATIC_PATH}" AND EXISTS "${LIBSTDCXX_STATIC_PATH}")
+        set(HAVE_STATIC_LIBSTDCXX ON)
+    endif()
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND HAVE_STATIC_LIBSTDCXX)
         add_link_options("-Wl,--whole-archive" "-lstdc++" "-Wl,--no-whole-archive")
     endif()
 endif()

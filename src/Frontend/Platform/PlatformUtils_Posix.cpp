@@ -32,6 +32,39 @@ std::filesystem::path GetExecutableDirectory() {
     return std::filesystem::current_path();
 }
 
+static bool IsDirectoryWritable(const std::filesystem::path& dir) {
+    return !dir.empty() && access(dir.c_str(), W_OK) == 0;
+}
+
+static std::filesystem::path ResolveXdgAppDirectory(const char* xdgEnvVar, const std::filesystem::path& homeSubdir) {
+    const auto exeDir = GetExecutableDirectory();
+    if (IsDirectoryWritable(exeDir)) {
+        return exeDir;
+    }
+
+    std::error_code ec;
+    std::filesystem::path base;
+    if (const char* env = std::getenv(xdgEnvVar); env != nullptr && *env != '\0') {
+        base = env;
+    } else if (const char* home = std::getenv("HOME"); home != nullptr && *home != '\0') {
+        base = std::filesystem::path(home) / homeSubdir;
+    } else {
+        base = std::filesystem::temp_directory_path(ec);
+    }
+
+    auto dir = base / "65c02-SIM";
+    std::filesystem::create_directories(dir, ec);
+    return dir;
+}
+
+std::filesystem::path GetAppConfigDirectory() {
+    return ResolveXdgAppDirectory("XDG_CONFIG_HOME", ".config");
+}
+
+std::filesystem::path GetAppDataDirectory() {
+    return ResolveXdgAppDirectory("XDG_DATA_HOME", std::filesystem::path(".local") / "share");
+}
+
 char GetEnvPathDelimiter() {
     return ':';
 }
@@ -153,6 +186,13 @@ bool RunProtected(const std::function<void()>& fn, std::string& outErrorMessage)
     return true;
 }
 
-void EnsurePlatformDependencies() {}
+void EnsurePlatformDependencies() {
+    if (!IsDirectoryWritable(GetExecutableDirectory())) {
+        GetAppConfigDirectory();
+        const auto dataDir = GetAppDataDirectory();
+        std::error_code ec;
+        std::filesystem::current_path(dataDir, ec);
+    }
+}
 
 }  // namespace Frontend::Platform

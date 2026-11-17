@@ -51,7 +51,10 @@ target_embed_resource(crt_shaders
 
 # App Icon Generation
 find_program(RSVG_CONVERT_EXECUTABLE NAMES rsvg-convert)
-find_program(MAGICK_EXECUTABLE NAMES magick convert REQUIRED)
+find_program(MAGICK_EXECUTABLE NAMES magick convert)
+if((WIN32 OR NOT RSVG_CONVERT_EXECUTABLE) AND NOT MAGICK_EXECUTABLE)
+    message(FATAL_ERROR "ImageMagick (magick or convert) is required when rsvg-convert is unavailable or on Windows")
+endif()
 
 set(ICON_SVG "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Assets/65c02-sim.svg")
 set(ICON_PNG "${CMAKE_CURRENT_BINARY_DIR}/generated/65c02-sim.png")
@@ -79,18 +82,25 @@ else()
     )
 endif()
 
-add_custom_command(
-    OUTPUT "${ICON_ICO}"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-    COMMAND ${MAGICK_EXECUTABLE} "${ICON_PNG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
-    DEPENDS "${ICON_PNG}"
-    COMMENT "Generating Windows ICO from PNG"
-    VERBATIM
-)
+if(WIN32 OR MAGICK_EXECUTABLE)
+    add_custom_command(
+        OUTPUT "${ICON_ICO}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        COMMAND ${MAGICK_EXECUTABLE} "${ICON_PNG}" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_ICO}"
+        DEPENDS "${ICON_PNG}"
+        COMMENT "Generating Windows ICO from PNG"
+        VERBATIM
+    )
+endif()
+
+set(ICON_EMBED_ARGS --mode icon --input "${ICON_PNG}")
+if(MAGICK_EXECUTABLE)
+    list(APPEND ICON_EMBED_ARGS --magick "${MAGICK_EXECUTABLE}")
+endif()
 
 target_embed_resource(""
     OUTPUT "${ICON_PIXELS_H}"
-    ARGS --mode icon --magick "${MAGICK_EXECUTABLE}" --input "${ICON_PNG}"
+    ARGS ${ICON_EMBED_ARGS}
     DEPENDS "${ICON_PNG}"
     COMMENT "Generating SDL3 icon pixel header"
 )
@@ -121,17 +131,10 @@ if(WIN32)
         COMMENT "Generating Windows resource file"
         VERBATIM
     )
+    add_custom_target(app_icons DEPENDS "${ICON_PIXELS_H}" "${ICON_RESOURCE_RC}")
 else()
-    add_custom_command(
-        OUTPUT "${ICON_RESOURCE_RC}"
-        COMMAND ${CMAKE_COMMAND} -E echo "IDI_ICON1 ICON DISCARDABLE \"${ICON_ICO}\"" > "${ICON_RESOURCE_RC}"
-        DEPENDS "${ICON_ICO}"
-        COMMENT "Generating Windows resource file"
-        VERBATIM
-    )
+    add_custom_target(app_icons DEPENDS "${ICON_PIXELS_H}" "${ICON_PNG}")
 endif()
-
-add_custom_target(app_icons DEPENDS "${ICON_PIXELS_H}" "${ICON_RESOURCE_RC}")
 
 # SDK Embedding
 if(NOT EMSCRIPTEN)

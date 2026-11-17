@@ -17,7 +17,7 @@ namespace fs = std::filesystem;
 namespace Control {
 
 fs::path SDKInstaller::GetSDKDir() {
-    return Frontend::Platform::GetExecutableDirectory() / "SDK";
+    return Frontend::Platform::GetAppDataDirectory() / "SDK";
 }
 
 bool SDKInstaller::IsInstalled() {
@@ -74,6 +74,13 @@ void SDKInstaller::ExtractBundledSDK() {
         if (mz_zip_reader_extract_to_file(&zip_archive, static_cast<mz_uint>(i), target_path.string().c_str(), 0) == 0) {
             Core::Logger::Error("SDKManager: Failed to extract {}", target_path.string());
         } else {
+            if (target_path.extension() == ".sh") {
+                std::error_code ec;
+                fs::permissions(target_path,
+                                fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
+                                fs::perm_options::add,
+                                ec);
+            }
             extracted_count++;
         }
     }

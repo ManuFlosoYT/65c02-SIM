@@ -63,11 +63,13 @@ else()
         ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
         ${imguicolortextedit_SOURCE_DIR}/TextEditor.cpp
     )
-    target_link_options(SIM_65C02 PRIVATE 
-        -static-libgcc 
-        -static-libstdc++ 
-        -Wl,--gc-sections 
-    )
+    if(HAVE_STATIC_LIBSTDCXX)
+        target_link_options(SIM_65C02 PRIVATE
+            -static-libgcc
+            -static-libstdc++
+        )
+    endif()
+    target_link_options(SIM_65C02 PRIVATE -Wl,--gc-sections)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         target_link_options(SIM_65C02 PRIVATE -s)
     endif()
@@ -150,5 +152,14 @@ target_compile_definitions(SIM_65C02 PRIVATE PROJECT_VERSION="${GIT_VERSION}")
 
 if(SYSTEM_MOS_CLANG)
     target_compile_definitions(SIM_65C02 PRIVATE MOS_CLANG_DEFAULT_PATH="${SYSTEM_MOS_CLANG}")
+endif()
+
+if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+    include(GNUInstallDirs)
+    install(TARGETS SIM_65C02 RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    install(FILES "${ICON_SVG}" DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps" RENAME "dev.manufloso.sim_65c02.svg")
+    install(FILES "${ICON_PNG}" DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps" RENAME "dev.manufloso.sim_65c02.png")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/flatpak/dev.manufloso.sim_65c02.desktop" DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/flatpak/dev.manufloso.sim_65c02.metainfo.xml" DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
 endif()
 
