@@ -420,7 +420,14 @@ jobs:
           force_orphan: true
 
   build-flatpak:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     needs: sdk
     container:
       image: fedora:latest
@@ -482,18 +489,19 @@ jobs:
       - name: Setup Flathub Remote and SDK
         run: |
           flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak install -y --noninteractive flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08
+          flatpak install -y --noninteractive flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.flatpak.Builder
 
       - name: Build Flatpak
         run: |
           chmod +x build.sh
-          ./build.sh --target flatpak
+          ./build.sh --target flatpak --local-sources
+          mv output/SIM_65C02.flatpak output/SIM_65C02-${{ matrix.arch }}.flatpak
 
       - name: Upload Flatpak Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: SIM_65C02-flatpak
-          path: output/SIM_65C02.flatpak
+          name: SIM_65C02-flatpak-${{ matrix.arch }}
+          path: output/SIM_65C02-${{ matrix.arch }}.flatpak
 
   release:
     runs-on: ubuntu-latest
@@ -512,10 +520,16 @@ jobs:
           name: SIM_65C02-windows
           path: output
 
-      - name: Download Flatpak Artifact
+      - name: Download Flatpak x86_64 Artifact
         uses: actions/download-artifact@v8
         with:
-          name: SIM_65C02-flatpak
+          name: SIM_65C02-flatpak-x86_64
+          path: output
+
+      - name: Download Flatpak aarch64 Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: SIM_65C02-flatpak-aarch64
           path: output
 
       - name: Download SDK Artifact
@@ -531,7 +545,8 @@ jobs:
           files: |
             output/SIM_65C02
             output/SIM_65C02.exe
-            output/SIM_65C02.flatpak
+            output/SIM_65C02-x86_64.flatpak
+            output/SIM_65C02-aarch64.flatpak
             SDK.zip
 
   update-wiki:

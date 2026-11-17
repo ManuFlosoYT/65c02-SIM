@@ -61,4 +61,7 @@
       <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/sid.png</image>
     </screenshot>
   </screenshots>
+  <releases>
+    <release version="2.4.0" date="2026-11-17"/>
+  </releases>
 </component>

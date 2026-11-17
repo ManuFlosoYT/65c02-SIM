@@ -71,12 +71,34 @@ modules:
   - name: llvm-mos-sdk
     buildsystem: simple
     build-commands:
-      - mkdir -p /app/toolchain
-      - cp -a * /app/toolchain/
+      - |
+        if [ -x bin/mos-common-clang ]; then
+          mkdir -p /app/toolchain
+          cp -a * /app/toolchain/
+        else
+          cmake -C llvm-mos-src/clang/cmake/caches/MOS.cmake -G Ninja -S llvm-mos-src/llvm -B build-llvm -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/toolchain -DLLVM_ENABLE_ASSERTIONS=OFF
+          cmake --build build-llvm -j"$FLATPAK_BUILDER_NJOBS"
+          cmake --install build-llvm
+          PATH="/app/toolchain/bin:$PATH" cmake -G Ninja -S llvm-mos-sdk-src -B build-sdk -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/toolchain -DLLVM_MOS=/app/toolchain
+          cmake --build build-sdk -j"$FLATPAK_BUILDER_NJOBS"
+          cmake --install build-sdk
+        fi
     sources:
       - type: archive
         url: https://github.com/llvm-mos/llvm-mos-sdk/releases/download/v23.4.0/llvm-mos-linux.tar.xz
         sha256: 0b1dbc8a2b15db88a1a400a687ea24cf1a38548c5ba9fdd61a473e4580ba00c1
+        only-arches: [x86_64]
+      - type: git
+        url: https://github.com/llvm-mos/llvm-mos.git
+        # v23.4.0 commit from clang --version; llvm-mos repo has no v23.4.0 tag
+        commit: a40207a371b60ff787ece46817d9c0f62eada719
+        dest: llvm-mos-src
+        only-arches: [aarch64]
+      - type: git
+        url: https://github.com/llvm-mos/llvm-mos-sdk.git
+        tag: v23.4.0
+        dest: llvm-mos-sdk-src
+        only-arches: [aarch64]
 
   - name: sim_65c02
     buildsystem: simple
@@ -109,17 +131,21 @@ modules:
         cmake --build build/flatpak -j"$FLATPAK_BUILDER_NJOBS"
         cmake --install build/flatpak
     sources:
-      # Local/CI checkout including mounted worktrees (sdk, sdk/msbasic, sdk/microdos, tools, assets).
-      # For standalone Flathub submission, replace type: dir with pinned type: git sources for master
-      # and the SDK, MSBasic, MicroDOS, Tools, and Assets branches at their respective dest paths.
-      - type: dir
-        path: ..
-        skip:
-          - build
-          - build_win
-          - emsdk_local
-          - .ccache
-          - output
+      - type: git
+        url: https://github.com/ManuFlosoYT/65c02-SIM.git
+        tag: v2.4.0
+        commit: 83d80386fc3d656a33d8754efd99e94416b99d23
+      - type: git
+        url: https://github.com/ManuFlosoYT/65c02-SIM.git
+        commit: d6c61982a0fdde4a9851fb06e4f22591ecefb118
+        dest: sdk
+      - type: git
+        url: https://github.com/ManuFlosoYT/65c02-SIM.git
+        commit: 8a9a3f0f6e935cf126d660568872cf09fb6b4bfa
+        dest: sdk/microdos
+      - type: file
+        url: https://github.com/ManuFlosoYT/65c02-SIM/releases/download/v2.4.0/SDK.zip
+        sha256: ede59f4cd905184f56268d012aaaf842aefc2eaf2d26500e3c38f30058782d39
       - type: git
         url: https://github.com/google/googletest.git
         tag: v1.18.0
