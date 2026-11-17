@@ -26,6 +26,7 @@ modules:
       - type: git
         url: https://github.com/FFmpeg/FFmpeg.git
         tag: n8.1.3
+        commit: 1041abdc962f4cc4f394aa8de9dc5236c0c3b9e7
 
   - name: dosfstools
     buildsystem: autotools
@@ -36,6 +37,7 @@ modules:
       - type: git
         url: https://github.com/dosfstools/dosfstools.git
         tag: v4.2
+        commit: 697f7692c951173c1b732901e13f72bd3182d575
 
   - name: mtools
     buildsystem: autotools
@@ -90,13 +92,13 @@ modules:
         only-arches: [x86_64]
       - type: git
         url: https://github.com/llvm-mos/llvm-mos.git
-        # v23.4.0 commit from clang --version; llvm-mos repo has no v23.4.0 tag
         commit: a40207a371b60ff787ece46817d9c0f62eada719
         dest: llvm-mos-src
         only-arches: [aarch64]
       - type: git
         url: https://github.com/llvm-mos/llvm-mos-sdk.git
         tag: v23.4.0
+        commit: 327de902ffc49f8455ca5447b7682bc77be5de05
         dest: llvm-mos-sdk-src
         only-arches: [aarch64]
 
@@ -112,6 +114,9 @@ modules:
           mkdir -p output
           cp build/nsf_core/SIM_65C02 output/
           PATH="/app/toolchain/bin:$PATH" MOS_CLANG="/app/toolchain/bin/mos-common-clang" ./sdk/scripts/create-sdk.sh
+        fi
+        if ! grep -q "<releases>" flatpak/dev.manufloso.sim_65c02.metainfo.xml; then
+          python3 -c 'import pathlib; p=pathlib.Path("flatpak/dev.manufloso.sim_65c02.metainfo.xml"); p.write_text(p.read_text().replace("</component>", "  <releases>\n    <release version=\"2.5.0\" date=\"2026-11-17\"/>\n  </releases>\n</component>"))'
         fi
         cmake -S . -B build/flatpak -GNinja \
           -DCMAKE_BUILD_TYPE=Release \
@@ -133,8 +138,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/ManuFlosoYT/65c02-SIM.git
-        tag: v2.4.0
-        commit: 83d80386fc3d656a33d8754efd99e94416b99d23
+        tag: v2.5.0
+        commit: 6f10b478522326391689301783635d6b7c20c8e9
       - type: git
         url: https://github.com/ManuFlosoYT/65c02-SIM.git
         commit: d6c61982a0fdde4a9851fb06e4f22591ecefb118
@@ -144,23 +149,27 @@ modules:
         commit: 8a9a3f0f6e935cf126d660568872cf09fb6b4bfa
         dest: sdk/microdos
       - type: file
-        url: https://github.com/ManuFlosoYT/65c02-SIM/releases/download/v2.4.0/SDK.zip
-        sha256: ede59f4cd905184f56268d012aaaf842aefc2eaf2d26500e3c38f30058782d39
+        url: https://github.com/ManuFlosoYT/65c02-SIM/releases/download/v2.5.0/SDK.zip
+        sha256: 25b3353b7e4f6ee6a907c3fbd8adb288aa06170c024eddc897c982980a8773d8
       - type: git
         url: https://github.com/google/googletest.git
         tag: v1.18.0
+        commit: 063de7e9578f82b369302001269680b4b1553359
         dest: _flatpak_deps/googletest
       - type: git
         url: https://github.com/libsdl-org/SDL.git
         tag: release-3.4.20
+        commit: f00dc919ca35b9756316e86c4777392de442f9b2
         dest: _flatpak_deps/sdl3
       - type: git
         url: https://github.com/ocornut/imgui.git
         tag: v1.93.0
+        commit: c1aaac65e896a45f81f47a4d68f9959e0f86c859
         dest: _flatpak_deps/imgui
       - type: git
         url: https://github.com/aiekick/ImGuiFileDialog.git
         tag: v0.6.8
+        commit: ee77f190861193a995435c388682f1512f6fd29a
         dest: _flatpak_deps/imguifiledialog
       - type: git
         url: https://github.com/BalazsJako/ImGuiColorTextEdit.git
@@ -169,20 +178,25 @@ modules:
       - type: git
         url: https://github.com/nlohmann/json.git
         tag: v3.12.0
+        commit: 55f93686c01528224f448c19128836e7df245f72
         dest: _flatpak_deps/json
       - type: git
         url: https://github.com/Dav1dde/glad.git
         tag: v2.0.8
+        commit: 73db193f853e2ee079bf3ca8a64aa2eaf6459043
         dest: _flatpak_deps/glad
       - type: git
         url: https://github.com/richgel999/miniz.git
         tag: 3.1.2
+        commit: 77d0dce8627735138c51770d1799a1ef48f2117d
         dest: _flatpak_deps/miniz
       - type: git
         url: https://github.com/chriskohlhoff/asio.git
         tag: asio-1-39-0
+        commit: 190a8d8daf1cc62909b4e0c72ff491ba264ca98e
         dest: _flatpak_deps/asio
       - type: git
         url: https://github.com/yhirose/cpp-httplib.git
         tag: v0.66.0
+        commit: cdcd2ac6e6d5548b5a9130fb39ab76d2c6c614b0
         dest: _flatpak_deps/httplib

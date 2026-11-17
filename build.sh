@@ -408,6 +408,18 @@ def update_llvm_mos_aarch64(yml_text, url, sha256):
     return yml_text
 
 
+def update_llvm_mos_sdk_commit(yml_text, commit_sha):
+    lines = yml_text.splitlines(keepends=True)
+    for s, e, text in parse_module_sources(lines, "llvm-mos-sdk"):
+        if "llvm-mos-sdk.git" in text:
+            if re.search(r"^\s+commit:\s*", text, flags=re.M):
+                updated_item = re.sub(r"(^\s+commit:\s*)[^\s]+", lambda m: f"{m.group(1)}{commit_sha}", text, count=1, flags=re.M)
+            else:
+                updated_item = re.sub(r"(^\s+tag:\s*[^\s]+\n)", lambda m: f"{m.group(1)}        commit: {commit_sha}\n", text, count=1, flags=re.M)
+            return "".join(lines[:s]) + updated_item + "".join(lines[e:])
+    return yml_text
+
+
 def release_sdk_info(rel):
     if not rel or rel.get("draft"):
         return None
@@ -459,8 +471,10 @@ def resolve_from_github(manifest_text):
             if "linux" in name_l and ("aarch64" in name_l or "arm64" in name_l) and name_l.endswith(".tar.xz"):
                 llvm_aarch64 = (asset["browser_download_url"], asset_sha256(asset))
                 break
+    llvm_sdk_commit_obj = gh_get_optional("https://api.github.com/repos/llvm-mos/llvm-mos-sdk/commits/v23.4.0")
+    llvm_sdk_commit = llvm_sdk_commit_obj.get("sha") if llvm_sdk_commit_obj else None
 
-    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256, llvm_aarch64
+    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256, llvm_aarch64, llvm_sdk_commit
 
 
 def resolve_offline(manifest_text):
@@ -485,7 +499,7 @@ def resolve_offline(manifest_text):
     )
     sdk_zip_url = f"https://github.com/{REPO}/releases/download/{tag}/SDK.zip"
     sdk_zip_sha256 = sdk_zip_sha_fallback(manifest_text)
-    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256, None
+    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256, None, None
 
 
 with open(MANIFEST_SRC_PATH, "r", encoding="utf-8") as f:
@@ -514,10 +528,10 @@ if LOCAL_SOURCES:
     print(f"Prepared local-sources manifest {MANIFEST_OUT_PATH} (metainfo version {tag.lstrip('v')})")
 else:
     try:
-        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha, llvm_aarch64 = resolve_from_github(manifest_text)
+        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha, llvm_aarch64, llvm_sdk_commit = resolve_from_github(manifest_text)
     except Exception as exc:
         print(f"Warning: GitHub API lookup failed ({exc}); falling back to local git.", file=sys.stderr)
-        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha, llvm_aarch64 = resolve_offline(manifest_text)
+        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha, llvm_aarch64, llvm_sdk_commit = resolve_offline(manifest_text)
 
     update_metainfo(tag)
     remote_block = (
@@ -538,19 +552,35 @@ else:
         f"        sha256: {zip_sha}\n"
     )
     updated_manifest = replace_sim_sources(manifest_text, remote_block)
+    updated_manifest = re.sub(
+        r'<release version=\\"[^"]*\\" date=\\"[^"]*\\"/>',
+        lambda _m: f'<release version=\\"{tag.lstrip("v")}\\" date=\\"{datetime.date.today().isoformat()}\\"/>',
+        updated_manifest,
+        count=1,
+    )
     if llvm_aarch64:
         updated_manifest = update_llvm_mos_aarch64(updated_manifest, *llvm_aarch64)
+    if llvm_sdk_commit:
+        updated_manifest = update_llvm_mos_sdk_commit(updated_manifest, llvm_sdk_commit)
     with open(MANIFEST_OUT_PATH, "w", encoding="utf-8") as f:
         f.write(updated_manifest)
     print(f"Updated {MANIFEST_OUT_PATH} and {METAINFO_PATH} for {tag} (master={master_c[:8]}, sdk={sdk_c[:8]}, microdos={microdos_c[:8]})")
 PYEOF
 
-    FLATPAK_BUILDER_ARGS=(--force-clean --repo=build/flatpak-repo)
+    FLATPAK_BUILDER_ARGS=(
+        --force-clean
+        --repo=build/flatpak-repo
+        --compose-url-policy=full
+        --mirror-screenshots-url=https://dl.flathub.org/media
+    )
     if [ "$LOCAL_SOURCES" = true ] || [ ! -e /dev/fuse ]; then
         FLATPAK_BUILDER_ARGS+=(--disable-rofiles-fuse)
     fi
 
     flatpak-builder "${FLATPAK_BUILDER_ARGS[@]}" build/flatpak-build "$MANIFEST_FILE"
+    if [ -d build/flatpak-build/files/share/app-info/media ]; then
+        ostree commit --repo=build/flatpak-repo --canonical-permissions --branch="screenshots/$(flatpak --default-arch)" build/flatpak-build/files/share/app-info/media
+    fi
     mkdir -p output
     flatpak build-bundle build/flatpak-repo output/SIM_65C02.flatpak dev.manufloso.sim_65c02
     echo "Flatpak bundle created at output/SIM_65C02.flatpak"

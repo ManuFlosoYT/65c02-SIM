@@ -75,7 +75,9 @@ To compile the simulator from source or use the SDK, you need the following depe
 
 ```bash
 sudo dnf update
-sudo dnf install gcc-c++ gcc ninja-build cmake ccache mold mesa-libGL-devel mesa-libGLES-devel mesa-libEGL-devel vulkan-devel libdrm-devel mesa-libgbm-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel libXext-devel libXfixes-devel libXScrnSaver-devel libXtst-devel wayland-devel wayland-protocols-devel libxkbcommon-devel libdecor-devel alsa-lib-devel pulseaudio-libs-devel pipewire-devel dbus-devel ibus-devel systemd-devel libusb1-devel openssl-devel ffmpeg-devel ImageMagick dosfstools mtools python3-pillow wget curl git tar make mingw64-gcc mingw64-openssl mingw64-openssl-static ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils ucrt64-openssl ucrt64-openssl-static flatpak flatpak-builder
+sudo dnf install gcc-c++ gcc ninja-build cmake ccache mold mesa-libGL-devel mesa-libGLES-devel mesa-libEGL-devel vulkan-devel libdrm-devel mesa-libgbm-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel libXext-devel libXfixes-devel libXScrnSaver-devel libXtst-devel wayland-devel wayland-protocols-devel libxkbcommon-devel libdecor-devel alsa-lib-devel pulseaudio-libs-devel pipewire-devel dbus-devel ibus-devel systemd-devel libusb1-devel openssl-devel ffmpeg-devel ImageMagick dosfstools mtools python3-pillow wget curl git tar make mingw64-gcc mingw64-openssl mingw64-openssl-static ucrt64-gcc ucrt64-gcc-c++ ucrt64-crt ucrt64-headers ucrt64-binutils ucrt64-openssl ucrt64-openssl-static flatpak flatpak-builder desktop-file-utils libappstream-glib appstream
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install -y flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.flatpak.Builder
 ```
 
 #### Compile and Run Locally

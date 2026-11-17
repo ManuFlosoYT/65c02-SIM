@@ -6,6 +6,6 @@ Comment=Cycle-accurate 65C02 microcomputer emulator and IDE
 Exec=SIM_65C02
 Icon=dev.manufloso.sim_65c02
 Terminal=false
-Categories=Development;IDE;System;Emulator;
+Categories=Development;IDE;
 Keywords=6502;65c02;emulator;simulator;beneater;assembly;retro;
 StartupWMClass=SIM_65C02
