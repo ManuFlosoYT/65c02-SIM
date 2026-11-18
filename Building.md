@@ -137,7 +137,7 @@ The repository includes a unified build script, `./build.sh`, which automates ca
 | `--clean` | None | Wipes the target build folder before compiling. |
 | `--reconfigure` / `--configure` | None | Forces CMake to re-run configuration step. |
 | `--minimal-core` | None | Builds only the lightweight headless NSF audio runner executable. |
-| `--run` | None | For web builds, launches the local HTTP server and opens browser. |
+| `--run` | None | For web builds, launches the local HTTP server and opens browser. For Flatpak builds, installs and runs `dev.manufloso.sim_65c02`. |
 | `-h`, `--help` | None | Displays help and usage information. |
 
 ### Build Directory Hierarchy
@@ -151,7 +151,7 @@ Build artifacts are separated by platform and configuration to prevent cache pol
 | **Windows** | Release | `build_win/release/` | `output/SIM_65C02.exe` |
 | **Windows** | Debug | `build_win/debug/` | `output/SIM_65C02.exe` |
 | **WebAssembly** | Release / Debug | `build/web/` | `output/web/index.html` |
-| **Flatpak** | Release | `build/flatpak-build/` (repo: `build/flatpak-repo/`) | `output/SIM_65C02.flatpak` |
+| **Flatpak** | Release | `build/flatpak-build/` (repo: `build/flatpak-repo/`) | `output/dev.manufloso.sim_65c02.flatpak` |
 | **Minimal NSF** | Minimal Core | `build/nsf_core/` | `output/SIM_65C02` |
 
 ---
@@ -261,9 +261,13 @@ sudo dnf install -y flatpak flatpak-builder
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak install -y flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.flatpak.Builder
 ./build.sh --target flatpak
+
+# Install and launch the generated bundle (or pass --run above)
+flatpak install -y --user --reinstall output/dev.manufloso.sim_65c02.flatpak
+flatpak run dev.manufloso.sim_65c02
 ```
 
-By default, `./build.sh --target flatpak` automatically synchronizes release metadata via the GitHub API—updating the `<releases>` version and date in `flatpak/dev.manufloso.sim_65c02.metainfo.xml`, as well as the `master` tag/commit, `SDK`/`MicroDOS` commits, and `SDK.zip` SHA-256 in `flatpak/dev.manufloso.sim_65c02.yml`—before running `flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml` and bundling `output/SIM_65C02.flatpak`.
+By default, `./build.sh --target flatpak` automatically synchronizes release metadata via the GitHub API—updating the `<releases>` version and date in `flatpak/dev.manufloso.sim_65c02.metainfo.xml`, as well as the `master` tag/commit, `SDK`/`MicroDOS` commits, and `SDK.zip` SHA-256 in `flatpak/dev.manufloso.sim_65c02.yml`—before running `flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml` and bundling `output/dev.manufloso.sim_65c02.flatpak`. Pass `--run` to install and launch the bundle automatically after building.
 
 When building inside CI or before a tag/asset is published on GitHub, pass `--local-sources` (`./build.sh --target flatpak --local-sources`) to temporarily build from the checked-out workspace and local `SDK.zip` artifact instead of the remote release sources.
 
@@ -419,6 +423,6 @@ Continuous Integration and Release Packaging are managed via **GitHub Actions** 
   3. **Linux Build (`build-linux`):** Compiles using mold and runs unit tests via `ctest`.
   4. **Windows Cross-Build & Test (`build-windows`, `test-windows`):** Compiles MinGW UCRT64 executable and validates the test suite under Wine.
   5. **WebAssembly Deployment (`build-web`):** Compiles the Wasm SPA and deploys the build folder to the `gh-pages` branch.
-  6. **Flatpak Bundle (`build-flatpak`):** Matrix job targeting `x86_64` (`ubuntu-latest`) and `aarch64` (`ubuntu-24.04-arm`) inside privileged `fedora:latest` containers with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `SIM_65C02-x86_64.flatpak` and `SIM_65C02-aarch64.flatpak`.
-  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `SIM_65C02-x86_64.flatpak` and `SIM_65C02-aarch64.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
+  6. **Flatpak Bundle (`build-flatpak`):** Matrix job targeting `x86_64` (`ubuntu-latest`) and `aarch64` (`ubuntu-24.04-arm`) inside privileged `fedora:latest` containers with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `dev.manufloso.sim_65c02-x86_64.flatpak` and `dev.manufloso.sim_65c02-aarch64.flatpak`.
+  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `dev.manufloso.sim_65c02-x86_64.flatpak` and `dev.manufloso.sim_65c02-aarch64.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
   8. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from the `Wiki` git branch to the live GitHub Wiki repository.
