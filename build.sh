@@ -123,7 +123,11 @@ if command -v mold >/dev/null 2>&1; then
 fi
 
 if [ "$MINIMAL_CORE" = true ]; then
-    cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_NSF_RUNNER_ONLY=ON $CMAKE_OPTS
+    if [ ! -f "$BUILD_DIR/CMakeCache.txt" ] || [ "$FORCE_CONFIGURE" = true ]; then
+        cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_NSF_RUNNER_ONLY=ON $CMAKE_OPTS
+    else
+        echo "Skipping CMake configure (cache found). Use --reconfigure to force it."
+    fi
     cmake --build "$BUILD_DIR" -j$(nproc)
     mkdir -p output
     cp "$BUILD_DIR/SIM_65C02" output/ 2>/dev/null || true
@@ -222,14 +226,16 @@ elif [[ "$TARGET_OS" == "flatpak" ]]; then
         MANIFEST_FILE="flatpak/dev.manufloso.sim_65c02.yml"
     fi
 
-    LOCAL_SOURCES="$LOCAL_SOURCES" MANIFEST_FILE="$MANIFEST_FILE" python3 - <<'PYEOF'
+    LOCAL_SOURCES="$LOCAL_SOURCES" MANIFEST_FILE="$MANIFEST_FILE" FORCE_CONFIGURE="$FORCE_CONFIGURE" DO_CLEAN="$DO_CLEAN" python3 - <<'PYEOF'
 import datetime
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -240,6 +246,28 @@ METAINFO_PATH = "flatpak/dev.manufloso.sim_65c02.metainfo.xml"
 MANIFEST_SRC_PATH = "flatpak/dev.manufloso.sim_65c02.yml"
 MANIFEST_OUT_PATH = os.environ["MANIFEST_FILE"]
 LOCAL_SOURCES = os.environ.get("LOCAL_SOURCES") == "true"
+BYPASS_GH_CACHE = os.environ.get("FORCE_CONFIGURE") == "true" or os.environ.get("DO_CLEAN") == "true"
+GH_CACHE_PATH = "build/.flatpak-gh-cache.json"
+GH_CACHE_TTL_SEC = 600
+
+
+def load_gh_cache():
+    if BYPASS_GH_CACHE or not os.path.isfile(GH_CACHE_PATH):
+        return {}
+    try:
+        with open(GH_CACHE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def save_gh_cache(cache):
+    try:
+        os.makedirs(os.path.dirname(GH_CACHE_PATH), exist_ok=True)
+        with open(GH_CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(cache, f, indent=2)
+    except OSError:
+        pass
 
 
 def gh_headers():
@@ -277,18 +305,23 @@ def sha256_file(path):
 
 
 def asset_sha256(asset):
+    url = asset["browser_download_url"]
+    cache = load_gh_cache()
+    if cached_sha := cache.get("assets", {}).get(url):
+        return cached_sha
     digest = asset.get("digest") or ""
     if digest.startswith("sha256:") and len(digest) == 71:
-        return digest[7:]
-    req = urllib.request.Request(
-        asset["browser_download_url"],
-        headers={"User-Agent": "65c02-SIM-build"},
-    )
-    h = hashlib.sha256()
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        while chunk := resp.read(65536):
-            h.update(chunk)
-    return h.hexdigest()
+        sha = digest[7:]
+    else:
+        req = urllib.request.Request(url, headers={"User-Agent": "65c02-SIM-build"})
+        h = hashlib.sha256()
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            while chunk := resp.read(65536):
+                h.update(chunk)
+        sha = h.hexdigest()
+    cache.setdefault("assets", {})[url] = sha
+    save_gh_cache(cache)
+    return sha
 
 
 def git_out(args):
@@ -374,6 +407,8 @@ def replace_sim_sources(yml_text, replacement_block):
         raise RuntimeError("Could not find 65c02-SIM or local dir source entries in 'sim_65c02'")
 
     first_start, last_end = matched[0][0], matched[-1][1]
+    while first_start > 0 and re.match(r"^ {6}#", lines[first_start - 1]):
+        first_start -= 1
     for s, e, text in items:
         if first_start <= s < last_end and (s, e) not in matched:
             raise RuntimeError(f"Unexpected source inside 65c02-SIM block:\n{text}")
@@ -406,6 +441,17 @@ def release_sdk_info(rel):
 
 
 def resolve_from_github(manifest_text):
+    cache = load_gh_cache()
+    if (resolved := cache.get("resolved")) and (time.time() - resolved.get("ts", 0)) < GH_CACHE_TTL_SEC:
+        return (
+            resolved["tag"],
+            resolved["master_commit"],
+            resolved["sdk_commit"],
+            resolved["microdos_commit"],
+            resolved["sdk_zip_url"],
+            resolved["sdk_zip_sha256"],
+        )
+
     releases = gh_get(f"{API_BASE}/releases?per_page=10")
     tag = master_commit = sdk_zip_url = sdk_zip_sha256 = None
 
@@ -438,6 +484,18 @@ def resolve_from_github(manifest_text):
 
     sdk_commit = gh_get(f"{API_BASE}/commits/SDK")["sha"]
     microdos_commit = gh_get(f"{API_BASE}/commits/MicroDOS")["sha"]
+
+    cache = load_gh_cache()
+    cache["resolved"] = {
+        "ts": time.time(),
+        "tag": tag,
+        "master_commit": master_commit,
+        "sdk_commit": sdk_commit,
+        "microdos_commit": microdos_commit,
+        "sdk_zip_url": sdk_zip_url,
+        "sdk_zip_sha256": sdk_zip_sha256,
+    }
+    save_gh_cache(cache)
 
     return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256
 
@@ -490,6 +548,7 @@ if LOCAL_SOURCES:
     os.makedirs(os.path.dirname(MANIFEST_OUT_PATH), exist_ok=True)
     with open(MANIFEST_OUT_PATH, "w", encoding="utf-8") as f:
         f.write(replace_sim_sources(manifest_text, local_block))
+    shutil.copyfile("flatpak/python3-modules.yml", os.path.join(os.path.dirname(MANIFEST_OUT_PATH), "python3-modules.yml"))
     print(f"Prepared local-sources manifest {MANIFEST_OUT_PATH} (metainfo version {tag.lstrip('v')})")
 else:
     try:
@@ -500,29 +559,29 @@ else:
 
     update_metainfo(tag)
     remote_block = (
+        "      # Main emulator & IDE repository (master branch)\n"
         "      - type: git\n"
         f"        url: https://github.com/{REPO}.git\n"
         f"        tag: {tag}\n"
         f"        commit: {master_c}\n"
+        "        disable-lfs: true\n"
+        "      # 65C02 C/ASM SDK headers & linker scripts (independent orphan branch 'SDK' in the same repo)\n"
         "      - type: git\n"
         f"        url: https://github.com/{REPO}.git\n"
         f"        commit: {sdk_c}\n"
         "        dest: sdk\n"
+        "        disable-lfs: true\n"
+        "      # MicroDOS guest OS runtime libraries (independent orphan branch 'MicroDOS' in the same repo)\n"
         "      - type: git\n"
         f"        url: https://github.com/{REPO}.git\n"
         f"        commit: {microdos_c}\n"
         "        dest: sdk/microdos\n"
+        "        disable-lfs: true\n"
         "      - type: file\n"
         f"        url: {zip_url}\n"
         f"        sha256: {zip_sha}\n"
     )
     updated_manifest = replace_sim_sources(manifest_text, remote_block)
-    updated_manifest = re.sub(
-        r'<release version=\\"[^"]*\\" date=\\"[^"]*\\"/>',
-        lambda _m: f'<release version=\\"{tag.lstrip("v")}\\" date=\\"{datetime.date.today().isoformat()}\\"/>',
-        updated_manifest,
-        count=1,
-    )
     with open(MANIFEST_OUT_PATH, "w", encoding="utf-8") as f:
         f.write(updated_manifest)
     print(f"Updated {MANIFEST_OUT_PATH} and {METAINFO_PATH} for {tag} (master={master_c[:8]}, sdk={sdk_c[:8]}, microdos={microdos_c[:8]})")
@@ -530,6 +589,8 @@ PYEOF
 
     FLATPAK_BUILDER_ARGS=(
         --force-clean
+        --delete-build-dirs
+        --ccache
         --repo=build/flatpak-repo
         --compose-url-policy=full
         --mirror-screenshots-url=https://dl.flathub.org/media
@@ -538,6 +599,7 @@ PYEOF
         FLATPAK_BUILDER_ARGS+=(--disable-rofiles-fuse)
     fi
 
+    rm -rf .flatpak-builder/build/*
     flatpak-builder "${FLATPAK_BUILDER_ARGS[@]}" build/flatpak-build "$MANIFEST_FILE"
     if [ -d build/flatpak-build/files/share/app-info/media ]; then
         ostree commit --repo=build/flatpak-repo --canonical-permissions --branch="screenshots/$(flatpak --default-arch)" build/flatpak-build/files/share/app-info/media

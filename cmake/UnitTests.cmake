@@ -1,7 +1,7 @@
 enable_testing()
 file(GLOB_RECURSE TEST_SOURCES "src/UnitTests/*.cpp")
 
-if(TEST_SOURCES AND NOT EMSCRIPTEN)
+if(BUILD_UNIT_TESTS AND TEST_SOURCES AND NOT EMSCRIPTEN)
     add_executable(unit_tests ${TEST_SOURCES} "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDIFile.cpp" "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDISoundBank.cpp" "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDISoundBankLoader.cpp" "${CMAKE_SOURCE_DIR}/src/Frontend/GUI/MIDI/MIDIVoiceAllocator.cpp")
     set_target_properties(unit_tests PROPERTIES
         UNITY_BUILD ON

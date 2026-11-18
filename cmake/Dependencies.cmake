@@ -1,6 +1,31 @@
 include(FetchContent)
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Disable network updates for FetchContent dependencies" FORCE)
 
+option(BUILD_UNIT_TESTS "Build unit tests" ON)
+option(USE_SYSTEM_SDL3 "Use system SDL3 instead of FetchContent" OFF)
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/_flatpak_deps")
+    foreach(_dep_pair
+        "GOOGLETEST:googletest"
+        "SDL3:sdl3"
+        "IMGUI:imgui"
+        "IMGUIFILEDIALOG:imguifiledialog"
+        "IMGUICOLORTEXTEDIT:imguicolortextedit"
+        "JSON:json"
+        "GLAD:glad"
+        "MINIZ:miniz"
+        "ASIO:asio"
+        "HTTPLIB:httplib"
+    )
+        string(REPLACE ":" ";" _dep_parts "${_dep_pair}")
+        list(GET _dep_parts 0 _dep_upper)
+        list(GET _dep_parts 1 _dep_dir)
+        if(NOT DEFINED FETCHCONTENT_SOURCE_DIR_${_dep_upper} AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/_flatpak_deps/${_dep_dir}")
+            set(FETCHCONTENT_SOURCE_DIR_${_dep_upper} "${CMAKE_CURRENT_SOURCE_DIR}/_flatpak_deps/${_dep_dir}" CACHE PATH "" FORCE)
+        endif()
+    endforeach()
+endif()
+
 if(WIN32 AND NOT MSVC)
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
     set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -70,39 +95,45 @@ if(NOT FETCHCONTENT_FULLY_DISCONNECTED AND NOT "${LAST_DEPS_VERSION_STAMP}" STRE
 endif()
 
 # Google Test
-FetchContent_Declare(
-    googletest
-    URL ${GTEST_URL}
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-if(WIN32)
-    target_compile_definitions(gtest PUBLIC GTEST_API_=)
+if(BUILD_UNIT_TESTS)
+    FetchContent_Declare(
+        googletest
+        URL ${GTEST_URL}
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+    if(WIN32)
+        target_compile_definitions(gtest PUBLIC GTEST_API_=)
+    endif()
 endif()
 
 # SDL3
-set(SDL_SHARED OFF CACHE BOOL "Build shared SDL3" FORCE)
-set(SDL_STATIC ON CACHE BOOL "Build static SDL3" FORCE)
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "Build SDL3 test library" FORCE)
-set(SDL_TESTS OFF CACHE BOOL "Build SDL3 tests" FORCE)
+if(USE_SYSTEM_SDL3)
+    find_package(SDL3 REQUIRED CONFIG)
+else()
+    set(SDL_SHARED OFF CACHE BOOL "Build shared SDL3" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "Build static SDL3" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "Build SDL3 test library" FORCE)
+    set(SDL_TESTS OFF CACHE BOOL "Build SDL3 tests" FORCE)
 
-FetchContent_Declare(
-    SDL3
-    GIT_REPOSITORY ${SDL3_REPO}
-    GIT_TAG ${SDL3_TAG}
-    PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sdl3.cmake
-)
-set(CMAKE_WARN_DEPRECATED OFF)
-set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
-if(DEFINED FETCHCONTENT_SOURCE_DIR_SDL3 AND EXISTS "${FETCHCONTENT_SOURCE_DIR_SDL3}")
-    execute_process(
-        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sdl3.cmake"
-        WORKING_DIRECTORY "${FETCHCONTENT_SOURCE_DIR_SDL3}"
+    FetchContent_Declare(
+        SDL3
+        GIT_REPOSITORY ${SDL3_REPO}
+        GIT_TAG ${SDL3_TAG}
+        PATCH_COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sdl3.cmake
     )
+    set(CMAKE_WARN_DEPRECATED OFF)
+    set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
+    if(DEFINED FETCHCONTENT_SOURCE_DIR_SDL3 AND EXISTS "${FETCHCONTENT_SOURCE_DIR_SDL3}")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_sdl3.cmake"
+            WORKING_DIRECTORY "${FETCHCONTENT_SOURCE_DIR_SDL3}"
+        )
+    endif()
+    FetchContent_MakeAvailable(SDL3)
+    set(CMAKE_DISABLE_PRECOMPILE_HEADERS OFF)
+    set(CMAKE_WARN_DEPRECATED ON)
 endif()
-FetchContent_MakeAvailable(SDL3)
-set(CMAKE_DISABLE_PRECOMPILE_HEADERS OFF)
-set(CMAKE_WARN_DEPRECATED ON)
 
 # ImGui
 FetchContent_Declare(
