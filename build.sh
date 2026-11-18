@@ -236,7 +236,6 @@ import urllib.request
 
 REPO = "ManuFlosoYT/65c02-SIM"
 API_BASE = f"https://api.github.com/repos/{REPO}"
-LLVM_MOS_TAG_URL = "https://api.github.com/repos/llvm-mos/llvm-mos-sdk/releases/tags/v23.4.0"
 METAINFO_PATH = "flatpak/dev.manufloso.sim_65c02.metainfo.xml"
 MANIFEST_SRC_PATH = "flatpak/dev.manufloso.sim_65c02.yml"
 MANIFEST_OUT_PATH = os.environ["MANIFEST_FILE"]
@@ -397,29 +396,6 @@ def sdk_zip_sha_fallback(yml_text):
     raise RuntimeError("SDK.zip not found locally and no existing sha256 in manifest")
 
 
-def update_llvm_mos_aarch64(yml_text, url, sha256):
-    lines = yml_text.splitlines(keepends=True)
-    for s, e, text in parse_module_sources(lines, "llvm-mos-sdk"):
-        low = text.lower()
-        if "llvm-mos" in low and ("aarch64" in low or "arm64" in low) and ".tar.xz" in low:
-            updated_item = re.sub(r"(^\s+url:\s*)[^\s]+", lambda m: f"{m.group(1)}{url}", text, count=1, flags=re.M)
-            updated_item = re.sub(r"(^\s+sha256:\s*)[^\s]+", lambda m: f"{m.group(1)}{sha256}", updated_item, count=1, flags=re.M)
-            return "".join(lines[:s]) + updated_item + "".join(lines[e:])
-    return yml_text
-
-
-def update_llvm_mos_sdk_commit(yml_text, commit_sha):
-    lines = yml_text.splitlines(keepends=True)
-    for s, e, text in parse_module_sources(lines, "llvm-mos-sdk"):
-        if "llvm-mos-sdk.git" in text:
-            if re.search(r"^\s+commit:\s*", text, flags=re.M):
-                updated_item = re.sub(r"(^\s+commit:\s*)[^\s]+", lambda m: f"{m.group(1)}{commit_sha}", text, count=1, flags=re.M)
-            else:
-                updated_item = re.sub(r"(^\s+tag:\s*[^\s]+\n)", lambda m: f"{m.group(1)}        commit: {commit_sha}\n", text, count=1, flags=re.M)
-            return "".join(lines[:s]) + updated_item + "".join(lines[e:])
-    return yml_text
-
-
 def release_sdk_info(rel):
     if not rel or rel.get("draft"):
         return None
@@ -463,18 +439,7 @@ def resolve_from_github(manifest_text):
     sdk_commit = gh_get(f"{API_BASE}/commits/SDK")["sha"]
     microdos_commit = gh_get(f"{API_BASE}/commits/MicroDOS")["sha"]
 
-    llvm_aarch64 = None
-    llvm_rel = gh_get_optional(LLVM_MOS_TAG_URL)
-    if llvm_rel:
-        for asset in llvm_rel.get("assets", []):
-            name_l = asset.get("name", "").lower()
-            if "linux" in name_l and ("aarch64" in name_l or "arm64" in name_l) and name_l.endswith(".tar.xz"):
-                llvm_aarch64 = (asset["browser_download_url"], asset_sha256(asset))
-                break
-    llvm_sdk_commit_obj = gh_get_optional("https://api.github.com/repos/llvm-mos/llvm-mos-sdk/commits/v23.4.0")
-    llvm_sdk_commit = llvm_sdk_commit_obj.get("sha") if llvm_sdk_commit_obj else None
-
-    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256, llvm_aarch64, llvm_sdk_commit
+    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256
 
 
 def resolve_offline(manifest_text):
@@ -499,7 +464,7 @@ def resolve_offline(manifest_text):
     )
     sdk_zip_url = f"https://github.com/{REPO}/releases/download/{tag}/SDK.zip"
     sdk_zip_sha256 = sdk_zip_sha_fallback(manifest_text)
-    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256, None, None
+    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256
 
 
 with open(MANIFEST_SRC_PATH, "r", encoding="utf-8") as f:
@@ -528,10 +493,10 @@ if LOCAL_SOURCES:
     print(f"Prepared local-sources manifest {MANIFEST_OUT_PATH} (metainfo version {tag.lstrip('v')})")
 else:
     try:
-        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha, llvm_aarch64, llvm_sdk_commit = resolve_from_github(manifest_text)
+        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha = resolve_from_github(manifest_text)
     except Exception as exc:
         print(f"Warning: GitHub API lookup failed ({exc}); falling back to local git.", file=sys.stderr)
-        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha, llvm_aarch64, llvm_sdk_commit = resolve_offline(manifest_text)
+        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha = resolve_offline(manifest_text)
 
     update_metainfo(tag)
     remote_block = (
@@ -558,10 +523,6 @@ else:
         updated_manifest,
         count=1,
     )
-    if llvm_aarch64:
-        updated_manifest = update_llvm_mos_aarch64(updated_manifest, *llvm_aarch64)
-    if llvm_sdk_commit:
-        updated_manifest = update_llvm_mos_sdk_commit(updated_manifest, llvm_sdk_commit)
     with open(MANIFEST_OUT_PATH, "w", encoding="utf-8") as f:
         f.write(updated_manifest)
     print(f"Updated {MANIFEST_OUT_PATH} and {METAINFO_PATH} for {tag} (master={master_c[:8]}, sdk={sdk_c[:8]}, microdos={microdos_c[:8]})")
