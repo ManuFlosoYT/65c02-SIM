@@ -280,7 +280,7 @@ Every `./build.sh --target flatpak` run also performs automatic validation:
 
 To make the built-in IDE, cartridge generator, and media recording tools work without host packages, the Flatpak manifest bundles the following dependencies into `/app`:
 
-- **LLVM-MOS SDK (`v23.4.0`):** Multi-architecture module installed under `/app/toolchain/` and exposed to CMake via `-DLLVM_MOS_DIR=/app/toolchain/bin` (`MOS_CLANG_DEFAULT_PATH`) and at runtime via `MOS_CLANG=/app/toolchain/bin/mos-common-clang`. Uses the prebuilt `llvm-mos-linux.tar.xz` archive on `x86_64`, and builds `llvm-mos` and `llvm-mos-sdk` (`v23.4.0`) from source on `aarch64`.
+- **LLVM-MOS SDK (`v23.4.0`):** Prebuilt `llvm-mos-linux.tar.xz` (`x86_64`) archive installed under `/app/toolchain/` and exposed to CMake via `-DLLVM_MOS_DIR=/app/toolchain/bin` (`MOS_CLANG_DEFAULT_PATH`) and at runtime via `MOS_CLANG=/app/toolchain/bin/mos-common-clang`.
 - **FFmpeg (`n8.1.3`):** Built as shared libraries in `/app/lib` for video and GIF export.
 - **dosfstools (`v4.2`):** Configured with `--sbindir=/app/bin --enable-compat-symlinks` so `mkfs.fat` is available on `PATH`.
 - **mtools (`4.0.50`):** Configured with `--disable-floppyd --without-x` for FAT16 SD image manipulation (`mmd`, `mcopy`).
@@ -423,6 +423,6 @@ Continuous Integration and Release Packaging are managed via **GitHub Actions** 
   3. **Linux Build (`build-linux`):** Compiles using mold and runs unit tests via `ctest`.
   4. **Windows Cross-Build & Test (`build-windows`, `test-windows`):** Compiles MinGW UCRT64 executable and validates the test suite under Wine.
   5. **WebAssembly Deployment (`build-web`):** Compiles the Wasm SPA and deploys the build folder to the `gh-pages` branch.
-  6. **Flatpak Bundle (`build-flatpak`):** Matrix job targeting `x86_64` (`ubuntu-latest`) and `aarch64` (`ubuntu-24.04-arm`) inside privileged `fedora:latest` containers with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `dev.manufloso.sim_65c02-x86_64.flatpak` and `dev.manufloso.sim_65c02-aarch64.flatpak`.
-  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `dev.manufloso.sim_65c02-x86_64.flatpak` and `dev.manufloso.sim_65c02-aarch64.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
+  6. **Flatpak Bundle (`build-flatpak`):** Builds for `x86_64` on `ubuntu-latest` inside a privileged `fedora:latest` container with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `dev.manufloso.sim_65c02.flatpak`.
+  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `dev.manufloso.sim_65c02.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
   8. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from the `Wiki` git branch to the live GitHub Wiki repository.
