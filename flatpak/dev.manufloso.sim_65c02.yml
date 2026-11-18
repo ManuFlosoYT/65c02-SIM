@@ -116,7 +116,7 @@ modules:
           PATH="/app/toolchain/bin:$PATH" MOS_CLANG="/app/toolchain/bin/mos-common-clang" ./sdk/scripts/create-sdk.sh
         fi
         if ! grep -q "<releases>" flatpak/dev.manufloso.sim_65c02.metainfo.xml; then
-          python3 -c 'import pathlib; p=pathlib.Path("flatpak/dev.manufloso.sim_65c02.metainfo.xml"); p.write_text(p.read_text().replace("</component>", "  <releases>\n    <release version=\"2.5.0\" date=\"2026-11-17\"/>\n  </releases>\n</component>"))'
+          python3 -c 'import pathlib; p=pathlib.Path("flatpak/dev.manufloso.sim_65c02.metainfo.xml"); p.write_text(p.read_text().replace("</component>", "  <releases>\n    <release version=\"2.5.0\" date=\"2026-11-18\"/>\n  </releases>\n</component>"))'
         fi
         cmake -S . -B build/flatpak -GNinja \
           -DCMAKE_BUILD_TYPE=Release \

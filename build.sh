@@ -582,8 +582,9 @@ PYEOF
         ostree commit --repo=build/flatpak-repo --canonical-permissions --branch="screenshots/$(flatpak --default-arch)" build/flatpak-build/files/share/app-info/media
     fi
     mkdir -p output
-    flatpak build-bundle build/flatpak-repo output/SIM_65C02.flatpak dev.manufloso.sim_65c02
-    echo "Flatpak bundle created at output/SIM_65C02.flatpak"
+    flatpak build-bundle build/flatpak-repo output/dev.manufloso.sim_65c02.flatpak dev.manufloso.sim_65c02
+    echo "Flatpak bundle created at output/dev.manufloso.sim_65c02.flatpak"
+    echo "Run with: flatpak install --user output/dev.manufloso.sim_65c02.flatpak && flatpak run dev.manufloso.sim_65c02"
 
     if command -v desktop-file-validate >/dev/null 2>&1; then
         desktop-file-validate flatpak/dev.manufloso.sim_65c02.desktop
@@ -608,6 +609,11 @@ PYEOF
         "${LINT_CMD[@]}" repo build/flatpak-repo
     else
         echo "Warning: flatpak-builder-lint not found. Install org.flatpak.Builder: flatpak install flathub org.flatpak.Builder" >&2
+    fi
+
+    if [ "$DO_RUN" = true ]; then
+        flatpak install -y --user --reinstall output/dev.manufloso.sim_65c02.flatpak
+        flatpak run dev.manufloso.sim_65c02
     fi
 
 else

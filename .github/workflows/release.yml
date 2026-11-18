@@ -495,13 +495,13 @@ jobs:
         run: |
           chmod +x build.sh
           ./build.sh --target flatpak --local-sources
-          mv output/SIM_65C02.flatpak output/SIM_65C02-${{ matrix.arch }}.flatpak
+          mv output/dev.manufloso.sim_65c02.flatpak output/dev.manufloso.sim_65c02-${{ matrix.arch }}.flatpak
 
       - name: Upload Flatpak Artifact
         uses: actions/upload-artifact@v6
         with:
           name: SIM_65C02-flatpak-${{ matrix.arch }}
-          path: output/SIM_65C02-${{ matrix.arch }}.flatpak
+          path: output/dev.manufloso.sim_65c02-${{ matrix.arch }}.flatpak
 
   release:
     runs-on: ubuntu-latest
@@ -545,8 +545,8 @@ jobs:
           files: |
             output/SIM_65C02
             output/SIM_65C02.exe
-            output/SIM_65C02-x86_64.flatpak
-            output/SIM_65C02-aarch64.flatpak
+            output/dev.manufloso.sim_65c02-x86_64.flatpak
+            output/dev.manufloso.sim_65c02-aarch64.flatpak
             SDK.zip
 
   update-wiki:
