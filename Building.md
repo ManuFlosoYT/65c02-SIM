@@ -249,6 +249,7 @@ Output binary is placed in `output/SIM_65C02`.
 65c02-SIM includes a self-contained Flatpak recipe and Flathub AppStream metadata under `flatpak/`:
 
 - `flatpak/dev.manufloso.sim_65c02.yml`: Flatpak builder manifest targeting `org.freedesktop.Platform` / `org.freedesktop.Sdk` `26.08`.
+- `flatpak/python3-modules.yml`: Sub-manifest defining the offline Python 3 module dependencies (`Jinja2`, `packaging`, `mido`, `pillow`).
 - `flatpak/dev.manufloso.sim_65c02.desktop`: Desktop launcher entry (`dev.manufloso.sim_65c02`).
 - `flatpak/dev.manufloso.sim_65c02.metainfo.xml`: AppStream metadata and screenshots referencing `assets/screenshots/`.
 
@@ -280,13 +281,13 @@ Every `./build.sh --target flatpak` run also performs automatic validation:
 
 To make the built-in IDE, cartridge generator, and media recording tools work without host packages, the Flatpak manifest bundles the following dependencies into `/app`:
 
-- **LLVM-MOS SDK (`v23.4.0`):** Prebuilt `llvm-mos-linux.tar.xz` (`x86_64`) archive installed under `/app/toolchain/` and exposed to CMake via `-DLLVM_MOS_DIR=/app/toolchain/bin` (`MOS_CLANG_DEFAULT_PATH`) and at runtime via `MOS_CLANG=/app/toolchain/bin/mos-common-clang`.
-- **FFmpeg (`n8.1.3`):** Built as shared libraries in `/app/lib` for video and GIF export.
-- **dosfstools (`v4.2`):** Configured with `--sbindir=/app/bin --enable-compat-symlinks` so `mkfs.fat` is available on `PATH`.
-- **mtools (`4.0.50`):** Configured with `--disable-floppyd --without-x` for FAT16 SD image manipulation (`mmd`, `mcopy`).
-- **Python 3 Modules:** `MarkupSafe==3.0.2`, `Jinja2==3.1.6`, `packaging==24.2`, `mido==1.3.3`, and `pillow==11.1.0` installed under `/app` and exposed via `PYTHONPATH=/app/lib/python3.14/site-packages`.
+- **LLVM-MOS (`llvm-mos` & `llvm-mos-sdk` `v23.4.0`):** Compiled from source via `buildsystem: cmake-ninja` across `x86_64` and `aarch64` (stripping `clang-tools-extra` from `MOS.cmake`), installed under `/app/toolchain/` and exposed to CMake via `-DLLVM_MOS_DIR=/app/toolchain/bin` (`MOS_CLANG_DEFAULT_PATH`) and at runtime via `MOS_CLANG=/app/toolchain/bin/mos-common-clang`.
+- **SDL3 & FFmpeg:** Provided directly by the `org.freedesktop.Platform` `26.08` runtime rather than built in the manifest (`-DUSE_SYSTEM_SDL3=ON` for SDL3; `libavcodec`, `libavformat`, `libswscale`, and `libavutil` for video and GIF export).
+- **dosfstools (`v4.2`):** Configured with `--sbindir=/app/bin --enable-compat-symlinks` so `mkfs.fat` is available on `PATH`, with `x-checker-data` tracking upstream releases.
+- **mtools (`4.0.50`):** Configured with `--disable-floppyd --without-x` for FAT16 SD image manipulation (`mmd`, `mcopy`), with `x-checker-data` tracking upstream releases.
+- **Python 3 Modules:** Defined in `flatpak/python3-modules.yml` (`Jinja2==3.1.6`, `packaging==24.2`, `mido==1.3.3`, and `pillow==11.1.0`, while `MarkupSafe` is already provided by `26.08`), installed under `/app` and exposed via `PYTHONPATH=/app/lib/python3.14/site-packages`.
 
-Because `flatpak-builder` executes module builds offline, all 10 CMake `FetchContent` dependencies are declared as manifest sources under `_flatpak_deps/` and configured with `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` and `-DFETCHCONTENT_SOURCE_DIR_<DEP>`.
+Because `flatpak-builder` executes module builds offline, `sim_65c02` builds via `buildsystem: cmake-ninja` with `-DBUILD_TESTING=OFF`, `-DUSE_SYSTEM_SDL3=ON`, and `-DFETCHCONTENT_FULLY_DISCONNECTED=ON`. Its third-party `FetchContent` dependencies are declared as manifest sources under `_flatpak_deps/` and discovered automatically by `cmake/Dependencies.cmake` (`FETCHCONTENT_SOURCE_DIR_<DEP>`).
 
 ### Sandbox Path Behavior
 
@@ -423,6 +424,6 @@ Continuous Integration and Release Packaging are managed via **GitHub Actions** 
   3. **Linux Build (`build-linux`):** Compiles using mold and runs unit tests via `ctest`.
   4. **Windows Cross-Build & Test (`build-windows`, `test-windows`):** Compiles MinGW UCRT64 executable and validates the test suite under Wine.
   5. **WebAssembly Deployment (`build-web`):** Compiles the Wasm SPA and deploys the build folder to the `gh-pages` branch.
-  6. **Flatpak Bundle (`build-flatpak`):** Builds for `x86_64` on `ubuntu-latest` inside a privileged `fedora:latest` container with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `dev.manufloso.sim_65c02.flatpak`.
-  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `dev.manufloso.sim_65c02.flatpak` (Flatpak), and `SDK.zip` to the GitHub release.
+  6. **Flatpak Bundles (`build-flatpak`):** Builds a multi-arch matrix (`x86_64` on `ubuntu-latest` and `aarch64` on `ubuntu-24.04-arm`) inside a privileged `fedora:latest` container with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `dev.manufloso.sim_65c02-x86_64.flatpak` and `dev.manufloso.sim_65c02-aarch64.flatpak`.
+  7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `dev.manufloso.sim_65c02-x86_64.flatpak` (Flatpak x86_64), `dev.manufloso.sim_65c02-aarch64.flatpak` (Flatpak aarch64), and `SDK.zip` to the GitHub release.
   8. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from the `Wiki` git branch to the live GitHub Wiki repository.
