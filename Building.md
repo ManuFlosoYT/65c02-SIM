@@ -287,7 +287,7 @@ To make the built-in IDE, cartridge generator, and media recording tools work wi
 - **mtools (`4.0.50`):** Configured with `--disable-floppyd --without-x` for FAT16 SD image manipulation (`mmd`, `mcopy`), with `x-checker-data` tracking upstream releases.
 - **Python 3 Modules:** Defined in `flatpak/python3-modules.yml` (`Jinja2==3.1.6`, `packaging==24.2`, `mido==1.3.3`, and `pillow==11.1.0`, while `MarkupSafe` is already provided by `26.08`), installed under `/app` and exposed via `PYTHONPATH=/app/lib/python3.14/site-packages`.
 
-Because `flatpak-builder` executes module builds offline, `sim_65c02` builds via `buildsystem: cmake-ninja` with `-DBUILD_TESTING=OFF`, `-DUSE_SYSTEM_SDL3=ON`, and `-DFETCHCONTENT_FULLY_DISCONNECTED=ON`. Its third-party `FetchContent` dependencies are declared as manifest sources under `_flatpak_deps/` and discovered automatically by `cmake/Dependencies.cmake` (`FETCHCONTENT_SOURCE_DIR_<DEP>`).
+Because `flatpak-builder` executes module builds offline, `sim_65c02` builds via `buildsystem: cmake-ninja` with `-DBUILD_UNIT_TESTS=OFF`, `-DUSE_SYSTEM_SDL3=ON`, and `-DFETCHCONTENT_FULLY_DISCONNECTED=ON`. Its third-party `FetchContent` dependencies are declared as manifest sources under `_flatpak_deps/` and discovered automatically by `cmake/Dependencies.cmake` (`FETCHCONTENT_SOURCE_DIR_<DEP>`).
 
 ### Sandbox Path Behavior
 
