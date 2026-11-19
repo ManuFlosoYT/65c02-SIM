@@ -82,32 +82,22 @@ flatpak install -y flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//
 
 #### Compile and Run Locally
 
-### 🌳 Repository Architecture (Git Worktrees)
+### 🌳 Repository Architecture
 
-This project uses **Git Worktrees** to keep different components completely isolated in their own orphan branches. This keeps the `master` branch clean and avoids downloading huge assets when they are not needed.
+This project uses a unified monorepo on the `master` branch containing all components in a single repository tree:
 
-The branches are structured as follows:
-- **`master`**: The core C++ emulator and build scripts.
-- **`SDK`**: Libraries, BIOS, and headers for 6502 development (mounted at `/sdk/`).
-- **`MSBasic`**: Microsoft BASIC port for the 6502 (mounted at `/sdk/msbasic/`).
-- **`MicroDOS`**: Custom operating system for the emulator (mounted at `/sdk/microdos/`).
-- **`Tools`**: Python scripts and utilities for data conversion (mounted at `/tools/`).
-- **`Assets`**: Audio, MIDI, NSF, and VRAM files (mounted at `/assets/`).
-- **`Wiki`**: Documentation files (mounted at `/wiki/`).
+- **`src/`**: Core C++23 emulator, frontend, and unit tests.
+- **`sdk/`**: Libraries, BIOS, linker scripts, and build scripts for 6502 development (`sdk/msbasic/` for Microsoft BASIC and `sdk/microdos/` for MicroDOS).
+- **`tools/`**: Python scripts and utilities for linker generation and data conversion.
+- **`assets/`**: Audio, MIDI, NSF, screenshots, and VRAM files.
+- **`wiki/`**: Documentation files synced to the GitHub Wiki.
+- **`cmake/` & `flatpak/`**: CMake build modules and Flatpak packaging manifests.
 
-#### Clone the project (All Worktrees)
-
-To clone the repository and automatically mount all components into their respective folders, use the following one-liner:
+#### Clone the project
 
 **Linux (Bash):**
 ```bash
-git clone https://github.com/ManuFlosoYT/65c02-SIM.git && cd 65c02-SIM && \
-git worktree add sdk SDK && \
-git worktree add sdk/msbasic MSBasic && \
-git worktree add sdk/microdos MicroDOS && \
-git worktree add tools Tools && \
-git worktree add assets Assets && \
-git worktree add wiki Wiki
+git clone https://github.com/ManuFlosoYT/65c02-SIM.git && cd 65c02-SIM
 ```
 
 Compile using the unified build script. By default, it targets Linux:
@@ -124,6 +114,8 @@ You can also specify the target OS explicitly:
 ./build.sh --target web
 ./build.sh --target flatpak
 ```
+
+> *Note:* When building with CMake directly or via Flatpak, pass `-DBUILD_SDK_BUNDLE=ON` to build `SDK.zip` from source (`sdk/`, `tools/`, `assets/`) if a pre-built `SDK.zip` is not already present.
 
 The parameters accepted by the script are divided according to their function:
 
