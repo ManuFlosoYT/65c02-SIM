@@ -203,42 +203,6 @@ jobs:
       - name: Set Core Executable Permissions
         run: chmod +x output/SIM_65C02
 
-      - name: Checkout SDK
-        uses: actions/checkout@v5
-        with:
-          ref: SDK
-          path: sdk
-
-      - name: Checkout MSBasic
-        uses: actions/checkout@v5
-        with:
-          ref: MSBasic
-          path: sdk/msbasic
-
-      - name: Checkout MicroDOS
-        uses: actions/checkout@v5
-        with:
-          ref: MicroDOS
-          path: sdk/microdos
-
-      - name: Checkout Tools
-        uses: actions/checkout@v5
-        with:
-          ref: Tools
-          path: tools
-
-      - name: Checkout Assets
-        uses: actions/checkout@v5
-        with:
-          ref: Assets
-          path: assets
-
-      - name: Checkout Wiki
-        uses: actions/checkout@v5
-        with:
-          ref: Wiki
-          path: wiki
-
       - name: Fix Git Trust
         run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
@@ -444,10 +408,10 @@ jobs:
   update-wiki:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo (Wiki branch)
+      - name: Checkout repo (master branch)
         uses: actions/checkout@v5
         with:
-          ref: Wiki
+          ref: master
           path: main-repo
 
       - name: Checkout wiki repo
@@ -458,7 +422,7 @@ jobs:
 
       - name: Sync files and push to Wiki
         run: |
-          rsync -av --delete --exclude='.git/' main-repo/ wiki-repo/
+          rsync -av --delete --exclude='.git/' main-repo/wiki/ wiki-repo/
 
           cd wiki-repo
 
