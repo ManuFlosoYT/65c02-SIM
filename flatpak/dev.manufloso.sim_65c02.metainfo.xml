@@ -30,35 +30,35 @@
   <screenshots>
     <screenshot type="default">
       <caption>Main 65C02 SIM workspace and hardware frontend</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/frontend.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/frontend.png</image>
     </screenshot>
     <screenshot>
       <caption>Built-in C and 6502 Assembly IDE</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/ide.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/ide.png</image>
     </screenshot>
     <screenshot>
       <caption>GPU display output and CRT simulation</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/graphics.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/graphics.png</image>
     </screenshot>
     <screenshot>
       <caption>Live 65C02 disassembly and CPU debugger</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/dissasembly.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/dissasembly.png</image>
     </screenshot>
     <screenshot>
       <caption>Cycle-level bus and signal logic analyzer</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/logic.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/logic.png</image>
     </screenshot>
     <screenshot>
       <caption>MIDI sequencer and SID music conversion pipeline</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/midi.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/midi.png</image>
     </screenshot>
     <screenshot>
       <caption>Subroutine execution and performance profiler</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/profiler.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/profiler.png</image>
     </screenshot>
     <screenshot>
       <caption>MOS 6581/8580 SID sound chip register and voice inspector</caption>
-      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/Assets/screenshots/sid.png</image>
+      <image>https://raw.githubusercontent.com/ManuFlosoYT/65c02-SIM/master/assets/screenshots/sid.png</image>
     </screenshot>
   </screenshots>
   <releases>
