@@ -10,7 +10,7 @@ This guide provides a comprehensive walkthrough for building the **65c02-SIM** e
 - [Prerequisites & Package Setup (Fedora)](#prerequisites--package-setup-fedora)
   - [Fedora (dnf)](#fedora-dnf)
   - [WebAssembly Prerequisites](#webassembly-prerequisites)
-- [Multi-Worktree Repository Setup](#multi-worktree-repository-setup)
+- [Repository Structure](#repository-structure)
 - [Unified Build Script (`build.sh`)](#unified-build-script-buildsh)
   - [Command-Line Options](#command-line-options)
   - [Linux Build](#linux-build)
@@ -82,40 +82,29 @@ The build script `./build.sh --target web` will automatically clone and activate
 
 ---
 
-## Multi-Worktree Repository Setup
+## Repository Structure
 
-65c02-SIM organizes auxiliary sub-projects (SDK, MicroDOS, MSBasic, development tools, assets, and wiki documentation) as **Git Worktrees** pointing to independent branches in the repository, rather than using git submodules:
+65c02-SIM uses a unified monorepo on `master` containing the simulator C++ source, SDK, MicroDOS, MSBasic, conversion tools, assets, and wiki documentation in a single repository tree:
 
 ```
-65c02-SIM/                     [master branch] (Simulator C++ source & CMake build)
-├── assets/                    [Assets branch]
-├── sdk/                       [SDK branch]
-│   ├── microdos/              [MicroDOS branch]
-│   └── msbasic/               [MSBasic branch]
-├── tools/                     [Tools branch]
-└── wiki/                      [Wiki branch]
+65c02-SIM/                     (Unified monorepo on master)
+├── assets/                    (MIDI, NSF, VRAM assets, MicroDOS strings, screenshots)
+├── cmake/                     (CMake build modules & resource embedder)
+├── flatpak/                   (Flatpak manifest & AppStream metadata)
+├── sdk/                       (6502 C/ASM SDK, linker scripts, BIOS, build scripts)
+│   ├── microdos/              (MicroDOS guest operating system & apps)
+│   └── msbasic/               (Microsoft BASIC 6502 port)
+├── src/                       (Simulator C++23 source, frontend & unit tests)
+├── tools/                     (Linker generators, MIDI-to-SID & image converters)
+└── wiki/                      (Technical documentation synced to GitHub Wiki)
 ```
 
-To set up a fresh clone with all 6 worktrees properly mounted:
+To clone the repository:
 
 ```bash
-# 1. Clone main simulator repository
 git clone https://github.com/ManuFlosoYT/65c02-SIM.git
 cd 65c02-SIM
-
-# 2. Mount auxiliary worktrees
-git worktree add assets Assets
-git worktree add sdk SDK
-git worktree add sdk/microdos MicroDOS
-git worktree add sdk/msbasic MSBasic
-git worktree add tools Tools
-git worktree add wiki Wiki
 ```
-
-### Why Worktrees?
-- **Atomic Commits & Independence:** Each branch maintains its own revision history while remaining accessible in a single directory tree.
-- **Zero Submodule Overhead:** No recursive checkout issues, detached `HEAD` traps, or out-of-sync submodule pointer hashes.
-- **Root `.gitignore` Isolation:** The root `.gitignore` ignores `/sdk/`, `/tools/`, `/assets/`, and `/wiki/`, keeping the main repository clean.
 
 ---
 
@@ -268,9 +257,9 @@ flatpak install -y --user --reinstall output/dev.manufloso.sim_65c02.flatpak
 flatpak run dev.manufloso.sim_65c02
 ```
 
-By default, `./build.sh --target flatpak` automatically synchronizes release metadata via the GitHub API—updating the `<releases>` version and date in `flatpak/dev.manufloso.sim_65c02.metainfo.xml`, as well as the `master` tag/commit, `SDK`/`MicroDOS` commits, and `SDK.zip` SHA-256 in `flatpak/dev.manufloso.sim_65c02.yml`—before running `flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml` and bundling `output/dev.manufloso.sim_65c02.flatpak`. Pass `--run` to install and launch the bundle automatically after building.
+By default, `./build.sh --target flatpak` automatically synchronizes release metadata via the GitHub API (falling back to local `git` if offline)—updating the `<releases>` version and date in `flatpak/dev.manufloso.sim_65c02.metainfo.xml`, as well as the `master` tag and commit in `flatpak/dev.manufloso.sim_65c02.yml`—before running `flatpak-builder --force-clean --repo=build/flatpak-repo build/flatpak-build flatpak/dev.manufloso.sim_65c02.yml` and bundling `output/dev.manufloso.sim_65c02.flatpak`. Pass `--run` to install and launch the bundle automatically after building.
 
-When building inside CI or before a tag/asset is published on GitHub, pass `--local-sources` (`./build.sh --target flatpak --local-sources`) to temporarily build from the checked-out workspace and local `SDK.zip` artifact instead of the remote release sources.
+When building inside CI or before a tag is pushed to GitHub, pass `--local-sources` (`./build.sh --target flatpak --local-sources`) to build from the checked-out workspace instead of the remote Git tag source.
 
 Every `./build.sh --target flatpak` run also performs automatic validation:
 - `desktop-file-validate` on `flatpak/dev.manufloso.sim_65c02.desktop`.
@@ -287,7 +276,7 @@ To make the built-in IDE, cartridge generator, and media recording tools work wi
 - **mtools (`4.0.50`):** Configured with `--disable-floppyd --without-x` for FAT16 SD image manipulation (`mmd`, `mcopy`), with `x-checker-data` tracking upstream releases.
 - **Python 3 Modules:** Defined in `flatpak/python3-modules.yml` (`Jinja2==3.1.6`, `packaging==24.2`, `mido==1.3.3`, and `pillow==11.1.0`, while `MarkupSafe` is already provided by `26.08`), installed under `/app` and exposed via `PYTHONPATH=/app/lib/python3.14/site-packages`.
 
-Because `flatpak-builder` executes module builds offline, `sim_65c02` builds via `buildsystem: cmake-ninja` with `-DBUILD_UNIT_TESTS=OFF`, `-DUSE_SYSTEM_SDL3=ON`, and `-DFETCHCONTENT_FULLY_DISCONNECTED=ON`. Its third-party `FetchContent` dependencies are declared as manifest sources under `_flatpak_deps/` and discovered automatically by `cmake/Dependencies.cmake` (`FETCHCONTENT_SOURCE_DIR_<DEP>`).
+Because `flatpak-builder` executes module builds offline, `sim_65c02` builds via `buildsystem: cmake-ninja` with `-DBUILD_UNIT_TESTS=OFF`, `-DUSE_SYSTEM_SDL3=ON`, `-DBUILD_SDK_BUNDLE=ON`, and `-DFETCHCONTENT_FULLY_DISCONNECTED=ON`. Passing `-DBUILD_SDK_BUNDLE=ON` builds `SDK.zip` directly from the in-tree `sdk/`, `tools/`, and `assets/` directories during the CMake build. Its third-party `FetchContent` dependencies are declared as manifest sources under `_flatpak_deps/` and discovered automatically by `cmake/Dependencies.cmake` (`FETCHCONTENT_SOURCE_DIR_<DEP>`).
 
 ### Sandbox Path Behavior
 
@@ -410,7 +399,7 @@ The build system utilizes a custom Python utility (`cmake/embed_resource.py`), i
 3. **LLVM-MOS Compiler VFS (`embedded_llvm_mos.h`):** On desktop builds, standard library headers, runtime libraries (`sdk/src/Libs`, `sdk/microdos/Libs`), linker scripts (`sdk/linker/link.ld`), and BIOS definitions (`sdk/linker/bios.s`) are embedded into a Virtual File System header, allowing the built-in IDE to compile 6502 C code out-of-the-box without requiring an external toolchain.
 4. **Cascadia Mono Font (`CascadiaMono.cpp`):** Base85-encoded monospace font data compiled into source memory.
 5. **SID Wavetables (`SIDWaveTables.cpp`):** High-precision precalculated wavetables for the MOS 6581/8580 SID sound generator.
-6. **SDK Bundle (`sdk_zip.h`):** Packages `SDK.zip` into the binary so users can extract SDK files directly from the UI.
+6. **SDK Bundle (`sdk_zip.h`):** Packages `SDK.zip` into the binary so users can extract SDK files directly from the UI. When configuring CMake with `-DBUILD_SDK_BUNDLE=ON` (such as in Flatpak builds), CMake builds `SDK.zip` from `sdk/`, `tools/`, and `assets/` during the build if a pre-built archive is not present.
 
 ---
 
@@ -426,4 +415,4 @@ Continuous Integration and Release Packaging are managed via **GitHub Actions** 
   5. **WebAssembly Deployment (`build-web`):** Compiles the Wasm SPA and deploys the build folder to the `gh-pages` branch.
   6. **Flatpak Bundles (`build-flatpak`):** Builds a multi-arch matrix (`x86_64` on `ubuntu-latest` and `aarch64` on `ubuntu-24.04-arm`) inside a privileged `fedora:latest` container with `org.freedesktop.Platform//26.08`, `org.freedesktop.Sdk//26.08`, and `org.flatpak.Builder`. Runs `./build.sh --target flatpak --local-sources` (including `desktop-file-validate`, `appstreamcli validate`, and `flatpak-builder-lint`) and packages `dev.manufloso.sim_65c02-x86_64.flatpak` and `dev.manufloso.sim_65c02-aarch64.flatpak`.
   7. **GitHub Release (`release`):** Attaches `SIM_65C02` (Linux), `SIM_65C02.exe` (Windows), `dev.manufloso.sim_65c02-x86_64.flatpak` (Flatpak x86_64), `dev.manufloso.sim_65c02-aarch64.flatpak` (Flatpak aarch64), and `SDK.zip` to the GitHub release.
-  8. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from the `Wiki` git branch to the live GitHub Wiki repository.
+  8. **Wiki Synchronization (`update-wiki`):** Automatically syncs documentation from `wiki/` on the `master` branch to the live GitHub Wiki repository.
