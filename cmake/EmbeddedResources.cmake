@@ -140,12 +140,67 @@ endif()
 if(NOT EMSCRIPTEN)
     set(SDK_ZIP "${CMAKE_CURRENT_SOURCE_DIR}/SDK.zip")
     set(SDK_ZIP_H "${CMAKE_CURRENT_BINARY_DIR}/generated/sdk_zip.h")
+    set(SDK_EMBED_ARGS --mode binary --input "${SDK_ZIP}" --var "sdk_zip_data")
 
-    target_embed_resource(sdk_resource
-        OUTPUT "${SDK_ZIP_H}"
-        ARGS --mode binary --input "${SDK_ZIP}" --var "sdk_zip_data"
-        COMMENT "Embedding SDK.zip (if found)"
-    )
+    if(BUILD_SDK_BUNDLE)
+        if(NOT SYSTEM_MOS_CLANG OR NOT MOS_BIN_DIR)
+            message(FATAL_ERROR "BUILD_SDK_BUNDLE=ON requires LLVM-MOS compiler (SYSTEM_MOS_CLANG / MOS_BIN_DIR).")
+        endif()
+
+        include(${CMAKE_CURRENT_LIST_DIR}/MinimalNSFRunnerSources.cmake)
+        add_executable(nsf_runner ${MINIMAL_NSF_RUNNER_SOURCES})
+        configure_minimal_nsf_runner_target(nsf_runner)
+
+        file(GLOB SDK_BUNDLE_FLAT_DEPS CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/scripts/*.sh"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/*.ld"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/linker/*.s"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/src/*.c"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/src/*.s"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/microdos/Apps/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/microdos/System/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/msbasic/*.s"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/msbasic/*.cfg"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/msbasic/make.sh"
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/scripting/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/midi/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/nsf/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/vram/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/microDOS/strings.txt"
+        )
+        file(GLOB_RECURSE SDK_BUNDLE_RECURSIVE_DEPS CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/sdk/microdos/src/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/*.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/*.json"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/*.act"
+        )
+
+        add_custom_command(
+            OUTPUT "${SDK_ZIP}"
+            COMMAND ${CMAKE_COMMAND} -E env
+                "PATH=${MOS_BIN_DIR}:$ENV{PATH}"
+                "MOS_CLANG=${SYSTEM_MOS_CLANG}"
+                "SIM_65C02_BIN=$<TARGET_FILE:nsf_runner>"
+                bash "${CMAKE_CURRENT_SOURCE_DIR}/sdk/scripts/create-sdk.sh"
+            DEPENDS nsf_runner ${EMBEDDED_LIBS_DEPS} ${SDK_BUNDLE_FLAT_DEPS} ${SDK_BUNDLE_RECURSIVE_DEPS}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Building SDK.zip from source via create-sdk.sh"
+            VERBATIM
+        )
+
+        target_embed_resource(sdk_resource
+            OUTPUT "${SDK_ZIP_H}"
+            ARGS ${SDK_EMBED_ARGS}
+            DEPENDS "${SDK_ZIP}"
+            COMMENT "Embedding SDK.zip"
+        )
+    else()
+        target_embed_resource(sdk_resource
+            OUTPUT "${SDK_ZIP_H}"
+            ARGS ${SDK_EMBED_ARGS}
+            COMMENT "Embedding SDK.zip (if found)"
+        )
+    endif()
 endif()
 
 set(CASCADIA_MONO_BASE85 "${CMAKE_CURRENT_SOURCE_DIR}/src/Frontend/Assets/CascadiaMono.base85")
