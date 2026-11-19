@@ -3,6 +3,7 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Disable network updates for
 
 option(BUILD_UNIT_TESTS "Build unit tests" ON)
 option(USE_SYSTEM_SDL3 "Use system SDL3 instead of FetchContent" OFF)
+option(BUILD_SDK_BUNDLE "Build SDK.zip from source via create-sdk.sh" OFF)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/_flatpak_deps")
     foreach(_dep_pair
@@ -269,7 +270,20 @@ endif()
 
 # LLVM-MOS SDK
 if(NOT EMSCRIPTEN)
-    set(LLVM_MOS_HINTS ENV LLVM_MOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/llvm_mos/llvm-mos/bin")
+    set(LLVM_MOS_HINTS
+        ENV LLVM_MOS_DIR
+        ENV LLVM_MOS_ROOT
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/llvm_mos/llvm-mos/bin"
+        "${CMAKE_CURRENT_SOURCE_DIR}/output/toolchain/bin"
+    )
+    if(DEFINED ENV{MOS_CLANG} AND EXISTS "$ENV{MOS_CLANG}")
+        get_filename_component(_env_mos_bin_dir "$ENV{MOS_CLANG}" DIRECTORY)
+        list(PREPEND LLVM_MOS_HINTS "${_env_mos_bin_dir}")
+    endif()
+    if(MOS_CLANG AND EXISTS "${MOS_CLANG}")
+        get_filename_component(_arg_mos_bin_dir "${MOS_CLANG}" DIRECTORY)
+        list(PREPEND LLVM_MOS_HINTS "${_arg_mos_bin_dir}")
+    endif()
     if(LLVM_MOS_DIR)
         list(PREPEND LLVM_MOS_HINTS "${LLVM_MOS_DIR}" "${LLVM_MOS_DIR}/bin")
     endif()
@@ -288,7 +302,33 @@ if(NOT EMSCRIPTEN)
             URL ${LLVM_MOS_URL}
         )
         FetchContent_MakeAvailable(llvm_mos)
-        set(LLVM_MOS_ROOT "${llvm_mos_SOURCE_DIR}")
+        find_program(SYSTEM_MOS_CLANG
+            NAMES mos-common-clang mos-clang
+            HINTS "${llvm_mos_SOURCE_DIR}" "${llvm_mos_SOURCE_DIR}/llvm-mos"
+            PATH_SUFFIXES bin
+            NO_DEFAULT_PATH
+        )
+        if(SYSTEM_MOS_CLANG)
+            message(STATUS "Found fetched LLVM-MOS compiler: ${SYSTEM_MOS_CLANG}")
+            get_filename_component(MOS_BIN_DIR "${SYSTEM_MOS_CLANG}" DIRECTORY)
+            get_filename_component(LLVM_MOS_ROOT "${MOS_BIN_DIR}" DIRECTORY)
+        else()
+            if(EXISTS "${llvm_mos_SOURCE_DIR}/llvm-mos/bin")
+                set(LLVM_MOS_ROOT "${llvm_mos_SOURCE_DIR}/llvm-mos")
+            else()
+                set(LLVM_MOS_ROOT "${llvm_mos_SOURCE_DIR}")
+            endif()
+            set(MOS_BIN_DIR "${LLVM_MOS_ROOT}/bin")
+            if(EXISTS "${MOS_BIN_DIR}/mos-common-clang${CMAKE_EXECUTABLE_SUFFIX}")
+                set(SYSTEM_MOS_CLANG "${MOS_BIN_DIR}/mos-common-clang${CMAKE_EXECUTABLE_SUFFIX}" CACHE FILEPATH "Path to LLVM-MOS compiler" FORCE)
+            elseif(EXISTS "${MOS_BIN_DIR}/mos-clang${CMAKE_EXECUTABLE_SUFFIX}")
+                set(SYSTEM_MOS_CLANG "${MOS_BIN_DIR}/mos-clang${CMAKE_EXECUTABLE_SUFFIX}" CACHE FILEPATH "Path to LLVM-MOS compiler" FORCE)
+            endif()
+        endif()
+    endif()
+
+    if(SYSTEM_MOS_CLANG)
+        set(MOS_CLANG "${SYSTEM_MOS_CLANG}")
     endif()
 endif()
 
