@@ -74,21 +74,21 @@ graph TD
 
 ---
 
-## Git Worktree Architecture
+## Repository Architecture
 
-The 65c02-SIM project is organized across seven specialized **Git Worktrees** (branches checked out into independent directories). This modular architecture cleanly isolates the core simulator engine from development tools, target software, runtime libraries, and assets:
+The 65c02-SIM project is organized as a unified monorepo on `master`, keeping the core simulator engine cleanly modularized alongside development tools, target software, runtime libraries, assets, and documentation:
 
-| Worktree Path | Branch | Purpose & Contents |
-| :--- | :--- | :--- |
-| `/` (Root) | `master` | **Core Emulator & Frontend**: C++23 source code (`src/`), CMake build configuration, unit test suite (`src/UnitTests/`), ImGui/SDL3/OpenGL3 frontend, and core documentation. |
-| `/assets` | `Assets` | **Binary Assets**: Font atlases, default firmware ROMs, graphical splash screens, sample sound patches, and icon resources. |
-| `/sdk` | `SDK` | **Software Development Kit**: LLVM-MOS cross-compilation toolchain integration, system headers (`include/`), C runtimes (`crt0.s`), BIOS assembly routines, and compilation shell scripts (`compile-bin.sh`, `create-cartridge.sh`, `midi-to-bin.sh`, `image-to-bin.sh`). |
-| `/sdk/msbasic` | `MSBasic` | **Microsoft BASIC (1977)**: Full 6502 port adapted to the 65c02-SIM memory map and BIOS hooks, providing an interactive BASIC environment out of the box. |
-| `/sdk/microdos` | `MicroDOS` | **MicroDOS Operating System**: Lightweight disk operating system featuring a command shell, FAT16/FAT32 file drivers, text-mode utilities, and direct integration with `MicroDosGPU`. |
-| `/tools` | `Tools` | **Tooling & Code Generators**: Python-based linker script generators (`generate_cfg.py`, `generate_link_ld.py`, `generate_app_link_ld.py`), MIDI-to-SID converters, image-to-VRAM converters, and asset processing scripts. |
-| `/wiki` | `Wiki` | **Technical Documentation**: The standalone documentation repository powering the GitHub project wiki. |
+| Directory | Purpose & Contents |
+| :--- | :--- |
+| `src/`, `cmake/`, `flatpak/` | **Core Emulator, Frontend & Build**: C++23 source code (`src/`), CMake build modules (`cmake/`), Flatpak packaging (`flatpak/`), unit test suite (`src/UnitTests/`), and ImGui/SDL3/OpenGL3 frontend. |
+| `assets/` | **Assets**: MicroDOS system strings, sample MIDI/NSF audio files, VRAM images, and documentation screenshots. |
+| `sdk/` | **Software Development Kit**: LLVM-MOS cross-compilation toolchain integration, system headers, C runtimes, BIOS assembly routines, and compilation shell scripts (`compile-bin.sh`, `create-cartridge.sh`, `create-sdk.sh`, `midi-to-bin.sh`, `image-to-bin.sh`). |
+| `sdk/msbasic/` | **Microsoft BASIC (1977)**: Full 6502 port adapted to the 65c02-SIM memory map and BIOS hooks, providing an interactive BASIC environment out of the box. |
+| `sdk/microdos/` | **MicroDOS Operating System**: Lightweight disk operating system featuring a command shell, FAT16/FAT32 file drivers, text-mode utilities, and direct integration with `MicroDosGPU`. |
+| `tools/` | **Tooling & Code Generators**: Python-based linker script generators (`generate_cfg.py`, `generate_link_ld.py`, `generate_app_link_ld.py`), MIDI-to-SID converters, image-to-VRAM converters, and asset processing scripts. |
+| `wiki/` | **Technical Documentation**: Markdown documentation pages automatically synced to the GitHub project wiki. |
 
-Managing dependencies via dedicated worktrees enables developing software in C or assembly in `/sdk` or modifying system ROMs without polluting the git log of the core C++ emulator.
+Everything lives in a single repository tree on `master`, so a standard `git clone` includes all components out of the box. During CMake or Flatpak builds, passing `-DBUILD_SDK_BUNDLE=ON` builds `SDK.zip` directly from source.
 
 ---
 
