@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""
+generate_app_cfg.py — Linker config generator for microDOS .app binaries.
+
+Apps are position-independent flat binaries loaded into RAM by the microDOS
+`run` command. They live at $0800-$3FFF (14KB) with BSS in $4000+ and the
+C stack growing down from $7FFF.
+
+Usage: python3 Linker/generate_app_cfg.py [--gpu] [--net] > app.cfg
+"""
+import sys
+import argparse
+
+# Fixed layout for apps
+ZP_APP_BASE = 0x00    # MISMO ZP que microDOS para compartir el 'sp' de CC65
+ZP_APP_END  = 0x5F    # 96 bytes for app virtual registers
+
+# Paging layout
+PAGE_WINDOW_BASE = 0x2800
+PAGE_WINDOW_END  = 0x47FF
+
+# Fixed addresses of the BIOS jump table entries (matches bios.s JUMPTABLE)
+JUMPTABLE = 0xFF90
+
+def generate_cfg(flags=None, has_gpu=False):
+    if flags is None:
+        flags = []
+    app_base = 0x0200
+    app_end = 0x53FF
+    stack_start = 0x53FF
+
+    cfg = []
+    cfg.append("MEMORY {")
+    cfg.append(f"    ZP:     start = ${ZP_APP_BASE:02X}, size = ${ZP_APP_END - ZP_APP_BASE + 1:02X}, type = rw, file = \"\";")
+    cfg.append("")
+    cfg.append(f"    CORE:   start = ${app_base:04X}, size = ${app_end - app_base + 1:04X}, type = rw, file = %O;")
+    cfg.append("}")
+    cfg.append("")
+    cfg.append("SEGMENTS {")
+    cfg.append("    ZEROPAGE: load = ZP,  type = zp;")
+    cfg.append("")
+    cfg.append(f"    # App code and read-only data, loaded at ${app_base:04X}")
+    cfg.append("    HEADER:   load = CORE, type = ro;")
+    cfg.append("    CODE:     load = CORE, type = ro;")
+    cfg.append("    RODATA:   load = CORE, type = ro;")
+    cfg.append("")
+    cfg.append("    # Initialized data")
+    cfg.append("    DATA:     load = CORE, type = rw, define = yes;")
+    cfg.append("")
+    cfg.append("    # Uninitialized data")
+    cfg.append("    BSS:      load = CORE, type = bss, define = yes;")
+    cfg.append("")
+    cfg.append("    # C constructors / init")
+    cfg.append("    STARTUP:  load = CORE, type = ro, optional = yes;")
+    cfg.append("    ONCE:     load = CORE, type = ro, optional = yes, define = yes;")
+    cfg.append("}")
+    cfg.append("")
+    cfg.append("FEATURES {")
+    cfg.append("    CONDES: type = constructor, label = __CONSTRUCTOR_TABLE__, count = __CONSTRUCTOR_COUNT__, segment = ONCE;")
+    cfg.append("    CONDES: type = destructor,  label = __DESTRUCTOR_TABLE__,  count = __DESTRUCTOR_COUNT__,  segment = RODATA;")
+    cfg.append("}")
+    cfg.append("")
+    cfg.append("SYMBOLS {")
+    cfg.append(f"    __STACKSTART__: type = weak, value = ${stack_start:04X};")
+    cfg.append(f"    __CORE_SIZE__:  type = weak, value = __ONCE_LOAD__ + __ONCE_SIZE__ - ${app_base:04X};")
+    cfg.append("")
+    cfg.append("    # OS ABI: resolve calls directly to jump table entries in ROM")
+
+    cfg.append(f"    _print_str:      type = weak, value = ${JUMPTABLE + 0x00:04X};")
+    cfg.append(f"    _println:        type = weak, value = ${JUMPTABLE + 0x03:04X};")
+    cfg.append(f"    _print_num:      type = weak, value = ${JUMPTABLE + 0x06:04X};")
+    cfg.append(f"    _print_hex_byte: type = weak, value = ${JUMPTABLE + 0x09:04X};")
+    cfg.append(f"    _bios_getchar:   type = weak, value = ${JUMPTABLE + 0x0C:04X};")
+    cfg.append(f"    _bios_putchar:   type = weak, value = ${JUMPTABLE + 0x0F:04X};")
+    cfg.append(f"    _sd_open:        type = weak, value = ${JUMPTABLE + 0x12:04X};")
+    cfg.append(f"    _sd_read:        type = weak, value = ${JUMPTABLE + 0x15:04X};")
+    cfg.append(f"    _sd_write:       type = weak, value = ${JUMPTABLE + 0x18:04X};")
+    cfg.append(f"    _sd_close:       type = weak, value = ${JUMPTABLE + 0x1B:04X};")
+    cfg.append(f"    _sd_puts:        type = weak, value = ${JUMPTABLE + 0x1E:04X};")
+    cfg.append(f"    _sd_getc:        type = weak, value = ${JUMPTABLE + 0x21:04X};")
+    cfg.append(f"    _sd_getcwd:      type = weak, value = ${JUMPTABLE + 0x24:04X};")
+    cfg.append(f"    _sd_chdir:       type = weak, value = ${JUMPTABLE + 0x27:04X};")
+    cfg.append(f"    _net_send:       type = weak, value = ${JUMPTABLE + 0x2A:04X};")
+    cfg.append(f"    _net_cmd:        type = weak, value = ${JUMPTABLE + 0x2D:04X};")
+    cfg.append(f"    _net_send_num:   type = weak, value = ${JUMPTABLE + 0x30:04X};")
+    cfg.append(f"    _os_load_app_page: type = weak, value = ${JUMPTABLE + 0x33:04X};")
+    cfg.append(f"    _sid_write:       type = weak, value = ${JUMPTABLE + 0x36:04X};")
+    cfg.append(f"    _sid_reset:       type = weak, value = ${JUMPTABLE + 0x39:04X};")
+    cfg.append(f"    _sd_opendir:      type = weak, value = ${JUMPTABLE + 0x3C:04X};")
+    cfg.append(f"    _sd_readdir:      type = weak, value = ${JUMPTABLE + 0x3F:04X};")
+    cfg.append(f"    _sd_closedir:     type = weak, value = ${JUMPTABLE + 0x42:04X};")
+    cfg.append(f"    _sd_mkdir:        type = weak, value = ${JUMPTABLE + 0x45:04X};")
+    cfg.append(f"    _sd_remove:       type = weak, value = ${JUMPTABLE + 0x48:04X};")
+    cfg.append(f"    _sd_exists:       type = weak, value = ${JUMPTABLE + 0x4B:04X};")
+    cfg.append(f"    _net_wifi:        type = weak, value = ${JUMPTABLE + 0x4E:04X};")
+    cfg.append(f"    _os_swap_save:    type = weak, value = ${JUMPTABLE + 0x51:04X};")
+    cfg.append(f"    _os_swap_load:    type = weak, value = ${JUMPTABLE + 0x54:04X};")
+    cfg.append(f"    _os_alloc:        type = weak, value = ${JUMPTABLE + 0x57:04X};")
+    cfg.append(f"    _os_free:         type = weak, value = ${JUMPTABLE + 0x5A:04X};")
+    cfg.append(f"    _bios_getchar_nb: type = weak, value = ${JUMPTABLE + 0x5D:04X};")
+    cfg.append(f"    _sd_seek:         type = weak, value = ${JUMPTABLE + 0x60:04X};")
+    cfg.append(f"    _os_redirect_out: type = weak, value = ${JUMPTABLE + 0x63:04X};")
+    cfg.append(f"    _os_redirect_in:  type = weak, value = ${JUMPTABLE + 0x66:04X};")
+    cfg.append("}")
+    cfg.append("")
+    return "\n".join(cfg)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate linker config for microDOS .app binaries.")
+    parser.add_argument('--gpu', action='store_true', help='Reserve GPU VRAM for app')
+    args = parser.parse_args()
+    flags = []
+    if args.gpu:
+        flags.append('--gpu')
+    print(generate_cfg(flags, has_gpu=args.gpu))
