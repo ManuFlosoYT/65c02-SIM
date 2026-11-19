@@ -1,0 +1,166 @@
+#!/bin/bash
+set -e
+
+# Automation script for microDOS Cartridge
+# Requires: dosfstools (mkfs.fat), mtools (mformat, mcopy)
+
+IPS=10000000
+MULTITHREAD=false
+prev_arg=""
+for arg in "$@"; do
+    if [ -n "$prev_arg" ]; then
+        if [ "$prev_arg" == "--ips" ] || [ "$prev_arg" == "--clock" ] || [ "$prev_arg" == "--cpu-clock" ]; then
+            IPS="$arg"
+        fi
+        prev_arg=""
+        continue
+    fi
+    if [ "$arg" == "-multithread" ] || [ "$arg" == "--multithread" ]; then
+        MULTITHREAD=true
+    elif [ "$arg" == "--ips" ] || [ "$arg" == "--clock" ] || [ "$arg" == "--cpu-clock" ]; then
+        prev_arg="$arg"
+    fi
+done
+
+echo "--- Building microDOS Cartridge v7.0 ---"
+
+SCRIPT_DIR="$(dirname "$0")"
+
+if [ "$MULTITHREAD" = true ]; then
+    "$SCRIPT_DIR/compile-bin.sh" microDOS -multithread
+else
+    "$SCRIPT_DIR/compile-bin.sh" microDOS
+fi
+
+# Compile all available microDOS apps with -Os
+echo "  Compiling microDOS apps with -Os..."
+mkdir -p output/apps
+pids=()
+logs=()
+for app_src in sdk/microdos/Apps/*.c; do
+    if [ -f "$app_src" ]; then
+        app_name=$(basename "${app_src%.c}")
+        icon_info=""
+        for ext in png jpg jpeg bmp webp PNG JPG JPEG BMP WEBP; do
+            if [ -f "sdk/microdos/Apps/${app_name}.${ext}" ]; then
+                icon_info=" [icon: ${app_name}.${ext}]"
+                mkdir -p sdk/src/build
+                python3 tools/microDOS/image_to_icon.py "sdk/microdos/Apps/${app_name}.${ext}" "sdk/src/build/${app_name}_icon.s" || true
+                break
+            fi
+        done
+        echo "    Building $app_name.app$icon_info (-Os)..."
+        log=$(mktemp)
+        logs+=("$log")
+        if [ "$MULTITHREAD" = true ]; then
+            "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > "$log" 2>&1 &
+            pids+=($!)
+        else
+            if ! "$SCRIPT_DIR/compile-bin.sh" "$app_name" --microDOS > "$log" 2>&1; then
+                cat "$log"
+                rm -f "$log"
+                exit 1
+            fi
+            rm -f "$log"
+        fi
+    fi
+done
+if [ "$MULTITHREAD" = true ]; then
+    failed=0
+    for i in "${!pids[@]}"; do
+        if ! wait "${pids[$i]}"; then
+            cat "${logs[$i]}"
+            failed=1
+        fi
+        rm -f "${logs[$i]}"
+    done
+    if [ $failed -ne 0 ]; then
+        exit 1
+    fi
+fi
+
+echo "  Building DESKTOP.SYS..."
+"$SCRIPT_DIR/compile-bin.sh" desktop_sys
+
+# Create FAT16 SD Image (32MB)
+echo "  Creating 32MB SD Card Image..."
+mkdir -p output/img
+SD_PATH="output/img/microDOS.img"
+rm -f "$SD_PATH"
+truncate -s 32M "$SD_PATH"
+# Use mkfs.fat with parameters matching the emulator's CreateFAT16Image logic:
+# -F 16: FAT16
+# -R 4: 4 reserved sectors
+# -s 8: 8 sectors per cluster
+# -r 512: 512 root entries
+# -S 512: 512 bytes per sector
+# -n: Volume label
+mkfs.fat -F 16 -R 4 -s 8 -r 512 -S 512 -n "MICRODOS" "$SD_PATH" > /dev/null
+
+# Compile MIDs to .sid for microDOS
+echo "  Compiling raw SID files..."
+if [ "$MULTITHREAD" = true ]; then
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --cpu-clock "$IPS" -multithread || true
+else
+    "$SCRIPT_DIR/midi-to-bin.sh" all --microDOS --cpu-clock "$IPS" || true
+fi
+
+# Compile VRAM images with image-to-bin.sh
+echo "  Compiling VRAM images..."
+"$SCRIPT_DIR/image-to-bin.sh" all || true
+
+# Populate SD Card with /bin, /sid, and apps
+echo "  Populating SD Card..."
+# Use mtools (mmd, mcopy) to manipulate the raw image
+mmd -i "$SD_PATH" ::/bin
+mmd -i "$SD_PATH" ::/sid
+mmd -i "$SD_PATH" ::/vram
+mmd -i "$SD_PATH" ::/SYSTEM
+mmd -i "$SD_PATH" ::/SYSTEM/SWAP
+mmd -i "$SD_PATH" ::/SYSTEM/DESKTOP
+mmd -i "$SD_PATH" ::/SYSTEM/STARTUP
+
+python3 tools/microDOS/build_udos_sys.py assets/microDOS/strings.txt assets/microDOS/uDOS.sys
+mcopy -o -i "$SD_PATH" assets/microDOS/uDOS.sys ::/SYSTEM/
+if [ -f "output/vram/bliss.bin" ]; then
+    mcopy -o -i "$SD_PATH" output/vram/bliss.bin ::/SYSTEM/DESKTOP/bliss.bin
+fi
+if [ -f "output/system/DESKTOP.SYS" ]; then
+    mcopy -o -i "$SD_PATH" output/system/DESKTOP.SYS ::/SYSTEM/DESKTOP/DESKTOP.SYS
+fi
+
+for app in output/apps/*.app; do
+    if [ -f "$app" ]; then
+        mcopy -o -i "$SD_PATH" "$app" ::/bin/
+    fi
+done
+
+for sidfile in output/midi/*.sid output/nsf/*.sid; do
+    if [ -f "$sidfile" ]; then
+        mcopy -o -i "$SD_PATH" "$sidfile" ::/sid/
+    fi
+done
+
+for imgfile in output/vram/*.bin; do
+    if [ -f "$imgfile" ]; then
+        mcopy -o -i "$SD_PATH" "$imgfile" ::/vram/
+    fi
+done
+
+# Create the Cartridge (.65c)
+echo "  Packaging Cartridge..."
+"$SCRIPT_DIR/create-cartridge.sh" output/rom/microDOS.bin \
+    --sd-image "$SD_PATH" \
+    --name "microDOS" \
+    --author "ManuFloso" \
+    --desc "microDOS Operating System with pre-loaded apps" \
+    --version "7.0" \
+    --ips "$IPS" \
+    --sid true \
+    --sid-model "8580" \
+    --sd true \
+    --esp true \
+    --gpu true \
+    --microdos
+
+echo "Done! Cartridge created at output/cartridge/microDOS.65c"
