@@ -228,7 +228,6 @@ elif [[ "$TARGET_OS" == "flatpak" ]]; then
 
     LOCAL_SOURCES="$LOCAL_SOURCES" MANIFEST_FILE="$MANIFEST_FILE" FORCE_CONFIGURE="$FORCE_CONFIGURE" DO_CLEAN="$DO_CLEAN" python3 - <<'PYEOF'
 import datetime
-import hashlib
 import json
 import os
 import re
@@ -236,8 +235,6 @@ import shutil
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.parse
 import urllib.request
 
 REPO = "ManuFlosoYT/65c02-SIM"
@@ -287,54 +284,8 @@ def gh_get(url):
         return json.loads(resp.read().decode("utf-8"))
 
 
-def gh_get_optional(url):
-    try:
-        return gh_get(url)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return None
-        raise
-
-
-def sha256_file(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        while chunk := f.read(65536):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def asset_sha256(asset):
-    url = asset["browser_download_url"]
-    cache = load_gh_cache()
-    if cached_sha := cache.get("assets", {}).get(url):
-        return cached_sha
-    digest = asset.get("digest") or ""
-    if digest.startswith("sha256:") and len(digest) == 71:
-        sha = digest[7:]
-    else:
-        req = urllib.request.Request(url, headers={"User-Agent": "65c02-SIM-build"})
-        h = hashlib.sha256()
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            while chunk := resp.read(65536):
-                h.update(chunk)
-        sha = h.hexdigest()
-    cache.setdefault("assets", {})[url] = sha
-    save_gh_cache(cache)
-    return sha
-
-
 def git_out(args):
     return subprocess.check_output(args, text=True, stderr=subprocess.DEVNULL).strip()
-
-
-def git_first(*cmd_list):
-    for cmd in cmd_list:
-        try:
-            return git_out(cmd)
-        except subprocess.CalledProcessError:
-            continue
-    raise RuntimeError(f"All git commands failed: {cmd_list}")
 
 
 def parse_module_sources(lines, module_name):
@@ -418,111 +369,37 @@ def replace_sim_sources(yml_text, replacement_block):
     return "".join(lines[:first_start]) + replacement_block + "".join(lines[last_end:])
 
 
-def sdk_zip_sha_fallback(yml_text):
-    if os.path.isfile("SDK.zip"):
-        return sha256_file("SDK.zip")
-    lines = yml_text.splitlines(keepends=True)
-    for _, _, text in parse_module_sources(lines, "sim_65c02"):
-        if "SDK.zip" in text:
-            m = re.search(r"^\s+sha256:\s*([0-9a-fA-F]{64})\b", text, re.M)
-            if m:
-                print("Warning: local SDK.zip not found; reusing existing SDK.zip sha256 from manifest.", file=sys.stderr)
-                return m.group(1)
-    raise RuntimeError("SDK.zip not found locally and no existing sha256 in manifest")
-
-
-def release_sdk_info(rel):
-    if not rel or rel.get("draft"):
-        return None
-    sdk_asset = next((a for a in rel.get("assets", []) if a.get("name") == "SDK.zip"), None)
-    if not sdk_asset:
-        return None
-    return sdk_asset["browser_download_url"], asset_sha256(sdk_asset)
-
-
-def resolve_from_github(manifest_text):
+def resolve_from_github():
     cache = load_gh_cache()
     if (resolved := cache.get("resolved")) and (time.time() - resolved.get("ts", 0)) < GH_CACHE_TTL_SEC:
-        return (
-            resolved["tag"],
-            resolved["master_commit"],
-            resolved["sdk_commit"],
-            resolved["microdos_commit"],
-            resolved["sdk_zip_url"],
-            resolved["sdk_zip_sha256"],
-        )
+        return resolved["tag"], resolved["master_commit"]
 
-    releases = gh_get(f"{API_BASE}/releases?per_page=10")
-    tag = master_commit = sdk_zip_url = sdk_zip_sha256 = None
+    tags = gh_get(f"{API_BASE}/tags?per_page=1")
+    if not tags:
+        raise RuntimeError("No tags found on GitHub")
 
-    for rel in releases:
-        if rel.get("prerelease"):
-            continue
-        info = release_sdk_info(rel)
-        if info:
-            tag = rel["tag_name"]
-            master_commit = gh_get(f"{API_BASE}/commits/{urllib.parse.quote(tag, safe='')}")["sha"]
-            sdk_zip_url, sdk_zip_sha256 = info
-            break
-
-    if not tag:
-        tags = gh_get(f"{API_BASE}/tags?per_page=10")
-        if not tags:
-            raise RuntimeError("No tags found on GitHub")
-        for t in tags:
-            rel = gh_get_optional(f"{API_BASE}/releases/tags/{urllib.parse.quote(t['name'], safe='')}")
-            info = release_sdk_info(rel)
-            if info:
-                tag, master_commit = t["name"], t["commit"]["sha"]
-                sdk_zip_url, sdk_zip_sha256 = info
-                break
-        if not tag:
-            tag = tags[0]["name"]
-            master_commit = tags[0]["commit"]["sha"]
-            sdk_zip_url = f"https://github.com/{REPO}/releases/download/{tag}/SDK.zip"
-            sdk_zip_sha256 = sdk_zip_sha_fallback(manifest_text)
-
-    sdk_commit = gh_get(f"{API_BASE}/commits/SDK")["sha"]
-    microdos_commit = gh_get(f"{API_BASE}/commits/MicroDOS")["sha"]
+    tag = tags[0]["name"]
+    master_commit = tags[0]["commit"]["sha"]
 
     cache = load_gh_cache()
     cache["resolved"] = {
         "ts": time.time(),
         "tag": tag,
         "master_commit": master_commit,
-        "sdk_commit": sdk_commit,
-        "microdos_commit": microdos_commit,
-        "sdk_zip_url": sdk_zip_url,
-        "sdk_zip_sha256": sdk_zip_sha256,
     }
     save_gh_cache(cache)
 
-    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256
+    return tag, master_commit
 
 
-def resolve_offline(manifest_text):
+def resolve_offline():
     try:
         tag = git_out(["git", "describe", "--tags", "--abbrev=0"])
+        master_commit = git_out(["git", "rev-list", "-n", "1", tag])
     except subprocess.CalledProcessError:
         tag = "v0.0.0"
-
-    master_commit = git_first(
-        ["git", "rev-list", "-n", "1", tag] if tag != "v0.0.0" else ["git", "rev-parse", "HEAD"],
-        ["git", "rev-parse", "HEAD"],
-    )
-    sdk_commit = git_first(
-        ["git", "-C", "sdk", "rev-parse", "HEAD"],
-        ["git", "rev-parse", "SDK"],
-        ["git", "rev-parse", "origin/SDK"],
-    )
-    microdos_commit = git_first(
-        ["git", "-C", "sdk/microdos", "rev-parse", "HEAD"],
-        ["git", "rev-parse", "MicroDOS"],
-        ["git", "rev-parse", "origin/MicroDOS"],
-    )
-    sdk_zip_url = f"https://github.com/{REPO}/releases/download/{tag}/SDK.zip"
-    sdk_zip_sha256 = sdk_zip_sha_fallback(manifest_text)
-    return tag, master_commit, sdk_commit, microdos_commit, sdk_zip_url, sdk_zip_sha256
+        master_commit = git_out(["git", "rev-parse", "HEAD"])
+    return tag, master_commit
 
 
 with open(MANIFEST_SRC_PATH, "r", encoding="utf-8") as f:
@@ -552,10 +429,10 @@ if LOCAL_SOURCES:
     print(f"Prepared local-sources manifest {MANIFEST_OUT_PATH} (metainfo version {tag.lstrip('v')})")
 else:
     try:
-        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha = resolve_from_github(manifest_text)
+        tag, master_c = resolve_from_github()
     except Exception as exc:
         print(f"Warning: GitHub API lookup failed ({exc}); falling back to local git.", file=sys.stderr)
-        tag, master_c, sdk_c, microdos_c, zip_url, zip_sha = resolve_offline(manifest_text)
+        tag, master_c = resolve_offline()
 
     update_metainfo(tag)
     remote_block = (
@@ -565,26 +442,11 @@ else:
         f"        tag: {tag}\n"
         f"        commit: {master_c}\n"
         "        disable-lfs: true\n"
-        "      # 65C02 C/ASM SDK headers & linker scripts (independent orphan branch 'SDK' in the same repo)\n"
-        "      - type: git\n"
-        f"        url: https://github.com/{REPO}.git\n"
-        f"        commit: {sdk_c}\n"
-        "        dest: sdk\n"
-        "        disable-lfs: true\n"
-        "      # MicroDOS guest OS runtime libraries (independent orphan branch 'MicroDOS' in the same repo)\n"
-        "      - type: git\n"
-        f"        url: https://github.com/{REPO}.git\n"
-        f"        commit: {microdos_c}\n"
-        "        dest: sdk/microdos\n"
-        "        disable-lfs: true\n"
-        "      - type: file\n"
-        f"        url: {zip_url}\n"
-        f"        sha256: {zip_sha}\n"
     )
     updated_manifest = replace_sim_sources(manifest_text, remote_block)
     with open(MANIFEST_OUT_PATH, "w", encoding="utf-8") as f:
         f.write(updated_manifest)
-    print(f"Updated {MANIFEST_OUT_PATH} and {METAINFO_PATH} for {tag} (master={master_c[:8]}, sdk={sdk_c[:8]}, microdos={microdos_c[:8]})")
+    print(f"Updated {MANIFEST_OUT_PATH} and {METAINFO_PATH} for {tag} (master={master_c[:8]})")
 PYEOF
 
     FLATPAK_BUILDER_ARGS=(
