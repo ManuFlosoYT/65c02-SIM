@@ -171,12 +171,15 @@ modules:
       - -DLLVM_MOS_DIR=/app/toolchain/bin
       - -DFETCHCONTENT_FULLY_DISCONNECTED=ON
     sources:
-      # Main emulator & IDE repository (master branch)
       - type: git
         url: https://github.com/ManuFlosoYT/65c02-SIM.git
         tag: v2.5.2
         commit: cadc107bd7fbce8134325885981a0b2b7e4b8051
         disable-lfs: true
+        x-checker-data:
+            type: git
+            tag-pattern: ^v([\d.]+)$
+            is-main-source: true
       - type: git
         url: https://github.com/ocornut/imgui.git
         tag: v1.93.0
