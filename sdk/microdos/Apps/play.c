@@ -1,0 +1,699 @@
+/*
+ * play.c — microDOS SID Player (v2 compressed streaming playback)
+ * Compile with: ./compile-bin.sh play --microDOS
+ */
+#include <stdint.h>
+#include <string.h>
+
+#include "Libs/app-bios.h"
+
+MICRODOS_NO_DESKTOP();
+
+enum {
+    CHUNK_SIZE = 512,
+    LZ_WINDOW_SIZE = 2048,
+    LZ_WINDOW_MASK = 0x07FF
+};
+
+#define SID_BASE 0x7FE0
+#define SID_WRITE_REG(r, v) (*(volatile uint8_t*)(SID_BASE + (r)) = (v))
+
+static SD_FILE file;
+static uint8_t* buffer_pool;
+static uint8_t num_bufs;
+#define BUF_PTR(idx) (buffer_pool + ((uint16_t)(idx) << 9))
+
+static uint8_t head = 0;
+static uint8_t tail = 0;
+static uint8_t count = 0;
+static uint16_t b_idx = 0;
+static uint8_t eof_reached = 0;
+
+static uint8_t next_byte(void) {
+    int16_t r = 0;
+    if (b_idx >= CHUNK_SIZE) {
+        tail = (tail + 1) % num_bufs;
+        count--;
+        b_idx = 0;
+    }
+    if (count == 0) {
+        if (eof_reached) {
+            return 0xFF;
+        }
+        r = sd_read(&file, BUF_PTR(head), CHUNK_SIZE);
+        if (r <= 0) {
+            eof_reached = 1;
+            return 0xFF;
+        }
+        head = (head + 1) % num_bufs;
+        count++;
+    }
+    return BUF_PTR(tail)[b_idx++];
+}
+
+static uint8_t bit_buf = 0;
+static uint8_t bit_mask = 0;
+
+static uint8_t read_bit(void) {
+    uint8_t b = 0;
+    if (bit_mask == 0) {
+        bit_buf = next_byte();
+        bit_mask = 0x80;
+    }
+    b = (bit_buf & bit_mask) ? 1 : 0;
+    bit_mask >>= 1;
+    return b;
+}
+
+static uint16_t read_gamma(void) {
+    uint8_t zeros = 0;
+    uint16_t val = 1;
+    while (read_bit() == 0) {
+        zeros++;
+        if (zeros > 16) {
+            return 1;
+        }
+    }
+    while (zeros--) {
+        val = (val << 1) | read_bit();
+    }
+    return val;
+}
+
+static uint8_t lz_window[LZ_WINDOW_SIZE];
+static uint16_t lz_head = 0;
+static uint16_t lz_last_offset = 0;
+static uint16_t lz_lit_rem = 0;
+static uint16_t lz_match_rem = 0;
+static uint16_t lz_match_offset = 0;
+
+static uint8_t next_semantic_byte(void) {
+    uint8_t b = 0;
+    uint8_t tag = 0;
+    uint8_t sub = 0;
+    uint16_t src = 0;
+    uint16_t off_hi = 0;
+    uint8_t off_lo = 0;
+
+    if (lz_lit_rem > 0) {
+        b = next_byte();
+        lz_lit_rem--;
+        lz_window[lz_head] = b;
+        lz_head = (lz_head + 1) & LZ_WINDOW_MASK;
+        return b;
+    }
+    if (lz_match_rem > 0) {
+        src = (lz_head - lz_match_offset) & LZ_WINDOW_MASK;
+        b = lz_window[src];
+        lz_match_rem--;
+        lz_window[lz_head] = b;
+        lz_head = (lz_head + 1) & LZ_WINDOW_MASK;
+        return b;
+    }
+
+    tag = read_bit();
+    if (tag == 0) {
+        lz_lit_rem = read_gamma();
+        b = next_byte();
+        lz_lit_rem--;
+        lz_window[lz_head] = b;
+        lz_head = (lz_head + 1) & LZ_WINDOW_MASK;
+        return b;
+    }
+
+    sub = read_bit();
+    if (sub == 0) {
+        off_hi = read_gamma() - 1;
+        off_lo = next_byte();
+        lz_match_offset = ((off_hi << 8) | off_lo) + 1;
+        lz_match_rem = read_gamma() + 1;
+        lz_last_offset = lz_match_offset;
+    } else {
+        lz_match_offset = lz_last_offset;
+        lz_match_rem = read_gamma() + 1;
+    }
+    src = (lz_head - lz_match_offset) & LZ_WINDOW_MASK;
+    b = lz_window[src];
+    lz_match_rem--;
+    lz_window[lz_head] = b;
+    lz_head = (lz_head + 1) & LZ_WINDOW_MASK;
+    return b;
+}
+
+static uint8_t pw_step = 128;
+static uint8_t ntbl_first = 0;
+static uint8_t ntbl_count = 0;
+static uint16_t ntbl_freq[128];
+static uint8_t dict_count = 0;
+static uint16_t dict_delays[128];
+static uint16_t sched_len = 0;
+static uint8_t sched_table[512];
+
+static uint8_t shadow_regs[25];
+static uint16_t shadow_pw[3] = {0x0800, 0x0800, 0x0800};
+static uint8_t last_ctrl[3] = {0, 0, 0};
+
+static uint16_t last_timer = 0;
+
+static inline uint16_t timer_read(void) {
+    uint8_t hi1 = 0;
+    uint8_t hi2 = 0;
+    uint8_t lo = 0;
+    do {
+        hi1 = VIA_T1C_H;
+        lo = VIA_T1C_L;
+        hi2 = VIA_T1C_H;
+    } while (hi1 != hi2);
+    return ((uint16_t)hi1 << 8) | lo;
+}
+
+static void timer_init(void) {
+    VIA_ACR |= 0x40;
+    VIA_T1L_L = 0xFF;
+    VIA_T1L_H = 0xFF;
+    VIA_T1C_L = 0xFF;
+    VIA_T1C_H = 0xFF;
+    last_timer = timer_read();
+}
+
+static uint16_t timer_delta(void) {
+    uint16_t now = timer_read();
+    uint16_t delta = last_timer - now;
+    last_timer = now;
+    return delta;
+}
+
+static uint16_t get_note_freq(uint8_t note) {
+    uint8_t idx = note - ntbl_first;
+    if (idx < ntbl_count) {
+        return ntbl_freq[idx];
+    }
+    return 0;
+}
+
+static char to_lower(char c) {
+    return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c;
+}
+
+static uint8_t is_sid_file(const char* fname) {
+    uint8_t len = 0;
+    while (fname[len]) {
+        len++;
+    }
+    if (len < 5 || fname[len - 4] != '.') {
+        return 0;
+    }
+    return (to_lower(fname[len - 3]) == 's' &&
+            to_lower(fname[len - 2]) == 'i' &&
+            to_lower(fname[len - 1]) == 'd');
+}
+
+static uint8_t match_sid_entry(const char* fname, const char* pat, uint8_t pat_len, uint8_t pat_has_tilde) {
+    uint8_t base_len = 0;
+    uint8_t tilde_pos = 0;
+    uint8_t i = 0;
+
+    if (!is_sid_file(fname)) {
+        return 0;
+    }
+
+    while (fname[base_len]) {
+        base_len++;
+    }
+    base_len -= 4;
+
+    while (tilde_pos < base_len && fname[tilde_pos] != '~') {
+        tilde_pos++;
+    }
+
+    if (pat_has_tilde) {
+        if (pat_len > base_len) {
+            return 0;
+        }
+        for (i = 0; i < pat_len; i++) {
+            if (to_lower(fname[i]) != to_lower(pat[i])) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+
+    if (tilde_pos < base_len) {
+        if (pat_len <= tilde_pos) {
+            for (i = 0; i < pat_len; i++) {
+                if (to_lower(fname[i]) != to_lower(pat[i])) {
+                    return 0;
+                }
+            }
+            return 1;
+        } else {
+            for (i = 0; i < tilde_pos; i++) {
+                if (to_lower(fname[i]) != to_lower(pat[i])) {
+                    return 0;
+                }
+            }
+            return 1;
+        }
+    } else {
+        if (pat_len > base_len) {
+            return 0;
+        }
+        for (i = 0; i < pat_len; i++) {
+            if (to_lower(fname[i]) != to_lower(pat[i])) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+}
+
+static uint8_t search_dir(const char* dir_path, const char* pat, uint8_t pat_len, uint8_t pat_has_tilde, char* matched_path) {
+    SD_DIR dp;
+    SD_INFO fno;
+    uint8_t count = 0;
+    char first_match[13];
+
+    if (!sd_opendir(&dp, dir_path)) {
+        return 0;
+    }
+
+    while (sd_readdir(&dp, &fno)) {
+        if (fno.fattrib & AM_DIR) {
+            continue;
+        }
+        if (match_sid_entry(fno.fname, pat, pat_len, pat_has_tilde)) {
+            count++;
+            if (count == 1) {
+                strcpy(first_match, fno.fname);
+                if (dir_path[0] == '.' && dir_path[1] == '\0') {
+                    strcpy(matched_path, fno.fname);
+                } else {
+                    strcpy(matched_path, dir_path);
+                    if (dir_path[0] != '\0' && dir_path[strlen(dir_path) - 1] != '/') {
+                        strcat(matched_path, "/");
+                    }
+                    strcat(matched_path, fno.fname);
+                }
+            } else if (count == 2) {
+                println("Multiple matches:");
+                print_str("  ");
+                println(first_match);
+                print_str("  ");
+                println(fno.fname);
+            } else {
+                print_str("  ");
+                println(fno.fname);
+            }
+        }
+    }
+    sd_closedir(&dp);
+    return count;
+}
+
+int main(void) {
+    uint8_t cmd = 0;
+    uint8_t i = 0;
+    uint8_t v = 0;
+    uint8_t b = 0;
+    uint8_t b2 = 0;
+    uint8_t b3 = 0;
+    char path[48];
+    char dir_buf[32];
+    const char* pat = 0;
+    char** args = _args_ptr;
+    uint8_t pat_len = 0;
+    uint8_t pat_has_tilde = 0;
+    uint8_t match_count = 0;
+    int16_t last_slash = -1;
+    uint16_t loops = 0;
+    uint16_t sched_idx = 0;
+    uint16_t pause_counter = 0;
+    uint16_t next_read_pause = 0;
+    uint8_t next_read_blocks = 0;
+    int32_t delay_cycles_left = 0;
+    uint8_t initial_fill = 0;
+    uint8_t min_bufs = 0;
+    uint8_t flo = 0;
+    uint8_t fhi = 0;
+    uint8_t dlo = 0;
+    uint8_t dhi = 0;
+    uint8_t slo = 0;
+    uint8_t shi = 0;
+    uint8_t note = 0;
+    uint8_t ctrl = 0;
+    uint16_t freq = 0;
+    uint16_t pw = 0;
+    uint8_t base = 0;
+    uint8_t e = 0;
+    int16_t r = 0;
+
+    println("microDOS SID Player v2");
+
+    buffer_pool = (uint8_t*)APP_EXTRA_RAM_START;
+    num_bufs = (uint8_t)(APP_EXTRA_RAM_SIZE / CHUNK_SIZE);
+    if (num_bufs > 15) {
+        num_bufs = 15;
+    }
+
+    if (num_bufs == 0) {
+        println("Error: Not enough RAM for buffers");
+        return 1;
+    }
+
+    if (arg_count < 2) {
+        println("Usage: play <file.sid>");
+        return 1;
+    }
+
+    if (sd_open(&file, args[1], SD_READ)) {
+        strcpy(path, args[1]);
+    } else {
+        last_slash = -1;
+        for (i = 0; args[1][i]; i++) {
+            if (args[1][i] == '/') {
+                last_slash = i;
+            }
+        }
+
+        if (last_slash >= 0) {
+            if (last_slash == 0) {
+                strcpy(dir_buf, "/");
+            } else {
+                for (i = 0; i < last_slash && i < 31; i++) {
+                    dir_buf[i] = args[1][i];
+                }
+                dir_buf[i] = '\0';
+            }
+            pat = args[1] + last_slash + 1;
+        } else {
+            pat = args[1];
+        }
+
+        pat_len = strlen(pat);
+        if (pat_len >= 4 && pat[pat_len - 4] == '.' &&
+            to_lower(pat[pat_len - 3]) == 's' &&
+            to_lower(pat[pat_len - 2]) == 'i' &&
+            to_lower(pat[pat_len - 1]) == 'd') {
+            pat_len -= 4;
+        }
+
+        pat_has_tilde = 0;
+        for (i = 0; i < pat_len; i++) {
+            if (pat[i] == '~') {
+                pat_has_tilde = 1;
+                break;
+            }
+        }
+
+        if (last_slash >= 0) {
+            match_count = search_dir(dir_buf, pat, pat_len, pat_has_tilde, path);
+        } else {
+            match_count = search_dir("/sid", pat, pat_len, pat_has_tilde, path);
+            if (match_count == 0) {
+                match_count = search_dir(".", pat, pat_len, pat_has_tilde, path);
+            }
+        }
+
+        if (match_count == 1) {
+            if (sd_open(&file, path, SD_READ) == 0) {
+                print_str("Error: File not found -> ");
+                println(path);
+                return 1;
+            }
+        } else if (match_count > 1) {
+            return 1;
+        } else {
+            print_str("Error: File not found -> ");
+            println(args[1]);
+            return 1;
+        }
+    }
+
+    print_str("Playing -> ");
+    println(path);
+
+    head = 0;
+    tail = 0;
+    count = 0;
+    b_idx = 0;
+    eof_reached = 0;
+
+    initial_fill = num_bufs;
+    for (i = 0; i < initial_fill; i++) {
+        if (sd_read(&file, BUF_PTR(head), CHUNK_SIZE) <= 0) {
+            break;
+        }
+        head = (head + 1) % num_bufs;
+        count++;
+    }
+
+    if (next_byte() != 'S' || next_byte() != 'D' || next_byte() != 'Z' || next_byte() != 0x02) {
+        println("Error: Invalid or outdated SID format");
+        sd_close(&file);
+        return 1;
+    }
+
+    next_byte();
+    min_bufs = next_byte();
+    if (num_bufs < min_bufs && (min_bufs - num_bufs) > 1) {
+        print_str("Warning: Low RAM (");
+        print_num(num_bufs);
+        print_str("/");
+        print_num(min_bufs);
+        println(" bufs)");
+    }
+
+    pw_step = next_byte();
+    ntbl_first = next_byte();
+    ntbl_count = next_byte();
+    for (i = 0; i < ntbl_count; i++) {
+        flo = next_byte();
+        fhi = next_byte();
+        ntbl_freq[i] = (uint16_t)flo | ((uint16_t)fhi << 8);
+    }
+
+    dict_count = next_byte();
+    for (i = 0; i < dict_count; i++) {
+        dlo = next_byte();
+        dhi = next_byte();
+        dict_delays[i] = (uint16_t)dlo | ((uint16_t)dhi << 8);
+    }
+
+    slo = next_byte();
+    shi = next_byte();
+    sched_len = (uint16_t)slo | ((uint16_t)shi << 8);
+    for (loops = 0; loops < sched_len && loops < 512; loops++) {
+        sched_table[loops] = next_byte();
+    }
+    for (; loops < sched_len; loops++) {
+        next_byte();
+    }
+    if (sched_len > 512) {
+        sched_len = 512;
+    }
+
+    sched_idx = 0;
+    next_read_pause = 0;
+    while (sched_idx < sched_len && sched_table[sched_idx] == 0x3F) {
+        next_read_pause += 63;
+        sched_idx++;
+    }
+    if (sched_idx < sched_len) {
+        e = sched_table[sched_idx];
+        next_read_pause += (e & 0x3F);
+        next_read_blocks = ((e >> 6) & 0x03) + 1;
+    }
+
+    for (i = 0; i < 25; i++) {
+        shadow_regs[i] = 0;
+    }
+    for (i = 0; i < 3; i++) {
+        shadow_pw[i] = 0x0800;
+        last_ctrl[i] = 0;
+    }
+    lz_head = 0;
+    lz_lit_rem = 0;
+    lz_match_rem = 0;
+    lz_last_offset = 0;
+    bit_buf = 0;
+    bit_mask = 0;
+
+    sid_reset();
+    timer_init();
+
+    while (1) {
+        cmd = next_semantic_byte();
+        if (cmd == 0xFF) {
+            break;
+        }
+
+        if (cmd <= 0x18) {
+            b = next_semantic_byte();
+            SID_WRITE_REG(cmd, b);
+            shadow_regs[cmd] = b;
+            v = cmd / 7;
+            if (v < 3 && (cmd % 7 == 2 || cmd % 7 == 3)) {
+                base = v * 7;
+                shadow_pw[v] = (uint16_t)shadow_regs[base + 2] | ((uint16_t)shadow_regs[base + 3] << 8);
+            }
+        } else if (cmd >= 0x19 && cmd <= 0x1B) {
+            v = cmd - 0x19;
+            note = next_semantic_byte();
+            ctrl = next_semantic_byte();
+            freq = get_note_freq(note);
+            base = v * 7;
+            SID_WRITE_REG(base + 4, shadow_regs[base + 4] & ~0x01);
+            SID_WRITE_REG(base + 5, 0);
+            SID_WRITE_REG(base + 6, 0);
+            SID_WRITE_REG(base + 0, freq & 0xFF);
+            SID_WRITE_REG(base + 1, (freq >> 8) & 0xFF);
+            SID_WRITE_REG(base + 5, shadow_regs[base + 5]);
+            SID_WRITE_REG(base + 6, shadow_regs[base + 6]);
+            SID_WRITE_REG(base + 4, ctrl);
+            shadow_regs[base + 0] = freq & 0xFF;
+            shadow_regs[base + 1] = (freq >> 8) & 0xFF;
+            shadow_regs[base + 4] = ctrl;
+            last_ctrl[v] = ctrl;
+        } else if (cmd >= 0x1C && cmd <= 0x1E) {
+            v = cmd - 0x1C;
+            note = next_semantic_byte();
+            ctrl = last_ctrl[v] | 0x01;
+            freq = get_note_freq(note);
+            base = v * 7;
+            SID_WRITE_REG(base + 4, shadow_regs[base + 4] & ~0x01);
+            SID_WRITE_REG(base + 5, 0);
+            SID_WRITE_REG(base + 6, 0);
+            SID_WRITE_REG(base + 0, freq & 0xFF);
+            SID_WRITE_REG(base + 1, (freq >> 8) & 0xFF);
+            SID_WRITE_REG(base + 5, shadow_regs[base + 5]);
+            SID_WRITE_REG(base + 6, shadow_regs[base + 6]);
+            SID_WRITE_REG(base + 4, ctrl);
+            shadow_regs[base + 0] = freq & 0xFF;
+            shadow_regs[base + 1] = (freq >> 8) & 0xFF;
+            shadow_regs[base + 4] = ctrl;
+            last_ctrl[v] = ctrl;
+        } else if (cmd >= 0x1F && cmd <= 0x21) {
+            v = cmd - 0x1F;
+            b = next_semantic_byte();
+            b2 = next_semantic_byte();
+            b3 = next_semantic_byte();
+            base = v * 7;
+            SID_WRITE_REG(base + 4, shadow_regs[base + 4] & ~0x01);
+            SID_WRITE_REG(base + 5, 0);
+            SID_WRITE_REG(base + 6, 0);
+            SID_WRITE_REG(base + 0, b);
+            SID_WRITE_REG(base + 1, b2);
+            SID_WRITE_REG(base + 5, shadow_regs[base + 5]);
+            SID_WRITE_REG(base + 6, shadow_regs[base + 6]);
+            SID_WRITE_REG(base + 4, b3);
+            shadow_regs[base + 0] = b;
+            shadow_regs[base + 1] = b2;
+            shadow_regs[base + 4] = b3;
+            last_ctrl[v] = b3;
+        } else if (cmd >= 0x22 && cmd <= 0x24) {
+            v = cmd - 0x22;
+            base = v * 7;
+            ctrl = shadow_regs[base + 4] & ~0x01;
+            SID_WRITE_REG(base + 4, ctrl);
+            shadow_regs[base + 4] = ctrl;
+        } else if (cmd >= 0x25 && cmd <= 0x27) {
+            v = cmd - 0x25;
+            base = v * 7;
+            pw = shadow_pw[v] + pw_step;
+            shadow_pw[v] = pw;
+            SID_WRITE_REG(base + 2, pw & 0xFF);
+            SID_WRITE_REG(base + 3, (pw >> 8) & 0xFF);
+            shadow_regs[base + 2] = pw & 0xFF;
+            shadow_regs[base + 3] = (pw >> 8) & 0xFF;
+        } else if (cmd >= 0x28 && cmd <= 0x2A) {
+            v = cmd - 0x28;
+            base = v * 7;
+            pw = shadow_pw[v] - pw_step;
+            shadow_pw[v] = pw;
+            SID_WRITE_REG(base + 2, pw & 0xFF);
+            SID_WRITE_REG(base + 3, (pw >> 8) & 0xFF);
+            shadow_regs[base + 2] = pw & 0xFF;
+            shadow_regs[base + 3] = (pw >> 8) & 0xFF;
+        } else if (cmd >= 0x2B && cmd <= 0x2D) {
+            v = cmd - 0x2B;
+            base = v * 7;
+            b = next_semantic_byte();
+            b2 = next_semantic_byte();
+            shadow_pw[v] = (uint16_t)b | ((uint16_t)b2 << 8);
+            SID_WRITE_REG(base + 2, b);
+            SID_WRITE_REG(base + 3, b2);
+            shadow_regs[base + 2] = b;
+            shadow_regs[base + 3] = b2;
+        } else if (cmd >= 0x2E && cmd <= 0x30) {
+            v = cmd - 0x2E;
+            base = v * 7;
+            b = next_semantic_byte();
+            b2 = next_semantic_byte();
+            SID_WRITE_REG(base + 0, b);
+            SID_WRITE_REG(base + 1, b2);
+            shadow_regs[base + 0] = b;
+            shadow_regs[base + 1] = b2;
+        } else if (cmd >= 0x31 && cmd <= 0x33) {
+            v = cmd - 0x31;
+            base = v * 7;
+            note = next_semantic_byte();
+            freq = get_note_freq(note);
+            SID_WRITE_REG(base + 0, freq & 0xFF);
+            SID_WRITE_REG(base + 1, (freq >> 8) & 0xFF);
+            shadow_regs[base + 0] = freq & 0xFF;
+            shadow_regs[base + 1] = (freq >> 8) & 0xFF;
+        } else if (cmd == 0x34 || cmd == 0x35 || (cmd >= 0x80 && cmd <= 0xFE)) {
+            if (cmd == 0x34) {
+                loops = next_semantic_byte();
+            } else if (cmd == 0x35) {
+                b = next_semantic_byte();
+                b2 = next_semantic_byte();
+                loops = (uint16_t)b | ((uint16_t)b2 << 8);
+            } else {
+                loops = dict_delays[cmd - 0x80];
+            }
+
+            delay_cycles_left += (int32_t)loops * 15;
+
+            if (sched_idx < sched_len && pause_counter == next_read_pause) {
+                for (i = 0; i < next_read_blocks; i++) {
+                    if (!eof_reached && count < num_bufs) {
+                        r = sd_read(&file, BUF_PTR(head), CHUNK_SIZE);
+                        delay_cycles_left -= timer_delta();
+                        if (r > 0) {
+                            head = (head + 1) % num_bufs;
+                            count++;
+                        } else {
+                            eof_reached = 1;
+                            break;
+                        }
+                    }
+                }
+                sched_idx++;
+                next_read_pause++;
+                while (sched_idx < sched_len && sched_table[sched_idx] == 0x3F) {
+                    next_read_pause += 63;
+                    sched_idx++;
+                }
+                if (sched_idx < sched_len) {
+                    e = sched_table[sched_idx];
+                    next_read_pause += (e & 0x3F);
+                    next_read_blocks = ((e >> 6) & 0x03) + 1;
+                }
+            }
+            pause_counter++;
+
+            while (delay_cycles_left > 0) {
+                delay_cycles_left -= timer_delta();
+            }
+            if (delay_cycles_left < -8000) {
+                delay_cycles_left = 0;
+            }
+        }
+    }
+
+    sd_close(&file);
+    sid_reset();
+    println("Playback finished.");
+    return 0;
+}
